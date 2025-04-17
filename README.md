@@ -76,6 +76,7 @@ php dotapper.php --module=Blog --create-controller=ArticleController
 
 # List all routes
 php dotapper.php --list-routes
+```
 
 ## 🧪 Version Note
 
@@ -179,6 +180,7 @@ php dotapper.php --module=Blog --create-controller=ArticleController
 
 # Zobrazenie všetkých routov
 php dotapper.php --list-routes
+```
 
 ## 🧪 Poznámka k verzii
 
