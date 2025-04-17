@@ -13,8 +13,11 @@ class ComposerStaticInitbd74c41f2cda1a34b3d0e964db0832d3
         ),
         'D' => 
         array (
-            'Dotsystems\\App\\Parts\\Modules\\' => 29,
+            'Dotsystems\\App\\Parts\\Models\\' => 28,
+            'Dotsystems\\App\\Parts\\Middleware\\' => 32,
+            'Dotsystems\\App\\Parts\\Controllers\\' => 33,
             'Dotsystems\\App\\Parts\\' => 21,
+            'Dotsystems\\App\\Modules\\' => 23,
             'Dotsystems\\App\\CustomClasses\\' => 29,
             'Dotsystems\\App\\' => 15,
             'Dotsystems\\' => 11,
@@ -28,15 +31,27 @@ class ComposerStaticInitbd74c41f2cda1a34b3d0e964db0832d3
     public static $prefixDirsPsr4 = array (
         'Modules\\' => 
         array (
-            0 => __DIR__ . '/../../..' . '/app/parts/modules',
+            0 => __DIR__ . '/../../..' . '/app/modules',
         ),
-        'Dotsystems\\App\\Parts\\Modules\\' => 
+        'Dotsystems\\App\\Parts\\Models\\' => 
         array (
-            0 => __DIR__ . '/../../..' . '/app/parts/modules',
+            0 => __DIR__ . '/../../..' . '/app/parts/Models',
+        ),
+        'Dotsystems\\App\\Parts\\Middleware\\' => 
+        array (
+            0 => __DIR__ . '/../../..' . '/app/parts/Middleware',
+        ),
+        'Dotsystems\\App\\Parts\\Controllers\\' => 
+        array (
+            0 => __DIR__ . '/../../..' . '/app/parts/Controllers',
         ),
         'Dotsystems\\App\\Parts\\' => 
         array (
             0 => __DIR__ . '/../../..' . '/app/parts',
+        ),
+        'Dotsystems\\App\\Modules\\' => 
+        array (
+            0 => __DIR__ . '/../../..' . '/app/modules',
         ),
         'Dotsystems\\App\\CustomClasses\\' => 
         array (

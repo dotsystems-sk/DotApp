@@ -210,11 +210,11 @@ class Renderer {
 	*/
 	public function module($name) {
 		if (strlen($name) > 1) {
-			$this->dirl = __ROOTDIR__."/App/Modules/".$name."/views/layouts/";
-			$this->dirw = __ROOTDIR__."/App/Modules/".$name."/views/";
+			$this->dirl = __ROOTDIR__."/app/modules/".$name."/views/layouts/";
+			$this->dirw = __ROOTDIR__."/app/modules/".$name."/views/";
 		} else {
-			$this->dirl = __ROOTDIR__."/App/Parts/views/layouts/";
-			$this->dirw = __ROOTDIR__."/App/Parts/views/";
+			$this->dirl = __ROOTDIR__."/app/parts/views/layouts/";
+			$this->dirw = __ROOTDIR__."/app/parts/views/";
 		}
 		return $this;
 	}
@@ -710,8 +710,8 @@ class Renderer {
 			
         $remdirl = $this->dirl;
 		$remdirw = $this->dirw;
-		$this->dirl = __ROOTDIR__."/App/parts/views/layouts/";
-		$this->dirw = __ROOTDIR__."/App/parts/views/";
+		$this->dirl = __ROOTDIR__."/app/parts/views/layouts/";
+		$this->dirw = __ROOTDIR__."/app/parts/views/";
 	
 		if (preg_match_all($pattern, $layoutcode, $matches)) {
 			$found = $matches[1];
@@ -1186,7 +1186,7 @@ class renderer_isolator {
 			}
 
 			$file_i = 0;
-			while (! $canrewrite(__ROOTDIR__."/App/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php")) {
+			while (! $canrewrite(__ROOTDIR__."/app/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php")) {
 				$file_i++;
 			};
 
@@ -1197,10 +1197,10 @@ class renderer_isolator {
 
             if ($renderToFile) {
                 try {
-                    file_put_contents(__ROOTDIR__."/App/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php",$code);
-                    chmod(__ROOTDIR__."/App/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php",0644);
-                    include(__ROOTDIR__."/App/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php");
-                    unlink(__ROOTDIR__."/App/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php");
+                    file_put_contents(__ROOTDIR__."/app/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php",$code);
+                    chmod(__ROOTDIR__."/app/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php",0644);
+                    include(__ROOTDIR__."/app/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php");
+                    unlink(__ROOTDIR__."/app/runtime/generator/rendering_".md5($userkey.session_id().$userkey)."_".$file_i.".php");
                 } catch (Exception $e) {
                     try {
                         // Zlyhalo zapisovanie, nevieme renderovat fyzickym nacitanim ulozeneho php skriptu tak evalujeme

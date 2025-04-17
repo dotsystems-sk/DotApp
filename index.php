@@ -10,29 +10,23 @@ set_time_limit(60);
 ini_set("memory_limit","64M");
 session_start();
 
-// Toto nie je vobec nutne, pouzivam to len pre debugging aby som vdel aka je spotreba zdrojov.
-global $start_time;
-global $memoryStart;
-$memoryStart = memory_get_usage();
-$start_time = microtime(true);
-
 define('__MAINTENANCE__',FALSE);
 define('__DEBUG__',FALSE);
-define('__RENDER_TO_FILE__',FALSE); // Dobre ak chceme robit debugging
+define('__RENDER_TO_FILE__',FALSE); // Useful for debugging
 
-// Nastavime ROOT DIR teda adresar kde bezime...
-define('__ROOTDIR__',"c:\wamp\dotapp"); // - Priecinok kde bezime ( kde je index.php )
+// Set ROOT DIR, i.e., the directory where the application runs...
+define('__ROOTDIR__',"/path/to/dotapp"); // - Where dotapp is located. It can be in a hidden directory, it's up to you
 
 require_once __ROOTDIR__ . '/app/config.php';
 
 if (!__MAINTENANCE__) {
-	if (!defined('__CRON__') || __CRON__ == false ) {
-		// Tu sa deje cary mary :)
-		$dotApp->davajhet(); // Alias for $dotApp->run();
-	}
+    if (!defined('__CRON__') || __CRON__ == false ) {
+        // This is where the magic happens :)
+        $dotApp->davajhet(); // Alias for $dotApp->run();
+    }
 } else {
-	// Ak budeme volat funkcie z nejakeho CRON suboru, tak __CRON__ nam urcuje ze je to volane z CRONU a vynechame teda router.
-	if (!defined('__CRON__') || __CRON__ == false ) echo $dotApp->router->renderer->loadViewStatic('maintenance');
+    // If we call functions from a CRON file, __CRON__ indicates it’s called from CRON, so we skip the router.
+    if (!defined('__CRON__') || __CRON__ == false ) echo $dotApp->router->renderer->loadViewStatic('maintenance');
 }
 
 ?>

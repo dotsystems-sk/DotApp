@@ -47,7 +47,6 @@ require_once __DIR__ . '/vendor/autoload.php';
  *  IMPORTANT: Replace the value of the encryption key with your own custom value.
  */
 $dotapp = new \Dotsystems\App\DotApp(md5("YourSuperSecretKey")); // SET THIS KEY TO YOUR OWN VALUE !!!
-
 $dotApp = $dotapp; // camelCase pred vypustenim na github
 
 
@@ -61,19 +60,22 @@ translator([])->set_locale("en_US")->set_default_locale("en_US");
  *  Database operations will be performed using the "main" database.
  */
 if (!__MAINTENANCE__) {
-    /* Database setup */
+    /* Database setup - uncomment and set */
 	// Select driver. For using MODULES like system and users, use PDO driver.
 	// Shared modules expect PDO as the standard driver for compatibility within the framework and community.
-	$dotApp->db->driver("pdo");
+	
+		//$dotApp->db->driver("pdo");
 
 	// Define database credentials and select the main database.
 	// The main database is named 'main' as a convention for shared modules to ensure interoperability.
-	$dotApp->db->add("main", "127.0.0.1", "dotApp", "dotApp", "dotApp", "UTF8", "MYSQL")->select_db("main");
+	
+		//$dotApp->db->add("main", "127.0.0.1", "dotApp", "dotApp", "dotApp", "UTF8", "MYSQL")->select_db("main");
 
 	// Example with a different driver for non-shared modules.
 	// You can use this approach if you are building modules purely for yourself.
-	$dotApp->db->driver("mysqli");
-	$dotApp->db->add("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL")->select_db("main");
+	
+		//$dotApp->db->driver("mysqli");
+		//$dotApp->db->add("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL")->select_db("main");
 
 	// Note: If you are creating modules solely for your own use and you know what you’ll be doing with them,
 	// and you don’t plan to share them with the community, you have the freedom to set it up however you like.

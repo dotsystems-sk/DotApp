@@ -6,10 +6,10 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname(dirname($vendorDir));
 
 return array(
-    'Modules\\' => array($baseDir . '/app/parts/modules'),
-    'Dotsystems\\App\\Parts\\Views' => array($baseDir . '/app/parts/views'),
-    'Dotsystems\\App\\Parts\\Models' => array($baseDir . '/app/parts/models'),
-    'Dotsystems\\App\\Parts\\Controllers' => array($baseDir . '/app/parts/controllers'),
+    'Modules\\' => array($baseDir . '/app/modules'),
+    'Dotsystems\\App\\Parts\\Models\\' => array($baseDir . '/app/parts/Models'),
+    'Dotsystems\\App\\Parts\\Middleware\\' => array($baseDir . '/app/parts/Middleware'),
+    'Dotsystems\\App\\Parts\\Controllers\\' => array($baseDir . '/app/parts/Controllers'),
     'Dotsystems\\App\\Parts\\' => array($baseDir . '/app/parts'),
     'Dotsystems\\App\\Modules\\' => array($baseDir . '/app/modules'),
     'Dotsystems\\App\\CustomClasses\\' => array($baseDir . '/app/custom.classes'),
