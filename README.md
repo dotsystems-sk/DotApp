@@ -76,6 +76,7 @@ php dotapper.php --module=Blog --create-controller=ArticleController
 
 # List all routes
 php dotapper.php --list-routes
+```
 
 ## 🧪 Version Note
 
@@ -87,7 +88,7 @@ This does **not impact performance**, as these are just internal references (poi
 ## 📚 Documentation
 
 Full documentation is available at:  
-[https://dotapp.dotsystems.sk/documentation/intro](https://dotapp.dotsystems.sk/documentation/intro)
+[https://dotapp.dotsystems.sk/documentation/intro](https://dotapp.dotsystems.sk/documentation/intro/eng)
 
 ## 💎 Contact
 
@@ -179,6 +180,7 @@ php dotapper.php --module=Blog --create-controller=ArticleController
 
 # Zobrazenie všetkých routov
 php dotapper.php --list-routes
+```
 
 ## 🧪 Poznámka k verzii
 
