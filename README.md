@@ -88,7 +88,7 @@ This does **not impact performance**, as these are just internal references (poi
 ## 📚 Documentation
 
 Full documentation is available at:  
-[https://dotapp.dotsystems.sk/documentation/intro](https://dotapp.dotsystems.sk/documentation/intro)
+[https://dotapp.dotsystems.sk/documentation/intro](https://dotapp.dotsystems.sk/documentation/intro/eng)
 
 ## 💎 Contact
 
