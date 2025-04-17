@@ -8,8 +8,9 @@ class Assets {
     private string $method = '';
     private string $modulesDir = '../modules/';
     private array $allowedExtensions = [
-        'css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'woff', 'woff2', 'ttf', 'otf'
+        'css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'woff', 'woff2', 'ttf', 'otf', 'txt'
     ];
+
     private array $allowedMimeTypes = [
         'text/css' => 'css',
         'application/javascript' => 'js',
@@ -22,13 +23,16 @@ class Assets {
         'font/woff2' => 'woff2',
         'font/ttf' => 'ttf',
         'font/otf' => 'otf',
+        'text/plain' => 'txt'
     ];
+
 
     public function process() {
         $this->method = $this->getMethod();
         $this->path = $this->getPath();
-		
-        $assetPath = ltrim(str_replace('/assets/', '', $this->path), '/');
+		$extensionToMime = array_flip($this->allowedMimeTypes);
+
+        $assetPath = ltrim(str_replace('/assets/modules/', '', $this->path), '/');
 
         $pathParts = explode('/', $assetPath, 2);
         if (empty($pathParts[0])) {
@@ -42,7 +46,6 @@ class Assets {
 
         if (empty($filePath)) {
             http_response_code(403);
-            echo 'Directory access forbidden';
             exit;
         }
 
@@ -50,21 +53,18 @@ class Assets {
 
         if (strpos($filePath, '..') !== false || strpos($filePath, './') !== false) {
             http_response_code(403);
-            echo 'Forbidden path';
             exit;
         }
 
         $extension = pathinfo($filePath, PATHINFO_EXTENSION);
         if (!in_array(strtolower($extension), $this->allowedExtensions)) {
             http_response_code(403);
-            echo 'Forbidden file type';
             exit;
         }
 
         $moduleDir = $this->modulesDir . $moduleName;
         if (!is_dir($moduleDir)) {
             http_response_code(404);
-            echo 'Module not found';
             exit;
         }
 
@@ -72,24 +72,25 @@ class Assets {
 
         if (is_dir($file)) {
             http_response_code(403);
-            echo 'Directory access forbidden';
             exit;
         }
 
         if (!is_file($file) || !is_readable($file)) {
             http_response_code(404);
-            echo 'Asset not found';
             exit;
         }
 
         $mimeType = mime_content_type($file);
+        if ($mimeType == "text/plain") {
+            // Opravne podla pripony
+            if (isSet($extensionToMime[$extension])) $mimeType = $extensionToMime[$extension];
+        }        
         if ($mimeType === false) {
             $mimeType = 'application/octet-stream';
         }
 
         if (!array_key_exists($mimeType, $this->allowedMimeTypes)) {
             http_response_code(403);
-            echo 'Forbidden MIME type';
             exit;
         }
 

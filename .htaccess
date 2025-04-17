@@ -19,24 +19,26 @@ DefaultLanguage sk
 
 # Povolenie prístupu
 <IfModule mod_authz_host.c>
-    Require all granted
+    #Require all granted
 </IfModule>
 
 AddType font/woff .woff
 AddType application/font-woff2 .woff2
+AddType application/javascript .js
+AddType text/css .css
 
 RewriteEngine On
 RewriteBase /
 
 # Blokneme dotapper
-RewriteCond %{REQUEST_URI} ^/dotapper$
-RewriteRule ^ - [F,L]
+#RewriteCond %{REQUEST_URI} ^/dotapper$
+#RewriteRule ^ - [F,L]
 
 # Definícia chybových stránok
-ErrorDocument 400 /error/400
-ErrorDocument 403 /error/403
-ErrorDocument 404 /error/404
-ErrorDocument 500 /error/500
+#ErrorDocument 400 /error/400
+#ErrorDocument 403 /error/403
+#ErrorDocument 404 /error/404
+#ErrorDocument 500 /error/500
 
 # Zakáže prístup k priečinku /app/, okrem /app/parts/Assets.php
 RewriteCond %{REQUEST_URI} !^/app/parts/Assets\.php$
@@ -45,19 +47,22 @@ RewriteRule ^app(/|$) - [F]
 # Nepresmerovávame špecifické súbory
 RewriteRule ^(sitemap\.xml|robots\.txt)$ - [NC,L]
 
+# Ak súbor v /assets/modules/ neexistuje, presmerovať na /app/parts/Assets.php
+RewriteCond %{REQUEST_URI} ^/assets/modules/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^assets/modules/.*$ /app/parts/Assets.php [NC,L]
+
 # Ak súbor v /assets/ existuje, nepresmerovávame
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^assets/.*$ - [NC,L]
 
 # Ak súbor /assets/dotapp/dotapp.js neexistuje, presmerovať na index.php (pre router)
-RewriteRule ^assets/dotapp/dotapp\.js$ index.php [NC,L]
-
-# Ak súbor v /assets/ neexistuje, presmerovať na /app/parts/Assets.php
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^assets/.*$ app/parts/Assets.php [NC,L,QSA]
+RewriteRule ^assets/dotapp/dotapp\.js$ index.php [NC,L]
 
 # Nepresmerovávame obrázky a ikonky
 RewriteRule \.(ico|png|jpe?g|gif|svg|webp|bmp)$ - [NC,L]
 
-# Všetko ostatné presmerovať na index.php
-RewriteRule ^.*$ index.php [NC,L,QSA]
+# Všetko ostatné presmerovať na index.php, ale ak uz to bolo spracovane cez Assets, tak nejdeme dalej
+RewriteCond %{REQUEST_URI} !^/app/parts/Assets.php$ 
+RewriteRule ^.*$ index.php [NC,L]
