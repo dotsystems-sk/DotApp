@@ -1,0 +1,14 @@
+<IfModule mod_authz_core.c>
+ Require all denied
+ <FilesMatch "^Assets\.php$">
+ Require all granted
+ </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+ Order Deny,Allow
+ Deny from all
+ <FilesMatch "^Assets\.php$">
+ Allow from all
+ </FilesMatch>
+</IfModule>
