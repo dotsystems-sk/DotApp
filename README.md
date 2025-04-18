@@ -76,6 +76,21 @@ php dotapper.php --module=Blog --create-controller=ArticleController
 
 # List all routes
 php dotapper.php --list-routes
+
+# Create new .htaccess file
+php dotapper.php --create-htaccess
+```
+
+### All Available Options
+
+```
+Usage: php dotapper.php [options]
+Options:
+  --create-module=<name> -> Create a new module (e.g., --create-module=MyModule)
+  --modules -> list all modules
+  --module=<module_number or module_name> --create-controller=ControllerName -> Create new controller in selected module
+  --create-htaccess -> Create new .htaccess if is not working, or if application is in new hidden directory
+  --list-routes -> List all defined routes
 ```
 
 ## 🧪 Version Note
@@ -180,6 +195,21 @@ php dotapper.php --module=Blog --create-controller=ArticleController
 
 # Zobrazenie všetkých routov
 php dotapper.php --list-routes
+
+# Vytvorenie nového .htaccess súboru
+php dotapper.php --create-htaccess
+```
+
+### Všetky dostupné možnosti
+
+```
+Usage: php dotapper.php [options]
+Options:
+  --create-module=<name> -> Create a new module (e.g., --create-module=MyModule)
+  --modules -> list all modules
+  --module=<module_number or module_name> --create-controller=ControllerName -> Create new controller in selected module
+  --create-htaccess -> Create new .htaccess if is not working, or if application is in new hidden directory
+  --list-routes -> List all defined routes
 ```
 
 ## 🧪 Poznámka k verzii

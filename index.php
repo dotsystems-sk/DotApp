@@ -15,8 +15,13 @@ define('__DEBUG__',FALSE);
 define('__RENDER_TO_FILE__',FALSE); // Useful for debugging
 
 // Set ROOT DIR, i.e., the directory where the application runs...
-define('__ROOTDIR__',"/path/to/dotapp"); // - Where dotapp is located. It can be in a hidden directory, it's up to you
+// define('__ROOTDIR__',"/path/to/dotapp"); // - Where dotapp is located. It can be in a hidden directory, it's up to you. You can put index.php only in folder, then /app/ folder anywhere on server and make it work and run.
 
+if (!defined('__ROOTDIR__')) {
+    define('__ROOTDIR__', __DIR__);
+} elseif (!is_dir(__ROOTDIR__)) {
+    die("__ROOTDIR__ path is invalid !");
+}
 require_once __ROOTDIR__ . '/app/config.php';
 
 if (!__MAINTENANCE__) {

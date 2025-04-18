@@ -52,6 +52,9 @@ class DotApper
                 case 'list-modules':
                     $this->printModules($this->listModules());
                     break;
+                case 'create-htaccess':
+                    $this->htaccess();
+                    break;
                 case 'modules':
                     $this->printModules($this->listModules());
                     break;
@@ -93,6 +96,23 @@ class DotApper
         include("./index.php");
         $dotApp->dotapper = $dotApp->dotapper;
         print_r($dotApp->dotapper['routes']);
+    }
+
+    private function htaccess() {
+        try {
+            @include("./index.php");
+            $file_body = base64_decode($this->file_base("/.htaccess"));
+
+            if ( !(__ROOTDIR__ === __DIR__) ) {
+                $calculateURL = str_replace(__DIR__,"",__ROOTDIR__);
+                $file_body = str_replace("/app/modules/$1/assets/$2",$calculateURL."/app/modules/$1/assets/$2",$file_body);
+            }            
+
+            $this->createFile(__ROOTDIR__."/.htaccess",base64_encode($file_body));
+        } catch (\Exception $e) {
+            echo "Error creating .htaccess {$e->getMessage()}\n";
+            return false;
+        }
     }
 
     /**
@@ -264,6 +284,7 @@ class DotApper
         if ($filename=="/Controllers/Controller.php") return "PD9waHAJCiAgICBuYW1lc3BhY2UgRG90c3lzdGVtc1xBcHBcTW9kdWxlc1wjbW9kdWxlbmFtZVxDb250cm9sbGVyczsKICAgIHVzZSBEb3RzeXN0ZW1zXEFwcFxEb3RBcHA7CiAgICAKICAgIGNsYXNzIENvbnRyb2xsZXIgZXh0ZW5kcyBcRG90c3lzdGVtc1xBcHBcUGFydHNcQ29udHJvbGxlciB7CiAgICAgICAgCiAgICAgICAgLyoKICAgICAgICAgICAgLy8gRXhhbXBsZSB3aXRoIGRlcGVuZGVuY3kgaW5qZWN0aW9uIAogICAgICAgICAgICBwdWJsaWMgc3RhdGljIGZ1bmN0aW9uIGhvbWUoJHJlcXVlc3QsIERvdEFwcCAkZG90QXBwKSB7CiAgICAgICAgICAgICAgICAvLyBIYW5kbGVzIEdFVCAvYXBpL3YxLyNtb2R1bGVuYW1lbG93ZXIvdGVzdAogICAgICAgICAgICB9CiAgICAgICAgICAgIAogICAgICAgICAgICAvLyBEb3RBcHAgaXMgYXZhaWxhYmxlIGluIHRoZSByZXF1ZXN0IGV2ZW4gd2l0aG91dCBESQogICAgICAgICAgICBwdWJsaWMgc3RhdGljIGZ1bmN0aW9uIGhvbWUoJHJlcXVlc3QpIHsKICAgICAgICAgICAgICAgICRkb3RBcHAgPSAkcmVxdWVzdC0+ZG90QXBwOwogICAgICAgICAgICAgICAgJHZpZXdWYXJzWydzZW8nXVsnZGVzY3JpcHRpb24nXSA9ICJUaGlzIGlzIGEgaG9tZSBleGFtcGxlIHBhZ2UgZm9yIHRoZSBFeGFtcGxlIFBIUCBmcmFtZXdvcmsuIjsKICAgICAgICAgICAgICAgICR2aWV3VmFyc1snc2VvJ11bJ2tleXdvcmRzJ10gPSAiZXhhbXBsZSwgUEhQIGZyYW1ld29yaywgaG9tZSwgZGVtbyI7CiAgICAgICAgICAgICAgICAkdmlld1ZhcnNbJ3NlbyddWyd0aXRsZSddID0gIkhvbWUgLSBFeGFtcGxlIFBIUCBGcmFtZXdvcmsiOwoKICAgICAgICAgICAgICAgIHJldHVybiAkZG90QXBwLT5yb3V0ZXItPnJlbmRlcmVyLT5tb2R1bGUoIiNtb2R1bGVuYW1lIiktPnNldFZpZXcoImhvbWUiKS0+c2V0Vmlld1ZhcigidmFyaWFibGVzIiwgJHZpZXdWYXJzKS0+cmVuZGVyVmlldygpOwogICAgICAgICAgICB9CiAgICAgICAgKi8JCQogICAgICAgICAgICAgICAgCiAgICB9Cj8+";
         if ($filename=="/views/clean.view.php") return base64_encode("{{content}}");
         if ($filename=="/views/layouts/example.layout.php") return "PCEtLSBFeGFtcGxlIG9mIGxheW91dCAtLT4KPHA+UHJpbnQgdmFyaWJhbGUgdmFsdWUgaW4gbW9kdWxlICNtb2R1bGVuYW1lPC9wPgo8cD4KCXt7IHZhcjogJHZhcmlhYmxlc1snYXJ0aWNsZSddWydhcnRpY2xlJ10gfX0KPC9wPgo=";
+        if ($filename=="/.htaccess") return "IyBOYXN0YXZlbmllIGtvZG92YW5pYSBhIGphenlrYQpBZGREZWZhdWx0Q2hhcnNldCBVVEYtOApEZWZhdWx0TGFuZ3VhZ2Ugc2sKCiMgUHJpZGF0IGhsYXZpY2t5IHByZSBkb3RhcHAKPElmTW9kdWxlIG1vZF9oZWFkZXJzLmM+CiAgICBIZWFkZXIgYWx3YXlzIHNldCBYLVBvd2VyZWQtQnkgImRvdGFwcDsgd3d3LmRvdHN5c3RlbXMuc2siCiAgICBIZWFkZXIgYWx3YXlzIHNldCBYLUZyYW1ld29yayAiZG90YXBwIgo8L0lmTW9kdWxlPgoKIyBLb21wcmVzaWEgc3Vib3JvdiAtIG1vZF9kZWZsYXRlIChub3ZzaSBzcG9zb2IpCjxJZk1vZHVsZSBtb2RfZGVmbGF0ZS5jPgogICAgU2V0T3V0cHV0RmlsdGVyIERFRkxBVEUKICAgIEFkZE91dHB1dEZpbHRlckJ5VHlwZSBERUZMQVRFIHRleHQvaHRtbCB0ZXh0L3BsYWluIHRleHQveG1sIHRleHQvY3NzIHRleHQvamF2YXNjcmlwdAogICAgQWRkT3V0cHV0RmlsdGVyQnlUeXBlIERFRkxBVEUgYXBwbGljYXRpb24vamF2YXNjcmlwdCBhcHBsaWNhdGlvbi94LWphdmFzY3JpcHQKICAgIEJyb3dzZXJNYXRjaCBeTW96aWxsYS80IGd6aXAtb25seS10ZXh0L2h0bWwKICAgIEJyb3dzZXJNYXRjaCBeTW96aWxsYS80XC4wWzY3OF0gbm8tZ3ppcAogICAgQnJvd3Nlck1hdGNoIFxiTVNJRSAhbm8tZ3ppcCAhZ3ppcC1vbmx5LXRleHQvaHRtbAo8L0lmTW9kdWxlPgoKIyBLb21wcmVzaWEgc3Vib3JvdiAtIG1vZF9nemlwIChzdGFyc2lhIHZlcnppYSBhayBuZW5pIGRlZmxhdGUpCjxJZk1vZHVsZSAhbW9kX2RlZmxhdGUuYz4KCTxJZk1vZHVsZSBtb2RfZ3ppcC5jPgoJCW1vZF9nemlwX29uIFllcwoJCW1vZF9nemlwX2RlY2h1bmsgWWVzCgkJbW9kX2d6aXBfaXRlbV9pbmNsdWRlIGZpbGUgXC4oaHRtbD98dHh0fGNzc3xqc3xwaHB8cGwpJAoJCW1vZF9nemlwX2l0ZW1faW5jbHVkZSBoYW5kbGVyIF5jZ2ktc2NyaXB0JAoJCW1vZF9nemlwX2l0ZW1faW5jbHVkZSBtaW1lIF50ZXh0Ly4qCgkJbW9kX2d6aXBfaXRlbV9pbmNsdWRlIG1pbWUgXmFwcGxpY2F0aW9uL3gtamF2YXNjcmlwdC4qCgkJbW9kX2d6aXBfaXRlbV9leGNsdWRlIG1pbWUgXmltYWdlLy4qCgkJbW9kX2d6aXBfaXRlbV9leGNsdWRlIHJzcGhlYWRlciBeQ29udGVudC1FbmNvZGluZzouKmd6aXAuKgoJPC9JZk1vZHVsZT4KPC9JZk1vZHVsZT4KCiMgUG92b2xpdCBwcmlzdHUga3UgdnNldGtlbXUgLSBub3ZzaSBhcGFjaGUKPElmTW9kdWxlIG1vZF9hdXRoel9ob3N0LmM+CiAgICBSZXF1aXJlIGFsbCBncmFudGVkCjwvSWZNb2R1bGU+CgojIFBvdm9saXQgcHJpc3R1IC0gc3RhcnNpIGFwYWNoZQo8SWZNb2R1bGUgIW1vZF9hdXRoel9ob3N0LmM+CiAgICBPcmRlciBBbGxvdyxEZW55CiAgICBBbGxvdyBmcm9tIGFsbAo8L0lmTW9kdWxlPgoKIyBOYXN0YXZlbmllIHR5cG92IHN1Ym9yb3YKQWRkVHlwZSBmb250L3dvZmYgLndvZmYKQWRkVHlwZSBhcHBsaWNhdGlvbi9mb250LXdvZmYyIC53b2ZmMgpBZGRUeXBlIGFwcGxpY2F0aW9uL2phdmFzY3JpcHQgLmpzCkFkZFR5cGUgdGV4dC9jc3MgLmNzcwoKIyBaYXBudXQgcHJlcGlzb3ZhbmllIHVybApSZXdyaXRlRW5naW5lIE9uClJld3JpdGVCYXNlIC8KCiMgWmFibG9rb3ZhdCBwcmlzdHUgayBkb3RhcHBlcnUKUmV3cml0ZUNvbmQgJXtSRVFVRVNUX1VSSX0gXi9kb3RhcHBlciQKUmV3cml0ZVJ1bGUgXiAtIFtGLExdCgojIFByZXNrb2NpdCBwcmVwaXMgcHJlIHNwZWNpZmlja2Ugc3Vib3J5ClJld3JpdGVSdWxlIF4oc2l0ZW1hcFwueG1sfHJvYm90c1wudHh0KSQgLSBbTkMsTF0KCiMgWmFibG9rb3ZhdCAvYXBwLyBva3JlbSBhc3NldHMgdiBtb2R1bG9jaApSZXdyaXRlQ29uZCAle1JFUVVFU1RfVVJJfSAhXi9hcHAvbW9kdWxlcy8oW14vXSspL2Fzc2V0cy8KUmV3cml0ZVJ1bGUgXmFwcCgvfCQpIC0gW0YsTF0KCiMgQWsgc3Vib3IgdiAvYXNzZXRzL21vZHVsZXMvIG5lZXhpc3R1amUsIHNrdXMgaG8gbmFjaXRhdCB6IC9hcHAvbW9kdWxlcy8KUmV3cml0ZUNvbmQgJXtSRVFVRVNUX0ZJTEVOQU1FfSAhLWYKUmV3cml0ZUNvbmQgJXtSRVFVRVNUX0ZJTEVOQU1FfSAhLWQKUmV3cml0ZVJ1bGUgXmFzc2V0cy9tb2R1bGVzLyhbXi9dKykvKC4qKSQgL2FwcC9tb2R1bGVzLyQxL2Fzc2V0cy8kMiBbTF0KCiMgQWsgc3Vib3IgdiAvYXNzZXRzLyBleGlzdHVqZSwgbmVwcmVwaXN1agpSZXdyaXRlQ29uZCAle1JFUVVFU1RfRklMRU5BTUV9IC1mClJld3JpdGVSdWxlIF5hc3NldHMvLiokIC0gW05DLExdCgojIFNwZWNpYWxuZSBzcHJhY292YW5pZSBwcmUgZG90YXBwLmpzClJld3JpdGVDb25kICV7UkVRVUVTVF9GSUxFTkFNRX0gIS1mClJld3JpdGVSdWxlIF5hc3NldHMvZG90YXBwL2RvdGFwcFwuanMkIGluZGV4LnBocCBbTkMsTF0KCiMgTmVwcmVwaXNvdmF0IG9icmF6a3kKUmV3cml0ZVJ1bGUgXC4oaWNvfHBuZ3xqcGU/Z3xnaWZ8c3ZnfHdlYnB8Ym1wKSQgLSBbTkMsTF0KCiMgTmVwcmVwaXNvdmF0IGRvdGFwcGVyIHBvemlhZGF2a3kKUmV3cml0ZUNvbmQgJXtSRVFVRVNUX1VSSX0gIV4vZG90YXBwZXIkCgojIFZzZXRreSBvc3RhdG5lIHBvemlhZGF2a3kgaWR1IG5hIGluZGV4LnBocCwgb2tyZW0gdHljaCBjbyB1eiBib2xpIHNwcmFjb3ZhbmUKUmV3cml0ZUNvbmQgJXtSRVFVRVNUX1VSSX0gIV4vYXBwL21vZHVsZXMvKFteL10rKS9hc3NldHMvClJld3JpdGVSdWxlIF4uKiQgaW5kZXgucGhwIFtOQyxMXQ==";
     }
 
     /**
@@ -354,6 +375,7 @@ class DotApper
         echo "  --create-module=<name> -> Create a new module (e.g., --create-module=MyModule)\n";
         echo "  --modules -> list all modules\n";
         echo "  --module=<module_number or module_name> --create-controller=ControllerName -> Create new controller in selected module\n";
+        echo "  --create-htaccess -> Create new .htaccess if is not working, or if application is in new hidden directory \n";
         echo "  --list-routes -> List all defined routes\n\n";
     }
 
