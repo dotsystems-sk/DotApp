@@ -1,5 +1,8 @@
 <?php
 namespace Dotsystems\App\Parts;
+/*
+	Uz nepotrebna kniznica, niekedy sa starala o posielanie assetov, pouzivala sa ak slo o prava k nim ale nechavam ju tu ak by niekto chcel cast kodu pouzit moze
+*/
 
 class Assets {
     private string $path = '';
