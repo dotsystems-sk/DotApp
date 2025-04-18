@@ -529,7 +529,7 @@ class DotApp {
 	 * for executing the core logic of the framework.
 	 */
 	function run() {
-        if (defined('__DOTAPPER_RUN__')) return null;
+        if (defined('__DOTAPPER_RUN__')) return null;#
         $request = $this->router->resolve();
     
         // Kompatibilita so starsimi verziami dotapp aby ostali funkcne
