@@ -183,16 +183,21 @@ class DotApp {
         $this->listeners = array();
         $this->request->response->headers[base64_decode("WC1Qb3dlcmVkLUJ5")] = base64_decode("ZG90YXBwOyB3d3cuZG90c3lzdGVtcy5zaw==");
         $this->request->response->headers[base64_decode("WC1GcmFtZXdvcms=")] = base64_decode("ZG90YXBw");
+        $this->parseRouterCache();
     }
 
-    public function blockRunFromCache() {
+    private function blockRunFromCache() {
         $this->runFromCacheBlocked = true;
     }
 
-    public function runFromCache(&$data) {
+    private function runFromCache(&$data) {
         if ($this->runFromCacheBlocked === false) {
-            
+
         }
+    }
+
+    private function parseRouterCache() {
+        $routeCache = __ROOTDIR__."/app/";
     }
 
     private function builtInMiddleware() {

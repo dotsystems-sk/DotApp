@@ -77,8 +77,10 @@ class RouterObj {
     private $route_matched; // Match routy uz nastal? Ak ano, dropneme zvysok
     private $matchdata;
     private $emptyChain; // Aby sme setrili pamat, nebudeme zakazdym tvorit prazdny objekt a vraciat ho ako referenciu ale pouzijeme tento
+    private $patternCache;
 	
 	function __construct($dotAppObj=null) {
+        $this->patternCache = array();
         $this->emptyChain = $this->routeChain(false,"");
         $this->match_cache_maxsize = 100;
         $this->match_cache_use = false;
@@ -1129,6 +1131,7 @@ class RouterObj {
         switch ($file) {
             // Vypnut cache uplne - defaultne je vypnuta. Pomoct by mohla len v pripade ze mame velke mnozstvo rovnakych rout co je ale nerealne ak je aplikacia pisana dobre
             // Ak je vypnuta setrime pamat a spomalenie je skoro nemeralne. Osobne odporucam vypnut.
+            // Je to pozostatok zaciatkov, ale teraz sa to uz nepouziva, mame CLI nastroj ktory toto plne nahradi a hlavne vykoonovo je ina liga.
             case (false):
                 $this->save_cache();
                 $this->match_cache_file = "";
@@ -1214,19 +1217,43 @@ class RouterObj {
             $pattern
         );
         
-        // Existing replacements from older dotapp versions
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+)\}/', '(?P<$1>[^/]+)', $pattern);
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+):s\}/', '(?P<$1>[^/]+)', $pattern);
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+):i\}/', '(?P<$1>[0-9]+)', $pattern);
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+):l\}/', '(?P<$1>[a-zA-Z]+)', $pattern);
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+):s\?\}/', '(?:(?P<$1>[^/]+))?', $pattern);
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+):i\?\}/', '(?:(?P<$1>[0-9]+))?', $pattern);
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+):l\?\}/', '(?:(?P<$1>[a-zA-Z]+))?', $pattern);
-        $pattern = preg_replace('/\{([a-zA-Z0-9_]+)[*]\}/', '(?P<$1>.+)', $pattern);
-        $pattern = preg_replace('/\{[*]\}/', '(?P<wildcard>.+)', $pattern);
-        $pattern = str_replace('*', '(.*?)', $pattern);
-        
-        $pattern = '#^' . $pattern . '$#';
+        if (isset($this->patternCache[$route])) {
+            $pattern = $this->patternCache[$route];
+        } else {
+            // Existing replacements from older dotapp versions
+            $pattern = str_replace('/', '\/', $route);
+            $pattern = preg_replace(
+                [
+                    '/\{([a-zA-Z0-9_]+)\?\}/',
+                    '/\{([a-zA-Z0-9_]+)\}/',
+                    '/\{([a-zA-Z0-9_]+):s\}/',
+                    '/\{([a-zA-Z0-9_]+):i\}/',
+                    '/\{([a-zA-Z0-9_]+):l\}/',
+                    '/\{([a-zA-Z0-9_]+):s\?\}/',
+                    '/\{([a-zA-Z0-9_]+):i\?\}/',
+                    '/\{([a-zA-Z0-9_]+):l\?\}/',
+                    '/\{([a-zA-Z0-9_]+)[*]\}/',
+                    '/\{[*]\}/',
+                    '/\*/',
+                ],
+                [
+                    '(?P<trailing_slash>\/)?(?P<$1>[^/]+)?',
+                    '(?P<$1>[^/]+)',
+                    '(?P<$1>[^/]+)',
+                    '(?P<$1>[0-9]+)',
+                    '(?P<$1>[a-zA-Z]+)',
+                    '(?:(?P<$1>[^/]+))?',
+                    '(?:(?P<$1>[0-9]+))?',
+                    '(?:(?P<$1>[a-zA-Z]+))?',
+                    '(?P<$1>.+)',
+                    '(?P<wildcard>.+)',
+                    '(.*?)',
+                ],
+                $pattern
+            );
+            $pattern = '#^' . $pattern . '$#';
+            $this->patternCache[$route] = $pattern;
+        }
         
         if (preg_match($pattern, $url, $matches)) {
             // Filter out the trailing_slash parameter
