@@ -8,6 +8,22 @@ dotApp is a lightweight, powerful, and scalable PHP framework for modern web app
 🔹 **Modular architecture**  
 🔹 **Flexible templating system**
 
+## Getting Started
+
+The `dotApp` instance is globally accessible, allowing you to interact with the framework's core components easily. To access the `dotApp` object, use the `DotApp` class as follows:
+
+```php
+use \Dotsystems\App\DotApp;
+
+// Get the dotApp instance
+$dotApp = DotApp::DotApp();
+
+// Use the instance to call framework methods
+$dotApp->router->get('/', fn($request) => 'Hello World');
+```
+
+This approach provides a convenient way to work with `dotApp` throughout your application, enabling you to call methods like `$dotApp->router->get()`, `$dotApp->db->q()`, and more.
+
 ## What's New ✨
 
 Facades (`Router`, `Route`, `DB`, `Request`) have been introduced to provide a cleaner and more elegant syntax for interacting with core components. Instead of using `$dotApp->component->method`, you can now use `Component::method` for improved readability. The original syntax via the `$dotApp` object remains fully functional, ensuring complete backward compatibility.
