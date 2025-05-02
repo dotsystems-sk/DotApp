@@ -95,7 +95,7 @@ Example configuration:
 ```php
 // app/config.php
 
-$dotApp->enc_key(md5("SECURE_KEY")); // Set a secure key
+$dotApp = new \Dotsystems\App\DotApp(md5("SECURE_KEY")); // Set a secure key, md5 is used to prolong key if key is short
 
 // Configure databases if you want to use them
 // PDO Driver
