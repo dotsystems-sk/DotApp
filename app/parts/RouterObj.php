@@ -277,6 +277,12 @@ class RouterObj {
                 return $this;
             }
 
+            // Pri pouziti RouterCache zrekonstruujeme kompletne cele volanie vratane limitera
+            public function useLimiter(array $limity, string $limiterID) {
+                $this->limiter = new Limiter($limity,$limiterID,DotApp::dotApp()->limiter['getter'],DotApp::dotApp()->limiter['setter']);
+                $this->router->request->response->limiter = $this->limiter;
+            }
+
             public function throttle(array $limity) {
                 if ($this->metoda === false && !defined('__DOTAPPER_RUN__')) return $this;
                 if (is_array($this->routa)) {
@@ -291,6 +297,7 @@ class RouterObj {
                     $serialized = array();
                     $serialized['limiter'] = true;
                     $serialized['limiterID'] = $this->limiter->identifier();
+                    $serialized['limiterLimits'] = $limity;
                     if (is_array($this->routa)) {
                         foreach ($this->routa as $cesta1) {
                             foreach($metodaInner as $metoda1) DotApp::dotApp()->dotapper['RouteByURL'][$cesta1][$metoda1] = array_merge(DotApp::dotApp()->dotapper['RouteByURL'][$cesta1][$metoda1], $serialized);
@@ -711,6 +718,12 @@ class RouterObj {
                 }                
                 $this->dotapp->dotapper['moduleRoutes'][$this->dotapp->dotapper['routes_module']]['route'][implode(",",$method)][] = $cesta2." -> Controller: ".print_r($callback,true);
                 $this->dotapp->dotapper['routes'][implode(",",$method)][] = $cesta2." -> Controller: ".print_r($callback,true);
+            } else if ($callback instanceof Middleware) {
+                $serialized[$hookname] = json_decode($callback->name,true);
+                $serialized[$hookname.'Type'] = "Middleware";
+            } else if ($callback instanceof MiddlewareChain) {
+                $serialized[$hookname] = json_decode($callback->middleware->name);
+                $serialized[$hookname.'Type'] = "Middleware";
             } else {
                 $serialized[$hookname] = "Closure ()";
                 $serialized[$hookname.'Type'] = "Closure";

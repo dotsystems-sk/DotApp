@@ -86,6 +86,7 @@ class DotApp {
     public $Renderer;
     public $customRenderer;
     public $proxyServery = ['*'];
+    private $runFromCacheBlocked = false;
     
 	
 	public function __debugInfo() {
@@ -182,6 +183,16 @@ class DotApp {
         $this->listeners = array();
         $this->request->response->headers[base64_decode("WC1Qb3dlcmVkLUJ5")] = base64_decode("ZG90YXBwOyB3d3cuZG90c3lzdGVtcy5zaw==");
         $this->request->response->headers[base64_decode("WC1GcmFtZXdvcms=")] = base64_decode("ZG90YXBw");
+    }
+
+    public function blockRunFromCache() {
+        $this->runFromCacheBlocked = true;
+    }
+
+    public function runFromCache(&$data) {
+        if ($this->runFromCacheBlocked === false) {
+            
+        }
     }
 
     private function builtInMiddleware() {
