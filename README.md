@@ -156,12 +156,13 @@ This does **not impact performance**, as these are just internal references (poi
 ## 📚 Documentation
 
 Full documentation is available at:  
-[https://dotapp.dotsystems.sk/documentation/intro](https://dotapp.dotsystems.sk/documentation/intro/eng)
+[https://dotapp.dev/](https://dotapp.dev/)
 
 ## 💎 Contact
 
-📧 **Email**: [dotapp@dotsystems.sk](mailto:dotapp@dotsystems.sk)  
-🌐 **Web**: [https://dotsystems.sk](https://dotsystems.sk)
+📧 **Email**: [dotapp@dotapp.dev](mailto:dotapp@dotapp.dev)  
+🌐 **Web**: [https://dotapp.dev](https://dotapp.dev)  
+🌐 **Company Web**: [https://dotsystems.sk](https://dotsystems.sk)
 
 ## 📝 License
 
