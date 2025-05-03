@@ -197,7 +197,7 @@ class DotApp {
     }
 
     private function parseRouterCache() {
-        $routeCache = __ROOTDIR__."/app/";
+        $routeCache = __ROOTDIR__."/app/runtime/routercache/";
     }
 
     private function builtInMiddleware() {

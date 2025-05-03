@@ -201,7 +201,7 @@ class RouterObj {
 		return $this;
 	}
 
-    // Sluzi ako obal, ktory spusti vsetky chainy aby sa spravne ku kazdej roote poznacili BEFORE a AFTER HOOKY teda middleware
+    // Sluzi ako obal, ktory spusti vsetky chainy aby sa spravne ku kazdej route poznacili BEFORE a AFTER HOOKY teda middleware
     private function dotapperRouteChain($metoda,$routa,$chain=null) {
         // Dorobime funkciu, ktora obali routeChain magickymi metodami aby sme sa dostali k hookom
         return new class($metoda,$routa,$this,$chain) extends \stdClass {
@@ -266,16 +266,16 @@ class RouterObj {
             public function before($fn) {
                 if ($this->metoda === false && !defined('__DOTAPPER_RUN__')) return $this;
                 if (is_array($this->routa)) {
-                    foreach ($this->routa as $routa) $this->router->before($this->metoda,$routa,$fn,$this->limiter);
-                } else $this->router->before($this->metoda,$this->routa,$fn,$this->limiter);
+                    foreach ($this->routa as $routa) $this->router->hooksFn($this,"before",$this->metoda,$routa,$fn,$this->limiter);
+                } else $this->router->hooksFn($this,"before",$this->metoda,$this->routa,$fn,$this->limiter);
                 return $this;
             }
     
             public function after($fn) {
                 if ($this->metoda === false && !defined('__DOTAPPER_RUN__')) return $this;
                 if (is_array($this->routa)) {
-                    foreach ($this->routa as $routa) $this->router->after($this->metoda,$routa,$fn,$this->limiter);
-                } else $this->router->after($this->metoda,$this->routa,$fn,$this->limiter);
+                    foreach ($this->routa as $routa) $this->router->hooksFn($this,"after",$this->metoda,$routa,$fn,$this->limiter);
+                } else $this->router->hooksFn($this,"after",$this->metoda,$this->routa,$fn,$this->limiter);
                 return $this;
             }
 
@@ -518,12 +518,18 @@ class RouterObj {
             }
             if (is_array($cesta)) {
                 foreach ($cesta as $cesta1) {
+                    if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta1])) $this->dotapp->dotapper['RouteByURL'][$cesta1] = array();
                     foreach($method as $metoda) {
-                        $this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda] = $serialized;
+                        if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda])) $this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda] = array();
+                        $this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda] = $this->doatpperMergeArrays($this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda],$serialized);
                     }
                 }
             } else {
-                foreach($method as $metoda) $this->dotapp->dotapper['RouteByURL'][$cesta][$metoda] = $serialized;
+                if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta])) $this->dotapp->dotapper['RouteByURL'][$cesta] = array();
+                foreach($method as $metoda) {
+                    if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta][$metoda])) $this->dotapp->dotapper['RouteByURL'][$cesta][$metoda] = array();
+                    $this->dotapp->dotapper['RouteByURL'][$cesta][$metoda] = $this->doatpperMergeArrays($this->dotapp->dotapper['RouteByURL'][$cesta][$metoda],$serialized);
+                }
             }
         }
         $navratovametoda = "";
@@ -668,7 +674,7 @@ class RouterObj {
 		before($method,$route,$function);
 	*/
 	public function before(...$args) {
-        $this->hooksFn("before",...$args);
+        $this->hooksFn($this,"before",...$args);
 	}
 
 	/*
@@ -678,11 +684,55 @@ class RouterObj {
 		after($method,$route,$function);
 	*/
 	public function after(...$args) {
-        $this->hooksFn("after",...$args);
+        $this->hooksFn($this,"after",...$args);
     }
 
+    private function hooksToCache($obj,$hookname,$method,$cesta,$callback,$throttle=false) {
+        if (defined('__DOTAPPER_RUN__')) {
+            // Ak mame dynamicku ROUTU tak musime prebehnut cele existujuce pole a pre vsetky matchujuce routy pridat BEFORE a AFTER eventy.
+            // Takto bude zarucene spravne ich poradie a zaroven dostaneme spravny vystup pre vsetky routy.
+            // Nasledne po vypusteni velkeho finalneho pola prebehne v dotapperi jeho optimalizacia
+            $spustac = get_class($obj);
+            $chain = false;
+            if (strpos($spustac,"stdClass@anonymous") !== false && strpos($spustac,"RouterObj.php") !== false) {
+                $chain = true; // Volane z chainu
+            }
+            if (strpbrk($cesta, '{:*?}') === false) {
+                // Hooky pre staticke cesty...
+                $this->hooksToCacheRun($hookname,$method,$cesta,$callback,$throttle);
+            } else {
+                // Hooky pre dynamicke cesty...
+                
+                // Ak som z chainu, nesmieme aplikovat na vsetky routy...
+                if ($chain === true) {
+                    $this->hooksToCacheRun($hookname,$method,$cesta,$callback,$throttle);
+                        
+                }
 
-    private function hooksToCache($hookname,$method,$cesta,$callback,$throttle=false) {
+                // Ak som globalne definovany BEFORE a AFTER hook, musim byt poznaceny do globalnych hookov
+                if ($chain === false) {
+                    if (is_string($method)) $method = [$method];
+                    foreach($method as $metodaR) {
+                        if ($metodaR == "any") {
+                            $forMerthod = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+                        } else {
+                            $forMerthod = [$metodaR];
+                        }
+                        foreach($forMerthod as $metoda) {
+                            if (!isset($this->dotapp->dotapper['GlobalHooks'])) $this->dotapp->dotapper['GlobalHooks'] = array();
+                            if (!isset($this->dotapp->dotapper['GlobalHooks'][$cesta])) $this->dotapp->dotapper['GlobalHooks'][$cesta] = array();
+                            if (!isset($this->dotapp->dotapper['GlobalHooks'][$cesta][$metoda])) $this->dotapp->dotapper['GlobalHooks'][$cesta][$metoda] = array();
+                            $this->dotapp->dotapper['GlobalHooks'][$cesta][$metoda] = $this->doatpperMergeArrays($this->dotapp->dotapper['GlobalHooks'][$cesta][$metoda],$this->hooksToCacheRun($hookname,$metoda,$cesta,$callback,$throttle,true));
+                        }
+                    }
+                }
+                
+            }
+        }
+        
+    }
+
+    private function hooksToCacheRun($hookname,$method,$cesta,$callback,$throttle=false,$return =false) {
         if (is_string($method)) $method = [$method];
         if (defined('__DOTAPPER_RUN__')) {
             $serialized = array();
@@ -692,6 +742,7 @@ class RouterObj {
                 if (strpos($callback,"@") === false) {
                     $serialized[$hookname] = $callback;
                     $serialized[$hookname.'Type'] = "Invoke";
+                    if ($return) return $serialized;
                     $this->dotapp->dotapper['moduleRoutes'][$this->dotapp->dotapper['routes_module']]['route'][implode(",",$method)][] = $cesta2." -> Invoke: ".$callback;
                     $this->dotapp->dotapper['routes'][implode(",",$method)][] = $cesta2." -> Invoke: ".$callback;
                 } else {
@@ -701,6 +752,7 @@ class RouterObj {
                         $serialized[$hookname] = $callback;
                     }
                     $serialized[$hookname.'Type'] = "Controller";
+                    if ($return) return $serialized;
                     $this->dotapp->dotapper['moduleRoutes'][$this->dotapp->dotapper['routes_module']]['route'][implode(",",$method)][] = $cesta2." -> Controller: ".$callback;
                     $this->dotapp->dotapper['routes'][implode(",",$method)][] = $cesta2." -> Controller: ".$callback;
                 }
@@ -708,48 +760,104 @@ class RouterObj {
                 if (isset($callback['module']) && isset($callback['class']) && isset($callback['function'])) {
                     $serialized[$hookname] = $callback['module'].":".$callback['class']."@".$callback['function'];
                     $serialized[$hookname.'Type'] = "Controller";
+                    if ($return) return $serialized;
                 } else if (isset($callback['class']) && isset($callback['function'])) {
                     $serialized[$hookname] = $this->dotapp->dotapper['routes_module'].":".$callback['class']."@".$callback['function'];
                     $serialized[$hookname.'Type'] = "Controller";
+                    if ($return) return $serialized;
                 } else if (count($callback) == 3) {
                     $serialized[$hookname] = $callback[0].":".$callback[1]."@".$callback[2];
                     $serialized[$hookname.'Type'] = "Controller";
+                    if ($return) return $serialized;
                 } else if (count($callback) == 2) {
                     $serialized[$hookname] = $this->dotapp->dotapper['routes_module'].":".$callback[1]."@".$callback[2];
                     $serialized[$hookname.'Type'] = "Controller";
+                    if ($return) return $serialized;
                 }                
                 $this->dotapp->dotapper['moduleRoutes'][$this->dotapp->dotapper['routes_module']]['route'][implode(",",$method)][] = $cesta2." -> Controller: ".print_r($callback,true);
                 $this->dotapp->dotapper['routes'][implode(",",$method)][] = $cesta2." -> Controller: ".print_r($callback,true);
             } else if ($callback instanceof Middleware) {
                 $serialized[$hookname] = json_decode($callback->name,true);
                 $serialized[$hookname.'Type'] = "Middleware";
+                if ($return) return $serialized;
             } else if ($callback instanceof MiddlewareChain) {
                 $serialized[$hookname] = json_decode($callback->middleware->name);
                 $serialized[$hookname.'Type'] = "Middleware";
+                if ($return) return $serialized;
             } else {
                 $serialized[$hookname] = "Closure ()";
                 $serialized[$hookname.'Type'] = "Closure";
+                if ($return) return $serialized;
                 $this->dotapp->dotapper['moduleRoutes'][$this->dotapp->dotapper['routes_module']]['route'][implode(",",$method)][] = $cesta2." -> Closure()";
                 $this->dotapp->dotapper['routes'][implode(",",$method)][] = $cesta2." -> Closure()";
             }
             if (is_array($cesta)) {
                 foreach ($cesta as $cesta1) {
-                    foreach($method as $metoda) $this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda] = array_merge($this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda], $serialized);
+                    foreach($method as $metodaR) {
+                        if ($metodaR == "any") {
+                            $forMerthod = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+                        } else {
+                            $forMerthod = [$metodaR];
+                        }
+                        foreach($forMerthod as $metoda) {
+                            if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta1])) $this->dotapp->dotapper['RouteByURL'][$cesta1] = array();
+                            if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda])) $this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda] = array();
+                            $this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda] = $this->doatpperMergeArrays($this->dotapp->dotapper['RouteByURL'][$cesta1][$metoda], $serialized);
+                        }
+                    }
                 }
             } else {
-                foreach($method as $metoda) $this->dotapp->dotapper['RouteByURL'][$cesta][$metoda] = array_merge($this->dotapp->dotapper['RouteByURL'][$cesta][$metoda], $serialized);
+                foreach($method as $metodaR) {
+                    if ($metodaR == "any") {
+                        $forMerthod = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
+                    } else {
+                        $forMerthod = [$metodaR];
+                    }
+                    foreach($forMerthod as $metoda) {
+                        if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta])) $this->dotapp->dotapper['RouteByURL'][$cesta] = array();
+                        if (!isset($this->dotapp->dotapper['RouteByURL'][$cesta][$metoda])) $this->dotapp->dotapper['RouteByURL'][$cesta][$metoda] = array();
+                        $this->dotapp->dotapper['RouteByURL'][$cesta][$metoda] = $this->doatpperMergeArrays($this->dotapp->dotapper['RouteByURL'][$cesta][$metoda], $serialized);
+                    }
+                }
             }
         }
     }
 
-    private function hooksFn($hookname,...$args) {
+    public function doatpperMergeArrays($array1,$array2) {
+        // Riesime hooky before a after
+        if (isset($array2['before'])) {
+            $realAdd = array();
+            if (isset($array1['before'])) $realAdd = $array1['before'];
+            $realAdd[] = $array2['before'];
+            $realAddType = array();
+            if (isset($array1['beforeType'])) $realAddType = $array1['beforeType'];
+            $realAddType[] = $array2['beforeType'];
+            $array1['before'] = $realAdd;
+            $array1['beforeType'] = $realAddType;
+            return $array1;
+        }
+        if (isset($array2['after'])) {
+            $realAdd = array();
+            if (isset($array1['after'])) $realAdd = $array1['after'];
+            $realAdd[] = $array2['after'];
+            $realAddType = array();
+            if (isset($array1['afterType'])) $realAddType = $array1['afterType'];
+            $realAddType[] = $array2['afterType'];
+            $array1['after'] = $realAdd;
+            $array1['afterType'] = $realAddType;
+            return $array1;
+        }
+        return array_merge($array1,$array2);
+    }
+
+    public function hooksFn($obj,$hookname,...$args) {
         
         $newfn = array();
         $newfn['fn'] = null;
         $newfn['data'] = array();
         
 		if (count($args) == 1) {
-            $this->hooksToCache($hookname,"any","*",$args[0]);
+            $this->hooksToCache($obj,$hookname,"any","*",$args[0]);
             if (!is_callable($args[0])) $args[0] = $this->dotapp->stringToCallable($args[0]);
 			if (is_callable($args[0])) {
 				$newfn['fn'] = $args[0];
@@ -767,7 +875,7 @@ class RouterObj {
 		} else $this->clear_chain();
 
 		if (count($args) == 2) {
-            $this->hooksToCache($hookname,"any",$args[0],$args[1]);
+            $this->hooksToCache($obj,$hookname,"any",$args[0],$args[1]);
             if (is_array($args[0])) {
                 foreach ($args[0] as $argval) $this->hooksFn($hookname,$argval,$args[1]);
                 return $this;
@@ -790,7 +898,7 @@ class RouterObj {
 		}
 
 		if (count($args) == 3) {
-            $this->hooksToCache($hookname,$args[0],$args[1],$args[2]);
+            $this->hooksToCache($obj,$hookname,$args[0],$args[1],$args[2]);
             if (is_array($args[1])) {
                 foreach ($args[1] as $argval) $this->hooksFn($hookname,$args[0],$argval,$args[2]);
                 return $this;
@@ -814,7 +922,7 @@ class RouterObj {
 
         // Throttle !
         if (count($args) == 4) {
-            $this->hooksToCache($hookname,$args[0],$args[1],$args[2],$args[3]);
+            $this->hooksToCache($obj,$hookname,$args[0],$args[1],$args[2],$args[3]);
             $limiter = $args[3];
             if (is_array($args[1])) {
                 foreach ($args[1] as $argval) $this->hooksFn($hookname,$args[0],$argval,$args[2]);

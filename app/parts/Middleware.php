@@ -25,11 +25,24 @@ class Middleware {
         $this->storage = &$storage;
     }
 
+    private function middlewareExists($midName) {
+        $middlewares = json_decode($midName,true);
+        foreach ($middlewares as $name) {
+            $name = json_encode(array($name));
+            if (isset($this->storage['middleware'][$name]) && is_callable($this->storage['middleware'][$name])) {
+                // Uz nic.
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private function dispatchConstruct($name,$callback, ...$args) {
         // Getter
         if ($callback === null) {
             if (isset($this->storage['chains'][$name]) && $this->storage['chains'][$name] instanceof MiddlewareChain) return $this->storage['chains'][$name];
-            if (isset($this->storage['middleware'][$name]) && is_callable($this->storage['middleware'][$name])) {
+            if ($this->middlewareExists($name)) {
                 $this->storage['chains'][$name] = new MiddlewareChain($this);
             } else {
                 throw new \Exception("Undefined middleware");

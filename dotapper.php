@@ -53,6 +53,9 @@ class DotApper
                 case 'list-routes':
                     $this->printRoutes();
                     break;
+                case 'list-route':
+                    $this->printRoutes($value);
+                    break;
                 case 'list-modules':
                     $this->printModules($this->listModules());
                     break;
@@ -109,7 +112,7 @@ class DotApper
         return in_array(strtolower($input), ['y', 'yes', '']);
     }
 
-    private function printRoutes() {
+    private function printRoutes($route = null) {
         // Simulácia $_SERVER premenných
         $_SERVER['REQUEST_URI'] = '/'; // Nastav cestu, ktorú chceš simulovať
         $_SERVER['SERVER_NAME'] = 'localhost'; // Nastav názov servera
@@ -117,8 +120,47 @@ class DotApper
         $_SERVER['HTTP_HOST'] = 'localhost'; // Host
         $_SERVER['SCRIPT_NAME'] = '/index.php'; // Skript, ktorý sa spúšťa
         include("./index.php");
-        echo "Per module:\n";
-        print_r($dotApp->dotapper['RouteByURL']);
+        if ($route === null) {
+            $this->clrScr();
+            $vystup = $this->colorText("green","\n\n Global MIDDLEWARE ( before, after ) \n");
+            $vystup = $this->bgColorText("white",$vystup);
+            echo $vystup."\n";
+            print_r($dotApp->dotapper['GlobalHooks']);
+
+            $vystup = $this->colorText("green","\n\n ALL ROUTES: \n");
+            $vystup = $this->bgColorText("white",$vystup);
+            echo $vystup."\n";
+            print_r($dotApp->dotapper['RouteByURL']);
+        }
+        if ($route !== null) {
+            $this->clrScr();
+            $vystup = $this->colorText("green","\n\n Global MIDDLEWARE ( before, after ) \n");
+            $vystup = $this->bgColorText("white",$vystup);
+            echo $vystup."\n";
+            $vztahujuSa = array();
+            foreach ($dotApp->dotapper['GlobalHooks'] as $key => $hook) {
+                if ($dotApp->router->match_url($key,$route)) {
+                    if (isset($vztahujuSa[$key])) $vztahujuSa[$key] = $dotApp->router->doatpperMergeArrays($vztahujuSa[$key],$hook);
+                    if (!isset($vztahujuSa[$key])) $vztahujuSa[$key] = $hook;
+                }
+            }
+            print_r($vztahujuSa);
+            if (isset($dotApp->dotapper['RouteByURL'][$route])) {
+                $vystup = $this->colorText("green","\n\n ROUTE: \"".$route."\"\n");
+                $vystup = $this->bgColorText("white",$vystup);
+                echo $vystup."\n";
+                print_r($dotApp->dotapper['RouteByURL'][$route]);
+            } else {
+                $vystup = $this->colorText("white"," ROUTE \"");
+                $vystupRouta = $this->colorText("red",$route);
+                $vystupRouta = $this->bgColorText("white",$vystupRouta);
+                $vystup .= $vystupRouta;
+                $vystup .= $this->colorText("white","\" NOT FOUND !!! ");
+                $vystup = $this->bgColorText("red",$vystup);
+                echo $vystup;
+            }
+            
+        }
         /*echo "\n\nAll routes:\n";
         print_r($dotApp->dotapper['routes']);*/
     }
@@ -506,8 +548,9 @@ class DotApper
      * Vypíše help správu.
      */
     private function printHelp() {
+        $this->clrScr();
         $this->versionPrint();
-        echo "Usage: php dotapper.php [options]\n";
+        echo $this->bgColorText("green",$this->colorText("bold_white","Usage: php dotapper.php [options]\n"));
         echo "Options:\n";
         echo "  --create-module=<name> -> Create a new module (e.g., --create-module=MyModule)\n";
         //echo "  --create-example-module=<name> -> Create a new EXAMPLE module with defined routers etc (e.g., --create-example-module=MyModule)\n";
@@ -516,15 +559,117 @@ class DotApper
         echo "  --module=<module_number or module_name> --create-middleware=MiddlewareName -> Create new middleware in selected module\n";
         echo "  --create-htaccess -> Create/recreate new .htaccess if is not working, or if application is in new hidden directory \n";
         echo "  --list-routes -> List all defined routes\n";
+        echo "  --list-route=route -> List route's defined callbacks ( for home: --list-route=/ )\n";
         echo "  --optimize-modules -> Optimize modules loading, use for project with lot of modules\n\n";
     }
 
     private function versionPrint() {
-        echo "\nDotApper 1.1 (c) 2025\n";
-        echo "Author: Stefan Miscik\n";
-        echo "Web: https://dotsystems.sk/\n";
-        echo "Email: dotapp@dotsystems.sk\n\n";
+        echo $this->colorText("bold_yellow","\nDotApper 1.2 (c) 2025\n");
+        echo $this->colorText("green","Author: Stefan Miscik\n");
+        echo $this->colorText("cyan","Web: https://dotsystems.sk/\n");
+        echo $this->colorText("cyan","Email: dotapp@dotsystems.sk\n\n");
     }
+
+    private function colorText(string $color, string $text): string {
+        $colors = [
+            'black' => '30',
+            'red' => '31',
+            'green' => '32',
+            'yellow' => '33',
+            'blue' => '34',
+            'magenta' => '35',
+            'cyan' => '36',
+            'white' => '37',
+            'bold_black' => '1;30',
+            'bold_red' => '1;31',
+            'bold_green' => '1;32',
+            'bold_yellow' => '1;33',
+            'bold_blue' => '1;34',
+            'bold_magenta' => '1;35',
+            'bold_cyan' => '1;36',
+            'bold_white' => '1;37',
+        ];
+
+        $code = $colors[strtolower($color)] ?? '0';
+        // Odstránime koncový reset, aby sme mohli pridať nové štýly
+        $text = rtrim($text, "\033[0m");
+        return "\033[" . $code . "m" . $text . "\033[0m";
+    }
+
+    private function bgColorText(string $bgColor, string $text): string {
+        $bgColors = [
+            'black' => '40',
+            'red' => '41',
+            'green' => '42',
+            'yellow' => '43',
+            'blue' => '44',
+            'magenta' => '45',
+            'cyan' => '46',
+            'white' => '47',
+        ];
+
+        $code = $bgColors[strtolower($bgColor)] ?? '0';
+
+        // Rozdelíme text na segmenty podľa ANSI kódov
+        $pattern = '/(\033\[(?:[0-9;]*m))/';
+        $segments = preg_split($pattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+
+        $result = '';
+        $currentStyles = [];
+
+        foreach ($segments as $segment) {
+            if (preg_match('/^\033\[([0-9;]*m)$/', $segment, $matches)) {
+                // Segment je ANSI kód
+                $codes = explode(';', rtrim($matches[1], 'm'));
+                $currentStyles = array_filter($codes, function ($c) {
+                    return $c !== '0'; // Odstránime reset
+                });
+                $result .= $segment;
+            } else {
+                // Segment je text
+                $hasBg = false;
+                foreach ($currentStyles as $style) {
+                    if ($style >= 40 && $style <= 47) {
+                        $hasBg = true;
+                        break;
+                    }
+                }
+                // Ak segment nemá pozadie, pridáme nové
+                if (!$hasBg) {
+                    $result .= "\033[{$code}m" . $segment . "\033[0m";
+                    // Po pridaní pozadia obnovíme pôvodné štýly (okrem pozadia)
+                    $nonBgStyles = array_filter($currentStyles, function ($c) {
+                        return $c < 40 || $c > 47;
+                    });
+                    if (!empty($nonBgStyles)) {
+                        $result .= "\033[" . implode(';', $nonBgStyles) . "m";
+                    }
+                } else {
+                    $result .= $segment;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    public function clrScr(): void {
+        // Vymazanie obrazovky a nastavenie kurzora na začiatok
+        echo "\033[2J\033[H";
+        // Reset terminálu do počiatočného stavu
+        echo "\033c";
+        // Inicializácia štýlov (vynulovanie formátovania)
+        echo "\033[0m";
+
+        // Pre kompatibilitu s Windowsom a inými systémami
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            system('cls');
+        } else {
+            system('clear');
+        }
+        echo "\033[0m";
+    }
+    
 }
 
 // Hlavné spustenie skriptu
