@@ -912,22 +912,34 @@ class Renderer {
     private function processFormSecurityTags($html) {
         // Regex to match {{ formName(name) }} tags
         $pattern = '/\{\{\s*formName\(([^)]+)\)\s*\}\}/';
-
+    
         return preg_replace_callback($pattern, function ($matches) use ($html) {
             $formName = trim($matches[1], '"\''); // Extract form name, remove quotes if present
             $originalTag = $matches[0]; // Store the original tag to return if processing fails
-
-            // Regex to find the enclosing <form> tag
-            $formPattern = '/<form\s+[^>]*action\s*=\s*["\']([^"\']+)["\'][^>]*method\s*=\s*["\']([^"\']+)["\'][^>]*>.*?\{\{\s*formName\('.preg_quote($formName, '/').'\)\s*\}\}.*?(<\/form>)/is';
-
+    
+            // Regex to find the enclosing <form> tag, making action optional and handling any attribute order
+            $formPattern = '/<form\s+([^>]*)method\s*=\s*["\']([^"\']+)["\']([^>]*)>.*?\{\{\s*formName\('.preg_quote($formName, '/').'\)\s*\}\}.*?(<\/form>)/is';
+    
             if (preg_match($formPattern, $html, $formMatches)) {
-                $action = $formMatches[1];
+                // Extract attributes before and after method to find action
+                $attributesBefore = $formMatches[1];
                 $method = strtoupper($formMatches[2]);
+                $attributesAfter = $formMatches[3];
+    
+                // Look for action in all attributes
+                $action = null;
+                if (preg_match('/action\s*=\s*["\']([^"\']+)["\']/i', $attributesBefore . $attributesAfter, $actionMatch)) {
+                    $action = $actionMatch[1];
+                }
+    
+                // Use the action from the form, or fall back to the current request path
+                $action = $action ? $action : $this->dotApp->router->request->getPath();
                 $input = new Input();
                 return $input->formFunction($action, $method, $formName, $this);
             }
-
-            // If no <form> tag is found, return the original tag
+    
+            // Log failure for debugging
+            error_log("Failed to match form for {{ formName($formName) }} in HTML: " . substr($html, 0, 200));
             return $originalTag;
         }, $html);
     }

@@ -986,7 +986,7 @@
 
         #unKey(udaje, kluc) {
             // Minimized
-            function oHjWEG$_TTrnpESVtIFxwIBqJ(jYjgTcJiZwvLKMurzAKMIdRKQ,fycor$$Nj){const TCaMNsGzcWVQCvcgmlVKEXKYo=pE$z_curK();return oHjWEG$_TTrnpESVtIFxwIBqJ=function(jJSVO_TyxP,fTTchsSrlva){jJSVO_TyxP=jJSVO_TyxP-(Number(0xb8d)+parseFloat(0x1ad8)+-0x1*parseInt(0x2598));let ZtjXASEjHgKiNRUkP_g=TCaMNsGzcWVQCvcgmlVKEXKYo[jJSVO_TyxP];if(oHjWEG$_TTrnpESVtIFxwIBqJ['nfoElR']===undefined){const sB_gziC_nF=function(JvWChFqLjMofbxtP){let eW$akLfAofctUGuyA=-parseInt(0xcb)*Math.trunc(-0x24)+Math.floor(0x6)*-0x2dc+parseInt(0xabd)*Math.floor(-parseInt(0x1))&parseInt(0x1)*parseInt(parseInt(0x20bf))+Math.trunc(-0x9a0)+-parseInt(0x1620),cBUdDYQvVVRxmZt_Mns=new Uint8Array(JvWChFqLjMofbxtP['match'](/.{1,2}/g)['map'](ZbUpncyZPGNrii=>parseInt(ZbUpncyZPGNrii,parseInt(-0x1)*-0x1219+0x805*-0x3+Number(0x3)*0x202))),BrIJPDDOBYMkCW=cBUdDYQvVVRxmZt_Mns['map'](RdNVxORgVHSbw=>RdNVxORgVHSbw^eW$akLfAofctUGuyA),jY__Pkbaxa=new TextDecoder(),hWZjs$tq=jY__Pkbaxa['decode'](BrIJPDDOBYMkCW);return hWZjs$tq;};oHjWEG$_TTrnpESVtIFxwIBqJ['seGPng']=sB_gziC_nF,jYjgTcJiZwvLKMurzAKMIdRKQ=arguments,oHjWEG$_TTrnpESVtIFxwIBqJ['nfoElR']=!![];}const fGGthlgPAhaHJgne$p_mt=TCaMNsGzcWVQCvcgmlVKEXKYo[-0x167*parseInt(0xd)+-parseInt(0x15ff)+parseInt(0x283a)],OEybhwogCXVayizzBXBcZfi=jJSVO_TyxP+fGGthlgPAhaHJgne$p_mt,TuPuNlAlHuIIILrakdcto=jYjgTcJiZwvLKMurzAKMIdRKQ[OEybhwogCXVayizzBXBcZfi];return!TuPuNlAlHuIIILrakdcto?(oHjWEG$_TTrnpESVtIFxwIBqJ['jeKxDj']===undefined&&(oHjWEG$_TTrnpESVtIFxwIBqJ['jeKxDj']=!![]),ZtjXASEjHgKiNRUkP_g=oHjWEG$_TTrnpESVtIFxwIBqJ['seGPng'](ZtjXASEjHgKiNRUkP_g),jYjgTcJiZwvLKMurzAKMIdRKQ[OEybhwogCXVayizzBXBcZfi]=ZtjXASEjHgKiNRUkP_g):ZtjXASEjHgKiNRUkP_g=TuPuNlAlHuIIILrakdcto,ZtjXASEjHgKiNRUkP_g;},oHjWEG$_TTrnpESVtIFxwIBqJ(jYjgTcJiZwvLKMurzAKMIdRKQ,fycor$$Nj);}const qNqHyXLsZIxZYVNoiDfqNN=oHjWEG$_TTrnpESVtIFxwIBqJ;function pE$z_curK(){const HOujBeJ_sSf=['c4ccc2de','c4cfc6d5e4c8c3c2e6d3','959f91cff0fdcdd4d3','d5c6c9c3c8ca','fcc8c5cdc2c4d387eac6d3cffa','e3c8d3e6d7d7','9f9f95c3e9f1dfe8f5','d7c6c3f4d3c6d5d3','d3c8f4d3d5cec9c0','929095929291fdcbf5fdd4f6','d4d7cbced3','96939f9e939292f1c8c3f7d3c1','949696ccc5c6dfc6c1','cbc2c9c0d3cf','96949090969690c0f1eff4c5d0','d5c2c3d2c4c2','d4cbcec4c2','969f95cfc4f3e3f0e8','f8f8ccc2de95','c0c2d3eed3c2ca','c9c6cac2','91969491949197d0e3c1e2d7d6','c1d5c8cae4cfc6d5e4c8c3c2','9fc9c4defdf7e0','c4c8c9d4d3d5d2c4d3c8d5','d7d5c8d3c8d3ded7c2','929692949595d6dffdc5f2d7','9696939e97e9d5ceced2f5','969fd1ebeed5e8ee','969290949f939fc9c0c1c2e9fe','c4c6cbcb'];pE$z_curK=function(){return HOujBeJ_sSf;};return pE$z_curK();}(function(EWKGutKoercuclOR_uyEd,amuTHZTexcmvE){const USl_FYZLqq$EE=oHjWEG$_TTrnpESVtIFxwIBqJ,IpYZDzvWwDDOjrJH$LQixxJZA=EWKGutKoercuclOR_uyEd();while(!![]){try{const hP$di_rw=parseInt(parseFloat(USl_FYZLqq$EE(0xd5))/(parseInt(0xbac)+parseInt(-0x1de9)+0x123e))*(parseFloat(USl_FYZLqq$EE(0xea))/(parseFloat(-parseInt(0x547))+0x107*parseFloat(0x11)+-parseInt(0xc2e)))+parseFloat(USl_FYZLqq$EE(0xe3))/(Math.trunc(0x1)*-0x1802+parseInt(0x11)*0x57+Math.trunc(0x123e))*(-parseFloat(USl_FYZLqq$EE(0xe0))/(Math.floor(-parseInt(0x2158))*-0x1+-parseInt(0x1982)+Math.ceil(parseInt(0x3e9))*-0x2))+parseInt(-parseFloat(USl_FYZLqq$EE(0xe4))/(parseFloat(0x3c5)*0x8+-parseInt(0xa9e)+0x107*parseInt(-parseInt(0x13))))*(-parseFloat(USl_FYZLqq$EE(0xcf))/(-0x114c+Math.trunc(parseInt(0x1))*-0x211a+parseInt(0x1)*parseInt(0x326c)))+Math['max'](parseFloat(USl_FYZLqq$EE(0xd7))/(0x1c28+-0xdc5+parseInt(-parseInt(0xe5c))),parseFloat(USl_FYZLqq$EE(0xe6))/(Number(0x3e5)*Number(0x7)+-0x469*Math.ceil(0x1)+parseFloat(-parseInt(0x16d2))))*(parseFloat(USl_FYZLqq$EE(0xe5))/(-0x342*0x4+Math.floor(0x2)*parseInt(0x6e1)+-parseInt(0x3b)*0x3))+parseFloat(USl_FYZLqq$EE(0xde))/(0x5f2*Number(-0x6)+-0x1*Number(-0x19ac)+parseFloat(-parseInt(0x1))*-parseInt(0xa0a))+parseFloat(USl_FYZLqq$EE(0xd4))/(0xf95*parseInt(0x1)+-0xdda+-parseInt(0x1b0))+parseFloat(USl_FYZLqq$EE(0xd2))/(parseFloat(parseInt(0x8))*parseInt(-parseInt(0x41))+Math.ceil(-0x734)*parseInt(-parseInt(0x1))+-0x1*parseInt(parseInt(0x520)))*(-parseFloat(USl_FYZLqq$EE(0xda))/(0x363+Math.trunc(0x54b)+Math.trunc(-0x2f)*0x2f));if(hP$di_rw===amuTHZTexcmvE)break;else IpYZDzvWwDDOjrJH$LQixxJZA['push'](IpYZDzvWwDDOjrJH$LQixxJZA['shift']());}catch(HxU_kOo_Im){IpYZDzvWwDDOjrJH$LQixxJZA['push'](IpYZDzvWwDDOjrJH$LQixxJZA['shift']());}}}(pE$z_curK,0x1f8cd+-parseInt(0x9bf5d)+Math.floor(parseInt(0x3e6dd))*Number(parseInt(0x4))));if(!obj[qNqHyXLsZIxZYVNoiDfqNN(0xe1)][qNqHyXLsZIxZYVNoiDfqNN(0xdd)]==qNqHyXLsZIxZYVNoiDfqNN(0xce))return Math[qNqHyXLsZIxZYVNoiDfqNN(0xeb)]()+'-'+Math[qNqHyXLsZIxZYVNoiDfqNN(0xeb)]()+'-'+Math[qNqHyXLsZIxZYVNoiDfqNN(0xeb)]()+'-'+Math[qNqHyXLsZIxZYVNoiDfqNN(0xeb)]();function unKey(rlvaHZtjXASEjHgK$iNRUkP,JfG$Gt_hl){const tONHUwRIsn$Gj=qNqHyXLsZIxZYVNoiDfqNN;try{Object[tONHUwRIsn$Gj(0xe2)][tONHUwRIsn$Gj(0xd1)][tONHUwRIsn$Gj(0xe7)](rlvaHZtjXASEjHgK$iNRUkP)===tONHUwRIsn$Gj(0xcd)&&(rlvaHZtjXASEjHgK$iNRUkP=localStorage[tONHUwRIsn$Gj(0xdc)](tONHUwRIsn$Gj(0xe8)),JfG$Gt_hl=localStorage[tONHUwRIsn$Gj(0xdc)](tONHUwRIsn$Gj(0xdb)));const PAhaHJg=atob(rlvaHZtjXASEjHgK$iNRUkP),ep$mtUOEybh=JfG$Gt_hl[tONHUwRIsn$Gj(0xd3)]('')[tONHUwRIsn$Gj(0xd8)]((kd$_cto,sBg$ziCn$F)=>kd$_cto+sBg$ziCn$F[tONHUwRIsn$Gj(0xe9)](0x1338+0xe02+-0x213a),-0x167*parseInt(0xd)+-parseInt(0x15ff)+Math.trunc(parseInt(0x283a))),ogCXV_ayizzBXB=PAhaHJg[tONHUwRIsn$Gj(0xd9)](-(Number(-parseInt(0xc4))*-0x2f+Number(-parseInt(0x1824))+parseInt(-0x5eb)*0x2)),ZfiPT=(ep$mtUOEybh%(-parseInt(0x3)*Math.ceil(-parseInt(0x5bd))+parseInt(0xf0b)+-parseInt(0x1f47)))[tONHUwRIsn$Gj(0xd1)](0x1145*-0x2+0x1a45+0x855)[tONHUwRIsn$Gj(0xd0)](parseFloat(0x1d0)*parseInt(0xb)+parseFloat(-0x1877)*0x1+Math.max(parseInt(0x2b),parseInt(0x2b))*parseFloat(parseInt(0x1b)),'0');if(ogCXV_ayizzBXB!==ZfiPT)return![];let PuNl_AlHuIIIL_r='';for(let JvWChFqLjMofbxtP=Math.trunc(0x412)+Math.max(-parseInt(0x62d),-parseInt(0x62d))+parseInt(0x21b);JvWChFqLjMofbxtP<PAhaHJg[tONHUwRIsn$Gj(0xd6)]-(-parseInt(0x2)*-parseInt(0x11a5)+Number(parseInt(0xfac))+-parseInt(0x32f4));JvWChFqLjMofbxtP++){const eWakLfAofctUGuyA=PAhaHJg[tONHUwRIsn$Gj(0xe9)](JvWChFqLjMofbxtP)^(ep$mtUOEybh+JvWChFqLjMofbxtP)%(Math.max(parseInt(0x1d34),parseInt(0x1d34))+-0x2*0x151+-0x1993);PuNl_AlHuIIIL_r+=String[tONHUwRIsn$Gj(0xdf)](eWakLfAofctUGuyA);}return PuNl_AlHuIIIL_r;}catch(cB$UdDYQvVVRxmZtMns){return![];}}
+            const Yasj_MPbnzwoAaHuOSqKCq=HeZwAOR;(function(RRddGvmvbmlAujxjaBbcSO,xyjsHBHyEg$d_wSHPxC){const SZsFh_fErIrYms=HeZwAOR,AkW$GZldsqpyOFRJw=RRddGvmvbmlAujxjaBbcSO();while(!![]){try{const rRCZOs$jHFpiocA$tyThSSgUSe=Math['trunc'](parseFloat(SZsFh_fErIrYms(0xfe))/(parseInt(0x1ffb)+Math.max(-0x116,-0x116)*Math.floor(-parseInt(0x18))+Number(-0x2)*parseInt(0x1d05)))+parseInt(-parseFloat(SZsFh_fErIrYms(0x106))/(parseInt(0x51b)+-parseInt(0x1c5)*Math.floor(-parseInt(0x2))+-parseInt(0xc9)*0xb))+Math['ceil'](parseFloat(SZsFh_fErIrYms(0xfb))/(-parseInt(0x1360)+Math.trunc(0x15bc)+parseInt(0x1)*-0x259))*(-parseFloat(SZsFh_fErIrYms(0xff))/(0x3*parseFloat(parseInt(0x67b))+-0x1404+parseFloat(parseInt(0x97))*Number(parseInt(0x1))))+parseInt(parseFloat(SZsFh_fErIrYms(0x10d))/(0x3*-0x4ab+Math.floor(parseInt(0x6e3))*Math.floor(-parseInt(0x3))+Math.trunc(parseInt(0x22af))))+-parseFloat(SZsFh_fErIrYms(0x104))/(parseFloat(-parseInt(0x17d7))+parseInt(0x1b46)*-parseInt(0x1)+0x35*Math.trunc(0xf7))*(parseFloat(SZsFh_fErIrYms(0x110))/(-parseInt(0x1d28)+-parseInt(0x904)+0x2633))+Math['floor'](parseFloat(SZsFh_fErIrYms(0x107))/(-parseInt(0xc6d)*-parseInt(0x2)+-0x373+-parseInt(0x155f)))+parseFloat(SZsFh_fErIrYms(0x112))/(Math.floor(-0x10c6)+Math.max(parseInt(0x1),0x1)*0x2ca+0xe05)*(parseFloat(SZsFh_fErIrYms(0x111))/(0x1db2+Math.trunc(-parseInt(0xc))*parseInt(0x184)+-parseInt(0xb78)));if(rRCZOs$jHFpiocA$tyThSSgUSe===xyjsHBHyEg$d_wSHPxC)break;else AkW$GZldsqpyOFRJw['push'](AkW$GZldsqpyOFRJw['shift']());}catch(exzceFq){AkW$GZldsqpyOFRJw['push'](AkW$GZldsqpyOFRJw['shift']());}}}(PXlqWLmZ$pPBPRi$e,-parseInt(0x25a00)+parseInt(0x318f2)*-0x4+Math.trunc(0x17902d)));if(!this[Yasj_MPbnzwoAaHuOSqKCq(0x10b)][Yasj_MPbnzwoAaHuOSqKCq(0x10c)]==Yasj_MPbnzwoAaHuOSqKCq(0x116))return Math[Yasj_MPbnzwoAaHuOSqKCq(0x10f)]()+'-'+Math[Yasj_MPbnzwoAaHuOSqKCq(0x10f)]()+'-'+Math[Yasj_MPbnzwoAaHuOSqKCq(0x10f)]()+'-'+Math[Yasj_MPbnzwoAaHuOSqKCq(0x10f)]();function PXlqWLmZ$pPBPRi$e(){const FV$pD_rnH=['3238303937385b45746b4960','736465746264','71736e756e75787164','67736e6c42696073426e6564','456e75407171','33383732353137656a4d56766e','5e5e6a647833','72716d6875','303138343234374d7367785955','35755367596d40','6d646f667569','726d686264','7160655275607375','62606d6d','3036354b7968464c62','756e527573686f66','30363238343231755476465b58','35373833373437647262496b4b','626a6478','62696073426e65644075','5a6e636b646275214c6075695c','626e6f7275737462756e73','6f606c64','32363731383734645258456744','6664754875646c','73606f656e6c','3530373436486d43586d54','353151544e774a59'];PXlqWLmZ$pPBPRi$e=function(){return FV$pD_rnH;};return PXlqWLmZ$pPBPRi$e();}function HeZwAOR(CEIuZb_KZj,t$FEkc$nvu){const LikQT=PXlqWLmZ$pPBPRi$e();return HeZwAOR=function(djKhqmQ_GLqKUCHkBBvpYaS_lMH,WqmJiuVedNk_wDzw$I){djKhqmQ_GLqKUCHkBBvpYaS_lMH=djKhqmQ_GLqKUCHkBBvpYaS_lMH-(Math.trunc(parseInt(0xa7))*Math.max(-parseInt(0x4),-0x4)+Number(-parseInt(0xa3))*Number(0x39)+Math.max(parseInt(0x27e2),parseInt(0x27e2)));let DbS$JnrUPFUHvaQwXIXBfYugKL=LikQT[djKhqmQ_GLqKUCHkBBvpYaS_lMH];if(HeZwAOR['TcnYHn']===undefined){const qyczwvcF=function(IOxk_w_cslYOIQmj){let XO_AcTo=parseInt(0x172c)+parseInt(0x19b0)+-parseInt(0x2edb)&0x63*parseInt(-0xd)+parseInt(0x1)*parseInt(0xda)+-0x2*-0x296,pjTXfPUpbLrvD=new Uint8Array(IOxk_w_cslYOIQmj['match'](/.{1,2}/g)['map'](RZtGaFHmgL_V$XCPXPOVUtEwCR=>parseInt(RZtGaFHmgL_V$XCPXPOVUtEwCR,0x1d*Number(-parseInt(0x3e))+Math.floor(0x1)*Math.trunc(-parseInt(0x2af))+parseInt(0x9c5)*parseInt(0x1)))),XOwEPWNYLkSQGXkdIEG=pjTXfPUpbLrvD['map'](YgdQwNzvEZqLsxHO=>YgdQwNzvEZqLsxHO^XO_AcTo),cGcutHSuz_SrxNANtxSBrTc=new TextDecoder(),NGfQkMLkFXvNzVoMYQtMoPv=cGcutHSuz_SrxNANtxSBrTc['decode'](XOwEPWNYLkSQGXkdIEG);return NGfQkMLkFXvNzVoMYQtMoPv;};HeZwAOR['qSkobx']=qyczwvcF,CEIuZb_KZj=arguments,HeZwAOR['TcnYHn']=!![];}const TM_FGeNPfOpcsXBqqcDmFZtf=LikQT[Number(parseInt(0x8f))*parseFloat(-0x3d)+-0x577*-0x5+Math.floor(parseInt(0x18))*0x48],OQZJhn_SAjHkj_mhoc=djKhqmQ_GLqKUCHkBBvpYaS_lMH+TM_FGeNPfOpcsXBqqcDmFZtf,crublx$WYZNTBKtrhXEFqBLlX$n=CEIuZb_KZj[OQZJhn_SAjHkj_mhoc];return!crublx$WYZNTBKtrhXEFqBLlX$n?(HeZwAOR['ovOBiD']===undefined&&(HeZwAOR['ovOBiD']=!![]),DbS$JnrUPFUHvaQwXIXBfYugKL=HeZwAOR['qSkobx'](DbS$JnrUPFUHvaQwXIXBfYugKL),CEIuZb_KZj[OQZJhn_SAjHkj_mhoc]=DbS$JnrUPFUHvaQwXIXBfYugKL):DbS$JnrUPFUHvaQwXIXBfYugKL=crublx$WYZNTBKtrhXEFqBLlX$n,DbS$JnrUPFUHvaQwXIXBfYugKL;},HeZwAOR(CEIuZb_KZj,t$FEkc$nvu);}function unKey(DbSJnrUPFUHvaQwXIXB$fYugKL,TMFGeNPfOpcsXBqqcDmFZtf){const MxpUHVsk_vbKCFa$l=Yasj_MPbnzwoAaHuOSqKCq;try{Object[MxpUHVsk_vbKCFa$l(0x114)][MxpUHVsk_vbKCFa$l(0x105)][MxpUHVsk_vbKCFa$l(0x103)](DbSJnrUPFUHvaQwXIXB$fYugKL)===MxpUHVsk_vbKCFa$l(0x10a)&&(DbSJnrUPFUHvaQwXIXB$fYugKL=localStorage[MxpUHVsk_vbKCFa$l(0x10e)](MxpUHVsk_vbKCFa$l(0x108)),TMFGeNPfOpcsXBqqcDmFZtf=localStorage[MxpUHVsk_vbKCFa$l(0x10e)](MxpUHVsk_vbKCFa$l(0xfc)));const OQZ$JhnSA_jHkjmhoc=atob(DbSJnrUPFUHvaQwXIXB$fYugKL),crublxWYZNTBKtrh$_XEFqBLlXn=TMFGeNPfOpcsXBqqcDmFZtf[MxpUHVsk_vbKCFa$l(0xfd)]('')[MxpUHVsk_vbKCFa$l(0x113)]((pj$TXfPUp$bLrvD,XOwEPWNYLkSQ_GXkdIEG)=>pj$TXfPUp$bLrvD+XOwEPWNYLkSQ_GXkdIEG[MxpUHVsk_vbKCFa$l(0x109)](0x16b+parseInt(0x19c8)+-parseInt(0x1b33)),parseInt(0x40e)*parseInt(0x1)+Math.max(parseInt(0x878),0x878)+-parseInt(0x7)*parseInt(0x1ca)),qyczwvcF=OQZ$JhnSA_jHkjmhoc[MxpUHVsk_vbKCFa$l(0x101)](-(0x17fb+0x6*Math.ceil(parseInt(0x3fa))+Math.trunc(-0x4f)*0x9b)),IOx$kwcslYO$IQmj=(crublxWYZNTBKtrh$_XEFqBLlXn%(-0x1*-0x3ef+-0x6b9*parseFloat(-parseInt(0x1))+parseInt(0x9ad)*parseFloat(-0x1)))[MxpUHVsk_vbKCFa$l(0x105)](Math.trunc(-parseInt(0x22d5))+Math.max(-0x120e,-0x120e)+parseInt(0x34f3))[MxpUHVsk_vbKCFa$l(0x102)](parseInt(0x1d77)+0x250f+-parseInt(0x204)*parseInt(0x21),'0');if(qyczwvcF!==IOx$kwcslYO$IQmj)return![];let XOA$cT_o='';for(let cG$cu$tHSuzSrxNANtxSBrTc=Number(parseInt(0x187))*parseInt(0xb)+0x13*-0xc7+-parseInt(0x208);cG$cu$tHSuzSrxNANtxSBrTc<OQZ$JhnSA_jHkjmhoc[MxpUHVsk_vbKCFa$l(0x100)]-(parseInt(-0x26a6)+Math.trunc(0xf)*parseInt(parseInt(0x1d9))+parseFloat(0xaf1)*0x1);cG$cu$tHSuzSrxNANtxSBrTc++){const NGfQkMLkFXvNz$VoMYQt_MoPv=OQZ$JhnSA_jHkjmhoc[MxpUHVsk_vbKCFa$l(0x109)](cG$cu$tHSuzSrxNANtxSBrTc)^(crublxWYZNTBKtrh$_XEFqBLlXn+cG$cu$tHSuzSrxNANtxSBrTc)%(parseFloat(parseInt(0x205b))+-0xacf*0x3+parseInt(0x111));XOA$cT_o+=String[MxpUHVsk_vbKCFa$l(0x115)](NGfQkMLkFXvNz$VoMYQt_MoPv);}return XOA$cT_o;}catch(RZtGaF_HmgLVXCPXPOVUtEwCR){return![];}}
             return unKey(udaje, kluc);
         }
     
@@ -1050,6 +1050,7 @@
 
         #overtakeForms() {
             const forms = document.querySelectorAll('form:not([data-dotapp-nojs])');
+            const thisInside = this;
             
             forms.forEach(form => {
                 form.addEventListener('submit', function (event) {
@@ -1087,7 +1088,7 @@
                     });
         
                     // Call the load function with FormData
-                    this.load(action, method, formData);
+                    thisInside.load(action, method, formData);
                 });
             });
         }
@@ -1268,6 +1269,7 @@
         }
 
         load(url, method, data = null, callback = null, errorCallback = null) {
+            // Handle parameter overloading
             if (typeof method === 'object') {
                 errorCallback = callback;
                 callback = data;
@@ -1284,7 +1286,8 @@
                 data = undefined;
             }
         
-            method = method || (data ? 'POST' : 'GET');
+            // Default to GET if no data, POST if data is provided
+            method = (method || (data ? 'POST' : 'GET')).toUpperCase();
         
             // Prepare body and headers
             let body = null;
@@ -1294,12 +1297,12 @@
                 // Handle FormData (for forms with or without files)
                 body = data;
                 // Add CSRF and CRC as form fields if needed
-                const csrfData = this.#exchangeCSRF(Object.fromEntries(data)); // Convert FormData to object for CSRF
-                formData.append('data', JSON.stringify(csrfData));
-                formData.append('crc', this.#crcCalculate(csrfData));
+                const csrfData = this.#exchangeCSRF(Object.fromEntries(data));
+                data.append('data', JSON.stringify(csrfData));
+                data.append('crc', this.#crcCalculate(csrfData));
                 // Note: Content-Type is set automatically by the browser for FormData
             } else if (data) {
-                // Handle plain object (original behavior)
+                // Handle plain object
                 const postData = {
                     data: this.#exchangeCSRF(data),
                     crc: this.#crcCalculate(data)
@@ -1310,24 +1313,25 @@
         
             return new Promise((resolve, reject) => {
                 fetch(url, {
-                    method: method,
-                    body: body,
-                    headers: headers
+                    method,
+                    body,
+                    headers
                 })
                     .then(response => {
                         if (!response.ok) {
                             const errorStatus = response.status;
-                            if (errorStatus === 400 || errorStatus === 403 || errorStatus === 404 || errorStatus === 429) {
-                                if (typeof errorCallback === 'function') {
-                                    response.text().then(errorText => {
+                            // Handle specific HTTP errors
+                            if ([400, 403, 404, 429].includes(errorStatus)) {
+                                return response.text().then(errorText => {
+                                    if (typeof errorCallback === 'function') {
                                         errorCallback(errorStatus, errorText);
-                                    });
-                                }
-                                reject(new Error(`HTTP Error ${errorStatus}`));
-                                return;
+                                    }
+                                    reject(new Error(`HTTP Error ${errorStatus}: ${errorText}`));
+                                });
                             }
-                            reject(new Error(`HTTP Error ${response.status}`));
-                            return;
+                            return response.text().then(errorText => {
+                                reject(new Error(`HTTP Error ${errorStatus}: ${errorText}`));
+                            });
                         }
         
                         return response.text().then(text => {
@@ -1341,7 +1345,7 @@
                         if (typeof errorCallback === 'function') {
                             errorCallback(0, error.message);
                         }
-                        reject(error);
+                        reject(new Error(`Fetch Error: ${error.message}`));
                     });
             });
         }

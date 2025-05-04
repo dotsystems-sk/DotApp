@@ -1921,14 +1921,10 @@ class DotApp {
 	*/
 	
 	function repair_url($url) {
-		$url = str_replace("!","",$url);
-		$url = str_replace("://","!",$url);
-		while (strpos($url,"//") !== false) {
-			$url = str_replace("//","/",$url);
-		}
-		$url = str_replace("!","://",$url);
-		return($url);
-	}
+        // Odstráni výkričníky a nahradí viacnásobné lomítka jedným (okrem ://)
+        $url = preg_replace(['/!+/', '/(?<=\w)\/+/'], ['', '/'], $url);
+        return $url;
+    }
 	
 }
 
