@@ -1,5 +1,8 @@
 # dotApp PHP Framework 🚀
 
+Full documentation is available at:  
+[https://dotapp.dev/](https://dotapp.dev/)
+
 dotApp is a lightweight, powerful, and scalable PHP framework for modern web applications. It provides fast solutions for routing, templating, and a PHP-JavaScript bridge.  
 **Proudly made in Slovakia** 🇸🇰
 

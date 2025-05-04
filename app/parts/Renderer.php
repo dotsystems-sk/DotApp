@@ -917,29 +917,18 @@ class Renderer {
             $formName = trim($matches[1], '"\''); // Extract form name, remove quotes if present
             $originalTag = $matches[0]; // Store the original tag to return if processing fails
     
-            // Regex to find the enclosing <form> tag, making action optional and handling any attribute order
-            $formPattern = '/<form\s+([^>]*)method\s*=\s*["\']([^"\']+)["\']([^>]*)>.*?\{\{\s*formName\('.preg_quote($formName, '/').'\)\s*\}\}.*?(<\/form>)/is';
+            // Regex to find the enclosing <form> tag, making action optional
+            $formPattern = '/<form\s+[^>]*?(?:action\s*=\s*["\']([^"\']+)["\'])?[^>]*method\s*=\s*["\']([^"\']+)["\'][^>]*>.*?\{\{\s*formName\('.preg_quote($formName, '/').'\)\s*\}\}.*?(<\/form>)/is';
     
             if (preg_match($formPattern, $html, $formMatches)) {
-                // Extract attributes before and after method to find action
-                $attributesBefore = $formMatches[1];
-                $method = strtoupper($formMatches[2]);
-                $attributesAfter = $formMatches[3];
-    
-                // Look for action in all attributes
-                $action = null;
-                if (preg_match('/action\s*=\s*["\']([^"\']+)["\']/i', $attributesBefore . $attributesAfter, $actionMatch)) {
-                    $action = $actionMatch[1];
-                }
-    
                 // Use the action from the form, or fall back to the current request path
-                $action = $action ? $action : $this->dotApp->router->request->getPath();
+                $action = !empty($formMatches[1]) ? $formMatches[1] : $this->dotApp->router->request->getPath();
+                $method = strtoupper($formMatches[2]);
                 $input = new Input();
                 return $input->formFunction($action, $method, $formName, $this);
             }
     
-            // Log failure for debugging
-            error_log("Failed to match form for {{ formName($formName) }} in HTML: " . substr($html, 0, 200));
+            // If no <form> tag is found, return the original tag
             return $originalTag;
         }, $html);
     }
