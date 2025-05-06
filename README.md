@@ -140,6 +140,8 @@ php dotapper.php --create-htaccess
 ```
 Usage: php dotapper.php [options]
 Options:
+  --install -> install fresh copy of DotApp
+  --update -> update DotApp core to newest version, will not overwrite configuration or any modules
   --create-module=<name> -> Create a new module (e.g., --create-module=MyModule)
   --modules -> list all modules
   --module=<module_number or module_name> --create-controller=ControllerName -> Create new controller in selected module
