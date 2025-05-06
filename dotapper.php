@@ -41,6 +41,12 @@ class DotApper
         // Spracuj rozpoznané možnosti
         foreach ($this->options as $key => $value) {
             switch ($key) {
+                case 'install':
+                    $this->installDotapp();
+                    break;
+                case 'update':
+                    $this->updateDotapp();
+                    break;
                 case 'create-module':
                     $this->createModule($value);
                     break;
@@ -101,6 +107,45 @@ class DotApper
                     exit(1);
             }
         }
+    }
+
+    private function installDotapp() {
+        // function downloadAndUnzip($urlOfFile, $whereToExtract, $overwrite = false, $filesToCopy = null, $filesToSkip = null, $sourceDir = null, $deleteZip = true)
+        // Easy peazy checkujeme ci existuje dotapp lacnym sposoboom ale lepsi ako nic
+        if (!file_exists(__DIR__."/app/DotApp.php")) {
+            $install = $this->confirmAction("Do you want to install the DotApp PHP Framework?");
+            if ($install === true) {
+                $installation = $this->downloadAndUnzip("https://github.com/dotsystems-sk/DotApp/archive/refs/heads/main.zip", __DIR__, false, null, [__DIR__.'/dotapper.php'], "DotApp-main", true);
+                if ($installation === true) {
+                    echo $this->colorText("green", "Installation successful.");
+                } else {
+                    echo $this->colorText("red", "Installation failed.");
+                }
+            } else {
+                echo $this->colorText("red", "Installation canceled by the user.");
+            }
+        } else {
+            echo $this->colorText("red", "Detected DotApp. Run the update command to update or install in a new folder.");
+        }        
+    }
+
+    private function updateDotapp() {
+        // Easy peazy checkujeme ci existuje dotapp lacnym sposoboom ale lepsi ako nic
+        if (file_exists(__DIR__."/app/DotApp.php")) {
+            $install = $this->confirmAction("Do you want to UPDATE the DotApp PHP Framework?");
+            if ($install === true) {
+                $installation = $this->downloadAndUnzip("https://github.com/dotsystems-sk/DotApp/archive/refs/heads/main.zip", __DIR__, false, null, [__DIR__.'/index.php',__DIR__.'/app/config.php'], "DotApp-main", true);
+                if ($installation === true) {
+                    echo $this->colorText("green", "UPDATE successful.");
+                } else {
+                    echo $this->colorText("red", "UPDATE failed.");
+                }
+            } else {
+                echo $this->colorText("red", "UPDATE canceled by the user.");
+            }
+        } else {
+            echo $this->colorText("red", "DotApp not detected. Run the install command to install it.");
+        }        
     }
 
     private function confirmAction(string $message): bool {
@@ -545,6 +590,399 @@ class DotApper
     }
 
     /**
+     * Downloads a ZIP file from a URL and extracts it to the specified directory.
+     * Checks if the ZIP extension is available, verifies if the URL exists, and handles overwriting of existing files.
+     * Allows selective copying or skipping of files, specifying a source directory within the ZIP, and controlling ZIP file deletion.
+     *
+     * @param string $urlOfFile URL of the ZIP file to download.
+     * @param string $whereToExtract Directory path to extract the ZIP contents.
+     * @param bool $overwrite Whether to overwrite existing files (default: false).
+     * @param array|null $filesToCopy Array of files/directories to copy (default: null, copies all if empty).
+     * @param array|null $filesToSkip Array of files/directories to skip (default: null, ignored if $filesToCopy is set).
+     * @param string|null $sourceDir Directory within the ZIP to copy from (default: null, auto-detects root folder).
+     * @param bool $deleteZip Whether to delete the downloaded ZIP file (default: true).
+     * @return bool Returns true on success, false on failure.
+     */
+    function downloadAndUnzip($urlOfFile, $whereToExtract, $overwrite = false, $filesToCopy = null, $filesToSkip = null, $sourceDir = null, $deleteZip = true) {
+        // 1. Check if ZIP extension is available
+        if (!extension_loaded('zip')) {
+            echo "Error: ZIP extension is not loaded. Please enable 'extension=zip' in php.ini.\n";
+            return false;
+        }
+
+        // 2. Validate inputs
+        if (empty($urlOfFile) || !filter_var($urlOfFile, FILTER_VALIDATE_URL)) {
+            echo "Error: Invalid or empty URL provided.\n";
+            return false;
+        }
+        if (empty($whereToExtract)) {
+            echo "Error: Extraction directory path is empty.\n";
+            return false;
+        }
+
+        // 3. Verify if URL exists
+        echo "Checking if URL $urlOfFile exists...\n";
+        $urlExists = false;
+        if (function_exists('curl_version')) {
+            $ch = curl_init($urlOfFile);
+            curl_setopt($ch, CURLOPT_NOBODY, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($httpCode === 200) {
+                $urlExists = true;
+                echo "URL exists (HTTP 200).\n";
+            } else {
+                echo "Error: URL does not exist or is inaccessible (HTTP code: $httpCode).\n";
+                return false;
+            }
+        } else {
+            $headers = @get_headers($urlOfFile, 1);
+            if ($headers !== false && isset($headers[0])) {
+                if (preg_match('/HTTP\/\d+\.\d+\s+200/', $headers[0])) {
+                    $urlExists = true;
+                    echo "URL exists (HTTP 200).\n";
+                } else {
+                    $status = $headers[0];
+                    echo "Error: URL does not exist or is inaccessible (Status: $status).\n";
+                    return false;
+                }
+            } else {
+                echo "Error: Failed to check URL existence using get_headers.\n";
+                return false;
+            }
+        }
+
+        // 4. Download the ZIP file
+        $zipFile = 'temp_' . basename($urlOfFile);
+        echo "Downloading ZIP from $urlOfFile...\n";
+        $downloadSuccess = false;
+
+        if (function_exists('curl_version')) {
+            $ch = curl_init($urlOfFile);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $zipContent = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $zipContent !== false) {
+                if (file_put_contents($zipFile, $zipContent)) {
+                    $downloadSuccess = true;
+                    echo "Downloaded ZIP to $zipFile.\n";
+                } else {
+                    echo "Error: Failed to save ZIP file to $zipFile.\n";
+                    return false;
+                }
+            } else {
+                echo "Error: Failed to download ZIP (HTTP code: $httpCode).\n";
+                return false;
+            }
+        } else {
+            $zipContent = @file_get_contents($urlOfFile);
+            if ($zipContent !== false) {
+                if (substr($zipContent, 0, 4) !== "PK\x03\x04") {
+                    echo "Error: Downloaded file is not a valid ZIP.\n";
+                    return false;
+                }
+                if (file_put_contents($zipFile, $zipContent)) {
+                    $downloadSuccess = true;
+                    echo "Downloaded ZIP to $zipFile.\n";
+                } else {
+                    echo "Error: Failed to save ZIP file to $zipFile.\n";
+                    return false;
+                }
+            } else {
+                echo "Error: Failed to download ZIP using file_get_contents.\n";
+                return false;
+            }
+        }
+
+        // 5. Create extraction directory
+        if (!is_dir($whereToExtract)) {
+            if (!mkdir($whereToExtract, 0755, true)) {
+                echo "Error: Failed to create extraction directory $whereToExtract.\n";
+                if ($downloadSuccess && $deleteZip) {
+                    unlink($zipFile);
+                }
+                return false;
+            }
+        }
+
+        // 6. Check for existing files if overwrite is false, considering $filesToCopy and $filesToSkip
+        if (!$overwrite) {
+            $zip = new \ZipArchive();
+            if ($zip->open($zipFile) === true) {
+                // Determine source directory for relative paths
+                $tempDir = $whereToExtract . '/temp_' . uniqid();
+                mkdir($tempDir, 0755, true);
+                $zip->extractTo($tempDir);
+                $effectiveSourceDir = $tempDir;
+                if ($sourceDir !== null) {
+                    $effectiveSourceDir = $tempDir . '/' . trim($sourceDir, '/');
+                } else {
+                    $dirs = glob($tempDir . '/*', GLOB_ONLYDIR);
+                    if (count($dirs) === 1 && is_dir($dirs[0])) {
+                        $effectiveSourceDir = $dirs[0];
+                    }
+                }
+
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $entry = $zip->getNameIndex($i);
+                    // Skip if entry is a directory
+                    if (substr($entry, -1) === '/') {
+                        continue;
+                    }
+
+                    // Adjust entry path based on sourceDir
+                    $relativeEntry = $entry;
+                    if ($sourceDir !== null && strpos($entry, $sourceDir . '/') === 0) {
+                        $relativeEntry = substr($entry, strlen($sourceDir) + 1);
+                    } elseif ($effectiveSourceDir !== $tempDir) {
+                        $rootFolder = basename($effectiveSourceDir);
+                        if (strpos($entry, $rootFolder . '/') === 0) {
+                            $relativeEntry = substr($entry, strlen($rootFolder) + 1);
+                        }
+                    }
+
+                    if (empty($relativeEntry)) {
+                        continue;
+                    }
+
+                    $destination = rtrim($whereToExtract, '/\\') . DIRECTORY_SEPARATOR . $relativeEntry;
+
+                    // Skip if file is in $filesToSkip
+                    if (is_array($filesToSkip) && in_array(realpath($destination) ?: $destination, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip))) {
+                        continue;
+                    }
+
+                    // If $filesToCopy is set, only check those files
+                    if (is_array($filesToCopy) && !empty($filesToCopy)) {
+                        if (!in_array(realpath($destination) ?: $destination, array_map(function($path) { return realpath($path) ?: $path; }, $filesToCopy))) {
+                            continue;
+                        }
+                    }
+
+                    if (file_exists($destination)) {
+                        // Check if the file is in $filesToSkip; if so, skip the error
+                        if (is_array($filesToSkip) && in_array(realpath($destination) ?: $destination, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip))) {
+                            continue; // Skip this file as it's in $filesToSkip
+                        }
+
+                        $zip->close();
+                        echo "Error: File '$destination' already exists and overwrite is disabled.\n";
+                        // Clean up temporary directory
+                        $cleanupIterator = new \RecursiveIteratorIterator(
+                            new \RecursiveDirectoryIterator($tempDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                            \RecursiveIteratorIterator::CHILD_FIRST
+                        );
+                        foreach ($cleanupIterator as $item) {
+                            if ($item->isDir()) {
+                                rmdir($item->getPathname());
+                            } else {
+                                unlink($item->getPathname());
+                            }
+                        }
+                        rmdir($tempDir);
+                        if ($deleteZip) {
+                            unlink($zipFile);
+                        }
+                        return false;
+                    }
+                }
+                $zip->close();
+                // Clean up temporary directory
+                $cleanupIterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($tempDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::CHILD_FIRST
+                );
+                foreach ($cleanupIterator as $item) {
+                    if ($item->isDir()) {
+                        rmdir($item->getPathname());
+                    } else {
+                        unlink($item->getPathname());
+                    }
+                }
+                rmdir($tempDir);
+            } else {
+                echo "Error: Failed to open ZIP file $zipFile for checking existing files.\n";
+                if ($deleteZip) {
+                    unlink($zipFile);
+                }
+                return false;
+            }
+        }
+
+        // 7. Unzip the archive with selective copying
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFile) !== true) {
+            echo "Error: Failed to open ZIP file $zipFile.\n";
+            if ($deleteZip) {
+                unlink($zipFile);
+            }
+            return false;
+        }
+
+        // Create a temporary directory for extraction
+        $tempDir = $whereToExtract . '/temp_' . uniqid();
+        if (!mkdir($tempDir, 0755, true)) {
+            echo "Error: Failed to create temporary extraction directory $tempDir.\n";
+            $zip->close();
+            if ($deleteZip) {
+                unlink($zipFile);
+            }
+            return false;
+        }
+
+        // Extract ZIP to temporary directory
+        if (!$zip->extractTo($tempDir)) {
+            echo "Error: Failed to extract ZIP to $tempDir.\n";
+            $zip->close();
+            rmdir($tempDir);
+            if ($deleteZip) {
+                unlink($zipFile);
+            }
+            return false;
+        }
+        $zip->close();
+
+        // Determine source directory
+        $effectiveSourceDir = $tempDir;
+        if ($sourceDir !== null) {
+            $effectiveSourceDir = $tempDir . '/' . trim($sourceDir, '/');
+            if (!is_dir($effectiveSourceDir)) {
+                echo "Error: Specified source directory '$sourceDir' does not exist in ZIP.\n";
+                rmdir($tempDir);
+                if ($deleteZip) {
+                    unlink($zipFile);
+                }
+                return false;
+            }
+        } else {
+            $dirs = glob($tempDir . '/*', GLOB_ONLYDIR);
+            if (count($dirs) === 1 && is_dir($dirs[0])) {
+                $effectiveSourceDir = $dirs[0]; // Auto-detect single root folder (e.g., DotApp-main)
+            }
+        }
+
+        // Normalize paths in $filesToCopy and $filesToSkip
+        $filesToCopy = is_array($filesToCopy) ? array_map(function($path) { return realpath($path) ?: $path; }, $filesToCopy) : null;
+        $filesToSkip = is_array($filesToSkip) ? array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip) : null;
+
+        // Copy files based on $filesToCopy or $filesToSkip
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($effectiveSourceDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+        $success = true;
+
+        if (is_array($filesToCopy) && !empty($filesToCopy)) {
+            // Copy only specified files/directories
+            foreach ($iterator as $item) {
+                $sourcePath = $item->getPathname();
+                $relativePath = substr($sourcePath, strlen($effectiveSourceDir) + 1);
+                $destPath = rtrim($whereToExtract, '/\\') . DIRECTORY_SEPARATOR . $relativePath;
+
+                $sourceRealPath = realpath($sourcePath) ?: $sourcePath;
+                $sourceParentRealPath = realpath($item->getPath()) ?: $item->getPath();
+                if (in_array($sourceRealPath, $filesToCopy) || in_array($sourceParentRealPath, $filesToCopy)) {
+                    if ($item->isDir()) {
+                        if (!is_dir($destPath) && !mkdir($destPath, 0755, true)) {
+                            echo "Error: Failed to create directory $destPath.\n";
+                            $success = false;
+                            break;
+                        }
+                    } else {
+                        // Skip existence check for files in $filesToSkip
+                        if (is_array($filesToSkip) && (in_array($sourceRealPath, $filesToSkip) || in_array($sourceParentRealPath, $filesToSkip))) {
+                            continue;
+                        }
+                        if (file_exists($destPath) && !$overwrite) {
+                            echo "Error: File '$destPath' already exists and overwrite is disabled.\n";
+                            $success = false;
+                            break;
+                        }
+                        if (!copy($sourcePath, $destPath)) {
+                            echo "Error: Failed to copy $sourcePath to $destPath.\n";
+                            $success = false;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            // Copy all files except those in $filesToSkip
+            foreach ($iterator as $item) {
+                $sourcePath = $item->getPathname();
+                $relativePath = substr($sourcePath, strlen($effectiveSourceDir) + 1);
+                $destPath = rtrim($whereToExtract, '/\\') . DIRECTORY_SEPARATOR . $relativePath;
+
+                $sourceRealPath = realpath($sourcePath) ?: $sourcePath;
+                $sourceParentRealPath = realpath($item->getPath()) ?: $item->getPath();
+                if (is_array($filesToSkip) && (in_array($sourceRealPath, $filesToSkip) || in_array($sourceParentRealPath, $filesToSkip))) {
+                    continue;
+                }
+
+                if ($item->isDir()) {
+                    if (!is_dir($destPath) && !mkdir($destPath, 0755, true)) {
+                        echo "Error: Failed to create directory $destPath.\n";
+                        $success = false;
+                        break;
+                    }
+                } else {
+                    // Existence check is not needed for files in $filesToSkip as they are already skipped above
+                    if (file_exists($destPath) && !$overwrite) {
+                        echo "Error: File '$destPath' already exists and overwrite is disabled.\n";
+                        $success = false;
+                        break;
+                    }
+                    if (!copy($sourcePath, $destPath)) {
+                        echo "Error: Failed to copy $sourcePath to $destPath.\n";
+                        $success = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Clean up temporary directory
+        $cleanupIterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($tempDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($cleanupIterator as $item) {
+            if ($item->isDir()) {
+                rmdir($item->getPathname());
+            } else {
+                unlink($item->getPathname());
+            }
+        }
+        rmdir($tempDir);
+
+        // 8. Clean up ZIP file if $deleteZip is true
+        if ($deleteZip) {
+            unlink($zipFile);
+            echo "Cleanup: Removed temporary ZIP file $zipFile.\n";
+        } else {
+            echo "ZIP file $zipFile retained as per request.\n";
+        }
+
+        if ($success) {
+            echo "Extracted ZIP to $whereToExtract." . ($overwrite ? " Existing files were overwritten.\n" : "\n");
+            return true;
+        } else {
+            echo "Error: Failed to complete file extraction.\n";
+            return false;
+        }
+    }
+
+
+
+    /**
      * Vypíše help správu.
      */
     private function printHelp() {
@@ -552,6 +990,8 @@ class DotApper
         $this->versionPrint();
         echo $this->bgColorText("green",$this->colorText("bold_white","Usage: php dotapper.php [options]\n"));
         echo "Options:\n";
+        echo "  --install -> Install DotApp in current directory\n";
+        echo "  --update -> Update actual DotApp\n";
         echo "  --create-module=<name> -> Create a new module (e.g., --create-module=MyModule)\n";
         //echo "  --create-example-module=<name> -> Create a new EXAMPLE module with defined routers etc (e.g., --create-example-module=MyModule)\n";
         echo "  --modules -> list all modules\n";

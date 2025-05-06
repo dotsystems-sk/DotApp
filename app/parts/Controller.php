@@ -21,11 +21,26 @@
  */
 
 namespace Dotsystems\App\Parts;
-use Dotsystems\App\Parts\DI;
+use \Dotsystems\App\Parts\DI;
 use \Dotsystems\App\DotApp;
 
 abstract class Controller {
     public static $di; // Statická DI inštancia pre volanie funkciia cez kontajner
+    protected static $staticModuleName = null;
+
+    public static function moduleName($name = null) {
+        if (self::$staticModuleName === null) {
+            // Ziskame nazov modulu z classname
+            $fqmn = self::class;
+            $pattern = '/^Dotsystems\\\\App\\\\Modules\\\\([^\\\\]+)\\\\.+$/';
+            if (preg_match($pattern, $fqmn, $matches)) {
+                self::$staticModuleName = $matches[1]; // Set extracted module name
+            } else {
+                throw new RuntimeException("Unable to extract module name from class: $fqmn");
+            }
+        }
+        return self::$staticModuleName;
+    }
 
     // Zabezpecime kontajner DI
     private static function ensureDi() {

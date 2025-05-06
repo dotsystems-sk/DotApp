@@ -64,6 +64,8 @@ abstract class Module {
 	private $moduledata;
     public $initialized;
     private $assetsLoaded;
+    protected static $staticModuleName;
+    protected static $staticModuleNameLock = false;
 	//public $menu; /* Ci ma modul svoje vlastne menu alebo nie. 0 - Nie, 1 - Ano */
 	
 	function __construct($dotapp) {
@@ -86,6 +88,7 @@ abstract class Module {
         $this->Call = $this->di; // Alias pre di, blbuvzdornost.
         $this->installation();
 		$dotapp->module_add($this->modulename,$this->di);
+        self::moduleName($this->modulename);
         $dotapp->trigger("dotapp.module.".$this->modulename.".init.start",$this);
         if ($this->initializeConditionAndListener() || defined('__DOTAPPER_RUN__')) {
             $this->dotapp->dotapper['routes_module'] = $this->modulename;
@@ -93,6 +96,19 @@ abstract class Module {
         }
         $dotapp->trigger("dotapp.module.".$this->modulename.".init.end",$this);
 	}
+
+    public static function moduleName($name=null) {
+        if ($name === null) {
+            return self::$staticModuleName;
+        } else {
+            if (self::$staticModuleNameLock === false) {
+                self::$staticModuleName = $name;
+                self::$staticModuleNameLock = true;
+                return true;
+            }            
+            return false;
+        }
+    }
 
     public function load() {
         if (!$this->initialized) {

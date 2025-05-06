@@ -11,6 +11,26 @@ class Middleware {
     public $dotapp;
     public $DotApp;
 
+    public static function use($name) {
+        return self::get($name);
+    }
+    
+    public static function get($name) {
+        return new self($name);
+    }
+
+    public static function define($name,$callback=null, ...$args) {
+        return self::set($name,$callback, ...$args);
+    }
+
+    public static function register($name,$callback=null, ...$args) {
+        return self::set($name,$callback, ...$args);
+    }
+
+    public static function set($name,$callback=null, ...$args) {
+        return new self($name,$callback, ...$args);
+    }
+
     function __construct($name,$callback=null, ...$args) {
         $this->dotApp = DotApp::dotApp();
         $this->dotapp = $this->dotApp;

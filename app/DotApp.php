@@ -192,12 +192,13 @@ class DotApp {
 
     private function runFromCache(&$data) {
         if ($this->runFromCacheBlocked === false) {
-
+            // Najdeme subor a spravime include
         }
     }
 
     private function parseRouterCache() {
         $routeCache = __ROOTDIR__."/app/runtime/routercache/";
+        // Najdeme subor a spravime include
     }
 
     private function builtInMiddleware() {
