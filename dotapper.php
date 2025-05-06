@@ -134,7 +134,7 @@ class DotApper
         if (file_exists(__DIR__."/app/DotApp.php")) {
             $install = $this->confirmAction("Do you want to UPDATE the DotApp PHP Framework?");
             if ($install === true) {
-                $installation = $this->downloadAndUnzip("https://github.com/dotsystems-sk/DotApp/archive/refs/heads/main.zip", __DIR__, false, null, [__DIR__.'/index.php',__DIR__.'/app/config.php'], "DotApp-main", true);
+                $installation = $this->downloadAndUnzip("https://github.com/dotsystems-sk/DotApp/archive/refs/heads/main.zip", __DIR__, true, null, [__DIR__.'/index.php',__DIR__.'/app/config.php'], "DotApp-main", true);
                 if ($installation === true) {
                     echo $this->colorText("green", "UPDATE successful.");
                 } else {
@@ -936,6 +936,9 @@ class DotApper
                 } else {
                     // Existence check is not needed for files in $filesToSkip as they are already skipped above
                     if (file_exists($destPath) && !$overwrite) {
+                        if (is_array($filesToSkip) && in_array(realpath($destPath) ?: $destPath, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip))) {
+                            continue; // Skip this file as it's in $filesToSkip
+                        }
                         echo "Error: File '$destPath' already exists and overwrite is disabled.\n";
                         $success = false;
                         break;
