@@ -442,14 +442,16 @@ class RouterObj {
                 //$callback_s_di = $callback_s_di->bindTo($this->dotapp, get_class($this->dotapp));
                 $this->routy[$method][$cesta] = $callback_s_di;
             } else {
-                $callback_fn = function($callback) use ($chain,$cesta) {
+                $callback_fn = function(...$args) use ($callback,$chain,$cesta) {
                     if ($chain->limiter === false) {
                         $toCall = $this->dotapp->stringToCallable($callback);
-                        return call_user_func($toCall,$callback);
+                        //return call_user_func($toCall,$callback);
+                        return $this->dotapp->di(null, $toCall, $args);
                     } else {
                         if ($chain->limiter->isAllowed($cesta)) {
                             $toCall = $this->dotapp->stringToCallable($callback);
-                            return call_user_func($toCall,$callback);
+                            //return call_user_func($toCall,$callback);
+                            return $this->dotapp->di(null, $toCall, $args);
                         } else {
                             $chain->limiter->limitExceededRun();
                         }
