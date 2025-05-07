@@ -29,17 +29,17 @@ abstract class Controller {
     protected static $staticModuleName = null;
 
     public static function moduleName($name = null) {
-        if (self::$staticModuleName === null) {
+        if (static::$staticModuleName === null) {
             // Ziskame nazov modulu z classname
-            $fqmn = self::class;
+            $fqmn = static::class;
             $pattern = '/^Dotsystems\\\\App\\\\Modules\\\\([^\\\\]+)\\\\.+$/';
             if (preg_match($pattern, $fqmn, $matches)) {
-                self::$staticModuleName = $matches[1]; // Set extracted module name
+                static::$staticModuleName = $matches[1]; // Set extracted module name
             } else {
-                throw new RuntimeException("Unable to extract module name from class: $fqmn");
+                throw new \RuntimeException("Unable to extract module name from class: $fqmn");
             }
         }
-        return self::$staticModuleName;
+        return static::$staticModuleName;
     }
 
     // Zabezpecime kontajner DI
@@ -63,18 +63,24 @@ abstract class Controller {
 	}
 
     // Alias ku call, lepsie zapamtatelne ze ide o injection
-    public static function di($method, $arguments = []) {
+    public static function di($method, ...$arguments) {
         self::call($method, $arguments);
     }
     
-    public static function call($method, $arguments = []) {
+    public static function call($method, ...$arguments) {
         self::ensureDi();
 
-        if (method_exists(static::class, $method)) {
-            return self::$di->callStatic($method, $arguments);
+        if (strpos($method,"@") === false) {
+            if (method_exists(static::class, $method)) {
+                return self::$di->callStatic($method, ...$arguments);
+            }
+    
+            throw new \Exception("Static method $method does not exist in " . static::class);
+        } else {
+            $fn = DotApp::DotApp()->stringToCallable($method);
+            return $fn(...$arguments);
         }
-
-        throw new \Exception("Static method $method does not exist in " . static::class);
+        
     }
 	
 	// Alias pre api
