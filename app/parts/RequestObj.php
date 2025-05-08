@@ -323,9 +323,11 @@ class RequestObj {
                     $jsonData = json_decode($input, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         $data = $jsonData;
+                        DotApp::DotApp()->protect($data);
                     } else {
                         // If not JSON, parse as form data
                         parse_str($input, $data);
+                        DotApp::DotApp()->protect($data);
                     }
                 }
                 break;
@@ -338,9 +340,11 @@ class RequestObj {
                     $jsonData = json_decode($input, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         $data = $jsonData;
+                        DotApp::DotApp()->protect($data);
                     } else {
                         // Parse as form data
                         parse_str($input, $data);
+                        DotApp::DotApp()->protect($data);
                     }
                 }
                 // Note: $_DELETE is not natively supported in PHP, but check if it's manually populated
@@ -555,7 +559,34 @@ class RequestObj {
         return true;
     }
 
-    public function form($name, $success, $error=null) {
+    public function form($methodOrName, $nameOrSuccess, $success = null, $error = null) {
+        if (func_num_args() === 2) {
+            $name = $methodOrName;
+            $success = $nameOrSuccess;
+        } else {
+            // Tak je jasne ze je to metoda...
+            if (is_array($methodOrName)) {
+                $method = $methodOrName;
+                $name = $nameOrSuccess;
+
+                if (is_array($method)) {
+                    if (!in_array(strtolower($this->getMethod()), array_map('strtolower', $method))) {
+                        return false;
+                    }
+                } else {
+                    if (strtolower($method) !== strtolower($this->getMethod())) {
+                        return false;
+                    }
+                }
+            } else {
+                if (func_num_args() === 3) {
+                    $name = $methodOrName;
+                    $error = $success;
+                    $success = $nameOrSuccess;
+                }
+            }            
+        }
+    
         if ($this->formSignatureCheck()) {
             if (!empty($this->formData)) {
                 $decryptKey = $this->formData['key'];
@@ -569,7 +600,7 @@ class RequestObj {
                 $action = $this->dotApp->decrypt($data['dotapp-secure-auto-fnname-action'], $decryptKey);
                 $method = $this->dotApp->decrypt($data['dotapp-secure-auto-fnname-method'], $decryptKey);
             }
-
+    
             if ($name == $fnname) {
                 if (strtolower($method) === $this->getMethod() && ($action === $this->getPath() || $action === $this->getPath()."?".$this->reqVars)) {
                     if (!is_callable($success)) $success = $this->dotApp->stringToCallable($success);
@@ -588,8 +619,7 @@ class RequestObj {
             } else {
                 throw new \Exception("Error callback is not callable ! Signature is also invalid !");
             }
-        }        
-
+        }
     }
 	
 }

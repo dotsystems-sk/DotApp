@@ -132,14 +132,14 @@ class DotApp {
         $this->DSM = $this->dsm; // Pascalcase
 		$this->dsm->use("default")->load();
         $this->generate_enc_key();
-		$this->request = new RequestObj($this);
-        $this->Request = $this->request;
         $this->protect($_GET);
 		$this->protect($_POST);
 		$this->protect($_PUT);
 		$this->protect($_DELETE);
 		$this->protect($_COOKIE);
 		$this->protect($_SERVER);
+		$this->request = new RequestObj($this);
+        $this->Request = $this->request;
         $this->customRenderer = new CustomRenderer($this);
 		$this->router = new RouterObj($this);
         $this->Router = $this->router;

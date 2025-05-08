@@ -72,7 +72,7 @@ abstract class Controller {
 
         if (strpos($method,"@") === false) {
             if (method_exists(static::class, $method)) {
-                return self::$di->callStatic($method, ...$arguments);
+                return static::$di->callStatic($method, ...$arguments);
             }
     
             throw new \Exception("Static method $method does not exist in " . static::class);
