@@ -60,11 +60,19 @@ Facades (`Router`, `DB`, `Request`) have been introduced to provide a cleaner an
 
 ## 👥 Installation
 
-dotApp requires a specific directory structure, so it must be installed via `git clone`:
+There are two ways to install dotApp:
 
-```bash
-git clone https://github.com/dotsystems-sk/dotapp.git ./
-```
+1. **Using DotApper CLI** (Recommended):  
+   Download the `dotapper.php` file from the [dotApp repository](https://github.com/dotsystems-sk/dotapp), place it in your project directory, and run the following command to install dotApp:
+   ```bash
+   php dotapper.php --install
+   ```
+
+2. **Using Git Clone**:  
+   Clone the entire repository to your project directory:
+   ```bash
+   git clone https://github.com/dotsystems-sk/dotapp.git ./
+   ```
 
 🚫 **Do not use** `composer require` for installing dotApp, as it uses its own structure and autoloading.  
 ✅ However, after installation, you can freely use `composer require` to install any additional libraries.
