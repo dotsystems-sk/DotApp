@@ -29,16 +29,13 @@ This approach provides a convenient way to work with `dotApp` throughout your ap
 
 ## What's New ✨
 
-Facades (`Router`, `Route`, `DB`, `Request`) have been introduced to provide a cleaner and more elegant syntax for interacting with core components. Instead of using `$dotApp->component->method`, you can now use `Component::method` for improved readability. The original syntax via the `$dotApp` object remains fully functional, ensuring complete backward compatibility.
+Facades (`Router`, `DB`, `Request`) have been introduced to provide a cleaner and more elegant syntax for interacting with core components. Instead of using `$dotApp->component->method`, you can now use `Component::method` for improved readability. The original syntax via the `$dotApp` object remains fully functional, ensuring complete backward compatibility.
 
-- **NEW**: Added `Router` and `Route` facades, which are identical aliases for the `$dotApp->router` and `$dotApp->middleware()` objects. Choose `Router::` or `Route::` based on your preferred syntax for cleaner route and middleware definitions without needing the `$dotApp` object!  
+- **NEW**: Added `Router` facade, an alias for the `$dotApp->router` object. Use `Router::` for cleaner route definitions without needing the `$dotApp` object!  
   ```php
   Router::get('/', fn() => 'Hello World');
-  Route::get('/', fn() => 'Hello World');
   Router::post('/submit', fn() => 'Submitted');
-  Route::post('/submit', fn() => 'Submitted');
   Router::get('/', 'page@main'); // Call a controller method
-  Route::get('/', 'page@main'); // Call a controller method
   ```
 - **NEW**: Added `DB` facade, an alias for `$dotApp->db`. Use `DB::` instead of `$dotApp->db->` for a cleaner and more elegant syntax when performing database operations like queries, schema management, or transactions.  
   ```php
@@ -114,11 +111,17 @@ $dotApp->load_modules(); // Enable module system
 
 ## 🛠️ DotApper CLI Tool
 
-DotApper is a command-line utility included with dotApp that helps you manage modules and controllers.
+DotApper is a command-line utility included with dotApp that helps you manage your application, including installation, updates, modules, controllers, middleware, and models.
 
 ### Basic Usage
 
 ```bash
+# Install a fresh copy of dotApp
+php dotapper.php --install
+
+# Update dotApp core to the latest version (preserves configuration and modules)
+php dotapper.php --update
+
 # Create a new module
 php dotapper.php --create-module=Blog
 
@@ -128,10 +131,16 @@ php dotapper.php --modules
 # Create a controller in a module
 php dotapper.php --module=Blog --create-controller=ArticleController
 
+# Create a middleware in a module
+php dotapper.php --module=Blog --create-middleware=AuthMiddleware
+
+# Create a model in a module
+php dotapper.php --module=Blog --create-model=PostModel
+
 # List all routes
 php dotapper.php --list-routes
 
-# Create new .htaccess file
+# Create a new .htaccess file
 php dotapper.php --create-htaccess
 ```
 
@@ -140,15 +149,16 @@ php dotapper.php --create-htaccess
 ```
 Usage: php dotapper.php [options]
 Options:
-  --install -> install fresh copy of DotApp
-  --update -> update DotApp core to newest version, will not overwrite configuration or any modules
-  --create-module=<name> -> Create a new module (e.g., --create-module=MyModule)
-  --modules -> list all modules
-  --module=<module_number or module_name> --create-controller=ControllerName -> Create new controller in selected module
-  --module=<module_number or module_name> --create-middleware=MiddlewareName -> Create new middleware in selected module
-  --create-htaccess -> Create/recreate new .htaccess if is not working, or if application is in new hidden directory
-  --list-routes -> List all defined routes
-  --optimize-modules -> Optimize modules loading, use for project with a lot of modules
+  --install                         Install a fresh copy of the dotApp PHP framework
+  --update                          Update dotApp core to the latest version without overwriting configuration or modules
+  --create-module=<name>            Create a new module (e.g., --create-module=Blog)
+  --modules                         List all modules
+  --module=<module_name> --create-controller=<ControllerName>  Create a new controller in the specified module
+  --module=<module_name> --create-middleware=<MiddlewareName>  Create a new middleware in the specified module
+  --module=<module_name> --create-model=<ModelName>            Create a new model in the specified module
+  --list-routes                     List all defined routes
+  --create-htaccess                 Create or recreate a new .htaccess file
+  --optimize-modules                Optimize module loading for projects with many modules
 ```
 
 ## 🧪 Version Note

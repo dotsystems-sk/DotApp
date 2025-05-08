@@ -10,6 +10,9 @@ use \Dotsystems\App\Parts\Facade;
 */
 
 class Router extends Facade {
+    const STATIC_ROUTE = true;
+    const DYNAMIC_ROUTE = false;
+
     protected static $component = 'router'; 
     protected static $allowedMethods = [
         'any',

@@ -52,6 +52,7 @@ abstract class Module {
 	/*
 		Namiesto INTERFACE ideme do abstract triedy, lebo potrebujeme premenne
 	*/
+    private static $staticDI;
 	private $path;
 	public $dotapp;
     public $dotApp;
@@ -84,6 +85,7 @@ abstract class Module {
 		$this->path = __ROOTDIR__."/app/modules/".$classname;
 		$this->di = new DI($this,$dotapp);
         $this->DI = $this->di; // Alias pre di, blbuvzdornost.
+        self::$staticDI = $this->di;
         $this->call = $this->di; // Alias pre di, blbuvzdornost.
         $this->Call = $this->di; // Alias pre di, blbuvzdornost.
         $this->installation();
@@ -159,6 +161,24 @@ abstract class Module {
         // Napriklad nejaky URL match aby sa nenacitavala logika ak sa routy netykaju modulu.
         // Defaultne vracia stale TRUE aby sa inicializacia vykonala.
         return ['*'];
+    }
+
+    public static function di($method, ...$arguments) {
+        self::call($method, $arguments);
+    }
+    
+    public static function call($method, ...$arguments) {
+        if (strpos($method,"@") === false) {
+            if (method_exists(static::class, $method)) {
+                return self::$staticDI->callStatic($method, ...$arguments);
+            }
+    
+            throw new \Exception("Static method $method does not exist in " . static::class);
+        } else {
+            $fn = DotApp::DotApp()->stringToCallable($method);
+            return $fn(...$arguments);
+        }
+        
     }
 
     public function autoInitializeCondition() {
