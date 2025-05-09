@@ -18,6 +18,9 @@
  * provided this header is retained in all copies or substantial portions of the file,
  * including author and company information.
  */
+ 
+use \Dotsystems\App\Parts\Config;
+use \Dotsystems\App\Parts\SessionDriverDefault;
 
 /*
  *  Global translation function that interacts with the translator system.
@@ -40,6 +43,10 @@ function translator($text="",...$args) {
  *  Autoload external dependencies from Composer.
  */
 require_once __DIR__ . '/vendor/autoload.php';
+
+// Default SESSION DRIVER ( using $_SESSION )
+Config::sessionDriver("default",SessionDriverDefault::driver());
+Config::session("lifetime",3600);
 
 /*
  *  Initialize the DotApp framework.

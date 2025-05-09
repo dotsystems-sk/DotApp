@@ -43,6 +43,7 @@ $translator = new \stdClass();
 
 class DotApp {
     private static $dotAppForStatic;
+    public $auth; // Kvoli fasade AuthObj
     public $dotapper = array();
     public $initialized;
 	public $router;
@@ -130,7 +131,7 @@ class DotApp {
 		$this->unprotected['get'] = $_GET;
 		$this->dsm = new DSM("dotapp");
         $this->DSM = $this->dsm; // Pascalcase
-		$this->dsm->use("default")->load();
+		$this->dsm->load();
         $this->generate_enc_key();
         $this->protect($_GET);
 		$this->protect($_POST);
@@ -145,6 +146,7 @@ class DotApp {
         $this->Router = $this->router;
         $this->renderer = $this->router->renderer;
         $this->Renderer = $this->router->renderer;
+        $this->auth = $this->request->auth; // Kvoli fasade
         // Nastavime funkcie pre limiter tak, aby pouzivali ako ulozisko DSM. Uzivatel si moze pouzit ake chce ak si ich zaregistruje cez singleton napriklad.
         $this->register_limiter_fn();
         $this->builtInMiddleware();
@@ -1885,11 +1887,20 @@ class DotApp {
 		return $password;
 	}
 
-    public function generatePasswordHash($pass) {
+    private function makePasswordStrongerAgain($pass) {
         $pass = $this->key2_upgrade($pass);
-        $add_key2 = hash('sha256',password_hash($this->c_enc_key, PASSWORD_BCRYPT, ['cost' => 6]).$pass);
-        $passhash = password_hash($pass.$add_key2, PASSWORD_BCRYPT, ['cost' => 8]);
+        $add_key2 = hash('sha256',$this->c_enc_key.$pass);
+        $pass = hash('sha256',$pass.$add_key2);
+        return $pass;
+    }
+
+    public function generatePasswordHash($pass) {
+        $passhash = password_hash($this->makePasswordStrongerAgain($pass), PASSWORD_BCRYPT, ['cost' => 8]);
         return($passhash);
+    }
+
+    public function verifyPassword($pass, $hash) {
+        return password_verify($this->makePasswordStrongerAgain($pass), $hash);
     }
 	
 	/*

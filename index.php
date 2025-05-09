@@ -8,7 +8,7 @@ ini_set('mysql.connect_timeout', 10);
 ini_set('default_socket_timeout', 10);
 set_time_limit(60);
 ini_set("memory_limit","64M");
-session_start();
+
 
 define('__MAINTENANCE__',FALSE);
 define('__DEBUG__',FALSE);

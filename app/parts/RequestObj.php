@@ -102,9 +102,9 @@ class RequestObj {
         $this->response->isSent = false;
         $this->response->data = [];
         $this->dsm = new DSM("dotapp.request");
-        $this->dsm->use("default")->load();
+        $this->dsm->load();
         $this->gsLocked = false; // Zamkneme hlavne getters a setters
-        $this->auth = new Auth($this->dotapp,$this->dsm);
+        $this->auth = new AuthObj($this->dotapp,$this->dsm);
         $this->CSRF = $this->dsm->get('_CSRF') ?? array();
         $this->initializeProxyHeaders();
         $this->data();

@@ -37,11 +37,12 @@
 
 
 namespace Dotsystems\App\Parts;
+use \Dotsystems\App\Parts\Config;
 
 class DSM {
-    private $values;
-    private $variables;
-    private $sessname; 
+    private $driver;
+    private $config;
+    public $sessname; 
     private $session_manager;
 
     /**
@@ -54,119 +55,19 @@ class DSM {
      * @param string $sessname The name of the session variable.
      */
     function __construct($sessname) {
+        $this->session_manager["managers"] = [];
         $this->sessname = $sessname;
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $this->default_manager();
-    }
-
-    /**
-     * Sets up the default session management logic.
-     *
-     * Initializes the session manager with logic for loading, saving,
-     * setting, and getting session variables. This includes defining 
-     * how variables are serialized and stored in the session.
-     *
-     * @return void
-     */
-    private function default_manager() {
-        $this->session_manager['manager'] = "default";
-
-        // Load SESSION
-        $this->set_manager($this->session_manager['manager'], "load", function ($dsm) {
-            if (isset($_SESSION[$this->sessname])) {
-                $construct_session = $_SESSION[$this->sessname];
-                $this->values = $construct_session['values'];
-                $this->variables = $construct_session['variables'];
-            } else {
-                $this->values = [];
-                $this->variables = [];
-                $this->save(); // Save the initial empty state
-            }                
-        });
-
-        // Save SESSION
-        $this->set_manager($this->session_manager['manager'], "save", function ($dsm) {
-            $save_session = [];
-            $save_session['values'] = $this->values;
-            $save_session['variables'] = $this->variables;
-            $_SESSION[$this->sessname] = $save_session;
-        });
-
-        // GET variable
-        $this->set_manager($this->session_manager['manager'], "get", function ($name,$dsm) {
-            if (isset($this->variables[$name])) {
-                $varid = $this->variables[$name];
-                $value = $this->values[$varid];
-
-                if ($value && !is_array($value) && strpos($value, 'O:') === 0) {
-                    $value = unserialize($value);
-                }
-
-                return $value; // Return the retrieved value
+        $this->driver = Config::session("driver");
+        if ($this->driver == "default") {
+            //Config::sessionDriver($this->driver,SessionDriverDefault::driver($this->sessname));
+            foreach (Config::sessionDriver($this->driver) as $way => $wayFn) {
+                $this->session_manager['managers'][$this->driver][$way] = $wayFn;
             }
-
-            return null; // Return null if the variable does not exist
-        });
-
-        // SET variable
-        $this->set_manager($this->session_manager['manager'], "set", function ($name, $value,$dsm) {
-            $varid = md5($name) . md5($name . rand(1000, 2000));
-        
-            if (isset($this->variables[$name])) {
-                unset($this->values[$this->variables[$name]]);
-            }
-
-            $this->variables[$name] = $varid;
-
-            if (is_object($value)) {
-                $value = serialize($value);
-            }
-
-            $this->values[$varid] = $value;
-            $this->save(); // Save the session state after setting a value
-
-            return $this; // For chaining
-        });
-    }
-
-    /**
-     * Registers a new manager for handling session operations.
-     *
-     * This method allows defining custom logic for managing session variables
-     * by specifying how to load, save, set, or get variable values.
-     *
-     * @param string $manager The name of the manager.
-     * @param string $way The operation type (load, save, set, get).
-     * @param callable $callback The function to execute for the operation.
-     * @return $this
-     */
-
-    public function set_manager($manager, $way, $callback) {
-		if (is_callable($callback)) {
-			$this->session_manager['managers'][$manager][$way] = $callback;
-		} else throw new \Exception("Callback is not callable !");
-        return $this;
-    }
-
-    /**
-     * Switches to a specified manager if it is defined.
-     *
-     * This method updates the current session manager to the one specified 
-     * by the user, allowing for different session handling strategies.
-     *
-     * @param string $manager The name of the manager to switch to.
-     * @return $this
-     * @throws \Exception If the specified manager is not defined.
-     */
-    public function use($manager) {
-        if (isset($this->session_manager['managers'][$manager])) {
-            $this->session_manager['manager'] = $manager;
         } else {
-            throw new \Exception("Manager is not defined!");
+            foreach (Config::sessionDriver($this->driver) as $way => $wayFn) {
+                $this->session_manager['managers'][$this->driver][$way] = $wayFn;
+            }
         }
-        return $this;
     }
 
     /**
@@ -178,7 +79,7 @@ class DSM {
      * @return $this
      */
     public function load() {
-		call_user_func($this->session_manager['managers'][$this->session_manager['manager']]["load"], $this);
+		call_user_func($this->session_manager['managers'][$this->driver]["load"], $this);
         return $this;
     }
 
@@ -191,7 +92,7 @@ class DSM {
      * @return void
      */
     public function save() {
-		call_user_func($this->session_manager['managers'][$this->session_manager['manager']]["save"], $this);
+		call_user_func($this->session_manager['managers'][$this->driver]["save"], $this);
         return $this;
     }
 
@@ -207,7 +108,7 @@ class DSM {
      * @return $this
      */
     public function set($name, $value) {
-		call_user_func($this->session_manager['managers'][$this->session_manager['manager']]["set"], $name, $value, $this);
+		call_user_func($this->session_manager['managers'][$this->driver]["set"], $name, $value, $this);
 		return $this;
     }
 
@@ -221,7 +122,7 @@ class DSM {
      * @return mixed|null Returns the value associated with the variable name, or null if not found.
      */
     public function get($name) {
-		return call_user_func($this->session_manager['managers'][$this->session_manager['manager']]["get"], $name, $this);
+		return call_user_func($this->session_manager['managers'][$this->driver]["get"], $name, $this);
     }
 
 }
