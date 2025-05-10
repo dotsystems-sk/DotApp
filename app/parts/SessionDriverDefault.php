@@ -20,9 +20,11 @@ class SessionDriverDefault {
 
     function __construct() {
         if (session_status() === PHP_SESSION_NONE) {
-            ini_set('session.gc_maxlifetime', Config::session("lifetime"));
+            @ini_set('session.gc_maxlifetime', Config::session("lifetime"));
             session_start();
         }
+
+        $saessid = session_id();
         setcookie('dotapp_session', session_id(), [
             'expires' => time() + Config::session("lifetime"),
             'path' => '/',
