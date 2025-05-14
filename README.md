@@ -90,7 +90,8 @@ The latest release, **version 1.7**, introduces significant improvements to the 
   ->q(function ($qb) use ($token) {
       $qb
       ->select('user_id', Config::get("db","prefix").'users_rmtokens')
-      ->where('token','=',$token);
+      ->where('token','=',$token)
+	  ->execute();
   });
   ```
 
