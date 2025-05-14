@@ -90,9 +90,8 @@ The latest release, **version 1.7**, introduces significant improvements to the 
   ->q(function ($qb) use ($token) {
       $qb
       ->select('user_id', Config::get("db","prefix").'users_rmtokens')
-      ->where('token','=',$token)
-	  ->execute();
-  });
+      ->where('token','=',$token);
+  })->execute();
   ```
 
 - **NEW**: Added `Request` facade, an alias for `$dotApp->request`. Use `Request::` instead of `$dotApp->request->` for a simpler syntax when accessing request data, such as paths, methods, or form submissions.  
