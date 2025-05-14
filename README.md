@@ -36,7 +36,10 @@ The latest release, **version 1.7**, introduces significant improvements to the 
   Configuration has been centralized using the new `Config` facade, replacing the previous approach of configuring databases and encryption keys directly through the `$dotApp` object. This provides a cleaner, more unified way to manage settings. For example:
   ```php
   // Set encryption key
+  Config::app("c_enc_key", md5('SECURE_KEY'));
+  alias for:
   Config::set("app", "c_enc_key", md5('SECURE_KEY'));
+  
 
   // Configure databases
   Config::addDatabase("<name for your database for selectDB>", "host", "username", "password", "database_name", "encoding", "type", "driver");
