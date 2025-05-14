@@ -24,6 +24,7 @@ use \Dotsystems\App\Parts\SessionDriverDefault;
 use \Dotsystems\App\Parts\SessionDriverFile;
 use \Dotsystems\App\Parts\SessionDriverFile2;
 use \Dotsystems\App\Parts\SessionDriverDB;
+use \Dotsystems\App\Parts\SessionDriverRedis;
 
 /*
  *  Global translation function that interacts with the translator system.
