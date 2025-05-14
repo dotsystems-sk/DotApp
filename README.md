@@ -44,16 +44,22 @@ The latest release, **version 1.7**, introduces significant improvements to the 
   ```
 
 - **NEW: Session Drivers**  
-  Version 1.7 introduces four built-in session drivers for flexible session management, allowing developers to choose the best option for their application's needs:
+  Version 1.7 introduces five built-in session drivers for flexible session management, allowing developers to choose the best option for their application's needs:
   - **`SessionDriverDefault::driver()`**: A wrapper around PHP's native `$_SESSION`. Can be configured with Redis as a session handler for distributed systems (e.g., load balancers).
   - **`SessionDriverFile`**: Stores sessions as files in `/app/runtime/SessionDriverFile`. Independent of PHP's session system, suitable for simple file-based storage.
   - **`SessionDriverFile2`**: Stores sessions in `/app/runtime/SessionDriverFile2`, with each session variable saved as a separate file. Optimized for scenarios with many or large session variables.
-  - **`SessionDriverDB`**: Manages sessions via a database, ideal for load-balanced environments requiring a shared session store.  
+  - **`SessionDriverDB`**: Manages sessions via a database, ideal for load-balanced environments requiring a shared session store.
+  - **`SessionDriverRedis`**: Stores sessions in Redis, an in-memory data store, providing high performance and scalability for distributed systems or high-traffic applications.  
+  **Important**: When using session drivers, especially `SessionDriverRedis`, you must set all required session configurations (e.g., `lifetime`, `redis_host`, `redis_port`, `redis_prefix`) using `Config::session()` *before* defining the driver with `Config::sessionDriver()`. This ensures the driver initializes with the correct settings.  
   Example configuration for session drivers:
   ```php
-  Config::sessionDriver("default", SessionDriverDefault::driver());
+  // First, set session configurations
   Config::session("lifetime", 30 * 24 * 3600); // Set session lifetime to 30 days
-  Config::session("rm_autologin", true);
+  Config::session("redis_host", "127.0.0.1");
+  Config::session("redis_port", 6379);
+  Config::session("redis_prefix", "session:");
+  // Then, define the session driver
+  Config::sessionDriver("redis", SessionDriverRedis::driver());
   ```
 
 - **NEW**: Added `Router` facade, an alias for the `$dotApp->router` object. Use `Router::` for cleaner route definitions without needing the `$dotApp` object!  
@@ -134,6 +140,7 @@ use \Dotsystems\App\SessionDriverDefault;
 use \Dotsystems\App\SessionDriverFile;
 use \Dotsystems\App\SessionDriverFile2;
 use \Dotsystems\App\SessionDriverDB;
+use \Dotsystems\App\SessionDriverRedis;
 use \Dotsystems\App\Config;
 
 $dotApp = new \Dotsystems\App\DotApp();
@@ -147,9 +154,12 @@ Config::addDatabase("<name for your database for selectDB>", "host", "username",
 // Config::addDatabase("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL", "mysqli");
 
 // Configure session driver
-Config::sessionDriver("default", SessionDriverDefault::driver()); // Options: SessionDriverFile, SessionDriverFile2, SessionDriverDB
+// IMPORTANT: Set session configurations BEFORE defining the session driver
 Config::session("lifetime", 30 * 24 * 3600); // Set session lifetime to 30 days
-Config::session("rm_autologin", true);
+Config::session("redis_host", "127.0.0.1");
+Config::session("redis_port", 6379);
+Config::session("redis_prefix", "session:");
+Config::sessionDriver("redis", SessionDriverRedis::driver()); // Define driver AFTER setting configurations
 
 $dotApp->load_modules(); // Enable module system
 ```

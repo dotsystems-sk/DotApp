@@ -68,6 +68,12 @@ class Config {
             'samesite' => 'Strict', // Protection against CSRF
             'database_use' => false, // Use database-stored sessions for logout?
             'database_table' => 'users_sessions', // For database sessions, <db[prefix]>users_sessions
+            'redis_host' => '127.0.0.1', // Redis host
+            'redis_port' => 6379, // Redis port
+            'redis_timeout' => 2, // Timeout for Redis connection
+            'redis_password' => '', // Timeout for Redis connection
+            'redis_persistent' => false, // Persistent connection to Redis?
+            'redis_database' => 0, // Database number for Redis
             'redis_prefix' => 'session:', // For Redis
             'file_driver_dir' => '/app/runtime/SessionDriverFile', // Directory setting for storing SessionDriverFile
             'file_driver_dir2' => '/app/runtime/SessionDriverFile2', // Directory setting for storing SessionDriverFile2
