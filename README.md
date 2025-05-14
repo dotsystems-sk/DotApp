@@ -74,7 +74,7 @@ The latest release, **version 1.7**, introduces significant improvements to the 
 
 - **NEW**: Added `DB` facade, an alias for `$dotApp->db`. Use `DB::` instead of `$dotApp->db->` for a cleaner and more elegant syntax when performing database operations like queries, schema management, or transactions.  
   ```php
-  DB::driver('pdo', $dotApp);
+  DB::driver('pdo');
   DB::q(function ($qb) {
       $qb->select('*')->from('users')->where('id', '=', 1);
   })->first();
@@ -83,6 +83,14 @@ The latest release, **version 1.7**, introduces significant improvements to the 
           $table->id();
           $table->string('title');
       });
+  });
+
+  // Best Practice: When creating shareable modules, it’s recommended to use DB::module() or DB::module(<return_type>) because this approach automatically loads settings from the configuration and applies the appropriate driver. This ensures the module works regardless of the user’s preferred database settings. In contrast, explicitly specifying DB::driver('pdo') will only work if the user has configured the PDO driver.
+  DB::module("RAW") // or "ORM"
+  ->q(function ($qb) use ($token) {
+      $qb
+      ->select('user_id', Config::get("db","prefix").'users_rmtokens')
+      ->where('token','=',$token);
   });
   ```
 
