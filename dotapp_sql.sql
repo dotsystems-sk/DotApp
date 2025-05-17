@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS `dotapp_users` (
   `created_at` timestamp NOT NULL,
   `updated_at` timestamp NOT NULL,
   `last_logged_at` timestamp NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Tabulky s uzivatelmi modulu users';
 
 
