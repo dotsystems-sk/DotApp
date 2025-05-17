@@ -29,6 +29,10 @@ class AuthObj {
         }
 
         // Načítaj existujúce autentifikačné dáta z relácie, ak existujú
+        $this->authData = $this->dsm->get("_request.auth") ?? $this->resetAuthData();
+    }
+
+    private function resetAuthData() {
         $this->authData = $this->dsm->get("_request.auth") ?? [
             'logged' => false,
             'user_id' => null,
@@ -40,8 +44,12 @@ class AuthObj {
             'last_activity' => null,
             'session_id' => null,
             'attributes' => [],
-            'permissions'  => []
+            'permissions'  => [],
+            'tfa' => null, // 2 factor TOTP
+            'tfa_sms' => null, // 2 factor SMS
+            'tfa_email' => null, // 2 factor Email
         ];
+        return $this->authData;
     }
 
     /**
@@ -99,6 +107,30 @@ class AuthObj {
         return $this->authData['logged_stage'];
     }
 
+    public function tfaTotp() {
+        if ($this->loggedStage() == 2) {
+            return TOTP::generate($this->authData['tfa']);
+        } else {
+            return null;
+        }
+    }
+
+    public function tfaSms() {
+        if ($this->loggedStage() == 2) {
+            return TOTP::generate($this->authData['tfa_sms']);
+        } else {
+            return null;
+        }
+    }
+
+    public function tfaEmail() {
+        if ($this->loggedStage() == 2) {
+            return TOTP::generate($this->authData['tfa_email']);
+        } else {
+            return null;
+        }
+    }
+
     public function userId() {
         return $this->authData['user_id'];
     }
@@ -115,7 +147,28 @@ class AuthObj {
         return $this->authData['token'];
     }
 
-    public function login($data,$rememberMe = false,$fromRM = false) {
+    public function lastLogin() {
+        return $this->authData['last_login'];
+    }
+
+    public function lastActivity() {
+        return $this->authData['last_activity'];
+    }
+
+    public function attributes() {
+        return $this->authData['attributes'];
+    }
+
+    public function permissions() {
+        return $this->authData['permissions'];
+    }
+
+    public function createUser($username, $password, $email = null) {
+        // $qb->insert(Config::get("db","prefix").'users_rmtokens', ['user_id' => $this->authData['user_id'], 'token' => $rmtoken, 'expires_at' => $zivotnost]);
+
+    }    
+
+    public function login($data, $rememberMe = false, $fromRM = false) {
         if (Config::session("rm_always_use") === true) $fromRM = true;
         $reply = [];
         $reply['logged'] = false;
@@ -128,7 +181,14 @@ class AuthObj {
             Ak pouzivame vstavane tabulky DOT HUB-u, tak tato funkcia je plne funkcna a pouzitelna.
             Uzivatel si moze uz sam robit modul, ktory bude prihlasovat a nie je odkazany na modul users.
         */
+        $email = $data['email'] ?? null;
         $username = $data['username'] ?? null;
+        if ($email && $username) {
+            $reply['logged'] = false;
+            $reply['error'] = 5;
+            $reply['error_txt'] = "Both email and username are specified! Please specify only one!";
+            return $reply;
+        }
         $passwordHash = $data['password'] ?? $data['passwordHash'] ?? null;
         $stage = $data['stage'] ?? null;
         $authCode = $data['authCode'] ?? null;
@@ -158,14 +218,22 @@ class AuthObj {
             $firewallCheckOk = true;
             // Ideme sa prihalsovat
             DB::module("ORM")
-                ->q(function ($qb) use ($username) {
-                    $qb
-                    ->select('*', 'erp_users')
-                    ->where('username','=',$username);
+                ->q(function ($qb) use ($username,$email) {
+                    if ($username) {
+                        $qb
+                        ->select('*', 'erp_users')
+                        ->where('username','=',$username);
+                    }             
+                    if ($email) {
+                        $qb
+                        ->select('*', 'erp_users')
+                        ->where('email','=',$email);
+                    }       
                 })
                 ->execute(
-                    function ($result, $db, $debug) use (&$loginData,$checkIp, &$firewallCheckOk, &$reply, &$data) {
+                    function ($result, $db, $debug) use (&$loginData,$checkIp, &$firewallCheckOk, &$reply, &$data, &$fromRM) {
                         if ($result === null) {
+                            $this->resetAuthData();
                             $reply['logged'] = false;
                             $reply['error'] = 3;
                             $reply['error_txt'] = "User not found !";
@@ -178,7 +246,7 @@ class AuthObj {
 
                             // Popriesit na requeste ze ak je uzivatel prihalseny a cookies session id nie je zhodny so session_id tak autologin
 
-                            if ($user->get('2fa_firewall') == 1) {
+                            if ($user->get('tfa_firewall') == 1) {
                                 $firewallRules = $user->hasMany('erp_users_firewall', 'user_id', 'id', function ($qb) {
                                     $qb
                                     ->where('active','=','1')
@@ -201,6 +269,7 @@ class AuthObj {
 
                             // Nepokracujeme ak sme nepresli cez firewall
                             if (!$firewallCheckOk) {
+                                $this->resetAuthData();
                                 $reply['logged'] = false;
                                 $reply['error'] = 1;
                                 $reply['error_txt'] = "Firewall rule blocked login.";
@@ -214,6 +283,7 @@ class AuthObj {
                                 if ($data['passwordHash'] == $user->password) $passwordIsCorrect = true;
                             } 
                             if ($passwordIsCorrect === false) {
+                                $this->resetAuthData();
                                 $reply['logged'] = false;
                                 $reply['error'] = 2;
                                 $reply['error_txt'] = "Incorrect password";
@@ -227,8 +297,17 @@ class AuthObj {
                             $reply['logged'] = true;
 
                             /* Vyplname AUTH data */
-                            if ($user->get('2fa_auth') == 1 && $fromRM === false) {
+                            if ( ( $user->get('tfa_auth') || $user->get('tfa_sms') || $user->get('tfa_email') ) == 1 && $fromRM === false) {
                                 $this->authData['logged_stage'] = 2;
+                                if ($user->get('tfa_auth') == 1) {
+                                    $this->authData['tfa'] = $user->get('tfa_auth_secret');
+                                }
+                                if ($user->get('tfa_sms') == 1) {
+                                    $this->authData['tfa_sms'] = rand(100000, 999999);
+                                } 
+                                if ($user->get('tfa_auth') == 1) {
+                                    $this->authData['tfa_email'] = rand(100000, 999999);
+                                } 
                             } else {
                                 $this->authData['logged_stage'] = 1;
                                 $this->authData['last_login'] = time();
@@ -246,11 +325,15 @@ class AuthObj {
                                     $qb->Select('*', 'erp_users_rights_list')
                                     ->WhereIn('id', $rightIds)
                                     ->andWhere('active', '=', 1);
-                                })->execute(function ($result) use (&$rightDetails) {
+                                })->execute(function ($result) use (&$rightDetails,&$reply) {
                                     $rightDetails = $result;
+                                }, function($error, $db, $debug) {
+                                    $this->resetAuthData();
+                                    $reply['logged'] = false;
+                                    $reply['error'] = 4;
+                                    $reply['error_txt'] = "Problem with fetching user rights.";
                                 });
 
-                            $rightDetails = $rightDetails;
                             $permissions = [];
                             if (!empty($rightDetails)) {
                                 foreach ($rightDetails as $right) {
@@ -325,9 +408,8 @@ class AuthObj {
                     'samesite' => Config::session("samesite")
                 ]);
             }
+            $this->lock();
         }
-
-        $this->lock();
         return $reply;
     }
 

@@ -113,6 +113,18 @@ class DotApp {
             self::$dotAppForStatic = $dotapp;
         }        
     }
+
+    public function consumption() {
+        $consumption = array();
+        $consumption['start_memory'] = $this->consumption['start_memory'];
+        $consumption['start_time'] = $this->consumption['start_time'];
+        $consumption['end_memory'] = memory_get_usage();
+        $consumption['end_time'] = microtime(true);
+        $consumption['execution_time'] = $consumption['end_time'] - $consumption['start_time'];
+        $consumption['memory_usage'] = $this->formatBytes($consumption['end_memory'] - $consumption['start_memory']);
+        $consumption['memory_usage_peak'] = $this->formatBytes(memory_get_peak_usage());
+        return $consumption;
+    }
 	
 	function __construct($custom_key = "") {
         Config::set("app","name_hash",hash('sha256',hash('sha256',Config::get("app","name"))));

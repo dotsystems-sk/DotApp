@@ -12,6 +12,9 @@ use \Dotsystems\App\Parts\RequestObj;
 class Auth extends Facade {
     protected static $component = 'auth';
     protected static $allowedMethods = [
+        'tfaTotp',
+        'tfaSms',
+        'tfaEmail',
         'logged',
         'isLogged',
         'loggedStage',

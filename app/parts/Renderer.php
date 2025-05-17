@@ -137,6 +137,14 @@ class Renderer {
             'publicData' => 'This is just part of dotapp. Nothing to see !'
         ];
     }
+
+    public static function new() {
+        return new self();
+    }
+
+    public static function add($name,$renderer) {
+        return $this->dotApp->customRenderer->addRenderer($name,$renderer);
+    }
 	
 	public function addRenderer($name,$renderer) {
         $this->dotApp->customRenderer->addRenderer($name,$renderer);

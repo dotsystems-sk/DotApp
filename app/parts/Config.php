@@ -42,9 +42,9 @@ class Config {
         'databases' => [
         ],
         'db' => [
-            'prefix' => 'erp_', // Predpona v databaze
-            'driver' => 'mysqli', // Nazov default drivera zvoleneho uzivatelom
-            'maindb' => 'main' // Nazov hlavnej databazy ak si ju uzivatel pomenoval inak nez main
+            'prefix' => 'dotapp_', // Predpona v databaze
+            'driver' => 'pdo', // Nazov default drivera zvoleneho uzivatelom
+            'maindb' => 'main' // Nazov hlavnej databazy ak si ju uzivatel pomenoval inak nez main, moduly si to nacitaju
         ],
         'dotapp' => [
             'version' => '1.6',
@@ -77,7 +77,14 @@ class Config {
             'redis_prefix' => 'session:', // For Redis
             'file_driver_dir' => '/app/runtime/SessionDriverFile', // Directory setting for storing SessionDriverFile
             'file_driver_dir2' => '/app/runtime/SessionDriverFile2', // Directory setting for storing SessionDriverFile2
-        ]
+        ],
+        'totp' => [
+            'issuer' => 'DotApp',
+            'algorithm' => 'SHA256',
+            'digits' => 6,
+            'period' => 30,
+        ],
+        'modules' => []
     ];
 
     private static $sessionDrivers = [];
@@ -109,6 +116,14 @@ class Config {
             self::$settings['db'][$key] = $value;
         }        
     }
+
+    public static function totp($key,$value=null) {
+        if ($value === null) {
+            return self::$settings['totp'][$key] ?? null;
+        } else {
+            self::$settings['totp'][$key] = $value;
+        }        
+    }
 	
 	public static function app($key,$value=null) {
         if ($value === null) {
@@ -130,6 +145,17 @@ class Config {
         } else {
             if (!isSet(self::$settings[$settingName])) self::$settings[$settingName] = [];
             if ($key===null) self::$settings[$settingName] = $value; else self::$settings[$settingName][$key] = $value;
+        }        
+    }
+
+    public static function module($moduleName,$key,$value=null) {
+        if ($value === null) {
+            // Getter
+            return self::$settings['modules'][$moduleName]?? null;
+        } else {
+            // Setter
+            if (!isset(self::$settings['modules'][$moduleName])) self::$settings['modules'][$moduleName] = [];
+            self::$settings['modules'][$moduleName] = $value;            
         }        
     }
 

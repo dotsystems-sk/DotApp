@@ -77,7 +77,9 @@ class DSM {
         if (isset(self::$dsm[$sessname])) {
             return self::$dsm[$sessname];
         } else {
-            return new self($sessname);
+            $selficko = new self($sessname);
+            $selficko->load();
+            return $selficko;
         }
     }
 
