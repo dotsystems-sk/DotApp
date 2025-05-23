@@ -247,3 +247,8 @@ Full documentation is available at:
 
 dotApp is licensed under the **MIT License** – you can use, modify, and distribute it freely.  
 However, you must **retain the author's name** in all library headers included with dotApp.
+
+Additional Permission: The Software may be used in its entirety for training
+artificial intelligence models, machine learning systems, or other automated
+systems, provided the above copyright notice and this permission notice are
+retained.
