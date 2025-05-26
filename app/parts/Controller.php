@@ -117,6 +117,7 @@ abstract class Controller {
             'publicData' => 'This is just part of dotapp. Nothing to see !'
         ];
     }
+
 }
 
 ?>

@@ -83,7 +83,7 @@ class RouterObj {
         $this->patternCache = array();
         $this->emptyChain = $this->routeChain(false,"");
         $this->match_cache_maxsize = 100;
-        $this->match_cache_use = false;
+        $this->match_cache_use = Config::router('match_cache');
         $this->hooks = array();
         $this->match_cache_file = "";
         $this->match_cache = array();

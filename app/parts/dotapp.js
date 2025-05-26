@@ -165,7 +165,184 @@
         }
     }
 
+    class DotAppValidation {
+
+        isEmail(text) {
+            if (typeof text !== 'string') return false;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(text);
+        }
+
+        isRequired(text) {
+            return typeof text === 'string' && text.trim().length > 0;
+        }
+
+        isNumber(value) {
+            return typeof value === 'number' && !isNaN(value);
+        }
+
+        isInteger(value) {
+            return Number.isInteger(value);
+        }
+
+        isInRange(value, min, max) {
+            return typeof value === 'number' && !isNaN(value) && value >= min && value <= max;
+        }
+
+        isMinLength(text, min) {
+            return typeof text === 'string' && text.trim().length >= min;
+        }
+
+        isMaxLength(text, max) {
+            return typeof text === 'string' && text.trim().length <= max;
+        }
+
+        isUrl(text) {
+            if (typeof text !== 'string') return false;
+            const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+            return urlRegex.test(text);
+        }
+
+        isAlpha(text) {
+            if (typeof text !== 'string') return false;
+            return /^[a-zA-Z]+$/.test(text);
+        }
+
+        isAlphanumeric(text) {
+            if (typeof text !== 'string') return false;
+            return /^[a-zA-Z0-9]+$/.test(text);
+        }
+
+        isStrongPassword(text, special = false) {
+            if (typeof text !== 'string') return false;
+            const baseRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+            const specialRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;            
+            return special ? specialRegex.test(text) : baseRegex.test(text);
+        }
+
+        isPhoneNumber(text) {
+            if (typeof text !== 'string') return false;
+            const phoneRegex = /^\+?[\d\s-]{9,}$/;
+            return phoneRegex.test(text);
+        }
+
+        isDate(text) {
+            if (typeof text !== 'string') return false;
+            return !isNaN(Date.parse(text));
+        }
+
+        isOneOf(value, allowedValues) {
+            return allowedValues.includes(value);
+        }
+
+        isJson(text) {
+            if (typeof text !== 'string') return false;
+            try {
+                JSON.parse(text);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        isUsername(text, minLength = 3, maxLength = 20, allowDash = false, allowDot = false) {
+            if (typeof text !== 'string') return false;
+
+            // Základný regex: písmená, čísla, podčiarknik
+            let usernameRegex = /^[a-zA-Z0-9_]+$/;
+
+            // Ak sú povolené pomlčky alebo bodky, uprav regex
+            if (allowDash && allowDot) {
+                usernameRegex = /^[a-zA-Z0-9_.-]+$/;
+            } else if (allowDash) {
+                usernameRegex = /^[a-zA-Z0-9_-]+$/;
+            } else if (allowDot) {
+                usernameRegex = /^[a-zA-Z0-9_.]+$/;
+            }
+
+            // Kontrola dĺžky a regexu
+            return (
+                text.length >= minLength &&
+                text.length <= maxLength &&
+                usernameRegex.test(text) &&
+                // Voliteľná kontrola: žiadne podčiarkniky, pomlčky ani bodky na začiatku/konci
+                !/^[_.-]/.test(text) &&
+                !/[_.-]$/.test(text)
+            );
+        }
+
+        isBoolean(value) {
+            return typeof value === 'boolean';
+        }
+
+        isCreditCard(text) {
+            if (typeof text !== 'string') return false;
+            const cleaned = text.replace(/\D/g, '');
+            if (!/^\d{13,19}$/.test(cleaned)) return false;
+            let sum = 0;
+            let isEven = false;
+            for (let i = cleaned.length - 1; i >= 0; i--) {
+                let digit = parseInt(cleaned[i]);
+                if (isEven) {
+                    digit *= 2;
+                    if (digit > 9) digit -= 9;
+                }
+                sum += digit;
+                isEven = !isEven;
+            }
+            return sum % 10 === 0;
+        }
+
+        isHexColor(text) {
+            if (typeof text !== 'string') return false;
+            return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(text);
+        }
+
+        isIpAddress(text) {
+            if (typeof text !== 'string') return false;
+            const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+            return ipv4Regex.test(text) || ipv6Regex.test(text);
+        }
+
+        isUuid(text) {
+            if (typeof text !== 'string') return false;
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text);
+        }
+
+        isNotEmptyArray(value) {
+            return Array.isArray(value) && value.length > 0;
+        }
+
+        isValidFileName(text) {
+            if (typeof text !== 'string') return false;
+            return /^[a-zA-Z0-9._-]+$/.test(text) && !/^\./.test(text) && !/\/|\\|:|\*|\?|"|<|>|\|/.test(text);
+        }
+
+        isPositiveNumber(value) {
+            return typeof value === 'number' && !isNaN(value) && value > 0;
+        }
+
+        isMatchingRegex(text, regex) {
+            if (typeof text !== 'string' || !(regex instanceof RegExp)) return false;
+            return regex.test(text);
+        }
+
+        isUniqueInArray(array, key = null) {
+            if (!Array.isArray(array)) return false;
+            const values = key ? array.map(item => item[key]) : array;
+            return values.length === new Set(values).size;
+        }
+
+        isSet(value) {
+            return value !== "" && value != null && typeof value !== "undefined" && (!value.jquery || value.length > 0);
+        }
+
+    }
+
     class DotApp {
+        validator = new DotAppValidation();
+        instancia = 0;
         #bridgeelements = new WeakMap();
         #bridges = {};
         #routes = {};
@@ -178,6 +355,14 @@
         #forms = new Map(); // New private property to store forms and their hooks
 
         constructor(selector) {
+            const now = new Date();
+            const time = now.toLocaleTimeString('sk-SK', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false // Pre 24-hodinový formát
+            });
+
             this.#elements = [];
             this.#lastResult = null;
             this.#lastVariable = null;
@@ -190,18 +375,20 @@
             }
             this.#initializeElements();
 
-            if (!selector && !localStorage.getItem('ckey')) {
+            if (selector === undefined && !localStorage.getItem('ckey')) {
                 this.#exchange();
             }
 
-            if (!selector) {
+            if (selector === undefined) {
+                this.instancia = 1;
                 this.#bridgeinputs();
                 this.#_dotlink();
                 this.#_protectMethods();
                 this.#initializeBridgeElements();
                 this.#initializeDataBindings();
                 this.#overtakeForms();
-                window.dispatchEvent(new Event('dotapp'));
+            } else {
+                this.instancia = 0;
             }
         }
 
@@ -813,6 +1000,13 @@
             });
 
             return this; // Setter vracia this pre reťazenie
+        }
+
+        removeAttr(name) {
+            this.#elements.forEach(element => {
+                element.removeAttribute(name);
+            });
+            return this;
         }
         
         attr(name, value) {
@@ -1562,7 +1756,7 @@
             this.#lastResult = result;
             return result; // Vracia index
         }
-        
+      
         on(event, handler) {
             // Globálne udalosti (napr. route.onchange)
             if (!this.#elements.length && typeof event === 'string' && !event.includes(':')) {
@@ -1932,6 +2126,7 @@
                         }
                         instance.hooks.before.push(fn);
                         return instance.chain;
+                        this.#forms = this.#forms;
                     },
                     after: (fn) => {
                         if (typeof fn !== 'function') {
@@ -1939,6 +2134,7 @@
                         }
                         instance.hooks.after.push(fn);
                         return instance.chain;
+                        this.#forms = this.#forms;
                     },
                     onError: (fn) => {
                         if (typeof fn !== 'function') {
@@ -1946,6 +2142,7 @@
                         }
                         instance.hooks.onError.push(fn);
                         return instance.chain;
+                        this.#forms = this.#forms;
                     }
                 }
             };
@@ -1959,64 +2156,120 @@
             return instance.chain;
         }
 
+        #foRmToForm() {
+            document.querySelectorAll('fo-rm').forEach(foRm => {
+                // Create new <form> element
+                const form = document.createElement('form');
+                
+                // Copy attributes from <fo-rm> to <form>
+                Array.from(foRm.attributes).forEach(attr => {
+                    form.setAttribute(attr.name, attr.value);
+                });
+                
+                // Copy content (children) from <fo-rm> to <form>
+                form.innerHTML = foRm.innerHTML;
+                
+                // Check if any input inside fo-rm has focus
+                const focusedInput = foRm.querySelector('input:focus');
+                let focusedInputIndex = null;
+                
+                if (focusedInput) {
+                    // Find the index of the focused input among all inputs in fo-rm
+                    const inputs = foRm.querySelectorAll('input');
+                    focusedInputIndex = Array.from(inputs).indexOf(focusedInput);
+                }
+                
+                // Replace <fo-rm> with <form>
+                foRm.parentNode.replaceChild(form, foRm);
+                
+                // Restore focus to the corresponding input in the new form
+                if (focusedInputIndex !== null) {
+                    const newInputs = form.querySelectorAll('input');
+                    if (newInputs[focusedInputIndex]) {
+                        newInputs[focusedInputIndex].focus();
+                    }
+                }
+            });
+        }
+
         #overtakeForms() {
+            this.#foRmToForm();
             const forms = document.querySelectorAll('form:not([data-dotapp-nojs])');
-            const thisInside = this;
-    
+
             forms.forEach(form => {
-                form.addEventListener('submit', function (event) {
+                form.addEventListener('submit', (event) => {
                     event.preventDefault();
-    
+
                     const method = form.getAttribute('method') || 'POST';
                     const action = form.getAttribute('action') || window.location.href;
-    
-                    const formData = new FormData();
-                    const inputs = form.querySelectorAll('input, select, textarea');
-    
-                    inputs.forEach(input => {
-                        const name = input.name;
-                        if (!name) return;
-    
-                        if (input.type === 'file') {
-                            Array.from(input.files).forEach(file => {
-                                formData.append(name, file);
-                            });
-                        } else if (input.type === 'checkbox' || input.type === 'radio') {
-                            if (input.checked) {
-                                formData.append(name, input.value || 'on');
-                            }
-                        } else if (input.tagName === 'SELECT' && input.multiple) {
-                            Array.from(input.selectedOptions).forEach(option => {
-                                formData.append(name, option.value);
-                            });
-                        } else {
-                            if (input.value) {
-                                formData.append(name, input.value);
-                            }
-                        }
-                    });
-    
-                    const formDataObj = Object.fromEntries(formData);
-    
-                    const hooks = thisInside.#forms.get(form);
-                    if (hooks && hooks.before) {
-                        hooks.before.forEach(fn => fn(formDataObj, form));
-                    }
-    
-                    thisInside.load(action, method, formDataObj, 
-                        (response) => {
-                            if (hooks && hooks.after) {
-                                hooks.after.forEach(fn => fn(formDataObj, response, form));
-                            }
-                        }, 
-                        (status, error) => {
-                            if (hooks && hooks.onError) {
-                                hooks.onError.forEach(fn => fn(formDataObj, status, error, form));
-                            }
-                        }
-                    );
+
+                    this.#handleFormSubmission(form, method, action);
                 });
             });
+        }
+
+        #handleFormSubmission(form, method = 'POST', action = window.location.href) {
+            let result = null;
+
+            // Spracovanie dát formulára
+            const formData = new FormData();
+            const inputs = form.querySelectorAll('input, select, textarea');
+
+            inputs.forEach(input => {
+                const name = input.name;
+                if (!name) return;
+
+                if (input.type === 'file') {
+                    Array.from(input.files).forEach(file => {
+                        formData.append(name, file);
+                    });
+                } else if (input.type === 'checkbox' || input.type === 'radio') {
+                    if (input.checked) {
+                        formData.append(name, input.value || 'on');
+                    }
+                } else if (input.tagName === 'SELECT' && input.multiple) {
+                    Array.from(input.selectedOptions).forEach(option => {
+                        formData.append(name, option.value);
+                    });
+                } else {
+                    if (input.value) {
+                        formData.append(name, input.value);
+                    }
+                }
+            });
+
+            const formDataObj = Object.fromEntries(formData);
+
+            // Volanie before hookov
+            const hooks = this.#forms.get(form);
+            if (hooks && hooks.before) {
+                for (const fn of hooks.before) {
+                    const resultBefore = fn(formDataObj, form);
+                    if (resultBefore instanceof DotAppHalt) {
+                        return; // Haltneme vykonavanie
+                    }
+                }
+            }
+
+            // Odoslanie cez load
+            this.load(action, method, formDataObj,
+                (response) => {
+                    if (hooks && hooks.after) {
+                        hooks.after.forEach(fn => fn(formDataObj, response, form));
+                    }
+                    result = true;
+                    this.#lastResult = result;
+                },
+                (status, error) => {
+                    if (hooks && hooks.onError) {
+                        hooks.onError.forEach(fn => fn(formDataObj, status, error, form));
+                    }
+                    result = false;
+                    this.#lastResult = result;
+                }
+            );
+
+            return result;
         }
 
         /*
@@ -2295,6 +2548,239 @@
             });
         }
 
+        // Praca s 2FA vstupmi...
+        twoFactor(elementOrCallback, callback, settings) {
+            // Defaultné nastavenia
+            const defaults = {
+                allowLetters: false,
+                length: 6,
+                uppercase: true,
+                autoSubmit: true,
+                invalidClass: 'invalid',
+                pattern: null
+            };
+
+            // Getter: ak nie sú zadané žiadne argumenty
+            if (arguments.length === 0) {
+                const inputs = this.#elements;
+                if (!inputs.length) {
+                    this.#lastResult = false;
+                    return false;
+                }
+
+                // Overenie, či sú všetky inputy vyplnené a platné
+                const pattern = defaults.pattern || (defaults.allowLetters ? /^[A-Za-z0-9]$/ : /^[0-9]$/);
+                const isComplete = inputs.every(input => input.value && pattern.test(input.value));
+                if (!isComplete) {
+                    this.#lastResult = false;
+                    return false;
+                }
+
+                // Vrátenie spojeného kódu
+                const code = inputs.map(input => input.value).join('');
+                this.#lastResult = code;
+                return code;
+            }
+
+            // Setter: spracovanie argumentov
+            let element = null;
+            let actualCallback = callback;
+            let actualSettings = settings;
+
+            if (typeof elementOrCallback === 'function') {
+                actualCallback = elementOrCallback;
+                actualSettings = callback || {};
+            } else {
+                element = elementOrCallback;
+                actualSettings = settings || {};
+            }
+
+            const config = { ...defaults, ...actualSettings };
+
+            // Získanie inputov
+            const inputs = element ? this.find(element).#elements : this.#elements;
+
+            // Overenie, či existujú inputy
+            if (!inputs.length) {
+                console.warn('No inputs found for the given selector or instance:', element);
+                return this;
+            }
+
+            // Dynamická dĺžka podľa počtu inputov, ak nie je zadaná
+            const codeLength = config.length || inputs.length;
+
+            // Overenie počtu inputov
+            if (inputs.length !== codeLength) {
+                console.warn(`Expected ${codeLength} inputs, but found ${inputs.length}`);
+                return this;
+            }
+
+            // Nastavenie regulárneho výrazu
+            const pattern = config.pattern || (config.allowLetters ? /^[A-Za-z0-9]$/ : /^[0-9]$/);
+
+            // Funkcia na získanie aktuálneho kódu
+            const getCode = () => {
+                return inputs.map(input => input.value).join('');
+            };
+
+            // Funkcia na validáciu a spracovanie vstupu
+            const validateInput = (input, value) => {
+                if (config.uppercase) {
+                    value = value.toUpperCase();
+                }
+                return pattern.test(value) ? value : null;
+            };
+
+            // Funkcia na posun fokusu
+            const focusNext = (currentIndex) => {
+                if (currentIndex < inputs.length - 1) {
+                    inputs[currentIndex + 1].focus();
+                }
+            };
+
+            const focusPrev = (currentIndex) => {
+                if (currentIndex > 0) {
+                    inputs[currentIndex - 1].focus();
+                }
+            };
+
+            // Funkcia na overenie, či sú všetky inputy vyplnené
+            const isComplete = () => {
+                return inputs.every(input => input.value && pattern.test(input.value));
+            };
+
+            // Hlavná inicializácia inputov
+            inputs.forEach((input, index) => {
+                // Odstránenie predchádzajúcich event listenerov
+                const newInput = input.cloneNode(true);
+                input.parentNode.replaceChild(newInput, input);
+                inputs[index] = newInput;
+
+                // Event listener pre keydown
+                newInput.addEventListener('keydown', (e) => {
+                    const currentValue = e.target.value;
+
+                    // Backspace: zmazať a presunúť dozadu
+                    if (e.key === 'Backspace' && !currentValue && index > 0) {
+                        e.preventDefault();
+                        inputs[index - 1].value = '';
+                        focusPrev(index);
+                    }
+
+                    // Delete: zmazať aktuálne pole
+                    if (e.key === 'Delete') {
+                        e.preventDefault();
+                        e.target.value = '';
+                        this.find(element || '.two-fa-inputs input').removeClass(config.invalidClass);
+                    }
+
+                    // Šípka vľavo
+                    if (e.key === 'ArrowLeft' && index > 0) {
+                        if (inputs[index - 1].value) {
+                            e.preventDefault();
+                            focusPrev(index);
+                        }
+                    }
+
+                    // Šípka vpravo
+                    if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+                        if (inputs[index + 1].value) {
+                            e.preventDefault();
+                            focusNext(index);
+                        }
+                    }
+                });
+
+                // Event listener pre input
+                newInput.addEventListener('input', (e) => {
+                    let value = e.target.value;
+                    if (!value) return;
+
+                    // Validácia vstupu
+                    const validValue = validateInput(e.target, value);
+                    if (validValue) {
+                        e.target.value = validValue;
+                        this.find(element || '.two-fa-inputs input').removeClass(config.invalidClass);
+
+                        // Presun na ďalší input
+                        if (index < inputs.length - 1) {
+                            focusNext(index);
+                        }
+
+                        // Spustenie callbacku, ak je vyplnené
+                        if (isComplete() && config.autoSubmit && typeof actualCallback === 'function') {
+                            actualCallback(getCode());
+                        }
+                    } else {
+                        e.target.value = '';
+                        this.find(element || '.two-fa-inputs input').addClass(config.invalidClass);
+                    }
+                });
+
+                // Event listener pre paste
+                newInput.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const pastedData = e.clipboardData.getData('text').trim();
+                    if (pastedData.length <= inputs.length) {
+                        for (let i = 0; i < pastedData.length; i++) {
+                            const char = pastedData[i];
+                            if (validateInput(inputs[i], char)) {
+                                inputs[i].value = config.uppercase ? char.toUpperCase() : char;
+                            } else {
+                                inputs[i].value = '';
+                                this.find(element || '.two-fa-inputs input').addClass(config.invalidClass);
+                                return;
+                            }
+                        }
+                        this.find(element || '.two-fa-inputs input').removeClass(config.invalidClass);
+
+                        // Presun fokusu na posledný vyplnený input
+                        const lastFilledIndex = Math.min(pastedData.length - 1, inputs.length - 1);
+                        inputs[lastFilledIndex].focus();
+
+                        // Spustenie callbacku, ak je vyplnené
+                        if (isComplete() && config.autoSubmit && typeof actualCallback === 'function') {
+                            actualCallback(getCode());
+                        }
+                    }
+                });
+            });
+
+            return this; // Reťazenie pre setter
+        }
+
+        submit(pushElements) {
+            if (this.instancia === 1) {
+                if (pushElements === undefined) return this;
+
+                const firstElement = pushElements[0];
+                let result = null;
+
+                if (firstElement.tagName === 'FORM') {
+                    if (!firstElement.hasAttribute('data-dotapp-nojs')) {
+                        // Preberáme kontrolu cez handleFormSubmission
+                        const method = firstElement.getAttribute('method') || 'POST';
+                        const action = firstElement.getAttribute('action') || window.location.href;
+                        result = this.#handleFormSubmission(firstElement, method, action);
+                    } else {
+                        // Natívne odoslanie
+                        firstElement.submit();
+                        result = true;
+                    }
+                }
+
+                this.#lastResult = result;
+                return this;
+            } else {
+                if (!this.#elements.length) {
+                    this.#lastResult = null;
+                    return this;        
+                } else {
+                    return window.$dotapp().submit(this.#elements);
+                }
+            }             
+        }
+
     }
     // Instantiate the DotApp class globally
     const mainDotApp = new DotApp();
@@ -2306,8 +2792,10 @@
         }
         return new DotApp(selector);
     };
+    new DotApp("form").removeClass("dotapp-pending");
     // Assign to the global object
     global.$dotapp = $dotAppDispatcher;
+    window.dispatchEvent(new Event('dotapp'));
 
 })(window);
 

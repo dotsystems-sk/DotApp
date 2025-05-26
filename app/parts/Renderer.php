@@ -920,23 +920,23 @@ class Renderer {
     private function processFormSecurityTags($html) {
         // Regex to match {{ formName(name) }} tags
         $pattern = '/\{\{\s*formName\(([^)]+)\)\s*\}\}/';
-    
+        
         return preg_replace_callback($pattern, function ($matches) use ($html) {
             $formName = trim($matches[1], '"\''); // Extract form name, remove quotes if present
             $originalTag = $matches[0]; // Store the original tag to return if processing fails
-    
-            // Regex to find the enclosing <form> tag, making action optional
-            $formPattern = '/<form\s+[^>]*?(?:action\s*=\s*["\']([^"\']+)["\'])?[^>]*method\s*=\s*["\']([^"\']+)["\'][^>]*>.*?\{\{\s*formName\('.preg_quote($formName, '/').'\)\s*\}\}.*?(<\/form>)/is';
-    
+        
+            // Regex to find the enclosing <form> or <fo-rm> tag, making action optional
+            $formPattern = '/<(form|fo-rm)\s+[^>]*?(?:action\s*=\s*["\']([^"\']+)["\'])?[^>]*method\s*=\s*["\']([^"\']+)["\'][^>]*>.*?\{\{\s*formName\('.preg_quote($formName, '/').'\)\s*\}\}.*?(<\/\1>)/is';
+        
             if (preg_match($formPattern, $html, $formMatches)) {
                 // Use the action from the form, or fall back to the current request path
-                $action = !empty($formMatches[1]) ? $formMatches[1] : $this->dotApp->router->request->getPath();
-                $method = strtoupper($formMatches[2]);
+                $action = !empty($formMatches[2]) ? $formMatches[2] : $this->dotApp->router->request->getPath();
+                $method = strtoupper($formMatches[3]);
                 $input = new Input();
                 return $input->formFunction($action, $method, $formName, $this);
             }
-    
-            // If no <form> tag is found, return the original tag
+        
+            // If no <form> or <fo-rm> tag is found, return the original tag
             return $originalTag;
         }, $html);
     }

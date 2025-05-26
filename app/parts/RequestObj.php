@@ -302,8 +302,8 @@ class RequestObj {
     }
 
     public function &data($orig = false) {
-        if (isSet($this->data) && $orig === false) return $this->data;
-        if (isSet($this->data) && $orig === true) return $this->origData;
+        if ($this->data !== null && $orig === false) return $this->data;
+        if ($this->data !== null && $orig === true) return $this->origData;
         
         $method = $this->getMethod(); // Use existing getMethod() to get the HTTP method
         $data = [];
@@ -483,8 +483,7 @@ class RequestObj {
 
     public function crcCheck() {
         // Získame dáta z metódy data()
-        $dataArray = $this->data();
-        $this->dotApp->unprotect($dataArray);
+        $dataArray = $this->data(true);
         
         // Extrahujeme 'data' a 'crc' z dát
         $data = $dataArray['data'] ?? null;
@@ -568,7 +567,7 @@ class RequestObj {
         return true;
     }
 
-    public function form($methodOrName, $nameOrSuccess, $success = null, $error = null) {
+    public function form($methodOrName, $nameOrSuccess, $success = null, $error = null, $rewriteAction = null) {
         if (func_num_args() === 2) {
             $name = $methodOrName;
             $success = $nameOrSuccess;
@@ -618,10 +617,11 @@ class RequestObj {
             }
     
             if ($name == $fnname) {
+                if ($rewriteAction !== null) $action = (string)$rewriteAction;
                 if (strtolower($method) === $this->getMethod() && ($action === $this->getPath() || $action === $this->getPath()."?".$this->reqVars)) {
                     if (!is_callable($success)) $success = $this->dotApp->stringToCallable($success);
                     if (is_callable($success)) {
-                        $success($this,$name);
+                        return $success($this,$name);
                     } else {
                         throw new \Exception("Success is not callable !");
                     }                    
@@ -631,7 +631,7 @@ class RequestObj {
             if ($error === null) throw new \Exception("Signature is invalid !");
             if (!is_callable($error)) $error = $this->dotApp->stringToCallable($error);
             if (is_callable($error)) {
-                $error($this,$name);
+                return $error($this,$name);
             } else {
                 throw new \Exception("Error callback is not callable ! Signature is also invalid !");
             }

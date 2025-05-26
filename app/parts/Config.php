@@ -87,10 +87,21 @@ class Config {
         'modules' => [],
         'bridge' => [
             'storage_limit' => 200, // Kolko zaznamov sa bude uchovavat per session
+        ],
+        'router' => [
+            'match_cache' => true,
         ]
     ];
 
     private static $sessionDrivers = [];
+
+    public static function router($key,$value=null) {
+        if ($value === null) {
+            return self::$settings['router'][$key] ?? null;
+        } else {
+            self::$settings['router'][$key] = $value;
+        }        
+    }
 
     public static function session($key,$value=null) {
         if ($value === null) {

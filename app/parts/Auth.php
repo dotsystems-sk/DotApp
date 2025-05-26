@@ -10,6 +10,7 @@ use \Dotsystems\App\Parts\RequestObj;
  * Facade for AuthObj to simplify access to authentication-related methods.
  */
 class Auth extends Facade {
+
     protected static $component = 'auth';
     protected static $allowedMethods = [
         'tfaTotp',
@@ -35,7 +36,8 @@ class Auth extends Facade {
         'setAttribute',
         'getAttribute',
         'lock',
-        'isLocked'
+        'isLocked',
+		'attributes'
     ];
 
 }

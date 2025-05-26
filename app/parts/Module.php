@@ -49,6 +49,7 @@ use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\DI;
 
 abstract class Module {
+    use StaticGetSet;
 	/*
 		Namiesto INTERFACE ideme do abstract triedy, lebo potrebujeme premenne
 	*/
@@ -297,7 +298,7 @@ abstract class Module {
 	public function get_data($name) {
 		if (isSet($this->moduledata[md5($name)])) return($this->moduledata[md5($name)]); else return(false);
 	}
-	
+    
 	abstract function initialize($dotapp);
 	
 }

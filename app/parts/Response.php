@@ -4,7 +4,6 @@ namespace Dotsystems\App\Parts;
 use Dotsystems\App\DotApp;
 
 class Response {
-
     public $dotapp;
     public $dotApp;
     public $DotApp;

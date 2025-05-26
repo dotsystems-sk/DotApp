@@ -133,7 +133,7 @@ class AuthObj {
 
     public function tfaSms() {
         if ($this->loggedStage() == 2) {
-            return TOTP::generate($this->authData['tfa_sms']);
+            return $this->authData['tfa_sms'] ?? null;
         } else {
             return null;
         }
@@ -141,7 +141,7 @@ class AuthObj {
 
     public function tfaEmail() {
         if ($this->loggedStage() == 2) {
-            return TOTP::generate($this->authData['tfa_email']);
+            return $this->authData['tfa_email'] ?? null;
         } else {
             return null;
         }
@@ -226,13 +226,12 @@ class AuthObj {
         ->q(function ($qb) use ($username,$email) {
                 if ($email === null) {
                     $qb
-                    ->select('id', 'erp_users')
+                    ->select('id', Config::get("db","prefix").'users')
                     ->where('username','=',$username);
                 } else {
                     $qb
-                    ->select('id', 'erp_users')
-                    ->where('username','=',$username)
-                    ->orWhere('email','=',$username);     
+                    ->select('id', Config::get("db","prefix").'users')
+                    ->where('email','=',$email);     
                 }            
             }
         )->execute(
@@ -254,11 +253,12 @@ class AuthObj {
             return $vysledok;
         }
 
-        DB::module("RAW")->q(function ($qb) use ($username, $email, $password) {
+        DB::module("RAW")->q(function ($qb) use ($username, $email, $password, $otherData) {
             $cu = [];
             $cu['username'] = $username;
             $cu['password'] = $this->DotApp->generatePasswordHash($password);
             if ($email) $cu['email'] = $email;
+            $cu['created_at'] = date('Y-m-d H:i:s');
             if ($otherData) $cu = array_merge($cu, $otherData);
             $qb->insert(Config::get("db", "prefix") . 'users', $cu);
         })
@@ -293,12 +293,14 @@ class AuthObj {
         if ($this->authData['logged_stage'] == 2) {
             if (isset($tfa['tfa']) && $tfa['tfa'] !== null) {
                 if ($tfa['tfa'] == Auth::tfaTotp()) {
+                    $reply['confirmed'] = true;
                     $reply['error'] = 0;
                     $this->authData['logged_stage'] = 1;
                     if ($this->authData['logged_stage'] === true || Config::session("rm_always_use") === true) $this->setRmToken();
                     return $reply;
                 } else {
                     $reply['error'] = 2;
+                    $reply['confirmed'] = false;
                     $reply['error_txt'] = "Invalid two-factor totp authentication code.";
                     return $reply;
                 }
@@ -308,9 +310,11 @@ class AuthObj {
                     $this->authData['logged_stage'] = 1;
                     if ($this->authData['logged_stage'] === true || Config::session("rm_always_use") === true) $this->setRmToken();
                     $reply['error'] = 0;
+                    $reply['confirmed'] = true;
                     return $reply;
                 } else {
                     $reply['error'] = 3;
+                    $reply['confirmed'] = false;
                     $reply['error_txt'] = "Invalid two-factor sms authentication code.";
                     return $reply;
                 }
@@ -320,18 +324,22 @@ class AuthObj {
                     $this->authData['logged_stage'] = 1;
                     if ($this->authData['rm'] === true || Config::session("rm_always_use") === true) $this->setRmToken();
                     $reply['error'] = 0;
+                    $reply['confirmed'] = true;
                     return $reply;
                 } else {
                     $reply['error'] = 4;
+                    $reply['confirmed'] = false;
                     $reply['error_txt'] = "Invalid two-factor email authentication code.";
                     return $reply;
                 }
             }
             $reply['error'] = 5;
+            $reply['confirmed'] = false;
             $reply['error_txt'] = "Two-factor authentication method not recognized.";
             return $reply;
         } else {
             $reply['error'] = 1;
+            $reply['confirmed'] = false;
             $reply['error_txt'] = "Invalid login stage.";
             return $reply;
         }
@@ -398,7 +406,7 @@ class AuthObj {
         // Prihlasujeme sa, prvy krok
         if ($this->authData['logged'] === false) {
             // Nie sme vobec prihalseny, ideme prvy krat...
-            $splnenePodmienky = $username && $passwordHash && ( $stage === 0 || $stage === null);
+            $splnenePodmienky = ($email || $username) && $passwordHash && ( $stage === 0 || $stage === null);
             if (!$splnenePodmienky) {
                 trigger_error("'username', 'password' must be set, 'stage' must be set to (int) 0 for login attempt !", E_USER_WARNING);
                 return false;
@@ -410,12 +418,12 @@ class AuthObj {
                 ->q(function ($qb) use ($username,$email) {
                     if ($username) {
                         $qb
-                        ->select('*', 'erp_users')
+                        ->select('*', Config::get("db","prefix").'users')
                         ->where('username','=',$username);
                     }             
                     if ($email) {
                         $qb
-                        ->select('*', 'erp_users')
+                        ->select('*', Config::get("db","prefix").'users')
                         ->where('email','=',$email);
                     }       
                 })
@@ -436,7 +444,7 @@ class AuthObj {
                             // Popriesit na requeste ze ak je uzivatel prihalseny a cookies session id nie je zhodny so session_id tak autologin
 
                             if ($user->get('tfa_firewall') == 1) {
-                                $firewallRules = $user->hasMany('erp_users_firewall', 'user_id', 'id', function ($qb) {
+                                $firewallRules = $user->hasMany(Config::get("db","prefix").'users_firewall', 'user_id', 'id', function ($qb) {
                                     $qb
                                     ->where('active','=','1')
                                     ->orderBy('ordering','ASC');
@@ -506,23 +514,25 @@ class AuthObj {
                                 $user->save();
                             }
 
-                            $rights = $user->hasMany('erp_users_rights', 'user_id');
+                            $rights = $user->hasMany(Config::get("db","prefix").'users_rights', 'user_id');
                             $rightIds = $rights->Pluck('right_id')->All();
 
                             $rightDetails = [];
-                            DB::module("RAW")
-                                ->q(function ($qb) use ($rightIds) {
-                                    $qb->Select('*', 'erp_users_rights_list')
-                                    ->WhereIn('id', $rightIds)
-                                    ->andWhere('active', '=', 1);
-                                })->execute(function ($result) use (&$rightDetails,&$reply) {
-                                    $rightDetails = $result;
-                                }, function($error, $db, $debug) {
-                                    $this->resetAuthData();
-                                    $reply['logged'] = false;
-                                    $reply['error'] = 4;
-                                    $reply['error_txt'] = "Problem with fetching user rights.";
-                                });
+                            if (!empty($rightIds)) {
+                                DB::module("RAW")
+                                    ->q(function ($qb) use ($rightIds) {
+                                        $qb->Select('*', Config::get("db","prefix").'users_rights_list')
+                                        ->WhereIn('id', $rightIds)
+                                        ->andWhere('active', '=', 1);
+                                    })->execute(function ($result) use (&$rightDetails,&$reply) {
+                                        $rightDetails = $result;
+                                    }, function($error, $db, $debug) {
+                                        $this->resetAuthData();
+                                        $reply['logged'] = false;
+                                        $reply['error'] = 4;
+                                        $reply['error_txt'] = "Problem with fetching user rights.";
+                                    });
+                            }
 
                             $permissions = [];
                             if (!empty($rightDetails)) {

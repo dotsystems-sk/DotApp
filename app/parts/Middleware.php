@@ -4,6 +4,7 @@ use Dotsystems\App\DotApp;
 use Response;
  
 class Middleware {
+    use StaticGetSet;
     private $storage;
     public $name;
     private $chain = null;
