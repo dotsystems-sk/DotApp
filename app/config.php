@@ -91,11 +91,4 @@ set_error_handler([$dotApp, 'errhandler']);
  *  The built-in email sender is "dotphpmailer", while SMS senders can be added as needed.
  *  You can register email senders using register_email_sender and SMS senders with register_sms_sender.
  */
-
-/*
- *  Default built-in PHP mailer service registration.
- */
-require_once __ROOTDIR__ . "/app/custom.classes/dotphpmailer.class.php";
-$dotApp->register_email_sender("dotphpmailer",new dotphpmailer($dotApp));
-
 ?>
