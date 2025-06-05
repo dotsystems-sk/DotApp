@@ -1,0 +1,99 @@
+# Nastavenie kodovania a jazyka
+AddDefaultCharset UTF-8
+DefaultLanguage sk
+
+# Pridat hlavicky pre dotapp
+<IfModule mod_headers.c>
+    Header always set X-Powered-By "dotapp; www.dotsystems.sk"
+    Header always set X-Framework "dotapp"
+</IfModule>
+
+# Kompresia suborov - mod_deflate (novsi sposob)
+<IfModule mod_deflate.c>
+    SetOutputFilter DEFLATE
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+    BrowserMatch ^Mozilla/4 gzip-only-text/html
+    BrowserMatch ^Mozilla/4\.0[678] no-gzip
+    BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+</IfModule>
+
+# Kompresia suborov - mod_gzip (starsia verzia ak neni deflate)
+<IfModule !mod_deflate.c>
+	<IfModule mod_gzip.c>
+		mod_gzip_on Yes
+		mod_gzip_dechunk Yes
+		mod_gzip_item_include file \.(html?|txt|css|js|php|pl)$
+		mod_gzip_item_include handler ^cgi-script$
+		mod_gzip_item_include mime ^text/.*
+		mod_gzip_item_include mime ^application/x-javascript.*
+		mod_gzip_item_exclude mime ^image/.*
+		mod_gzip_item_exclude rspheader ^Content-Encoding:.*gzip.*
+	</IfModule>
+</IfModule>
+
+# Povolit pristu ku vsetkemu - novsi apache
+<IfModule mod_authz_host.c>
+    Require all granted
+</IfModule>
+
+# Povolit pristu - starsi apache
+<IfModule !mod_authz_host.c>
+    Order Allow,Deny
+    Allow from all
+</IfModule>
+
+# Nastavenie typov suborov
+AddType font/woff .woff
+AddType application/font-woff2 .woff2
+AddType application/javascript .js
+AddType text/css .css
+
+# Zapnut prepisovanie url
+RewriteEngine On
+RewriteBase /
+
+# Zablokovat pristu k dotapperu
+RewriteCond %{REQUEST_URI} ^/dotapper$
+RewriteRule ^ - [F,L]
+
+# Preskocit prepis pre specificke subory
+RewriteRule ^(sitemap\.xml|robots\.txt)$ - [NC,L]
+
+# Zablokovat /app/ okrem assets v moduloch
+RewriteCond %{REQUEST_URI} !^/app/modules/([^/]+)/assets/
+RewriteCond %{REQUEST_URI} !^/app/parts/js/
+RewriteRule ^app(/|$) - [F,L]
+
+# === ASSETS SPRACOVANIE ===
+
+# Ak subor v /assets/modules/ neexistuje, skus ho nacitat z /app/modules/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^assets/modules/([^/]+)/(.*)$ /app/modules/$1/assets/$2 [L]
+
+# Specialne spracovanie len pre dotapp.js (presmerovanie na index.php)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^assets/dotapp/dotapp\.js$ index.php [NC,L]
+
+# Ak ostatné súbory v /assets/dotapp/ neexistujú (okrem dotapp.js), skús ich načítať z /app/parts/js/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/assets/dotapp/dotapp\.js$
+RewriteRule ^assets/dotapp/(.+\.js)$ /app/parts/js/$1 [NC,L]
+
+# Ak subor v /assets/ existuje, neprepisuj
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^assets/.*$ - [NC,L]
+
+# === KONIEC ASSETS SPRACOVANIA ===
+
+# Neprepisovat obrazky
+RewriteRule \.(ico|png|jpe?g|gif|svg|webp|bmp)$ - [NC,L]
+
+# Vsetky ostatne poziadavky idu na index.php, okrem specifickych vynimiek
+RewriteCond %{REQUEST_URI} !^/dotapper$
+RewriteCond %{REQUEST_URI} !^/app/modules/([^/]+)/assets/
+RewriteCond %{REQUEST_URI} !^/app/parts/js/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteRule ^.*$ index.php [NC,L]
