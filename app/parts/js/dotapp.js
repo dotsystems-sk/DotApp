@@ -343,7 +343,6 @@
     class DotApp {
         validator = new DotAppValidation();
         instancia = 0;
-        #bridgeelements = new WeakMap();
         static #functions = new WeakMap();
         #bridges = {};
         #routes = {};
@@ -373,17 +372,17 @@
             if (typeof selector === 'string') {
                 this.#elements = Array.from(document.querySelectorAll(selector));
             } else if (selector instanceof DotApp) {
-                this.#elements = selector.#elements.slice();
+                this.#elements = selector.all().slice();
             } else if (selector instanceof HTMLElement) {
                 this.#elements = [selector];
             }
+            this.#liveHandlers = new Map();
+            this.#documentHandlers = new Map();
             this.#initializeElements();
 
             if (selector === undefined && !localStorage.getItem('ckey')) {
                 this.#exchange();
             }
-
-            this.#liveHandlers = new Map();
 
             if (selector === undefined) {
                 this.instancia = 1;
@@ -401,10 +400,6 @@
 
         halt() {
             return new DotAppHalt();
-        }
-
-        getElements() {
-            return this.#elements;
         }
 
         static registerFunction(key, fn) {
@@ -605,172 +600,179 @@
             });
         }
 
+        #setupSpecialEvent(element, event, handler, attrName = null) {
+            if (event === 'bodychange') {
+                if (!element._bodyChangeInitialized) {
+                    element._bodyChangeInitialized = true;
+                    element._initialHTML = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT' ? element.value : element.innerHTML;
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
+                        element.addEventListener('change', () => {
+                            const newContent = element.value;
+                            if (newContent !== element._initialHTML) {
+                                const evt = new CustomEvent('bodychange', {
+                                    detail: { oldContent: element._initialHTML, newContent }
+                                });
+                                element._initialHTML = newContent;
+                                element.dispatchEvent(evt);
+                            }
+                        });
+                    } else {
+                        const observer = new MutationObserver(() => {
+                            const newContent = element.innerHTML;
+                            if (newContent !== element._initialHTML) {
+                                const evt = new CustomEvent('bodychange', {
+                                    detail: { oldContent: element._initialHTML, newContent }
+                                });
+                                element._initialHTML = newContent;
+                                element.dispatchEvent(evt);
+                            }
+                        });
+                        observer.observe(element, { childList: true, subtree: true, characterData: true });
+                        element._mutationObserver = observer;
+                    }
+                }
+                element.addEventListener('bodychange', (e) => {
+                    handler(element, e.detail.oldContent, e.detail.newContent);
+                });
+            } else if (event.startsWith('attrchange')) {
+                if (!element._attrChangeInitialized) {
+                    element._attrChangeInitialized = true;
+                    element._initialAttributes = {};
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach(mutation => {
+                            if (mutation.type === 'attributes') {
+                                const name = mutation.attributeName;
+                                const newValue = element.getAttribute(name) || '';
+                                const oldValue = element._initialAttributes[name] || '';
+                                if (newValue !== oldValue) {
+                                    const evt = new CustomEvent('attrchange', {
+                                        detail: { attrName: name, oldValue, newValue }
+                                    });
+                                    element._initialAttributes[name] = newValue;
+                                    element.dispatchEvent(evt);
+                                }
+                            }
+                        });
+                    });
+                    observer.observe(element, { attributes: true });
+                    element._attrObserver = observer;
+                }
+                element.addEventListener('attrchange', (e) => {
+                    if (!attrName || e.detail.attrName === attrName) {
+                        handler(element, e.detail.attrName, e.detail.oldValue, e.detail.newValue);
+                    }
+                });
+            } else if (event === 'resizechange') {
+                if (!element._resizeChangeInitialized) {
+                    element._resizeChangeInitialized = true;
+                    element._lastSize = { width: element.offsetWidth, height: element.offsetHeight };
+                    const observer = new ResizeObserver(() => {
+                        const newSize = { width: element.offsetWidth, height: element.offsetHeight };
+                        if (newSize.width !== element._lastSize.width || newSize.height !== element._lastSize.height) {
+                            const evt = new CustomEvent('resizechange', {
+                                detail: { oldSize: element._lastSize, newSize }
+                            });
+                            element._lastSize = newSize;
+                            element.dispatchEvent(evt);
+                        }
+                    });
+                    observer.observe(element);
+                    element._resizeObserver = observer;
+                }
+                element.addEventListener('resizechange', (e) => {
+                    handler(element, e.detail.oldSize, e.detail.newSize);
+                });
+            } else if (event === 'positionchange') {
+                if (!element._positionChangeInitialized) {
+                    element._positionChangeInitialized = true;
+                    element._lastPosition = { top: element.offsetTop, left: element.offsetLeft };
+                    const checkPosition = () => {
+                        const newPosition = { top: element.offsetTop, left: element.offsetLeft };
+                        if (newPosition.top !== element._lastPosition.top || newPosition.left !== element._lastPosition.left) {
+                            const evt = new CustomEvent('positionchange', {
+                                detail: { oldPosition: element._lastPosition, newPosition }
+                            });
+                            element._lastPosition = newPosition;
+                            element.dispatchEvent(evt);
+                        }
+                    };
+                    window.addEventListener('scroll', checkPosition);
+                    window.addEventListener('resize', checkPosition);
+                    element._positionCheck = checkPosition;
+                }
+                element.addEventListener('positionchange', (e) => {
+                    handler(element, e.detail.oldPosition, e.detail.newPosition);
+                });
+            } else if (event === 'visibilitychange') {
+                if (!element._visibilityChangeInitialized) {
+                    element._visibilityChangeInitialized = true;
+                    element._lastVisibility = false;
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            const isVisible = entry.isIntersecting;
+                            if (isVisible !== element._lastVisibility) {
+                                const evt = new CustomEvent('visibilitychange', {
+                                    detail: { isVisible }
+                                });
+                                element._lastVisibility = isVisible;
+                                element.dispatchEvent(evt);
+                            }
+                        });
+                    }, { threshold: 0 });
+                    observer.observe(element);
+                    element._visibilityObserver = observer;
+                }
+                element.addEventListener('visibilitychange', (e) => {
+                    handler(element, e.detail.isVisible);
+                });
+            } else if (event === 'eventwatch') {
+                if (!element._eventWatchInitialized) {
+                    element._eventWatchInitialized = true;
+                    element._eventStats = {};
+                }
+                element.addEventListener(handler.eventType, (e) => {
+                    if (!element._eventStats[handler.eventType]) {
+                        element._eventStats[handler.eventType] = { count: 0, lastTime: null, history: [] };
+                    }
+                    const stats = element._eventStats[handler.eventType];
+                    stats.count++;
+                    stats.lastTime = new Date();
+                    stats.history.push(e);
+                    handler(element, e, stats);
+                });
+            } else {
+                element.addEventListener(event, handler);
+            }
+        }
+
         #applyLiveHandler(event, selector, handler) {
             const elements = document.querySelectorAll(selector);
-            const key = `${event}::${selector}::${handler.toString()}`; // Jedinečný kľúč pre handler
+            const key = `${event}::${selector}::${handler.toString()}`;
 
             elements.forEach(element => {
                 if (!element._liveEvents) {
                     element._liveEvents = new Set();
                 }
                 if (element._liveEvents.has(`${event}::${handler}`)) {
-                    return; // Preskočiť, ak je handler už pridaný
+                    return;
                 }
                 element._liveEvents.add(`${event}::${handler}`);
 
-                if (event === 'bodychange') {
-                    if (!element._bodyChangeInitialized) {
-                        element._bodyChangeInitialized = true;
-                        element._initialHTML = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT' ? element.value : element.innerHTML;
-                        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
-                            element.addEventListener('change', () => {
-                                const newContent = element.value;
-                                if (newContent !== element._initialHTML) {
-                                    const evt = new CustomEvent('bodychange', {
-                                        detail: { oldContent: element._initialHTML, newContent }
-                                    });
-                                    element._initialHTML = newContent;
-                                    element.dispatchEvent(evt);
-                                }
-                            });
-                        } else {
-                            const observer = new MutationObserver(() => {
-                                const newContent = element.innerHTML;
-                                if (newContent !== element._initialHTML) {
-                                    const evt = new CustomEvent('bodychange', {
-                                        detail: { oldContent: element._initialHTML, newContent }
-                                    });
-                                    element._initialHTML = newContent;
-                                    element.dispatchEvent(evt);
-                                }
-                            });
-                            observer.observe(element, { childList: true, subtree: true, characterData: true });
-                            element._mutationObserver = observer;
-                        }
-                    }
-                    element.addEventListener('bodychange', (e) => {
-                        handler(element, e.detail.oldContent, e.detail.newContent);
-                    });
-                } else if (event.startsWith('attrchange')) {
-                    const attrName = event.split(':')[1];
-                    if (!element._attrChangeInitialized) {
-                        element._attrChangeInitialized = true;
-                        element._initialAttributes = {};
-                        const observer = new MutationObserver((mutations) => {
-                            mutations.forEach(mutation => {
-                                if (mutation.type === 'attributes') {
-                                    const name = mutation.attributeName;
-                                    const newValue = element.getAttribute(name) || '';
-                                    const oldValue = element._initialAttributes[name] || '';
-                                    if (newValue !== oldValue) {
-                                        const evt = new CustomEvent('attrchange', {
-                                            detail: { attrName: name, oldValue, newValue }
-                                        });
-                                        element._initialAttributes[name] = newValue;
-                                        element.dispatchEvent(evt);
-                                    }
-                                }
-                            });
-                        });
-                        observer.observe(element, { attributes: true });
-                        element._attrObserver = observer;
-                    }
-                    element.addEventListener('attrchange', (e) => {
-                        if (!attrName || e.detail.attrName === attrName) {
-                            handler(element, e.detail.attrName, e.detail.oldValue, e.detail.newValue);
-                        }
-                    });
-                } else if (event === 'resizechange') {
-                    if (!element._resizeChangeInitialized) {
-                        element._resizeChangeInitialized = true;
-                        element._lastSize = { width: element.offsetWidth, height: element.offsetHeight };
-                        const observer = new ResizeObserver(() => {
-                            const newSize = { width: element.offsetWidth, height: element.offsetHeight };
-                            if (newSize.width !== element._lastSize.width || newSize.height !== element._lastSize.height) {
-                                const evt = new CustomEvent('resizechange', {
-                                    detail: { oldSize: element._lastSize, newSize }
-                                });
-                                element._lastSize = newSize;
-                                element.dispatchEvent(evt);
-                            }
-                        });
-                        observer.observe(element);
-                        element._resizeObserver = observer;
-                    }
-                    element.addEventListener('resizechange', (e) => {
-                        handler(element, e.detail.oldSize, e.detail.newSize);
-                    });
-                } else if (event === 'positionchange') {
-                    if (!element._positionChangeInitialized) {
-                        element._positionChangeInitialized = true;
-                        element._lastPosition = { top: element.offsetTop, left: element.offsetLeft };
-                        const checkPosition = () => {
-                            const newPosition = { top: element.offsetTop, left: element.offsetLeft };
-                            if (newPosition.top !== element._lastPosition.top || newPosition.left !== element._lastPosition.left) {
-                                const evt = new CustomEvent('positionchange', {
-                                    detail: { oldPosition: element._lastPosition, newPosition }
-                                });
-                                element._lastPosition = newPosition;
-                                element.dispatchEvent(evt);
-                            }
-                        };
-                        window.addEventListener('scroll', checkPosition);
-                        window.addEventListener('resize', checkPosition);
-                        element._positionCheck = checkPosition;
-                    }
-                    element.addEventListener('positionchange', (e) => {
-                        handler(element, e.detail.oldPosition, e.detail.newPosition);
-                    });
-                } else if (event === 'visibilitychange') {
-                    if (!element._visibilityChangeInitialized) {
-                        element._visibilityChangeInitialized = true;
-                        element._lastVisibility = false;
-                        const observer = new IntersectionObserver((entries) => {
-                            entries.forEach(entry => {
-                                const isVisible = entry.isIntersecting;
-                                if (isVisible !== element._lastVisibility) {
-                                    const evt = new CustomEvent('visibilitychange', {
-                                        detail: { isVisible }
-                                    });
-                                    element._lastVisibility = isVisible;
-                                    element.dispatchEvent(evt);
-                                }
-                            });
-                        }, { threshold: 0 });
-                        observer.observe(element);
-                        element._visibilityObserver = observer;
-                    }
-                    element.addEventListener('visibilitychange', (e) => {
-                        handler(element, e.detail.isVisible);
-                    });
-                } else if (event === 'eventwatch') {
-                    if (!element._eventWatchInitialized) {
-                        element._eventWatchInitialized = true;
-                        element._eventStats = {};
-                    }
-                    element.addEventListener(handler.eventType, (e) => {
-                        if (!element._eventStats[handler.eventType]) {
-                            element._eventStats[handler.eventType] = { count: 0, lastTime: null, history: [] };
-                        }
-                        const stats = element._eventStats[handler.eventType];
-                        stats.count++;
-                        stats.lastTime = new Date();
-                        stats.history.push(e);
-                        handler(element, e, stats);
-                    });
-                } else {
-                    // Štandardné DOM udalosti s delegovaním
-                    if (!this.#documentHandlers.has(key)) {
-                        const delegatedHandler = (e) => {
-                            if (e.target.matches(selector)) {
-                                handler(e.target, e);
-                            }
-                        };
-                        document.addEventListener(event, delegatedHandler);
-                        this.#documentHandlers.set(key, delegatedHandler);
-                    }
-                }
+                const attrName = event.startsWith('attrchange') ? event.split(':')[1] : null;
+                this.#setupSpecialEvent(element, event, handler, attrName);
             });
+
+            if (!['bodychange', 'attrchange', 'resizechange', 'positionchange', 'visibilitychange', 'eventwatch'].some(ev => event === ev || event.startsWith(`${ev}:`))) {
+                if (!this.#documentHandlers.has(key)) {
+                    const delegatedHandler = (e) => {
+                        if (e.target.matches(selector)) {
+                            handler(e.target, e);
+                        }
+                    };
+                    document.addEventListener(event, delegatedHandler);
+                    this.#documentHandlers.set(key, delegatedHandler);
+                }
+            }
         }
 
         bridge(functionName, event) {
@@ -1110,16 +1112,30 @@
             return this;
         }
         
-        first() {
-            return new DotApp(this.#elements[0] || null);
+        first(chainable = true) {
+            if (chainable === true) return new DotApp(this.#elements[0] || null);
+            return this.#elements.length > 0 ? this.#elements[0] : null;
         }
         
         last() {
-            return new DotApp(this.#elements[this.#elements.length - 1] || null);
+            if (chainable === true) return new DotApp(this.#elements[this.#elements.length - 1] || null);
+            return this.#elements.length > 0 ? this.#elements[this.#elements.length - 1] : null;
         }
         
         get(index) {
             return this.#elements[index] || null;
+        }
+
+        nth(index) {
+            this.get(index);
+        }
+
+        getElements() {
+            return this.#elements;
+        }
+
+        all() {
+            return this.#elements;
         }
         
         html(value) {
@@ -1965,164 +1981,98 @@
             return result; // Vracia index
         }
       
-        on(event, handler) {
-            // Globálne udalosti (napr. route.onchange)
-            if (!this.#elements.length && typeof event === 'string' && !event.includes(':')) {
-                if (!this.#hooks[event]) {
-                    this.#hooks[event] = [];
-                }
-                this.#hooks[event].push(handler);
-                return () => {
-                    this.#hooks[event] = this.#hooks[event].filter(h => h !== handler);
-                };
+        on(event, selector, handler) {
+            if (typeof selector === 'function') {
+                handler = selector;
+                selector = null;
             }
-        
-            // DOM-súvisiace udalosti
-            if (!this.#elements.length) {
-                throw new Error('DOM udalosti vyžadujú selektor, použite $dotapp(".selector").on()');
-            }
-        
-            this.#elements.forEach(element => {
-                if (event === 'bodychange') {
-                    if (!element._bodyChangeInitialized) {
-                        element._bodyChangeInitialized = true;
-                        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
-                            element.addEventListener('change', () => {
-                                const newContent = element.value;
-                                if (newContent !== element._initialHTML) {
-                                    const evt = new CustomEvent('bodychange', {
-                                        detail: { oldContent: element._initialHTML, newContent }
-                                    });
-                                    element._initialHTML = newContent;
-                                    element.dispatchEvent(evt);
-                                }
-                            });
-                        } else {
-                            const observer = new MutationObserver(() => {
-                                const newContent = element.innerHTML;
-                                if (newContent !== element._initialHTML) {
-                                    const evt = new CustomEvent('bodychange', {
-                                        detail: { oldContent: element._initialHTML, newContent }
-                                    });
-                                    element._initialHTML = newContent;
-                                    element.dispatchEvent(evt);
-                                }
-                            });
-                            observer.observe(element, { childList: true, subtree: true, characterData: true });
-                            element._mutationObserver = observer;
-                        }
+
+            if (!selector) {
+                // Priame pripojenie na #elements
+                if (!this.#elements.length && typeof event === 'string' && !event.includes(':')) {
+                    if (!this.#hooks[event]) {
+                        this.#hooks[event] = [];
                     }
-                    element.addEventListener('bodychange', (e) => {
-                        handler(element, e.detail.oldContent, e.detail.newContent);
-                    });
-                } else if (event.startsWith('attrchange')) {
-                    const attrName = event.split(':')[1];
-                    if (!element._attrChangeInitialized) {
-                        element._attrChangeInitialized = true;
-                        const observer = new MutationObserver((mutations) => {
-                            mutations.forEach(mutation => {
-                                if (mutation.type === 'attributes') {
-                                    const name = mutation.attributeName;
-                                    const newValue = element.getAttribute(name) || '';
-                                    const oldValue = element._initialAttributes[name] || '';
-                                    if (newValue !== oldValue) {
-                                        const evt = new CustomEvent('attrchange', {
-                                            detail: { attrName: name, oldValue, newValue }
-                                        });
-                                        element._initialAttributes[name] = newValue;
-                                        element.dispatchEvent(evt);
-                                    }
-                                }
-                            });
-                        });
-                        observer.observe(element, { attributes: true });
-                        element._attrObserver = observer;
-                    }
-                    element.addEventListener('attrchange', (e) => {
-                        if (!attrName || e.detail.attrName === attrName) {
-                            handler(element, e.detail.attrName, e.detail.oldValue, e.detail.newValue);
-                        }
-                    });
-                } else if (event === 'resizechange') {
-                    if (!element._resizeChangeInitialized) {
-                        element._resizeChangeInitialized = true;
-                        const observer = new ResizeObserver(() => {
-                            const newSize = { width: element.offsetWidth, height: element.offsetHeight };
-                            if (newSize.width !== element._lastSize.width || newSize.height !== element._lastSize.height) {
-                                const evt = new CustomEvent('resizechange', {
-                                    detail: { oldSize: element._lastSize, newSize }
-                                });
-                                element._lastSize = newSize;
-                                element.dispatchEvent(evt);
-                            }
-                        });
-                        observer.observe(element);
-                        element._resizeObserver = observer;
-                    }
-                    element.addEventListener('resizechange', (e) => {
-                        handler(element, e.detail.oldSize, e.detail.newSize);
-                    });
-                } else if (event === 'positionchange') {
-                    if (!element._positionChangeInitialized) {
-                        element._positionChangeInitialized = true;
-                        const checkPosition = () => {
-                            const newPosition = { top: element.offsetTop, left: element.offsetLeft };
-                            if (newPosition.top !== element._lastPosition.top || newPosition.left !== element._lastPosition.left) {
-                                const evt = new CustomEvent('positionchange', {
-                                    detail: { oldPosition: element._lastPosition, newPosition }
-                                });
-                                element._lastPosition = newPosition;
-                                element.dispatchEvent(evt);
-                            }
-                        };
-                        window.addEventListener('scroll', checkPosition);
-                        window.addEventListener('resize', checkPosition);
-                        element._positionCheck = checkPosition;
-                    }
-                    element.addEventListener('positionchange', (e) => {
-                        handler(element, e.detail.oldPosition, e.detail.newPosition);
-                    });
-                } else if (event === 'visibilitychange') {
-                    if (!element._visibilityChangeInitialized) {
-                        element._visibilityChangeInitialized = true;
-                        const observer = new IntersectionObserver((entries) => {
-                            entries.forEach(entry => {
-                                const isVisible = entry.isIntersecting;
-                                if (isVisible !== element._lastVisibility) {
-                                    const evt = new CustomEvent('visibilitychange', {
-                                        detail: { isVisible }
-                                    });
-                                    element._lastVisibility = isVisible;
-                                    element.dispatchEvent(evt);
-                                }
-                            });
-                        }, { threshold: 0 });
-                        observer.observe(element);
-                        element._visibilityObserver = observer;
-                    }
-                    element.addEventListener('visibilitychange', (e) => {
-                        handler(element, e.detail.isVisible);
-                    });
-                } else if (event === 'eventwatch') {
-                    if (!element._eventWatchInitialized) {
-                        element._eventWatchInitialized = true;
-                        element._eventStats = {};
-                    }
-                    element.addEventListener(handler.eventType, (e) => {
-                        if (!element._eventStats[handler.eventType]) {
-                            element._eventStats[handler.eventType] = { count: 0, lastTime: null, history: [] };
-                        }
-                        const stats = element._eventStats[handler.eventType];
-                        stats.count++;
-                        stats.lastTime = new Date();
-                        stats.history.push(e);
-                        handler(element, e, stats);
-                    });
-                } else {
-                    element.addEventListener(event, handler);
+                    this.#hooks[event].push(handler);
+                    return () => {
+                        this.#hooks[event] = this.#hooks[event].filter(h => h !== handler);
+                    };
                 }
-            });
-            return this;
+
+                if (!this.#elements.length) {
+                    throw new Error('DOM udalosti vyžadujú selektor, použite $dotapp(".selector").on()');
+                }
+
+                this.#elements.forEach(element => {
+                    const attrName = event.startsWith('attrchange') ? event.split(':')[1] : null;
+                    this.#setupSpecialEvent(element, event, handler, attrName);
+                });
+
+                return () => this.off(event, handler);
+            } else {
+                // Pripojenie na aktuálne elementy vybrané cez selektor
+                if (!selector || typeof handler !== 'function') {
+                    throw new Error('on s delegovaním vyžaduje platný selektor a handler funkciu');
+                }
+
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    const attrName = event.startsWith('attrchange') ? event.split(':')[1] : null;
+                    this.#setupSpecialEvent(element, event, handler, attrName);
+                });
+
+                return () => this.off(event, handler, selector);
+            }
+        }
+
+        one(event, selector, handler) {
+            if (typeof selector === 'function') {
+                handler = selector;
+                selector = null;
+            }
+
+            // Wrapper pre jednorazové spustenie handlera
+            const wrappedHandler = (...args) => {
+                handler(...args);
+                this.off(event, wrappedHandler, selector);
+            };
+
+            if (!selector) {
+                // Priame pripojenie na #elements
+                if (!this.#elements.length && typeof event === 'string' && !event.includes(':')) {
+                    if (!this.#hooks[event]) {
+                        this.#hooks[event] = [];
+                    }
+                    this.#hooks[event].push(wrappedHandler);
+                    return () => {
+                        this.#hooks[event] = this.#hooks[event].filter(h => h !== wrappedHandler);
+                    };
+                }
+
+                if (!this.#elements.length) {
+                    throw new Error('DOM udalosti vyžadujú selektor, použite $dotapp(".selector").one()');
+                }
+
+                this.#elements.forEach(element => {
+                    const attrName = event.startsWith('attrchange') ? event.split(':')[1] : null;
+                    this.#setupSpecialEvent(element, event, wrappedHandler, attrName);
+                });
+
+                return () => this.off(event, wrappedHandler);
+            } else {
+                // Pripojenie na aktuálne elementy vybrané cez selektor
+                if (!selector || typeof handler !== 'function') {
+                    throw new Error('one s delegovaním vyžaduje platný selektor a handler funkciu');
+                }
+
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    const attrName = event.startsWith('attrchange') ? event.split(':')[1] : null;
+                    this.#setupSpecialEvent(element, event, wrappedHandler, attrName);
+                });
+
+                return () => this.off(event, wrappedHandler, selector);
+            }
         }
 
         live(event, selector, handler) {
@@ -2135,28 +2085,16 @@
             }
 
             const key = `${event}::${selector}`;
-            
-            // Skontrolujte, či už handler pre daný kľúč existuje
-            if (this.#liveHandlers.has(key)) {
-                // Ak už existuje, nepridávajte nový handler, len vráťte funkciu na odregistrovanie
-                const existingHandlers = this.#liveHandlers.get(key);
-                if (existingHandlers.includes(handler)) {
-                    return () => {
-                        this.off(event, handler, selector);
-                    };
-                }
-            } else {
+            if (!this.#liveHandlers.has(key)) {
                 this.#liveHandlers.set(key, []);
             }
+            if (!this.#liveHandlers.get(key).includes(handler)) {
+                this.#liveHandlers.get(key).push(handler);
+            }
 
-            this.#liveHandlers.get(key).push(handler);
-
-            // Aplikujte handler na existujúce elementy
             this.#applyLiveHandler(event, selector, handler);
 
-            return () => {
-                this.off(event, handler, selector);
-            };
+            return () => this.off(event, handler, selector);
         }
         
         off(event, callback, selector) {
@@ -2169,7 +2107,6 @@
                         this.#liveHandlers.delete(`${event}::${selector}`);
                     }
 
-                    // Odstrániť handler z document
                     if (this.#documentHandlers.has(key)) {
                         document.removeEventListener(event, this.#documentHandlers.get(key));
                         this.#documentHandlers.delete(key);
