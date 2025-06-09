@@ -11,6 +11,14 @@ dotApp is a lightweight, powerful, and scalable PHP framework for modern web app
 🔹 **Modular architecture**  
 🔹 **Flexible templating system**
 
+# Currently Working On 🛠️
+
+We’re actively developing **Connector**, a powerful JS and PHP library integrated into the DotApp framework! Watch our testing demo to see how nodes are beautifully connected with mouse-driven logic, showcasing a stunning backend *and* frontend experience. The JS part is ready, and the PHP part is in progress. Check it out! 🚀
+
+[![Connector Testing Demo](https://img.youtube.com/vi/nmEU7y1HS2Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=nmEU7y1HS2Y)
+
+**Support DotApp’s development!** Be among the first 100 sponsors to earn permanent recognition on [dotapp.dev](https://dotapp.dev). [Sponsor Now](https://github.com/sponsors/dotsystems-sk)
+
 ## Getting Started
 
 The `dotApp` instance is globally accessible, allowing you to interact with the framework's core components easily. To access the `dotApp` object, use the `DotApp` class as follows:
