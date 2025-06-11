@@ -21,10 +21,11 @@ use Dotsystems\App\Parts\Config;
 
 class Cache {
     private static $instances = []; // Available Cache instances
+    private $folder;
     private $driver;
     private $cacheName;
     private $cache_manager;
-    private static $cacheStorage = []; // Centralized storage for loaded cache data
+    public static $cacheStorage = []; // Centralized storage for loaded cache data
 
     /**
      * Constructor for the DotApp Cache Manager.
@@ -34,14 +35,37 @@ class Cache {
      *
      * @param string $cacheName The name of the cache instance.
      */
-    public function __construct($cacheName) {
+    public function __construct($cacheName,$folder,$driver) {
+        $this->folder = __ROOTDIR__."/app/runtime/cache/".$folder;        
+        $this->folder = str_replace("..","",$this->folder);
+        $this->folder = str_replace("//","/",$this->folder);
+        $this->folder = str_replace("//","/",$this->folder);
+        $this->folder = rtrim($this->folder, "/\\");
+        if (!is_dir($this->folder)) {
+            mkdir($this->folder, 0700, true);
+            file_put_contents($this->folder . '/.htaccess', "Deny from all\n");
+        }
         $this->cache_manager["managers"] = [];
         $this->cacheName = $cacheName;
+        $this->driver = $driver;
         self::$instances[$cacheName] = $this;
-        $this->driver = Config::cache("driver");
         foreach (Config::cacheDriver($this->driver) as $way => $wayFn) {
             $this->cache_manager['managers'][$this->driver][$way] = $wayFn;
         }
+    }
+
+    
+    /**
+     * Returns the folder path for the cache.
+     *
+     * @return string The folder path where cache files are stored.
+     */
+    public function folder() {
+        return $this->folder;
+    }
+
+    public function name() {
+        return $this->cacheName;
     }
 
     /**
@@ -50,14 +74,20 @@ class Cache {
      * @param string|null $cacheName The name of the cache instance (optional).
      * @return Cache The Cache instance.
      */
-    public static function use($cacheName = null) {
+    public static function use($cacheName = null, $folder = null, $driver=null) {
         if ($cacheName === null) {
             $cacheName = hash('sha256', "DotApp Framework null Cache :)");
+        }
+        if ($folder === null) {
+            $folder = Config::cache("folder");
+        }
+        if ($driver === null) {
+            $driver = Config::cache("driver");
         }
         if (isset(self::$instances[$cacheName])) {
             return self::$instances[$cacheName];
         } else {
-            $instance = new self($cacheName);
+            $instance = new self($cacheName,$folder, $driver);
             return $instance;
         }
     }

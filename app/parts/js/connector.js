@@ -473,7 +473,7 @@
                 let maxWidth = this.#initialWidth;
                 let maxHeight = this.#initialHeight;
                 const margin = 50;
-                const edgeThreshold = 50; // Distance from edge to trigger expansion
+                const edgeThreshold = 50;
 
                 this.#nodes.forEach(node => {
                     const rect = node.element.getBoundingClientRect();
@@ -482,7 +482,6 @@
                     maxWidth = Math.max(maxWidth, right + margin);
                     maxHeight = Math.max(maxHeight, bottom + margin);
 
-                    // Check if node is near the edge and autoExpand is enabled
                     if (this.#autoExpand) {
                         if (right + edgeThreshold >= this.#parent.offsetWidth) {
                             maxWidth += this.#expandBy;
@@ -493,14 +492,12 @@
                     }
                 });
 
-                // Prevent shrinking below initial or last user-set size
                 maxWidth = Math.max(maxWidth, this.#initialWidth, this.#lastUserWidth);
                 maxHeight = Math.max(maxHeight, this.#initialHeight, this.#lastUserHeight);
 
                 this.#parent.style.width = `${maxWidth}px`;
                 this.#parent.style.height = `${maxHeight}px`;
 
-                // Update last user-set size only if user manually resizes
                 const resizeObserver = new ResizeObserver((entries) => {
                     for (const entry of entries) {
                         if (entry.target === this.#parent) {
@@ -532,15 +529,15 @@
                             y = this.#snapToGrid(y, this.#gridY);
                         }
                         this.#addNodeFromConfig(this.#draggedNodeConfig, x, y);
-                        
+
                         const nodeIndex = e.dataTransfer.getData('nodeIndex');
                         if (nodeIndex !== '') {
                             this.#premadeNodes.splice(parseInt(nodeIndex), 1);
                             this.#renderSidebar();
                         }
-                        
+
                         this.#draggedNodeConfig = null;
-                        this.#updateCanvasSize(); // Update canvas size after adding node
+                        this.#updateCanvasSize();
                     }
                 });
             }
@@ -579,7 +576,10 @@
                     x: x,
                     y: y,
                     type: config.inputs.length === 0 ? 'source' : (config.outputs.length === 0 ? 'sink' : 'processor'),
-                    callback: config.callback,
+                    callback: config.callback || (() => null),
+                    onSave: config.onSave || null,
+                    onLoad: config.onLoad || null,
+                    customParameters: config.customParameters || {},
                     originalConfig: { ...config }
                 };
 
@@ -668,6 +668,9 @@
                     y = 50 + this.#nodes.length * 120,
                     type = inputs.length === 0 ? 'source' : (outputs.length === 0 ? 'sink' : 'processor'),
                     callback = () => null,
+                    onSave = null,
+                    onLoad = null,
+                    customParameters = {},
                     originalConfig = null
                 } = config;
 
@@ -721,14 +724,20 @@
                     outputs: outputs.map(output => output.id),
                     content,
                     type,
-                    callback,
+                    callback: (inputs, outputId) => callback(inputs, outputId, nodeData),
+                    onSave,
+                    onLoad,
+                    customParameters: { ...customParameters },
                     originalConfig: originalConfig || {
                         title,
-                        id: id,
+                        id,
                         content,
                         inputs: inputs.map(input => ({ id: input.id, required: input.required })),
-                        outputs: outputs.map(output => ({ id: output.id }))
-                    }
+                        outputs: outputs.map(output => ({ id: output.id })),
+                        customParameters: { ...customParameters }
+                    },
+                    getCustomParameter: (name) => this.#getCustomParameter(nodeData, name),
+                    setCustomParameter: (name, value) => this.#setCustomParameter(nodeData, name, value)
                 };
                 this.#nodes.push(nodeData);
 
@@ -761,6 +770,14 @@
                 this.#updateCanvasSize();
                 this.#updateConnections();
                 return this;
+            }
+
+            #getCustomParameter(nodeData, name) {
+                return nodeData.customParameters[name];
+            }
+
+            #setCustomParameter(nodeData, name, value) {
+                nodeData.customParameters[name] = value;
             }
 
             nodes(settings = {}) {
@@ -805,7 +822,7 @@
             fn(nodeId, callback) {
                 const node = this.#nodes.find(n => n.element.id === nodeId);
                 if (node) {
-                    node.callback = callback;
+                    node.callback = (inputs, outputId) => callback(inputs, outputId, node);
                 }
                 return this;
             }
@@ -964,6 +981,12 @@
             }
 
             save() {
+                this.#nodes.forEach(node => {
+                    if (node.onSave) {
+                        node.onSave(node);
+                    }
+                });
+
                 return {
                     nodes: this.#nodes.map(node => ({
                         id: node.element.id,
@@ -976,6 +999,7 @@
                             top: node.element.style.top
                         },
                         type: node.type,
+                        customParameters: { ...node.customParameters },
                         originalConfig: node.originalConfig
                     })),
                     connections: this.#connections.map(conn => ({
@@ -1052,14 +1076,23 @@
                         outputs: nodeData.outputs,
                         content: nodeData.content,
                         type: nodeData.type,
-                        callback: nodeData.callback || (() => null),
+                        callback: (inputs, outputId) => {
+                            const originalCallback = nodeData.originalConfig.callback || (() => null);
+                            return originalCallback(inputs, outputId, nodeDataConfig);
+                        },
+                        onSave: nodeData.originalConfig.onSave || null,
+                        onLoad: nodeData.originalConfig.onLoad || null,
+                        customParameters: { ...nodeData.customParameters },
                         originalConfig: nodeData.originalConfig || {
                             title: nodeData.title,
                             id: nodeData.id,
                             content: nodeData.content,
                             inputs: nodeData.inputs.map(input => ({ id: input.id, required: input.required })),
-                            outputs: nodeData.outputs.map(id => ({ id: id }))
-                        }
+                            outputs: nodeData.outputs.map(id => ({ id: id })),
+                            customParameters: { ...nodeData.customParameters }
+                        },
+                        getCustomParameter: (name) => this.#getCustomParameter(nodeDataConfig, name),
+                        setCustomParameter: (name, value) => this.#setCustomParameter(nodeDataConfig, name, value)
                     };
                     this.#nodes.push(nodeDataConfig);
 
@@ -1082,6 +1115,10 @@
                         this.#updateConnections();
                         this.#updateCanvasSize();
                     });
+
+                    if (nodeDataConfig.onLoad) {
+                        nodeDataConfig.onLoad(nodeDataConfig);
+                    }
                 });
 
                 this.#connections = data.connections.map((conn, index) => ({

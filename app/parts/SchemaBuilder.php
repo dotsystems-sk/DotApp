@@ -8,8 +8,7 @@ use InvalidArgumentException;
 /**
  * Builder for defining database schemas and migrations.
  */
-class SchemaBuilder
-{
+class SchemaBuilder {
     private $columns = [];
     private $indexes = [];
     private $foreignKeys = [];

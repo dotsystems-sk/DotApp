@@ -265,7 +265,7 @@ class Renderer {
 	public function useCache($setting) {
 		$this->useCache = $setting;
 		if ($setting) {
-			if (! is_object($this->cache)) $this->cache = new cache($this);
+			if (! is_object($this->cache)) $this->cache = new Cache($this);
 		}
 		return $this;
 	}
@@ -273,7 +273,7 @@ class Renderer {
 	public function useCssCache($setting) {
 		$this->useCssCache = $setting;
 		if ($setting) {
-			if (! is_object($this->cache)) $this->cache = new cache($this);
+			if (! is_object($this->cache)) $this->cache = new Cache($this);
 		}
 		return $this;
 	}

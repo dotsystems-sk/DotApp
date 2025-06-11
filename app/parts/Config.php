@@ -78,6 +78,19 @@ class Config {
             'file_driver_dir' => '/app/runtime/SessionDriverFile', // Directory setting for storing SessionDriverFile
             'file_driver_dir2' => '/app/runtime/SessionDriverFile2', // Directory setting for storing SessionDriverFile2
         ],
+        'cache' => [
+            'use' => false,
+            'driver' => 'default',
+            'folder' => '/',
+            'lifetime' => 36000,
+            'prefix' => 'dotapp_',
+            'gc_probability' => 1,
+            'redis_host' => '127.0.0.1',
+            'redis_port' => 6379,
+            'redis_timeout' => 2,
+            'redis_password' => '',
+            'redis_database' => 0,
+        ],
         'totp' => [
             'issuer' => 'DotApp',
             'algorithm' => 'SHA256',
@@ -96,6 +109,7 @@ class Config {
     ];
 
     private static $sessionDrivers = [];
+    private static $cacheDrivers = [];
 
     public static function router($key,$value=null) {
         if ($value === null) {
@@ -143,6 +157,14 @@ class Config {
             'charset' => $charset,
             'driver' => $driver,
         ];
+    }
+
+    public static function cache($key,$value=null) {
+        if ($value === null) {
+            return self::$settings['cache'][$key] ?? null;
+        } else {
+            self::$settings['cache'][$key] = $value;
+        }        
     }
 
     public static function bridge($key,$value=null) {
@@ -218,6 +240,39 @@ class Config {
                 throw new \Exception("Incompatible driver !");
             }
         }        
+    }
+
+    public static function cacheDriver($name, $driver = null) {
+        if ($driver === null) {
+            if (isset(self::$cacheDrivers[$name])) {
+                return self::$cacheDrivers[$name];
+            }
+            throw new \Exception("Cache driver ".$name." not defined!");
+        } else {
+            if (
+                isset($driver['save']) &&
+                isset($driver['load']) &&
+                isset($driver['exists']) &&
+                isset($driver['delete']) &&
+                isset($driver['clear']) &&
+                isset($driver['gc'])
+            ) {
+                if (
+                    is_callable($driver['save']) &&
+                    is_callable($driver['load']) &&
+                    is_callable($driver['exists']) &&
+                    is_callable($driver['delete']) &&
+                    is_callable($driver['clear']) &&
+                    is_callable($driver['gc'])
+                ) {
+                    self::$cacheDrivers[$name] = $driver;
+                } else {
+                    throw new \Exception("All cache driver functions must be callable!");
+                }
+            } else {
+                throw new \Exception("Incompatible cache driver!");
+            }
+        }
     }
     
 }
