@@ -41,6 +41,42 @@ class Config {
     private static $settings = [
         'databases' => [
         ],
+       'searchEngines' => [
+            'driver' => 'default',
+            // Elasticsearch
+            'elasticsearch_host' => 'https://127.0.0.1:9200',
+            'elasticsearch_username' => '', // Username (if authentication is enabled)
+            'elasticsearch_password' => '', // Password (if authentication is enabled)
+            'elasticsearch_ca_fingerprint' => '', // SHA-256 fingerprint of the CA certificate (optional)
+            'elasticsearch_ca_file' => '', // Path to the CA certificate file (optional, e.g., '/path/to/ca.crt')
+
+            // OpenSearch
+            'opensearch_host' => 'https://127.0.0.1:9200',
+            'opensearch_username' => '', // Username
+            'opensearch_password' => '', // Password
+            'opensearch_ca_fingerprint' => '', // SHA-256 fingerprint of the CA certificate
+            'opensearch_ca_file' => '', // Path to the CA certificate file
+
+            // Meilisearch
+            'meilisearch_host' => 'http://127.0.0.1:7700',
+            'meilisearch_api_key' => '', // API key for authentication
+            'meilisearch_ca_fingerprint' => '', // SHA-256 fingerprint of the CA certificate (optional)
+            'meilisearch_ca_file' => '', // Path to the CA certificate file (optional)
+
+            // Algolia
+            'algolia_app_id' => '', // Application ID from Algolia dashboard
+            'algolia_search_api_key' => '', // Search API Key (read-only)
+            'algolia_write_api_key' => '', // Write API Key (for indexing, updates, deletes)
+            'algolia_wait_for_task' => true, // Wait for task to complete (true) or return immediately (false)
+            'algolia_ca_fingerprint' => '', // SHA-256 fingerprint of the CA certificate (optional)
+            'algolia_ca_file' => '', // Path to the CA certificate file (optional)
+
+            // Typesense
+            'typesense_host' => 'http://localhost:8108', // URL to the Typesense instance
+            'typesense_api_key' => '', // API key for authentication
+            'typesense_ca_fingerprint' => '', // SHA-256 fingerprint of the CA certificate (optional)
+            'typesense_ca_file' => '', // Path to the CA certificate file (optional)
+        ], 
         'db' => [
             'prefix' => 'dotapp_', // Predpona v databaze
             'driver' => 'pdo', // Nazov default drivera zvoleneho uzivatelom
@@ -90,6 +126,8 @@ class Config {
             'redis_timeout' => 2,
             'redis_password' => '',
             'redis_database' => 0,
+            'memcached_host' => '127.0.0.1',
+            'memcached_port' => 11211,
         ],
         'totp' => [
             'issuer' => 'DotApp',
@@ -110,6 +148,7 @@ class Config {
 
     private static $sessionDrivers = [];
     private static $cacheDrivers = [];
+    private static $searchDrivers = [];
 
     public static function router($key,$value=null) {
         if ($value === null) {
@@ -139,6 +178,14 @@ class Config {
         }        
     }
 
+    public static function searchEngines($key, $value = null) {
+        if ($value === null) {
+            return self::$settings['searchEngines'][$key] ?? null;
+        } else {
+            self::$settings['searchEngines'][$key] = $value;
+        }
+    }
+    
     public static function session($key,$value=null) {
         if ($value === null) {
             return self::$settings['session'][$key] ?? null;
@@ -271,6 +318,32 @@ class Config {
                 }
             } else {
                 throw new \Exception("Incompatible cache driver!");
+            }
+        }
+    }
+
+    public static function searchDriver($name, $driver = null) {
+        if ($driver === null) {
+            if (isset(self::$searchDrivers[$name])) {
+                return self::$searchDrivers[$name];
+            }
+            throw new \Exception("Search driver ".$name." not defined!");
+        } else {
+            if (
+                isset($driver['index']) &&
+                isset($driver['search']) &&
+                isset($driver['update']) &&
+                isset($driver['delete']) &&
+                isset($driver['clear']) &&
+                is_callable($driver['index']) &&
+                is_callable($driver['search']) &&
+                is_callable($driver['update']) &&
+                is_callable($driver['delete']) &&
+                is_callable($driver['clear'])
+            ) {
+                self::$searchDrivers[$name] = $driver;
+            } else {
+                throw new \Exception("Incompatible search driver!");
             }
         }
     }

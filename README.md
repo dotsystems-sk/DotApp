@@ -1,5 +1,5 @@
 # dotApp PHP Framework 🚀
- 
+
 Full documentation is available at:  
 [https://dotapp.dev/](https://dotapp.dev/)
 
@@ -40,94 +40,91 @@ This approach provides a convenient way to work with `dotApp` throughout your ap
 ### Version 1.7 Released
 The latest release, **version 1.7**, introduces significant improvements to the configuration system and session management. Key changes include:
 
-- **NEW: Centralized Configuration with `Config` Facade**  
+- **NEW: `FastSearch` Library**  ( 2025-06-13 )
+  A unified search interface supporting Elasticsearch, OpenSearch, Meilisearch, Algolia, and Typesense. Features a consistent API for indexing, searching, and managing documents, with portability across engines. Example:
+  ```php
+  $search = FastSearch::use('product_search');
+  $search->index('products', '123', ['name' => 'Smartphone', 'price' => 599.99]);
+  $results = $search->search('products', 'smartphone', ['category' => 'electronics']);
+  ```
+
+- **NEW: `Cache` Library** ( 2025-06-13 )
+  A driver-agnostic caching system supporting file-based and Redis drivers. Provides methods for storing, retrieving, and managing cached data with contextual support. Example:
+  ```php
+  $cache = Cache::use('myCache');
+  $cache->save('key', ['data' => 'value'], 3600, ['user' => 3]);
+  if ($data = $cache->exists('key', ['user' => 3], true)) {
+      echo print_r($data, true);
+  }
+  ```
+
+- **NEW: Centralized Configuration with `Config` Facade**  ( 2025-04-11 )
   Configuration has been centralized using the new `Config` facade, replacing the previous approach of configuring databases and encryption keys directly through the `$dotApp` object. This provides a cleaner, more unified way to manage settings. For example:
   ```php
   // Set encryption key
   Config::app("c_enc_key", md5('SECURE_KEY'));
   alias for:
   Config::set("app", "c_enc_key", md5('SECURE_KEY'));
-  
 
   // Configure databases
-  Config::addDatabase("<name for your database for selectDB>", "host", "username", "password", "database_name", "encoding", "type", "driver");
   Config::addDatabase("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL", 'pdo');
   ```
 
-- **NEW: Session Drivers**  
-  Version 1.7 introduces five built-in session drivers for flexible session management, allowing developers to choose the best option for their application's needs:
-  - **`SessionDriverDefault::driver()`**: A wrapper around PHP's native `$_SESSION`. Can be configured with Redis as a session handler for distributed systems (e.g., load balancers).
-  - **`SessionDriverFile`**: Stores sessions as files in `/app/runtime/SessionDriverFile`. Independent of PHP's session system, suitable for simple file-based storage.
-  - **`SessionDriverFile2`**: Stores sessions in `/app/runtime/SessionDriverFile2`, with each session variable saved as a separate file. Optimized for scenarios with many or large session variables.
-  - **`SessionDriverDB`**: Manages sessions via a database, ideal for load-balanced environments requiring a shared session store.
-  - **`SessionDriverRedis`**: Stores sessions in Redis, an in-memory data store, providing high performance and scalability for distributed systems or high-traffic applications.  
-  **Important**: When using session drivers, especially `SessionDriverRedis`, you must set all required session configurations (e.g., `lifetime`, `redis_host`, `redis_port`, `redis_prefix`) using `Config::session()` *before* defining the driver with `Config::sessionDriver()`. This ensures the driver initializes with the correct settings.  
-  Example configuration for session drivers:
+- **NEW: Session Drivers**  ( 2025-04-11 )
+  Version 1.7 introduces five built-in session drivers for flexible session management:
+  - **`SessionDriverDefault`**: Wraps PHP's `$_SESSION`, configurable with Redis for distributed systems.
+  - **`SessionDriverFile`**: File-based storage in `/app/runtime/SessionDriverFile`.
+  - **`SessionDriverFile2`**: Stores each session variable as a separate file in `/app/runtime/SessionDriverFile2`.
+  - **`SessionDriverDB`**: Database-driven sessions for load-balanced environments.
+  - **`SessionDriverRedis`**: High-performance Redis-based sessions.  
+  **Important**: Set session configurations (e.g., `lifetime`, `redis_host`) using `Config::session()` *before* defining the driver with `Config::sessionDriver()`. Example:
   ```php
-  // First, set session configurations
-  Config::session("lifetime", 30 * 24 * 3600); // Set session lifetime to 30 days
+  Config::session("lifetime", 30 * 24 * 3600);
   Config::session("redis_host", "127.0.0.1");
   Config::session("redis_port", 6379);
   Config::session("redis_prefix", "session:");
-  // Then, define the session driver
   Config::sessionDriver("redis", SessionDriverRedis::driver());
   ```
 
-- **NEW**: Added `Router` facade, an alias for the `$dotApp->router` object. Use `Router::` for cleaner route definitions without needing the `$dotApp` object!  
+- **NEW: `Router` Facade**  ( 2025-04-11 )
+  Alias for `$dotApp->router`. Define routes cleanly with `Router::`:
   ```php
   Router::get('/', fn() => 'Hello World');
   Router::post('/submit', fn() => 'Submitted');
-  Router::get('/', 'page@main'); // Call a controller method
   ```
 
-- **NEW**: Added `DB` facade, an alias for `$dotApp->db`. Use `DB::` instead of `$dotApp->db->` for a cleaner and more elegant syntax when performing database operations like queries, schema management, or transactions.  
+- **NEW: `DB` Facade**  ( 2025-04-11 )
+  Alias for `$dotApp->db`. Perform database operations elegantly with `DB::`:
   ```php
-  DB::driver('pdo');
   DB::q(function ($qb) {
       $qb->select('*')->from('users')->where('id', '=', 1);
   })->first();
-  DB::schema(function ($schema) {
-      $schema->createTable('posts', function ($table) {
-          $table->id();
-          $table->string('title');
-      });
-  });
-
-  // Best Practice: When creating shareable modules, it’s recommended to use DB::module() or DB::module(<return_type>) because this approach automatically loads settings from the configuration and applies the appropriate driver. This ensures the module works regardless of the user’s preferred database settings. In contrast, explicitly specifying DB::driver('pdo') will only work if the user has configured the PDO driver.
-  DB::module("RAW") // or "ORM"
-  ->q(function ($qb) use ($token) {
-      $qb
-      ->select('user_id', Config::get("db","prefix").'users_rmtokens')
-      ->where('token','=',$token);
-  })->execute();
   ```
 
-- **NEW**: Added `Request` facade, an alias for `$dotApp->request`. Use `Request::` instead of `$dotApp->request->` for a simpler syntax when accessing request data, such as paths, methods, or form submissions.  
+- **NEW: `Request` Facade**  ( 2025-04-11 )
+  Alias for `$dotApp->request`. Access request data simply with `Request::`:
   ```php
-  Request::getPath(); // Get the current request path
-  Request::getMethod(); // Get the HTTP method (e.g., GET, POST)
-  Request::data(); // Access request data (e.g., POST or JSON payload)
-  Request::form('myForm', fn($request, $name) => 'Form submitted!', fn($request, $name) => 'Invalid form');
+  Request::getPath();
+  Request::data();
   ```
-
 ## 👥 Installation
 
 There are two ways to install dotApp:
 
 1. **Using DotApper CLI** (Recommended):  
-   Download the `dotapper.php` file from the [dotApp repository](https://github.com/dotsystems-sk/dotapp), place it in your project directory, and run the following command to install dotApp:
+   Download the `dotapper.php` file from the [dotApp repository](https://github.com/dotsystems-sk/dotapp), place it in your project directory, and run:
    ```bash
    php dotapper.php --install
    ```
 
 2. **Using Git Clone**:  
-   Clone the entire repository to your project directory:
+   Clone the repository to your project directory:
    ```bash
    git clone https://github.com/dotsystems-sk/dotapp.git ./
    ```
 
 🚫 **Do not use** `composer require` for installing dotApp, as it uses its own structure and autoloading.  
-✅ However, after installation, you can freely use `composer require` to install any additional libraries.
+✅ However, after installation, you can freely use `composer require` to install additional libraries.
 
 ## 🚀 Usage
 
@@ -135,10 +132,9 @@ Simple "Hello World" example using dotApp:
 
 ```php
 // index.php
-define('__ROOTDIR__', "/path/to/your/dotapp"); // __ROOTDIR__ must be defined.
+define('__ROOTDIR__', "/path/to/your/dotapp");
 require_once __ROOTDIR__ . '/app/config.php';
 
-// $dotApp is alias for $dotapp in camelCase, you can use either
 $dotApp->router->get('/', function($request) {
     return 'Hello World';
 });
@@ -148,17 +144,10 @@ $dotApp->run();
 
 ## ⚙️ Configuration
 
-Main settings are located in `app/config.php`.
-
-Example configuration:
+Main settings are located in `app/config.php`. Example:
 
 ```php
-// app/config.php
 use \Dotsystems\App\DotApp;
-use \Dotsystems\App\SessionDriverDefault;
-use \Dotsystems\App\SessionDriverFile;
-use \Dotsystems\App\SessionDriverFile2;
-use \Dotsystems\App\SessionDriverDB;
 use \Dotsystems\App\SessionDriverRedis;
 use \Dotsystems\App\Config;
 
@@ -168,54 +157,34 @@ $dotApp = new \Dotsystems\App\DotApp();
 Config::set("app", "c_enc_key", md5('SECURE_KEY'));
 
 // Configure databases
-Config::addDatabase("<name for your database for selectDB>", "host", "username", "password", "database_name", "encoding", "type", "driver");
-// Example:
-// Config::addDatabase("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL", "mysqli");
+Config::addDatabase("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL", "mysqli");
 
 // Configure session driver
-// IMPORTANT: Set session configurations BEFORE defining the session driver
-Config::session("lifetime", 30 * 24 * 3600); // Set session lifetime to 30 days
+Config::session("lifetime", 30 * 24 * 3600);
 Config::session("redis_host", "127.0.0.1");
 Config::session("redis_port", 6379);
 Config::session("redis_prefix", "session:");
-Config::sessionDriver("redis", SessionDriverRedis::driver()); // Define driver AFTER setting configurations
+Config::sessionDriver("redis", SessionDriverRedis::driver());
 
-$dotApp->load_modules(); // Enable module system
+$dotApp->load_modules();
 ```
 
 ## 🛠️ DotApper CLI Tool
 
-DotApper is a command-line utility included with dotApp that helps you manage your application, including installation, updates, modules, controllers, middleware, and models.
-
-### Basic Usage
+DotApper is a command-line utility for managing your dotApp application. Basic usage:
 
 ```bash
-# Install a fresh copy of dotApp
+# Install dotApp
 php dotapper.php --install
 
-# Update dotApp core to the latest version (preserves configuration and modules)
+# Update dotApp core
 php dotapper.php --update
 
 # Create a new module
 php dotapper.php --create-module=Blog
 
-# List all modules
-php dotapper.php --modules
-
-# Create a controller in a module
-php dotapper.php --module=Blog --create-controller=ArticleController
-
-# Create a middleware in a module
-php dotapper.php --module=Blog --create-middleware=AuthMiddleware
-
-# Create a model in a module
-php dotapper.php --module=Blog --create-model=PostModel
-
 # List all routes
 php dotapper.php --list-routes
-
-# Create a new .htaccess file
-php dotapper.php --create-htaccess
 ```
 
 ### All Available Options
@@ -224,21 +193,21 @@ php dotapper.php --create-htaccess
 Usage: php dotapper.php [options]
 Options:
   --install                         Install a fresh copy of the dotApp PHP framework
-  --update                          Update dotApp core to the latest version without overwriting configuration or modules
-  --create-module=<name>            Create a new module (e.g., --create-module=Blog)
+  --update                          Update dotApp core to the latest version
+  --create-module=<name>            Create a new module
   --modules                         List all modules
-  --module=<module_name> --create-controller=<ControllerName>  Create a new controller in the specified module
-  --module=<module_name> --create-middleware=<MiddlewareName>  Create a new middleware in the specified module
-  --module=<module_name> --create-model=<ModelName>            Create a new model in the specified module
+  --module=<module_name> --create-controller=<ControllerName>  Create a new controller
+  --module=<module_name> --create-middleware=<MiddlewareName>  Create a new middleware
+  --module=<module_name> --create-model=<ModelName>            Create a new model
   --list-routes                     List all defined routes
   --create-htaccess                 Create or recreate a new .htaccess file
-  --optimize-modules                Optimize module loading for projects with many modules
+  --optimize-modules                Optimize module loading
 ```
 
 ## 🧪 Version Note
 
 This is the **version 1.7 release** of dotApp.  
-You might still encounter remnants of older versions in the codebase, such as duplicate function names with both lowercase and PascalCase styles. This is due to the recent transition to **PascalCase** for naming, while maintaining **backward compatibility**. This does **not impact performance**, as these are just internal references (pointers) to functions and objects, having minimal effect on CPU or memory usage.
+Older versions may have duplicate function names (lowercase and PascalCase) due to the transition to **PascalCase** for naming, maintaining **backward compatibility**. This has minimal impact on performance.
 
 ## 📚 Documentation
 
@@ -253,10 +222,5 @@ Full documentation is available at:
 
 ## 📝 License
 
-dotApp is licensed under the **MIT License** – you can use, modify, and distribute it freely.  
-However, you must **retain the author's name** in all library headers included with dotApp.
-
-Additional Permission: The Software may be used in its entirety for training
-artificial intelligence models, machine learning systems, or other automated
-systems, provided the above copyright notice and this permission notice are
-retained.
+dotApp is licensed under the **MIT License**. You must **retain the author's name** in all library headers.  
+Additional Permission: The Software may be used for training AI models, provided the copyright notice is retained.
