@@ -1,0 +1,34 @@
+{
+    "name": "dotsystems/dotapp",
+    "description": "DotApp PHP framework - a complete, scalable and efficient tool for web applications.",
+    "type": "project",
+    "license": "MIT",
+    "homepage": "https://dotsystems.sk/",
+    "config": {
+        "vendor-dir": "app/vendor"
+    },
+    "autoload": {
+		"psr-4": {
+			"Dotsystems\\": "",
+			"Dotsystems\\App\\": "app/",
+			"Dotsystems\\App\\Parts\\": "app/parts/",
+			"Dotsystems\\App\\Parts\\Controllers\\": "app/parts/Controllers/",
+			"Dotsystems\\App\\Parts\\Middleware\\": "app/parts/Middleware/",
+			"Dotsystems\\App\\Parts\\Models\\": "app/parts/Models/",
+			"Dotsystems\\App\\Modules\\": "app/modules/",
+			"Modules\\": "app/modules/",
+			"Dotsystems\\App\\CustomClasses\\": "app/custom.classes/",
+			"CustomClasses\\": "app/custom.classes/"
+		}
+	}
+	,
+    "authors": [
+        {
+            "name": "Stefan Miscik",
+            "email": "info@dotsystems.sk"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    }
+}
