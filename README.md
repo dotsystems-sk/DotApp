@@ -38,75 +38,15 @@ This approach provides a convenient way to work with `dotApp` throughout your ap
 ## What's New ✨
 
 ### Version 1.7 Released
-The latest release, **version 1.7**, introduces significant improvements to the configuration system and session management. Key changes include:
+- **NEW: Testing with `Tester` Class** (2025-06-22): Lightweight unit and integration testing for modules and core.
+- **NEW: `FastSearch` Library** (2025-06-13): Unified search interface for Elasticsearch, OpenSearch, Meilisearch, Algolia, and Typesense.
+- **NEW: `Cache` Library** (2025-06-13): Driver-agnostic caching with file-based and Redis support.
+- **NEW: Centralized Configuration with `Config` Facade** (2025-04-11): Unified configuration management.
+- **NEW: Session Drivers** (2025-04-11): Five built-in drivers (Default, File, File2, DB, Redis) for flexible session management.
+- **NEW: `Router` Facade** (2025-04-11): Alias for `$dotApp->router`.
+- **NEW: `DB` Facade** (2025-04-11): Alias for `$dotApp->db`.
+- **NEW: `Request` Facade** (2025-04-11): Alias for `$dotApp->request`.
 
-- **NEW: `FastSearch` Library**  ( 2025-06-13 )
-  A unified search interface supporting Elasticsearch, OpenSearch, Meilisearch, Algolia, and Typesense. Features a consistent API for indexing, searching, and managing documents, with portability across engines. Example:
-  ```php
-  $search = FastSearch::use('product_search');
-  $search->index('products', '123', ['name' => 'Smartphone', 'price' => 599.99]);
-  $results = $search->search('products', 'smartphone', ['category' => 'electronics']);
-  ```
-
-- **NEW: `Cache` Library** ( 2025-06-13 )
-  A driver-agnostic caching system supporting file-based and Redis drivers. Provides methods for storing, retrieving, and managing cached data with contextual support. Example:
-  ```php
-  $cache = Cache::use('myCache');
-  $cache->save('key', ['data' => 'value'], 3600, ['user' => 3]);
-  if ($data = $cache->exists('key', ['user' => 3], true)) {
-      echo print_r($data, true);
-  }
-  ```
-
-- **NEW: Centralized Configuration with `Config` Facade**  ( 2025-04-11 )
-  Configuration has been centralized using the new `Config` facade, replacing the previous approach of configuring databases and encryption keys directly through the `$dotApp` object. This provides a cleaner, more unified way to manage settings. For example:
-  ```php
-  // Set encryption key
-  Config::app("c_enc_key", md5('SECURE_KEY'));
-  alias for:
-  Config::set("app", "c_enc_key", md5('SECURE_KEY'));
-
-  // Configure databases
-  Config::addDatabase("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL", 'pdo');
-  ```
-
-- **NEW: Session Drivers**  ( 2025-04-11 )
-  Version 1.7 introduces five built-in session drivers for flexible session management:
-  - **`SessionDriverDefault`**: Wraps PHP's `$_SESSION`, configurable with Redis for distributed systems.
-  - **`SessionDriverFile`**: File-based storage in `/app/runtime/SessionDriverFile`.
-  - **`SessionDriverFile2`**: Stores each session variable as a separate file in `/app/runtime/SessionDriverFile2`.
-  - **`SessionDriverDB`**: Database-driven sessions for load-balanced environments.
-  - **`SessionDriverRedis`**: High-performance Redis-based sessions.  
-  **Important**: Set session configurations (e.g., `lifetime`, `redis_host`) using `Config::session()` *before* defining the driver with `Config::sessionDriver()`. Example:
-  ```php
-  Config::session("lifetime", 30 * 24 * 3600);
-  Config::session("redis_host", "127.0.0.1");
-  Config::session("redis_port", 6379);
-  Config::session("redis_prefix", "session:");
-  Config::sessionDriver("redis", SessionDriverRedis::driver());
-  ```
-
-- **NEW: `Router` Facade**  ( 2025-04-11 )
-  Alias for `$dotApp->router`. Define routes cleanly with `Router::`:
-  ```php
-  Router::get('/', fn() => 'Hello World');
-  Router::post('/submit', fn() => 'Submitted');
-  ```
-
-- **NEW: `DB` Facade**  ( 2025-04-11 )
-  Alias for `$dotApp->db`. Perform database operations elegantly with `DB::`:
-  ```php
-  DB::q(function ($qb) {
-      $qb->select('*')->from('users')->where('id', '=', 1);
-  })->first();
-  ```
-
-- **NEW: `Request` Facade**  ( 2025-04-11 )
-  Alias for `$dotApp->request`. Access request data simply with `Request::`:
-  ```php
-  Request::getPath();
-  Request::data();
-  ```
 ## 👥 Installation
 
 There are two ways to install dotApp:
@@ -185,6 +125,11 @@ php dotapper.php --create-module=Blog
 
 # List all routes
 php dotapper.php --list-routes
+
+# Run tests
+php dotapper.php --test              # All tests (core + modules)
+php dotapper.php --test-modules      # Module tests only
+php dotapper.php --module=Blog --test # Tests for Blog module
 ```
 
 ### All Available Options
@@ -202,6 +147,9 @@ Options:
   --list-routes                     List all defined routes
   --create-htaccess                 Create or recreate a new .htaccess file
   --optimize-modules                Optimize module loading
+  --test                            Run all core tests
+  --test-modules                    Run all module tests (no core tests)
+  --module=<module_name> --test     Run tests for a specific module
 ```
 
 ## 🧪 Version Note

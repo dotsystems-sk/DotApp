@@ -5,13 +5,15 @@
     "license": "MIT",
     "homepage": "https://dotsystems.sk/",
     "config": {
-        "vendor-dir": "app/vendor"
+        "vendor-dir": "app/vendor",
+        "secure-http": false
     },
     "autoload": {
 		"psr-4": {
 			"Dotsystems\\": "",
 			"Dotsystems\\App\\": "app/",
 			"Dotsystems\\App\\Parts\\": "app/parts/",
+			"Dotsystems\\App\\Tests\\": "app/tests/",
 			"Dotsystems\\App\\Parts\\Controllers\\": "app/parts/Controllers/",
 			"Dotsystems\\App\\Parts\\Middleware\\": "app/parts/Middleware/",
 			"Dotsystems\\App\\Parts\\Models\\": "app/parts/Models/",

@@ -3,7 +3,7 @@
         'name' => 'dotsystems/dotapp',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '7c41ce62c6c255fae613e78d6849610b6951d9e0',
+        'reference' => '809c4a895b154be54402ee9737092030a56112cf',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'dotsystems/dotapp' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '7c41ce62c6c255fae613e78d6849610b6951d9e0',
+            'reference' => '809c4a895b154be54402ee9737092030a56112cf',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../../',
             'aliases' => array(),

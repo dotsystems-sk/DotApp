@@ -13,6 +13,7 @@ class ComposerStaticInitbd74c41f2cda1a34b3d0e964db0832d3
         ),
         'D' => 
         array (
+            'Dotsystems\\App\\Tests\\' => 21,
             'Dotsystems\\App\\Parts\\Models\\' => 28,
             'Dotsystems\\App\\Parts\\Middleware\\' => 32,
             'Dotsystems\\App\\Parts\\Controllers\\' => 33,
@@ -32,6 +33,10 @@ class ComposerStaticInitbd74c41f2cda1a34b3d0e964db0832d3
         'Modules\\' => 
         array (
             0 => __DIR__ . '/../../..' . '/app/modules',
+        ),
+        'Dotsystems\\App\\Tests\\' => 
+        array (
+            0 => __DIR__ . '/../../..' . '/app/tests',
         ),
         'Dotsystems\\App\\Parts\\Models\\' => 
         array (
