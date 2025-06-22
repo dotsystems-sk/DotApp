@@ -127,8 +127,8 @@ php dotapper.php --create-module=Blog
 php dotapper.php --list-routes
 
 # Run tests
-php dotapper.php --test              # All tests (core + modules)
-php dotapper.php --test-modules      # Module tests only
+php dotapper.php --test # All tests (core)
+php dotapper.php --test-modules # Module tests only
 php dotapper.php --module=Blog --test # Tests for Blog module
 ```
 
