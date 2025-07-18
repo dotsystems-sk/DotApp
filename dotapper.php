@@ -1,8 +1,10 @@
 #!/usr/bin/env php
 <?php
 namespace Dotsystems\DotApper;
-use \Dotsystems\App\Parts\Config;
+use Dotsystems\App\Parts\Config;
 use Dotsystems\App\Parts\Tester;
+use Dotsystems\App\Parts\Installer;
+use Dotsystems\App\Parts\HttpHelper;
 
 define('__DOTAPPER_RUN__',1);
 
@@ -127,6 +129,9 @@ class DotApper {
                     } else {
                         $this->prepareDatabase(null);
                     }
+                    break;
+                case 'install-module':
+                    $this->installModule($value);
                     break;
                 default:
                     echo "Unknown option: --$key\n";
@@ -262,7 +267,7 @@ class DotApper {
         }        
     }
 
-    private function confirmAction(string $message): bool {
+    public function confirmAction(string $message): bool {
         echo "$message [Y/n]: ";
         $handle = fopen("php://stdin", "r");
         $input = trim(fgets($handle));
@@ -368,26 +373,81 @@ class DotApper {
     }
 
     /**
-     * Spracuje argumenty a uloží ich do $options.
+     * Parses command-line arguments and stores them in $options.
+     *
+     * @return void
      */
     private function parseArguments() {
         foreach ($this->args as $arg) {
-            // Ak je argument --help alebo ?, vypíš help a ukonči
             if ($arg === '--help' || $arg === '?') {
                 $this->printHelp();
                 exit(0);
             }
 
-            // Skontroluj formát --key=value alebo --key
             if (preg_match('/^--([\w-]+)(?:=(.+))?$/', $arg, $matches)) {
                 $key = $matches[1];
-                $value = isset($matches[2]) ? $matches[2] : ''; // Ak nie je hodnota, priradí prázdny reťazec
-                $this->options[$key] = $value;
+                $value = isset($matches[2]) ? $matches[2] : '';
+
+                // Handle install-module with optional version
+                if ($key === 'install-module') {
+                    // Match value and optional version, handling URLs with colons
+                    if (preg_match('/^(.+?)(?::([a-zA-Z0-9._-]+))?$/', $value, $moduleMatches)) {
+                        $parsedValue = $moduleMatches[1];
+                        // Check if the value is a URL and adjust if it includes the version part
+                        if (preg_match('#https?://#', $parsedValue) && isset($moduleMatches[2])) {
+                            // If it's a URL and a version was matched, reconstruct the value
+                            if (preg_match('#https?://.*?:([a-zA-Z0-9._-]+)$#', $value, $urlVersionMatches)) {
+                                $this->options[$key] = [
+                                    'value' => substr($value, 0, -strlen($urlVersionMatches[1]) - 1),
+                                    'version' => $urlVersionMatches[1]
+                                ];
+                            } else {
+                                $this->options[$key] = [
+                                    'value' => $value,
+                                    'version' => null
+                                ];
+                            }
+                        } else {
+                            $this->options[$key] = [
+                                'value' => $parsedValue,
+                                'version' => isset($moduleMatches[2]) ? $moduleMatches[2] : null
+                            ];
+                        }
+                    } else {
+                        echo $this->colorText("red", "Invalid format for --install-module. Use: --install-module=<git_url|module_name>[:version]\n");
+                        exit(1);
+                    }
+                } else {
+                    $this->options[$key] = $value;
+                }
             } else {
-                echo "Invalid argument format: $arg\n";
-                echo "Use: --key=value, --key, --help, or ?\n";
+                echo $this->colorText("red", "Invalid argument format: $arg\n");
+                echo $this->colorText("red", "Use: --key=value, --key, --help, or ?\n");
                 exit(1);
             }
+        }
+    }
+
+    private function installModule($value) {
+        $_SERVER['REQUEST_URI'] = '/' . md5(random_bytes(10)) . "/" . md5(random_bytes(10)) . "/" . md5(random_bytes(10));
+        $_SERVER['SERVER_NAME'] = 'localhost';
+        $_SERVER['REQUEST_METHOD'] = 'dotapper';
+        $_SERVER['HTTP_HOST'] = 'localhost';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+        if (!@include(__DIR__ . "/index.php")) {
+            echo $this->colorText("red", "Error: Failed to load index.php.\n");
+            exit(1);
+        }
+        $options = [
+            'force' => isset($this->options['force']),
+            'github_token' => $this->options['github-token'] ?? null
+        ];
+        $result = Installer::module('temp')->installModule($value['value'], $value['version'], $options, $this);
+        if (!$result['success']) {
+            echo $this->colorText("red", "Installation failed: {$result['error_message']}\n");
+            exit(1);
+        } else {
+            echo $this->colorText("green", "Module '{$result['module_name']}' successfully installed.\n");
         }
     }
 
@@ -1122,8 +1182,6 @@ class DotApper {
         }
     }
 
-
-
     /**
      * Vypíše help správu.
      */
@@ -1159,7 +1217,7 @@ class DotApper {
      * @param string $text Text to color
      * @return string Colored text with ANSI codes
      */
-    private function colorText(string $color, string $text): string {
+    public function colorText(string $color, string $text): string {
         $colors = [
             'black' => '30',
             'red' => '31',
@@ -1194,7 +1252,7 @@ class DotApper {
      * @param string $text Text to apply background color
      * @return string Text with background color
      */
-    private function bgColorText(string $bgColor, string $text): string {
+    public function bgColorText(string $bgColor, string $text): string {
         $bgColors = [
             'black' => '40',
             'red' => '41',
