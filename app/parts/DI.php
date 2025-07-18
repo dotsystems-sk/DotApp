@@ -37,7 +37,8 @@ class DI {
     public $classname=null;
 
     // Konštruktor
-    function __construct($target, $dotapp) {
+    function __construct($target, $dotapp=null) {
+        if ($dotapp === null) $dotapp = DotApp::dotApp();
         if ($target instanceof \Closure || (!is_object($target) && !is_string($target))) {
             throw new \InvalidArgumentException("Target must be an object instance or class name string.");
         } 

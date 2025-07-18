@@ -1,6 +1,6 @@
 <?php
 /**
- * Class REQUEST
+ * Class RequestObj
  * 
  * This class is utilized within the router class to handle incoming HTTP requests. 
  * It processes request data, such as parameters, headers, and body content, enabling 
@@ -24,7 +24,7 @@
  */
 
 /*
-    Request Class Usage:
+    RequestObj Class Usage:
 
     The request class is essential for managing HTTP requests within the DotApp framework.
     It serves as a bridge between incoming requests and the routing system, allowing for 
@@ -38,7 +38,6 @@
     requests correctly and execute the designated handlers.
 */
 
-
 namespace Dotsystems\App\Parts;
 use \Dotsystems\App\DotApp;
 
@@ -48,13 +47,13 @@ class RequestObj {
     public $dotApp;
     public $DotApp;
 
-	private $reqVars;
+    private $reqVars;
     private $route;
     private $path;
-	private $removeScriptPath;
-    private $matchdata; // Ak volame URL s dynamickymi parametrami, tu su premenne
-    private $hookdata; // Ak neretazime metodu ale volame after alebo before samostatne, tak tu su premenne pre hook. Ak retazime matchdata a hookdata budu rovnake
-    private $dsm; // Session manager pre REQUESTY
+    private $removeScriptPath;
+    private $matchdata; // Stores variables for URLs with dynamic parameters
+    private $hookdata; // Stores variables for hooks (before/after) if called separately; same as matchdata when chained
+    private $dsm; // Session manager for requests
     public $response;
     private $gsLocked;
     public $auth;
@@ -64,7 +63,7 @@ class RequestObj {
     private $formValid = null;
     private $formData = array();
     
-    // Vlastnosti pre load balancing
+    // Properties for load balancing
     private $trustedProxies;
     private $forwardedHeaders = [
         'for' => 'HTTP_X_FORWARDED_FOR',
@@ -76,18 +75,18 @@ class RequestObj {
     private $host = null;
     private $port = null;
     private $isLoadBalanced = false;
-    private $originalServerData = []; // Zachová pôvodné hodnoty
+    private $originalServerData = []; // Preserves original server values
 
     public function __set($name, $value) {
         if ($name == "response") throw new \InvalidArgumentException("request->response locked for edit !");
     }
 	
-	function __construct($dotapp,$rpath=1) {
+    function __construct($dotapp, $rpath = 1) {
         $this->dotapp = DotApp::dotApp();
         $this->dotApp = $this->dotapp;
         $this->DotApp = $this->dotapp;
         $this->trustedProxies = &$this->dotApp->proxyServery;
-		$this->removeScriptPath = $rpath;
+        $this->removeScriptPath = $rpath;
         $this->path = false;
         $this->route = false;
         $this->matchdata = array();
@@ -104,20 +103,20 @@ class RequestObj {
         $this->response->data = [];
         $this->dsm = new DSM("dotapp.request");
         $this->dsm->load();
-        $this->gsLocked = false; // Zamkneme hlavne getters a setters
-        $this->auth = new AuthObj($this->dotapp,$this->dsm);
+        $this->gsLocked = false; // Locks getters and setters
+        $this->auth = new AuthObj($this->dotapp, $this->dsm);
         $this->CSRF = $this->dsm->get('_CSRF') ?? array();
         $this->initializeProxyHeaders();
         $this->data();
     }
 
-    /*
-        Ak slapeme po dialnici load ballancera
-    */
+    /**
+     * Initializes proxy headers for load-balanced environments.
+     */
     protected function initializeProxyHeaders() {
         $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
         
-        // Zachovaj pôvodné hodnoty
+        // Preserve original server values
         $this->originalServerData = [
             'REMOTE_ADDR' => $remoteAddr,
             'HTTPS' => $_SERVER['HTTPS'] ?? null,
@@ -126,18 +125,18 @@ class RequestObj {
         ];
 
         if ($this->isTrustedProxy($remoteAddr)) {
-            // Detekcia load balanceru
+            // Detect load balancer
             $this->isLoadBalanced = !empty($_SERVER[$this->forwardedHeaders['for']]) ||
                                     !empty($_SERVER[$this->forwardedHeaders['proto']]) ||
                                     !empty($_SERVER[$this->forwardedHeaders['host']]) ||
                                     !empty($_SERVER[$this->forwardedHeaders['port']]);
 
-            // Aktualizuj REMOTE_ADDR
+            // Update REMOTE_ADDR
             if ($forwardedFor = $_SERVER[$this->forwardedHeaders['for']] ?? '') {
                 $_SERVER['REMOTE_ADDR'] = trim(explode(',', $forwardedFor)[0]);
             }
 
-            // Aktualizuj HTTPS
+            // Update HTTPS
             $proto = $_SERVER[$this->forwardedHeaders['proto']] ?? '';
             if ($proto === 'https') {
                 $_SERVER['HTTPS'] = 'on';
@@ -148,13 +147,13 @@ class RequestObj {
             }
             $this->isSecure = ($proto === 'https');
 
-            // Aktualizuj HTTP_HOST
+            // Update HTTP_HOST
             if ($host = $_SERVER[$this->forwardedHeaders['host']] ?? '') {
                 $_SERVER['HTTP_HOST'] = $host;
             }
             $this->host = $_SERVER['HTTP_HOST'] ?? '';
 
-            // Aktualizuj SERVER_PORT
+            // Update SERVER_PORT
             if ($port = $_SERVER[$this->forwardedHeaders['port']] ?? '') {
                 $_SERVER['SERVER_PORT'] = $port;
             }
@@ -166,14 +165,20 @@ class RequestObj {
             $this->port = $_SERVER['SERVER_PORT'] ?? '';
 
             if (!empty($_SERVER[$this->forwardedHeaders['for']]) && $this->dotApp->isDebugMode()) {
-                error_log("Warning: X-Forwarded-For detected from untrusted proxy $remoteAddr");
+                DotApp::DotApp()->Logger->warning("X-Forwarded-For detected from untrusted proxy", ['remote_addr' => $remoteAddr]);
             }
         }
     }
 
+    /**
+     * Checks if the given IP is a trusted proxy.
+     *
+     * @param string $ip The IP address to check.
+     * @return bool True if the IP is trusted, false otherwise.
+     */
     protected function isTrustedProxy($ip) {
         if ($this->trustedProxies === ['*']) {
-            return true; // Ak pouzivame load ballancer tak sa snazme vyhnut *
+            return true; // Warning: Avoid using '*' in production for load balancers
         }
         return in_array($ip, $this->trustedProxies, true);
     }
@@ -226,16 +231,20 @@ class RequestObj {
         $this->dotapp->unprotect($vstup);
     }
 	
-	public function __debugInfo() {
+    public function __debugInfo() {
         return [
             'publicData' => 'This is just part of dotapp. Nothing to see !'
         ];
     }
 
-    /*
-        Zakladne GETTER A SETTER sa zamknu na zapis
-    */
-    public function matchData($data=false) {
+    /**
+     * Gets or sets match data for dynamic URL parameters.
+     * Locked for editing if gsLocked is true.
+     *
+     * @param mixed $data Data to set, or false to get current data.
+     * @return mixed Current match data if getting, void if setting.
+     */
+    public function matchData($data = false) {
         if ($data !== false) {
             if ($this->gsLocked) {
                 throw new \InvalidArgumentException("request->matchData locked for edit!");
@@ -247,18 +256,18 @@ class RequestObj {
     }
 
     public function upload($callback) {
-        // Overíme, či je callback callable
+        // Verify that callback is callable
         if (!is_callable($callback)) {
-            throw new \InvalidArgumentException("Callback musí byť callable!");
+            throw new \InvalidArgumentException("Callback must be callable!");
         }
 
-        // Pole na uloženie informácií o súboroch
+        // Array to store file information
         $files = array();
 
-        // Spracujeme súbory z $_FILES
+        // Process files from $_FILES
         if (!empty($_FILES)) {
             foreach ($_FILES as $fieldName => $fileInfo) {
-                // Ak je súbor pole (multiple upload), spracujeme každý súbor samostatne
+                // Handle multiple file uploads
                 if (is_array($fileInfo['name'])) {
                     $fileCount = count($fileInfo['name']);
                     for ($i = 0; $i < $fileCount; $i++) {
@@ -275,7 +284,7 @@ class RequestObj {
                         }
                     }
                 } else {
-                    // Jednotlivý súbor
+                    // Handle single file upload
                     if ($fileInfo['error'] !== UPLOAD_ERR_NO_FILE) {
                         $files[] = array(
                             'field' => $fieldName,
@@ -291,11 +300,11 @@ class RequestObj {
             }
         }
 
-        // Zavoláme callback s poľom súborov
+        // Call the callback with the array of files
         try {
             call_user_func($callback, $files);
         } catch (\Exception $e) {
-            throw new \RuntimeException("Chyba pri spracovaní callbacku: " . $e->getMessage());
+            throw new \RuntimeException("Error processing callback: " . $e->getMessage());
         }
 
         return $this;
@@ -378,9 +387,8 @@ class RequestObj {
         $this->gsLocked = true;
         return $this;
     }
-    // ----> Potialto su potom zamknute
 
-    public function route($route=false) {
+    public function route($route = false) {
         if ($route !== false) {
             $this->route = (string) $route;
         } else {
@@ -388,7 +396,7 @@ class RequestObj {
         }        
     }
 
-    public function hookData($data=false) {
+    public function hookData($data = false) {
         if ($data !== false) {
             $this->hookdata = (array) $data;
         } else {
@@ -396,7 +404,7 @@ class RequestObj {
         }  
     }
 
-    public function body($data=false) {
+    public function body($data = false) {
         if ($data !== false) {
             $this->response->body = (string) $data;
         } else {
@@ -404,55 +412,55 @@ class RequestObj {
         }  
     }
 
-    // Potrbeuje byt autantifikovany
-    public function requireAuth($returnData=false) {
+    /**
+     * Checks if the user is authenticated and optionally returns auth data.
+     *
+     * @param bool $returnData If true, returns auth data if authenticated; otherwise, returns null.
+     * @return mixed True if authenticated (when $returnData is false), auth data if $returnData is true, or null if not authenticated.
+     */
+    public function requireAuth($returnData = false) {
         if ($returnData && $this->auth->isLogged()) {
             return $this->auth->getAuthData();
         } 
         if (!$returnData) return $this->auth->isLogged();
-        /*
-            Inak NULL, aby sa dalo robit v controlleroch easy ze if ($premenna = $request->requireAuth(true)) {//logika s prihlasenym uzivatelom};
-        */
+        // Returns null for easy controller logic: if ($data = $request->requireAuth(true)) { /* authenticated user logic */ }
         return null;        
     }
 	
-	public function getPath() {
-        if (is_string($this->path)) return($this->path);
-		$path = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
-		$path = str_replace("\\",'/',$path);
-		if ($this->removeScriptPath) {
-			$scriptName = dirname($_SERVER['SCRIPT_NAME']);
-			$scriptName = str_replace("\\",'/',$scriptName);
-			$position = strpos($path, $scriptName);
-			$escapedScriptName = preg_quote($scriptName, '/');
-			$path = "/".preg_replace('/^' . $escapedScriptName . '/', '', $path, 1);
-		}
-		$sugetpremenne = strpos($path, '?' );		
-		if ($sugetpremenne === false) {
+    public function getPath() {
+        if (is_string($this->path)) return $this->path;
+        $path = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
+        $path = str_replace("\\", '/', $path);
+        if ($this->removeScriptPath) {
+            $scriptName = dirname($_SERVER['SCRIPT_NAME']);
+            $scriptName = str_replace("\\", '/', $scriptName);
+            $position = strpos($path, $scriptName);
+            $escapedScriptName = preg_quote($scriptName, '/');
+            $path = "/" . preg_replace('/^' . $escapedScriptName . '/', '', $path, 1);
+        }
+        $sugetpremenne = strpos($path, '?' );		
+        if ($sugetpremenne === false) {
             $this->path = $path;
-			return $path;
-		} else {
-			$patha = explode("?",$path);
-			$this->path = $patha[0];
+            return $path;
+        } else {
+            $patha = explode("?", $path);
+            $this->path = $patha[0];
             $this->reqVars = $patha[1];            
-			return $patha[0];
-		}
-	}
+            return $patha[0];
+        }
+    }
 	
-	public function getMethod() {
+    public function getMethod() {
         if (defined('__DOTAPPER_RUN__')) {
             $method = "get";
-        } else $method = strtolower($_SERVER['REQUEST_METHOD']);
+        } else {
+            $method = strtolower($_SERVER['REQUEST_METHOD']);
+        }
         
-        /* 
-            Povolene HTTP metody - kedze mame funkcie ako apiDispatch a podobne ktore automatizuju veci na zaklade method a path,
-            tak aby uzivatel nemohol zavolat podvrhnutim metody funkciu ktoru nechceme tu mu to zakazeme.
-            napriklad ak by pouzil metodu stiahni a resource okno, mohol by zavolat metodu stiahniOkno ktoru inak uzivatel nechce aby bola pristupna.
-        */
-
+        // Allowed HTTP methods to prevent unauthorized method calls
         $allowedMethods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
         
-        // Kontrola, či je metóda povolená
+        // Check if the method is allowed
         if (!in_array($method, $allowedMethods) && !defined('__DOTAPPER_RUN__')) {
             http_response_code(405); // Method Not Allowed
             echo "Method '$method' is not allowed. Use only standard HTTP methods: " . implode(', ', $allowedMethods);
@@ -462,12 +470,12 @@ class RequestObj {
         return $method;
     }
 	
-	public function getVars() {
-		return $this->reqVars;
-	}
+    public function getVars() {
+        return $this->reqVars;
+    }
 
     public function isValidCSRF($token) {
-        if (in_array(md5($token),$this->CSRF)) return false;
+        if (in_array(md5($token), $this->CSRF)) return false;
         return true;
     }
 
@@ -482,26 +490,29 @@ class RequestObj {
     }
 
     public function crcCheck() {
-        // Získame dáta z metódy data()
+        // Get data from data() method
         $dataArray = $this->data(true);
         
-        // Extrahujeme 'data' a 'crc' z dát
+        // Extract 'data' and 'crc' from the data
         $data = $dataArray['data'] ?? null;
         $crc = $dataArray['crc'] ?? null;
 
-        // Overíme CRC pomocou crc_check z DotApp
+        // Verify CRC using crc_check from DotApp
         $privateKey = $_SESSION['module_users_ckey'] ?? $this->dotApp->encKey();
         $result = $this->dotapp->crc_check($privateKey, $crc, $data);
     
-        // Ak chýbajú dáta alebo CRC, vrátime false
+        // If data or crc is missing, log warning and return false
         if ($data === null || $crc === null) {
             if ($this->dotApp->isDebugMode()) {
-                error_log("crcCheck failed: Missing data or crc");
+                DotApp::DotApp()->Logger->warning("crcCheck failed: Missing data or crc", [
+                    'data' => $data,
+                    'crc' => $crc
+                ]);
             }
             return false;
         }
         
-        // Validácia CSRF tokenov
+        // Validate CSRF tokens
         if ($this->dotApp->hasListener("dotapp.invalidate.csrf.url.token")) {
             return $this->dotApp->trigger("dotapp.invalidate.csrf.url.token", $this);
         } else {
@@ -511,14 +522,16 @@ class RequestObj {
             }
             if (!is_array($data)) {
                 if ($this->dotApp->isDebugMode()) {
-                    error_log("crcCheck failed: Data is not a valid array");
+                    DotApp::DotApp()->Logger->warning("crcCheck failed: Data is not a valid array", [
+                        'data' => $data
+                    ]);
                 }
                 return false;
             }
     
             $data['dotapp-security-data-csrf-random-token'] = $this->dotapp->unprotect_data($data['dotapp-security-data-csrf-random-token'] ?? '');
             if ($this->isValidCSRF($data['dotapp-security-data-csrf-random-token'])) {
-                // Validácia CSRF
+                // Validate CSRF
                 $data['dotapp-security-data-csrf-random-token-key'] = $this->dotapp->unprotect_data($data['dotapp-security-data-csrf-random-token-key'] ?? '');
                 $data['dotapp-security-data-csrf-token-tab'] = $this->dotapp->unprotect_data($data['dotapp-security-data-csrf-token-tab'] ?? '');
                 $this->invalidateCSRF($data['dotapp-security-data-csrf-random-token']);
@@ -533,31 +546,39 @@ class RequestObj {
                 
                 if (!($ref === ($_SERVER['HTTP_REFERER'] ?? ''))) {
                     if ($this->dotApp->isDebugMode()) {
-                        error_log("crcCheck failed: Invalid referer");
+                        DotApp::DotApp()->Logger->warning("crcCheck failed: Invalid referer", [
+                            'referer' => $_SERVER['HTTP_REFERER'] ?? '',
+                            'decrypted_referer' => $ref
+                        ]);
                     }
                     return false;
                 }
             } else {
                 if ($this->dotApp->isDebugMode()) {
-                    error_log("crcCheck failed: Invalid CSRF token");
+                    DotApp::DotApp()->Logger->warning("crcCheck failed: Invalid CSRF token", [
+                        'csrf_token' => $data['dotapp-security-data-csrf-random-token'] ?? ''
+                    ]);
                 }
                 return false;
             }
         }
         
         if (!$result && $this->dotApp->isDebugMode()) {
-            error_log("crcCheck failed: CRC validation failed");
+            DotApp::DotApp()->Logger->warning("crcCheck failed: CRC validation failed", [
+                'crc' => $crc,
+                'data' => $data
+            ]);
         }
         
         return $result;
     }
 
     public function formSignatureCheck() {
-        if ($this->formValid === true) return(true);
+        if ($this->formValid === true) return true;
 
-        // Smernik na data, takze pracujeme s realnymi datami nie vo vlastnom scoope
+        // Reference to data, working with real data, not a local scope
         $data = $this->data();
-        if ( (!isset($data['dotapp-secure-auto-fnname-public']) || !isset($data['dotapp-secure-auto-fnname-action']) || !isset($data['dotapp-secure-auto-fnname-method']) || !isset($data['dotapp-secure-auto-fnname-public'])) && isSet($data['data']) && is_array($data['data'])) {
+        if ( (!isset($data['dotapp-secure-auto-fnname-public']) || !isset($data['dotapp-secure-auto-fnname-action']) || !isset($data['dotapp-secure-auto-fnname-method']) || !isset($data['dotapp-secure-auto-fnname-public'])) && isset($data['data']) && is_array($data['data'])) {
             $data = $data['data'];
         }
 
@@ -572,7 +593,7 @@ class RequestObj {
             $name = $methodOrName;
             $success = $nameOrSuccess;
         } else {
-            // Tak je jasne ze je to metoda...
+            // Method is specified
             if (is_array($methodOrName)) {
                 $method = $methodOrName;
                 $name = $nameOrSuccess;
@@ -603,7 +624,7 @@ class RequestObj {
                 $fnname = $this->formData['fnname'];
             } else {
                 $data = $this->data();
-                if ( (!isset($data['dotapp-secure-auto-fnname-public']) || !isset($data['dotapp-secure-auto-fnname-action']) || !isset($data['dotapp-secure-auto-fnname-method']) || !isset($data['dotapp-secure-auto-fnname-public'])) && isSet($data['data']) && is_array($data['data'])) {
+                if ( (!isset($data['dotapp-secure-auto-fnname-public']) || !isset($data['dotapp-secure-auto-fnname-action']) || !isset($data['dotapp-secure-auto-fnname-method']) || !isset($data['dotapp-secure-auto-fnname-public'])) && isset($data['data']) && is_array($data['data'])) {
                     $data = $data['data'];
                 }
                 $decryptKey = $this->dotApp->decrypt($data['dotapp-secure-auto-fnname-public']);
@@ -621,7 +642,7 @@ class RequestObj {
                 if (strtolower($method) === $this->getMethod() && ($action === $this->getPath() || $action === $this->getPath()."?".$this->reqVars)) {
                     if (!is_callable($success)) $success = $this->dotApp->stringToCallable($success);
                     if (is_callable($success)) {
-                        return $success($this,$name);
+                        return $success($this, $name);
                     } else {
                         throw new \Exception("Success is not callable !");
                     }                    
@@ -631,15 +652,11 @@ class RequestObj {
             if ($error === null) throw new \Exception("Signature is invalid !");
             if (!is_callable($error)) $error = $this->dotApp->stringToCallable($error);
             if (is_callable($error)) {
-                return $error($this,$name);
+                return $error($this, $name);
             } else {
                 throw new \Exception("Error callback is not callable ! Signature is also invalid !");
             }
         }
     }
-	
 }
-
-
-
 ?>

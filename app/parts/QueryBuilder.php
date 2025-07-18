@@ -504,11 +504,13 @@ class QueryBuilder {
     }
 
     private function isSqlExpression($column) {
-        // Povoliť hviezdičku, SQL funkcie a aliasy
+        // Povoliť hviezdičku, SQL funkcie, aliasy a literálne hodnoty
         return $column === '*' ||
-               preg_match('/^[A-Z]+\(\*\)$/i', $column) || // Napr. COUNT(*)
-               preg_match('/^[A-Z]+\(.*\)$/i', $column) || // Napr. SUM(column)
-               strpos($column, ' AS ') !== false; // Napr. column AS alias
+            preg_match('/^[A-Z]+\(\*\)$/i', $column) || // Napr. COUNT(*)
+            preg_match('/^[A-Z]+\(.*\)$/i', $column) || // Napr. SUM(column)
+            strpos($column, ' AS ') !== false || // Napr. column AS alias
+            is_numeric($column) || // Numerické literály, napr. 1, 42.5
+            in_array(strtoupper($column), ['CURRENT_TIMESTAMP', 'NULL', 'TRUE', 'FALSE']); // SQL kľúčové slová
     }
 
     private function isValidColumn($column) {
@@ -530,13 +532,24 @@ class QueryBuilder {
     }
 
     private function sanitizeTable($table) {
-        $table = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+        // Rozdeliť názov na časti (napr. information_schema.tables -> [information_schema, tables])
+        $parts = explode('.', $table);
+        $sanitizedParts = array_map(function ($part) {
+            // Sanitácia každej časti (povolené: a-z, A-Z, 0-9, _)
+            $part = preg_replace('/[^a-zA-Z0-9_]/', '', trim($part));
+            if (empty($part)) {
+                throw new InvalidArgumentException("Empty table or schema name part");
+            }
+            return $part;
+        }, $parts);
+
+        // Ohraničenie podľa typu databázy
         if ($this->dbType === 'sqlsrv') {
-            return "[$table]";
+            return '[' . implode('].[', $sanitizedParts) . ']';
         } elseif ($this->dbType === 'pgsql' || $this->dbType === 'oci') {
-            return "\"$table\"";
+            return '"' . implode('"."', $sanitizedParts) . '"';
         }
-        return "`$table`";
+        return '`' . implode('`.`', $sanitizedParts) . '`';
     }
 
     private function sanitizeValue($value) {

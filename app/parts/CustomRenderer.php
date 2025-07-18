@@ -29,6 +29,10 @@ class CustomRenderer {
 		}
 	}
 
+    public function blocks($name) {
+        return $this->blocks[$name] ?? null;
+    }
+
 	public function addBlock(string $name,$blockFn) {
 		if (!is_callable($blockFn)) {
 			$blockFn = $this->dotApp->stringToCallable($blockFn);
@@ -39,7 +43,7 @@ class CustomRenderer {
 	}
 
     public function getRenderer($name) {
-        return $this->dotApp->customRenderer[$name] ?? false;
+        return $this->customRenderers[$name] ?? false;
 	}
 
     // Ak by sme chceli nejaku cast specificky vyrenderovat nejakym custom rendererom...

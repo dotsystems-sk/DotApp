@@ -9,8 +9,8 @@ use InvalidArgumentException;
  */
 interface SchemaAdapter {
     public function formatColumn(ColumnDefinition $column);
-    public function formatIndex(array $columns, $unique, $name);
-    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name);
+    public function formatIndex(array $columns, $unique, $name, $comment = null);
+    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null);
     public function tableExists($table);
     public function columnExists($table, $column);
     public function indexExists($table, $indexName);
@@ -40,18 +40,6 @@ class ColumnDefinition {
         return $this;
     }
 
-    /**
-     * Sets the default value for the column.
-     *
-     * This method allows you to specify a default value for the column
-     * when it's created or when a new row is inserted without a value
-     * for this column.
-     *
-     * @param mixed $value The default value to be set for the column.
-     *                     This can be of any type that is compatible with the column's data type.
-     *
-     * @return $this Returns the current ColumnDefinition instance, allowing for method chaining.
-     */
     public function default($value) {
         $this->properties['default'] = $value;
         return $this;
@@ -123,6 +111,39 @@ class ColumnDefinition {
 }
 
 /**
+ * Represents a constraint definition with chainable properties.
+ */
+class ConstraintDefinition {
+    private $schemaBuilder;
+    private $type;
+    private $name;
+    private $properties = [];
+
+    public function __construct(SchemaBuilder $schemaBuilder, $type, $name) {
+        $this->schemaBuilder = $schemaBuilder;
+        $this->type = $type;
+        $this->name = $name;
+    }
+
+    public function comment($comment) {
+        $this->properties['comment'] = $comment;
+        return $this;
+    }
+
+    public function getType() {
+        return $this->type;
+    }
+
+    public function getName() {
+        return $this->name;
+    }
+
+    public function getProperties() {
+        return $this->properties;
+    }
+}
+
+/**
  * MySQL-specific schema adapter.
  */
 class MySqlSchemaAdapter implements SchemaAdapter {
@@ -143,14 +164,17 @@ class MySqlSchemaAdapter implements SchemaAdapter {
         return "`$name` $type$length$unsigned $null$default$autoIncrement$onUpdate$comment";
     }
 
-    public function formatIndex(array $columns, $unique, $name) {
+    public function formatIndex(array $columns, $unique, $name, $comment = null) {
         $indexType = $unique ? 'UNIQUE INDEX' : 'INDEX';
         $columnList = '`' . implode('`,`', $columns) . '`';
-        return "$indexType `$name` ($columnList)";
+        $commentClause = $comment ? " COMMENT '" . str_replace("'", "''", $comment) . "'" : '';
+        return "$indexType `$name` ($columnList)$commentClause";
     }
 
-    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name) {
-        return "CONSTRAINT `$name` FOREIGN KEY (`$column`) REFERENCES `$on` (`$references`) ON DELETE $onDelete ON UPDATE $onUpdate";
+    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null) {
+        $fk = "CONSTRAINT `$name` FOREIGN KEY (`$column`) REFERENCES `$on` (`$references`) ON DELETE $onDelete ON UPDATE $onUpdate";
+        $commentClause = $comment ? " COMMENT '" . str_replace("'", "''", $comment) . "'" : '';
+        return $fk . $commentClause;
     }
 
     public function tableExists($table) {
@@ -300,14 +324,17 @@ class PgSqlSchemaAdapter implements SchemaAdapter {
         return "\"$name\" $type$length$autoIncrement $null$default$comment";
     }
 
-    public function formatIndex(array $columns, $unique, $name) {
+    public function formatIndex(array $columns, $unique, $name, $comment = null) {
         $indexType = $unique ? 'UNIQUE' : 'INDEX';
         $columnList = '"' . implode('","', $columns) . '"';
-        return "$indexType \"$name\" ON ($columnList)";
+        $commentClause = $comment ? " /* " . str_replace("'", "''", $comment) . " */" : '';
+        return "$indexType \"$name\" ON ($columnList)$commentClause";
     }
 
-    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name) {
-        return "CONSTRAINT \"$name\" FOREIGN KEY (\"$column\") REFERENCES \"$on\" (\"$references\") ON DELETE $onDelete ON UPDATE $onUpdate";
+    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null) {
+        $fk = "CONSTRAINT \"$name\" FOREIGN KEY (\"$column\") REFERENCES \"$on\" (\"$references\") ON DELETE $onDelete ON UPDATE $onUpdate";
+        $commentClause = $comment ? " /* " . str_replace("'", "''", $comment) . " */" : '';
+        return $fk . $commentClause;
     }
 
     public function tableExists($table) {
@@ -478,13 +505,13 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
         return "`$name` $type $null$default$autoIncrement";
     }
 
-    public function formatIndex(array $columns, $unique, $name) {
+    public function formatIndex(array $columns, $unique, $name, $comment = null) {
         $indexType = $unique ? 'UNIQUE INDEX' : 'INDEX';
         $columnList = '`' . implode('`,`', $columns) . '`';
         return "$indexType `$name` ON ($columnList)";
     }
 
-    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name) {
+    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null) {
         return "FOREIGN KEY (`$column`) REFERENCES `$on` (`$references`) ON DELETE $onDelete ON UPDATE $onUpdate";
     }
 
@@ -656,14 +683,17 @@ class OracleSchemaAdapter implements SchemaAdapter {
         return "\"$name\" $type$length$autoIncrement $null$default$comment";
     }
 
-    public function formatIndex(array $columns, $unique, $name) {
+    public function formatIndex(array $columns, $unique, $name, $comment = null) {
         $indexType = $unique ? 'UNIQUE INDEX' : 'INDEX';
         $columnList = '"' . implode('","', $columns) . '"';
-        return "$indexType \"$name\" ON ($columnList)";
+        $commentClause = $comment ? " /* " . str_replace("'", "''", $comment) . " */" : '';
+        return "$indexType \"$name\" ON ($columnList)$commentClause";
     }
 
-    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name) {
-        return "CONSTRAINT \"$name\" FOREIGN KEY (\"$column\") REFERENCES \"$on\" (\"$references\") ON DELETE $onDelete";
+    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null) {
+        $fk = "CONSTRAINT \"$name\" FOREIGN KEY (\"$column\") REFERENCES \"$on\" (\"$references\") ON DELETE $onDelete";
+        $commentClause = $comment ? " /* " . str_replace("'", "''", $comment) . " */" : '';
+        return $fk . $commentClause;
     }
 
     public function tableExists($table) {
@@ -827,13 +857,13 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
         return "[$name] $type$length$autoIncrement $null$default";
     }
 
-    public function formatIndex(array $columns, $unique, $name) {
+    public function formatIndex(array $columns, $unique, $name, $comment = null) {
         $indexType = $unique ? 'UNIQUE INDEX' : 'INDEX';
         $columnList = '[' . implode('],[', $columns) . ']';
         return "$indexType [$name] ON ($columnList)";
     }
 
-    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name) {
+    public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null) {
         return "CONSTRAINT [$name] FOREIGN KEY ([$column]) REFERENCES [$on] ([$references]) ON DELETE $onDelete ON UPDATE $onUpdate";
     }
 
@@ -999,7 +1029,16 @@ class SchemaBuilder {
     private $adapter;
 
     public function __construct($databaser = null) {
-        $this->databaser = $databaser instanceof Databaser ? $databaser : null;
+        // Handle Databaser instance or DI instance
+        if ($databaser instanceof Databaser) {
+            $this->databaser = $databaser;
+        } elseif ($databaser instanceof DI && $databaser->classname === Databaser::class) {
+            $this->databaser = $databaser->getTarget();
+        } else {
+            $this->databaser = null;
+        }
+
+        // Determine dbType
         if ($this->databaser) {
             if (isset($this->databaser->database_drivers['driver'])) {
                 $driver = $this->databaser->database_drivers['driver'];
@@ -1013,6 +1052,7 @@ class SchemaBuilder {
         } else {
             $this->dbType = 'mysql';
         }
+
         $this->initializeAdapter();
     }
 
@@ -1159,8 +1199,10 @@ class SchemaBuilder {
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $columnList = $this->formatColumnList($columns);
-        $this->constraints[] = "PRIMARY KEY ($columnList)";
-        return $this;
+        $name = 'pk_' . implode('_', $columns);
+        $constraint = new ConstraintDefinition($this, 'PRIMARY_KEY', $name);
+        $this->constraints[] = ['definition' => "CONSTRAINT `$name` PRIMARY KEY ($columnList)", 'constraint' => $constraint];
+        return $constraint;
     }
 
     public function dropPrimaryKey() {
@@ -1184,8 +1226,9 @@ class SchemaBuilder {
         $references = $this->sanitizeName($references);
         $on = $this->sanitizeName($on ?: $this->guessTableName($column));
         $name = "fk_{$on}_{$column}";
-        $this->foreignKeys[] = $this->adapter->formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name);
-        return $this;
+        $constraint = new ConstraintDefinition($this, 'FOREIGN_KEY', $name);
+        $this->foreignKeys[] = ['definition' => $this->adapter->formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name), 'constraint' => $constraint];
+        return $constraint;
     }
 
     public function dropForeign($name) {
@@ -1204,8 +1247,9 @@ class SchemaBuilder {
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $name = 'idx_' . implode('_', $columns);
-        $this->indexes[] = $this->adapter->formatIndex($columns, $unique, $name);
-        return $this;
+        $constraint = new ConstraintDefinition($this, $unique ? 'UNIQUE_INDEX' : 'INDEX', $name);
+        $this->indexes[] = ['columns' => $columns, 'unique' => $unique, 'name' => $name, 'constraint' => $constraint];
+        return $constraint;
     }
 
     public function unique($columns) {
@@ -1222,10 +1266,12 @@ class SchemaBuilder {
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $name = 'ft_idx_' . implode('_', $columns);
         $columnList = $this->dbType === 'mysql' ? '`' . implode('`,`', $columns) . '`' : '"' . implode('","', $columns) . '"';
-        $this->indexes[] = $this->dbType === 'mysql'
+        $constraint = new ConstraintDefinition($this, 'FULLTEXT_INDEX', $name);
+        $this->indexes[] = ['definition' => $this->dbType === 'mysql'
             ? "FULLTEXT INDEX `$name` ($columnList)"
-            : "INDEX \"$name\" ON ($columnList) USING GIN (to_tsvector('english', $columnList))";
-        return $this;
+            : "INDEX \"$name\" ON ($columnList) USING GIN (to_tsvector('english', $columnList))",
+            'constraint' => $constraint];
+        return $constraint;
     }
 
     public function dropIndex($name) {
@@ -1305,7 +1351,7 @@ class SchemaBuilder {
         if ($this->dbType === 'sqlite' && strpos($constraint, 'CHECK') === false) {
             throw new InvalidArgumentException("SQLite only supports CHECK constraints.");
         }
-        $this->constraints[] = "CONSTRAINT `$name` $constraint";
+        $this->constraints[] = ['definition' => "CONSTRAINT `$name` $constraint", 'constraint' => new ConstraintDefinition($this, 'CHECK', $name)];
         return $this;
     }
 
@@ -1368,7 +1414,34 @@ class SchemaBuilder {
             return $this->adapter->formatColumn($column);
         }, $this->columnDefinitions);
 
-        return implode(', ', array_merge($columns, $this->indexes, $this->foreignKeys, $this->constraints));
+        $indexes = array_map(function ($index) {
+            $columns = $index['columns'];
+            $unique = $index['unique'];
+            $name = $index['name'];
+            $comment = $index['constraint']->getProperties()['comment'] ?? null;
+            return $this->adapter->formatIndex($columns, $unique, $name, $comment);
+        }, $this->indexes);
+
+        $foreignKeys = array_map(function ($fk) {
+            $comment = $fk['constraint']->getProperties()['comment'] ?? null;
+            preg_match('/FOREIGN KEY \(`?([^`\)]+)`?\)/', $fk['definition'], $matches);
+            $column = $matches[1] ?? '';
+            preg_match('/REFERENCES `?([^`\s]+)`? \(`?([^`\)]+)`?\)/', $fk['definition'], $matches);
+            $on = $matches[1] ?? '';
+            $references = $matches[2] ?? '';
+            preg_match('/ON DELETE (\w+)/', $fk['definition'], $matches);
+            $onDelete = $matches[1] ?? 'CASCADE';
+            preg_match('/ON UPDATE ([A-Z\s]+)/', $fk['definition'], $matches);
+            $onUpdate = $matches[1] ?? 'NO ACTION';
+            return $this->adapter->formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $fk['constraint']->getName(), $comment);
+        }, $this->foreignKeys);
+
+        $constraints = array_map(function ($constraint) {
+            $comment = $constraint['constraint']->getProperties()['comment'] ?? null;
+            return $constraint['definition'] . ($comment && $this->dbType === 'mysql' ? " COMMENT '" . str_replace("'", "''", $comment) . "'" : '');
+        }, $this->constraints);
+
+        return implode(', ', array_merge($columns, $indexes, $foreignKeys, $constraints));
     }
 
     public function getAlterDefinition() {

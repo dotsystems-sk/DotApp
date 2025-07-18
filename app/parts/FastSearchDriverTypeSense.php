@@ -352,8 +352,6 @@ class FastSearchDriverTypeSense {
                 }
             }
             $document['id'] = $id;
-            // Log document before sending
-            error_log("Indexing document to Typesense: " . json_encode($document));
             $response = $this->executeWithRetry('POST', "{$this->host}/collections/{$index}/documents", $document);
             if ($response['success']) {
                 return array('success' => true, 'data' => null, 'error' => null);
@@ -517,9 +515,6 @@ class FastSearchDriverTypeSense {
             if (!$response['success']) {
                 return $response;
             }
-
-            // Log raw response for debugging
-            error_log("Typesense raw response: " . json_encode($response['data']));
 
             $results = array();
             if (isset($response['data']['hits'])) {

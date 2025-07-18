@@ -49,6 +49,17 @@ class DB extends Facade {
         'rollback'
     ];
 
+    public static function isConnected() {
+        try {
+            DotApp::DotApp()->DB
+            ->driver(Config::db('driver'))
+            ->selectDb(Config::db('maindb'));
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
     public static function default($returnType=null) {
         return self::module($returnType);
     }
@@ -68,6 +79,10 @@ class DB extends Facade {
                 throw new \Exception("Invalid returnType for DB. Use 'RAW' or 'ORM'.");
             }
         }        
+    }
+
+    public static function schemaBuilder() {
+        return new SchemaBuilder(DB::module());
     }
 
 }

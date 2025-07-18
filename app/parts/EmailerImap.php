@@ -1,5 +1,6 @@
 <?php
 namespace Dotsystems\App\Parts;
+use \Dotsystems\App\DotApp;
 
 class EmailerImap
 {
@@ -466,7 +467,7 @@ class EmailerImap
 
     public function debug(string $message): void
     {
-        error_log(htmlspecialchars($message));
+        DotApp:DotApp()->Logger->debug(htmlspecialchars($message));
     }
 
     private function handleError(int $errno, string $errstr, string $errfile, int $errline): void

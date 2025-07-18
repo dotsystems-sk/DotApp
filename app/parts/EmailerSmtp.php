@@ -1,5 +1,6 @@
 <?php
 namespace Dotsystems\App\Parts;
+use \Dotsystems\App\DotApp;
 
 class EmailerSmtp {
     private $boundary = '';
@@ -527,7 +528,7 @@ class EmailerSmtp {
      * @param string $message Debug message.
      */
     private function debug(string $message): void {
-        error_log(htmlspecialchars($message));
+        DotApp:DotApp()->Logger->debug(htmlspecialchars($message));
     }
 
     /**

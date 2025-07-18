@@ -14,6 +14,8 @@
  * - Session configuration management with options for lifetime, security, and storage drivers.
  * - Custom session driver registration and validation for flexible session handling.
  * - Secure handling of sensitive data like encryption keys.
+ * - Dynamic configuration section handling via __callStatic() for module extensibility.
+ * - Custom handler registration via fn() for advanced module configuration.
  *
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
@@ -27,7 +29,6 @@
  * following condition: You **must** retain this header in all copies or 
  * substantial portions of the code, including the author and company information.
  */
-
 
 namespace Dotsystems\App\Parts;
 
@@ -147,11 +148,11 @@ class Config {
         ],
         'logger' => [
             'driver' => 'default', // default or file
-            'min_level' => 'info', // Minimum log level to process
+            'log_levels' => ['emergency', 'alert', 'critical', 'error', 'warning'], // Default log levels to process
             'folder' => 'default', // Subfolder for file driver
             'max_files' => 7, // Max log files before rotation (file driver)
             'max_size' => 10485760, // Max file size in bytes (10MB, file driver)
-            'core_log_enabled' => false, // Enable core logging, if false core logging is available only via hooks ( core.log, databaser.log ) 
+            'core_log_enabled' => false, // Enable core logging, if false -> logging is available only via hook dotapp.log
         ],
     ];
 
@@ -159,8 +160,69 @@ class Config {
     private static $cacheDrivers = [];
     private static $searchDrivers = [];
     private static $loggerDrivers = [];
+    private static $customHandlers = [];
 
-    public static function router($key,$value=null) {
+    /* Robust way for custom configuration handling either by registering callable or using autmatic configuration key creation */
+
+    public static function fn($name, $handler, $sectionKey = null) {
+        if (!is_callable($handler)) {
+            throw new \Exception("Handler must be callable.");
+        }
+
+        self::$customHandlers[$name] = $handler;
+
+        if ($sectionKey !== null) {
+            if (!isset(self::$settings[$sectionKey])) {
+                self::$settings[$sectionKey] = [];
+            }
+        }
+    }
+
+    public static function __callStatic($name, $arguments) {
+        if (isset(self::$customHandlers[$name])) {
+            return call_user_func_array(self::$customHandlers[$name], $arguments);
+        }
+
+        $section = $name;
+
+        if (!isset(self::$settings[$section])) {
+            self::$settings[$section] = [];
+        }
+
+        $key = $arguments[0] ?? null;
+        $value = $arguments[1] ?? null;
+
+        if ($value === null) {
+            // Getter
+            if ($key === null) {
+                return self::$settings[$section] ?? null;
+            }
+            return self::$settings[$section][$key] ?? null;
+        } else {
+            // Setter
+            if ($key === null) {
+                if (is_array($value)) {
+                    self::$settings[$section] = $value;
+                } else {
+                    throw new \Exception("If key is null, value must be an array for section '$section'.");
+                }
+            } else {
+                self::$settings[$section][$key] = $value;
+            }
+        }
+    }
+
+    /* Built in config functions */
+
+    public static function logger($key, $value = null) {
+        if ($value === null) {
+            return self::$settings['logger'][$key] ?? null;
+        } else {
+            self::$settings['logger'][$key] = $value;
+        }        
+    }
+
+    public static function router($key, $value = null) {
         if ($value === null) {
             return self::$settings['router'][$key] ?? null;
         } else {
@@ -168,7 +230,7 @@ class Config {
         }        
     }
 
-    public static function email($account,$key,$value=null) {
+    public static function email($account, $key, $value = null) {
         if ($value === null) {
             if ($key === null) {
                 return self::$settings['emailer'][$account] ?? null;    
@@ -179,12 +241,11 @@ class Config {
                 if (is_array($value)) {
                     self::$settings['emailer'][$account] = $value;
                 } else {
-                    throw new \Exception("if key is null, then value must be an array");
+                    throw new \Exception("If key is null, then value must be an array");
                 }                
             } else {
                 self::$settings['emailer'][$account][$key] = $value;
             }
-            
         }        
     }
 
@@ -196,7 +257,7 @@ class Config {
         }
     }
     
-    public static function session($key,$value=null) {
+    public static function session($key, $value = null) {
         if ($value === null) {
             return self::$settings['session'][$key] ?? null;
         } else {
@@ -204,7 +265,7 @@ class Config {
         }        
     }
 
-    public static function addDatabase($name,$host,$username,$password,$database,$charset,$type,$driver) {
+    public static function addDatabase($name, $host, $username, $password, $database, $charset, $type, $driver) {
         self::$settings['databases'][$name] = [
             'type' => $type,
             'host' => $host,
@@ -216,7 +277,7 @@ class Config {
         ];
     }
 
-    public static function cache($key,$value=null) {
+    public static function cache($key, $value = null) {
         if ($value === null) {
             return self::$settings['cache'][$key] ?? null;
         } else {
@@ -224,7 +285,7 @@ class Config {
         }        
     }
 
-    public static function bridge($key,$value=null) {
+    public static function bridge($key, $value = null) {
         if ($value === null) {
             return self::$settings['bridge'][$key] ?? null;
         } else {
@@ -232,7 +293,7 @@ class Config {
         }        
     }
 
-	public static function db($key,$value=null) {
+    public static function db($key, $value = null) {
         if ($value === null) {
             return self::$settings['db'][$key] ?? null;
         } else {
@@ -240,7 +301,7 @@ class Config {
         }        
     }
 
-    public static function totp($key,$value=null) {
+    public static function totp($key, $value = null) {
         if ($value === null) {
             return self::$settings['totp'][$key] ?? null;
         } else {
@@ -248,7 +309,7 @@ class Config {
         }        
     }
 	
-	public static function app($key,$value=null) {
+    public static function app($key, $value = null) {
         if ($value === null) {
             return self::$settings['app'][$key] ?? null;
         } else {
@@ -256,25 +317,25 @@ class Config {
         }        
     }
 
-    public static function get($settingName,$key=null) {
+    public static function get($settingName, $key = null) {
         if ($key === null) return self::$settings[$settingName] ?? null;
         return self::$settings[$settingName][$key] ?? null;
     }
 
-    public static function set($settingName,$key,$value=null) {
+    public static function set($settingName, $key, $value = null) {
         if ($value === null) {
-            $value=$key;
+            $value = $key;
             self::$settings[$settingName] = $value;
         } else {
-            if (!isSet(self::$settings[$settingName])) self::$settings[$settingName] = [];
-            if ($key===null) self::$settings[$settingName] = $value; else self::$settings[$settingName][$key] = $value;
+            if (!isset(self::$settings[$settingName])) self::$settings[$settingName] = [];
+            if ($key === null) self::$settings[$settingName] = $value; else self::$settings[$settingName][$key] = $value;
         }        
     }
 
-    public static function module($moduleName,$key,$value=null) {
+    public static function module($moduleName, $key, $value = null) {
         if ($value === null) {
             // Getter
-            return self::$settings['modules'][$moduleName]?? null;
+            return self::$settings['modules'][$moduleName] ?? null;
         } else {
             // Setter
             if (!isset(self::$settings['modules'][$moduleName])) self::$settings['modules'][$moduleName] = [];
@@ -282,12 +343,12 @@ class Config {
         }        
     }
 
-    public static function sessionDriver($name,$driver=null) {
+    public static function sessionDriver($name, $driver = null) {
         if ($driver === null) {
-            if (isSet(self::$sessionDrivers[$name])) return self::$sessionDrivers[$name];
+            if (isset(self::$sessionDrivers[$name])) return self::$sessionDrivers[$name];
             throw new \Exception("Driver ".$name." not defined !");
         } else {
-            if (isSet($driver['load']) && isSet($driver['save']) && isSet($driver['get']) && isSet($driver['set']) && isSet($driver['delete']) && isSet($driver['clear'])) {
+            if (isset($driver['load']) && isset($driver['save']) && isset($driver['get']) && isset($driver['set']) && isset($driver['delete']) && isset($driver['clear'])) {
                 if (is_callable($driver['load']) && is_callable($driver['save']) && is_callable($driver['get']) && is_callable($driver['set']) && is_callable($driver['delete']) && is_callable($driver['clear'])) {
                     self::$sessionDrivers[$name] = $driver;
                 } else {
@@ -379,7 +440,6 @@ class Config {
             }
         }
     }
-    
 }
 
 ?>

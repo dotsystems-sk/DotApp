@@ -20,7 +20,7 @@
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   2.2
+ * @version   1.7
  * @license   MIT License
  * @date      2014-2025
  * @compatibility Tested on PHP 7.4

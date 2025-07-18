@@ -147,23 +147,23 @@ class Renderer {
     }
 	
 	public function addRenderer($name,$renderer) {
-        $this->dotApp->customRenderer->addRenderer($name,$renderer);
+        return $this->dotApp->customRenderer->addRenderer($name,$renderer);
 	}
     
     public function add_renderer($name,$renderer) {
-        $this->dotApp->customRenderer->addRenderer($name,$renderer);
+        return $this->dotApp->customRenderer->addRenderer($name,$renderer);
 	}
 
     public function getRenderer($name) {
-        return $this->dotApp->customRenderer->getRenderer($name,$renderer);
+        return $this->dotApp->customRenderer->getRenderer($name);
 	}
     
     public function get_renderer($name) {
-        return $this->dotApp->customRenderer->getRenderer($name,$renderer);
+        return $this->dotApp->customRenderer->getRenderer($name);
 	}
 
     public function renderWith($name,$code) {
-        return $this->dotApp->customRenderer->renderWith($name,$renderer);
+        return $this->dotApp->customRenderer->renderWith($name,$code);
     }
 
     public function render_with($name,$code) {
@@ -171,11 +171,11 @@ class Renderer {
     }
 
     public function addBlock($name,$blockFn) {
-        $this->dotApp->customRenderer->addBlock($name,$renderer);
+        $this->dotApp->customRenderer->addBlock($name,$blockFn);
 	}
 
     public function add_block($name,$blockFn) {
-        $this->dotApp->customRenderer->addBlock($name,$renderer);
+        $this->dotApp->customRenderer->addBlock($name,$blockFn);
 	}
 	
 	public function custom_renderers() {
@@ -187,15 +187,34 @@ class Renderer {
 	}
 
     public function escapePHP($code) {
-        $phpTags = [
-            '/<\?php\s/i',           // <?php
-            '/<\?(?!xml)/i',        // <? (okrem <?xml)
-            '/<script\s+language\s*=\s*["\']?php["\']?\s*>/i', // <script language="php">
-            '/<%/i',                 // <% (ASP-štýl, ak je povolené)
-        ];
-    
-        $sanitizedCode = preg_replace($phpTags, '', $code);
-        return $sanitizedCode;
+        if (empty($code) || !is_string($code)) {
+            return '';
+        }
+        
+        $protected = [];
+        $counter = 0;
+        
+        $code = preg_replace_callback(
+            '/<\?xml\s[^>]*\?>/i',
+            function($matches) use (&$protected, &$counter) {
+                $key = '%%XML_' . $counter . '%%';
+                $protected[$key] = $matches[0];
+                $counter++;
+                return $key;
+            },
+            $code
+        );
+        
+        $code = preg_replace('/<\?php\b.*?\?>/is', '', $code);
+        $code = preg_replace('/<\?=.*?\?>/is', '', $code);
+        $code = preg_replace('/<\?\s+.*?\?>/is', '', $code);
+        $code = preg_replace('/<\?(?!xml).*?\?>/is', '', $code);
+        $code = preg_replace('/<script\s+[^>]*language\s*=\s*["\']?php["\']?[^>]*>.*?<\/script>/is', '', $code);
+        $code = preg_replace('/<%.*?%>/is', '', $code);
+        
+        $code = str_replace(array_keys($protected), array_values($protected), $code);
+        
+        return $code;
     }
 
 	public function blocksRenderer($activate=0) {
@@ -213,19 +232,19 @@ class Renderer {
 		if ($activate == 0) {
 		} else {
 
-			$this->add_renderer("dotapp.block",function($code,$variables) {
+			$this->add_renderer("dotapp.block",function($code,$variables=[]) {
 
 				$pattern = '/\{\{\s*block:([\w.-]+)(?:\((.*?)\))?\s*\}\}(.*?)\{\{\s*\/block:\1\s*\}\}/s';
 
-				if (preg_match_all($pattern, $input, $matches, PREG_SET_ORDER)) {
+				if (preg_match_all($pattern, $code, $matches, PREG_SET_ORDER)) {
 					foreach ($matches as $match) {
 						$fullMatch = $match[0];
 						$blockName = $match[1];
 						$blockVariables = isset($match[2]) && !empty($match[2]) ? explode(',', $match[2]) : [];
 						$innerContent = $match[3];
 
-						if (isSet($this->blocks[$blockName])) {
-							$replacement = $this->blocks[$blockName]($innerContent,$blockVariables,$variables);
+						if (is_callable($this->dotApp->customRenderer->blocks($blockName))) {
+							$replacement = $this->dotApp->customRenderer->blocks($blockName)($innerContent,$blockVariables,$variables);
 							$code = str_replace($fullMatch,$replacement,$code);
 						} else {
 							$replacement = "{{ blockerror:".$block." }} Undefined callable function ! {{ /blockerror:".$block." }}";
@@ -265,7 +284,7 @@ class Renderer {
 	public function useCache($setting) {
 		$this->useCache = $setting;
 		if ($setting) {
-			if (! is_object($this->cache)) $this->cache = new Cache($this);
+			if (! is_object($this->cache)) $this->cache = Cache::use();
 		}
 		return $this;
 	}
@@ -273,7 +292,7 @@ class Renderer {
 	public function useCssCache($setting) {
 		$this->useCssCache = $setting;
 		if ($setting) {
-			if (! is_object($this->cache)) $this->cache = new Cache($this);
+			if (! is_object($this->cache)) $this->cache = Cache::use();
 		}
 		return $this;
 	}
@@ -341,40 +360,204 @@ class Renderer {
 		}
 	}
 	
-	public function minimizeHTML($html) {
-		// Komentare prec
-		$html = preg_replace('/<!--(?!<!)[^\[>].*?-->/', '', $html);
-		// Medzery meczi tagmi prec
-		$html = preg_replace('/>\s+</', '><', $html);
-		// Viac medzier ( nie &nbsp; ) do jednej
-		$html = preg_replace('/\s+/', ' ', $html);
-		// Biele znaky zo zaciatku a konca prec
-		$html = trim($html);
+    function minimizeHTML($html) {
+        if (empty($html) || !is_string($html)) {
+            return '';
+        }
+        
+        $protected = [];
+        $protectedCounter = 0;
+        
+        $protectedTags = ['script', 'style', 'pre', 'code', 'textarea'];
+        
+        foreach ($protectedTags as $tag) {
+            $pattern = '/<' . $tag . '\b[^>]*>.*?<\/' . $tag . '>/is';
+            $html = preg_replace_callback(
+                $pattern,
+                function ($matches) use (&$protected, &$protectedCounter) {
+                    $key = '%%PROTECTED_' . $protectedCounter . '%%';
+                    $protected[$key] = $matches[0];
+                    $protectedCounter++;
+                    return $key;
+                },
+                $html
+            );
+        }
+        
+        $html = preg_replace_callback(
+            '/&[a-zA-Z0-9#]+;/',
+            function ($matches) use (&$protected, &$protectedCounter) {
+                $key = '%%ENTITY_' . $protectedCounter . '%%';
+                $protected[$key] = $matches[0];
+                $protectedCounter++;
+                return $key;
+            },
+            $html
+        );
+        
+        $html = preg_replace_callback(
+            '/="[^"]*"|=\'[^\']*\'/',
+            function ($matches) use (&$protected, &$protectedCounter) {
+                $key = '%%ATTR_' . $protectedCounter . '%%';
+                $protected[$key] = $matches[0];
+                $protectedCounter++;
+                return $key;
+            },
+            $html
+        );
+        
+        $html = preg_replace('/<!--(?!\s*(?:\[if\s|<!|<!\[CDATA\[)).*?-->/s', '', $html);
+        
+        $html = preg_replace('/>\s+</', '><', $html);
+        
+        $html = preg_replace('/\s+/', ' ', $html);
+        
+        $html = preg_replace('/\s*<\s*/', '<', $html);
+        $html = preg_replace('/\s*>\s*/', '>', $html);
+        
+        $html = preg_replace('/\s*=\s*/', '=', $html);
+        
+        $html = trim($html);
+        
+        $html = str_replace(array_keys($protected), array_values($protected), $html);
+        
+        return $html;
+    }
+
 	
-		return $html;
-	}
-	
-	public function minimizeCSS($css) {
-		// Vyhodime komentare
-		$css = preg_replace('!/\*.*?\*/!s', '', $css);
-		// Vyhodime biele znaky
-		$css = preg_replace('/\s*([{}|:;,])\s+/', '$1', $css);
-		$css = preg_replace('/\s+!/', '!', $css);
-		$css = preg_replace('/;+\}/', '}', $css);
-		$css = preg_replace('/\s\s+/', ' ', $css);
-		$css = trim($css);
-		return $css;
-	}
+    public function minimizeCSS($css) {
+        if (is_array($css)) {
+            $result = [];
+            foreach ($css as $cssString) {
+                if (!is_string($cssString) || empty($cssString)) {
+                    $result[] = '';
+                    continue;
+                }
+                $result[] = $this->minimizeSingleCSS($cssString);
+            }
+            return $result;
+        }
+
+        if (!is_string($css) || empty($css)) {
+            return '';
+        }
+
+        return $this->minimizeSingleCSS($css);
+    }
+
+    private function minimizeSingleCSS($css) {
+        $protected = [];
+        $counter = 0;
+
+        $css = preg_replace_callback(
+            '/(["\'])(?:(?=(\\\\?))\2.)*?\1/',
+            function($matches) use (&$protected, &$counter) {
+                $key = '%%STR_' . $counter . '%%';
+                $protected[$key] = $matches[0];
+                $counter++;
+                return $key;
+            },
+            $css
+        );
+
+        $css = preg_replace_callback(
+            '/url\s*\([^)]*\)/i',
+            function($matches) use (&$protected, &$counter) {
+                $key = '%%URL_' . $counter . '%%';
+                $protected[$key] = $matches[0];
+                $counter++;
+                return $key;
+            },
+            $css
+        );
+
+        $css = preg_replace('/\/\*.*?\*\//s', '', $css);
+        $css = preg_replace('/\s*([{}:;,>+~])\s*/', '$1', $css);
+        $css = preg_replace('/;\s*}/', '}', $css);
+        $css = preg_replace('/\s*!\s*important/i', ' !important', $css);
+        $css = preg_replace('/\s+/', ' ', $css);
+        $css = preg_replace('/^\s+|\s+$/', '', $css);
+        $css = preg_replace('/;}/', '}', $css);
+        $css = preg_replace('/0+(\d+)/', '$1', $css);
+        $css = preg_replace('/(\d)\.0+(?=\D)/', '$1', $css);
+        $css = preg_replace('/:0 0 0 0([;}])/', ':0$1', $css);
+        $css = preg_replace('/:0 0 0([;}])/', ':0$1', $css);
+        $css = preg_replace('/:0 0([;}])/', ':0$1', $css);
+        $css = preg_replace('/([: ])0\./', '$1.', $css);
+        
+        $css = preg_replace_callback(
+            '/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/',
+            function($matches) {
+                return sprintf('#%02x%02x%02x', $matches[1], $matches[2], $matches[3]);
+            },
+            $css
+        );
+        
+        $css = preg_replace('/#([0-9a-f])\1([0-9a-f])\2([0-9a-f])\3/i', '#$1$2$3', $css);
+
+        $css = str_replace(array_keys($protected), array_values($protected), $css);
+
+        return $css;
+    }
 
 	public function minimizeJS($js) {
-		$js = preg_replace('!/\*.*?\*/!s', '', $js);
-		$js = preg_replace('/\s*\/\/.*$/m', '', $js);
-		$js = preg_replace('/\s*([{}|:;,])\s+/', '$1', $js);
-		$js = preg_replace('/\s\s+/', ' ', $js);
-		$js = trim($js);
-	
-		return $js;
-	}
+        if (empty($js) || !is_string($js)) {
+            return '';
+        }
+        
+        $protected = [];
+        $counter = 0;
+        
+        $js = preg_replace_callback(
+            '/(["\'])(?:(?=(\\\\?))\2.)*?\1/',
+            function($matches) use (&$protected, &$counter) {
+                $key = '%%STR_' . $counter . '%%';
+                $protected[$key] = $matches[0];
+                $counter++;
+                return $key;
+            },
+            $js
+        );
+        
+        $js = preg_replace_callback(
+            '/`(?:[^`\\\\]|\\\\.)*`/',
+            function($matches) use (&$protected, &$counter) {
+                $key = '%%TEMP_' . $counter . '%%';
+                $protected[$key] = $matches[0];
+                $counter++;
+                return $key;
+            },
+            $js
+        );
+        
+        $js = preg_replace_callback(
+            '/\/(?:[^\/\\\\\r\n]|\\\\.)+\/[gimuy]*/',
+            function($matches) use (&$protected, &$counter) {
+                $key = '%%REGEX_' . $counter . '%%';
+                $protected[$key] = $matches[0];
+                $counter++;
+                return $key;
+            },
+            $js
+        );
+        
+        $js = preg_replace('/\/\*.*?\*\//s', '', $js);
+        $js = preg_replace('/^\s*\/\/.*$/m', '', $js);
+        $js = preg_replace('/([^:])\/\/.*$/m', '$1', $js);
+        
+        $js = preg_replace('/\s*([{}();,=+\-*\/%&|!<>?:])\s*/', '$1', $js);
+        $js = preg_replace('/\s*([\[\]])\s*/', '$1', $js);
+        $js = preg_replace('/;\s*}/', '}', $js);
+        $js = preg_replace('/,\s*}/', '}', $js);
+        $js = preg_replace('/,\s*\]/', ']', $js);
+        $js = preg_replace('/\s+/', ' ', $js);
+        $js = preg_replace('/^\s+|\s+$/', '', $js);
+        $js = preg_replace('/;\s*;+/', ';', $js);
+        
+        $js = str_replace(array_keys($protected), array_values($protected), $js);
+        
+        return $js;
+    }
 	
 	public function prepareCss($file,$path,$tagAt,$tagAfter) {
 		$sourceCSS = $file;
@@ -707,6 +890,16 @@ class Renderer {
 		$this->renderedCode = Renderer::phprender_isolated($this->getViewVars(),$this->renderedCode);
 		return $this->renderedCode;
 	}
+
+    public function renderCode($code,$vars=[],$render=true) {
+        $this->renderedCode = $code;
+        $this->updateLayoutContentData();
+        $this->renderedCode = $this->dotApp->bridge->dotBridge($this->renderedCode);
+        if ($render === false) return $this->renderedCode;
+        // Najprv ho prezenieme cez staticky call, cim strati $this pristup
+        $this->renderedCode = Renderer::phprender_isolated($vars,$this->renderedCode);
+        return $this->renderedCode;
+    }
 
 	public function phprender_isolated($vars,$code) {
         $preneseneFn = array();
@@ -1048,15 +1241,34 @@ class RenderingIsolator {
     }
 
     public function escapePHP($code) {
-        $phpTags = [
-            '/<\?php\s/i',           // <?php
-            '/<\?(?!xml)/i',        // <? (okrem <?xml)
-            '/<script\s+language\s*=\s*["\']?php["\']?\s*>/i', // <script language="php">
-            '/<%/i',                 // <% (ASP-štýl, ak je povolené)
-        ];
-    
-        $sanitizedCode = preg_replace($phpTags, '', $code);
-        return $sanitizedCode;
+        if (empty($code) || !is_string($code)) {
+            return '';
+        }
+        
+        $protected = [];
+        $counter = 0;
+        
+        $code = preg_replace_callback(
+            '/<\?xml\s[^>]*\?>/i',
+            function($matches) use (&$protected, &$counter) {
+                $key = '%%XML_' . $counter . '%%';
+                $protected[$key] = $matches[0];
+                $counter++;
+                return $key;
+            },
+            $code
+        );
+        
+        $code = preg_replace('/<\?php\b.*?\?>/is', '', $code);
+        $code = preg_replace('/<\?=.*?\?>/is', '', $code);
+        $code = preg_replace('/<\?\s+.*?\?>/is', '', $code);
+        $code = preg_replace('/<\?(?!xml).*?\?>/is', '', $code);
+        $code = preg_replace('/<script\s+[^>]*language\s*=\s*["\']?php["\']?[^>]*>.*?<\/script>/is', '', $code);
+        $code = preg_replace('/<%.*?%>/is', '', $code);
+        
+        $code = str_replace(array_keys($protected), array_values($protected), $code);
+        
+        return $code;
     }
 
 	public static function phpsandbox_disabled() {
@@ -1082,7 +1294,7 @@ class RenderingIsolator {
 		return($disable);
 	}
 
-	private function sanitizePHP($code) {
+	public function sanitizePHP($code) {
 		$pattern = '/\b(' . implode('|', SELF::phpsandbox_disabled()) . ')\b\s*\(/i';
 		return preg_replace($pattern, '', $code);
 	}

@@ -1,5 +1,6 @@
 <?php
 namespace Dotsystems\App\Parts;
+use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\Config;
 
 /**
@@ -120,23 +121,21 @@ class SessionDriverRedis {
                 $keys = $this->redis->keys("{$prefix}{$sessionId}:*");
                 if (!empty($keys)) {
                     // Log for debugging
-                    error_log("SessionDriverRedis: Reusing session ID '$sessionId' found in Redis with keys: " . implode(', ', $keys));
+                    DotApp::DotApp()->Logger->info("SessionDriverRedis: Reusing session ID '$sessionId' found in Redis with keys: " . implode(', ', $keys));
                     return $sessionId;
                 }
                 // Log why session ID is not reused
-                error_log("SessionDriverRedis: Session ID '$sessionId' found in cookie but no matching keys in Redis");
+                DotApp::DotApp()->Logger->warning("SessionDriverRedis: Session ID '$sessionId' found in cookie but no matching keys in Redis");
             } else {
-                error_log("SessionDriverRedis: Invalid session ID format in cookie: '$sessionId'");
+                DotApp::DotApp()->Logger->warning("SessionDriverRedis: Invalid session ID format in cookie: '$sessionId'");
             }
-        } else {
-            error_log("SessionDriverRedis: No session cookie found for '$cookieName'");
         }
 
         // Generate new session ID
         do {
             $sessionId = bin2hex(random_bytes(32)); // 64-character session ID
         } while (!empty($this->redis->keys("{$prefix}{$sessionId}:*")));
-        error_log("SessionDriverRedis: Generated new session ID: '$sessionId'");
+        DotApp::DotApp()->Logger->info("SessionDriverRedis: Generated new session ID: '$sessionId'");
 
         return $sessionId;
     }
@@ -153,7 +152,7 @@ class SessionDriverRedis {
         $expires = $delete ? time() - 3600 : time() + Config::session('lifetime');
 
         if (headers_sent($file, $line)) {
-            error_log("SessionDriverRedis: Cannot set cookie '$cookieName' - headers already sent in $file:$line");
+            DotApp::DotApp()->Logger->warning("SessionDriverRedis: Cannot set cookie '$cookieName' - headers already sent in $file:$line");
             return false;
         }
 
@@ -169,10 +168,8 @@ class SessionDriverRedis {
             ]
         );
 
-        if ($result) {
-            error_log("SessionDriverRedis: Successfully set cookie '$cookieName' with value '$value'");
-        } else {
-            error_log("SessionDriverRedis: Failed to set cookie '$cookieName'");
+        if (!$result) {
+            DotApp::DotApp()->Logger->error("SessionDriverRedis: Failed to set cookie '$cookieName'");
         }
 
         return $result;
@@ -188,7 +185,6 @@ class SessionDriverRedis {
         $safeSessname = preg_replace('/[^a-zA-Z0-9_]/', '_', $sessname);
         $prefix = Config::session('redis_prefix');
         $key = "{$prefix}{$this->sessionId}:$safeSessname";
-        error_log("SessionDriverRedis: Generated Redis key: '$key' for sessname '$sessname'");
         return $key;
     }
 
@@ -203,28 +199,26 @@ class SessionDriverRedis {
         // START function
         $driverFn['start'] = function ($dsm) use (&$driverFn) {
             if ($this->isActive) {
-                error_log("SessionDriverRedis: Session already active for sessname '{$dsm->sessname}'");
                 return $this;
             }
 
             $this->setSessionCookie();
             $driverFn['load']($dsm);
             $this->isActive = true;
-            error_log("SessionDriverRedis: Started session for sessname '{$dsm->sessname}' with ID '{$this->sessionId}'");
+            DotApp::DotApp()->Logger->info("SessionDriverRedis: Started session for sessname '{$dsm->sessname}' with ID '{$this->sessionId}'");
             return $this;
         };
 
         // STATUS function
         $driverFn['status'] = function ($dsm) {
             $status = $this->isActive ? PHP_SESSION_ACTIVE : PHP_SESSION_NONE;
-            error_log("SessionDriverRedis: Status check for sessname '{$dsm->sessname}': " . ($status === PHP_SESSION_ACTIVE ? 'Active' : 'None'));
             return $status;
         };
 
         // SAVE function
         $driverFn['save'] = function ($dsm) {
             if ($this->sessionDataStorage === null) {
-                error_log("SessionDriverRedis: Cannot save - sessionDataStorage is null for sessname '{$dsm->sessname}'");
+                DotApp::DotApp()->Logger->error("SessionDriverRedis: Cannot save - sessionDataStorage is null for sessname '{$dsm->sessname}'");
                 return false;
             }
 
@@ -239,10 +233,9 @@ class SessionDriverRedis {
 
             try {
                 $this->redis->setex($key, $lifetime, $data);
-                error_log("SessionDriverRedis: Saved session data for key '$key'");
                 return true;
             } catch (\RedisException $e) {
-                error_log("SessionDriverRedis: Failed to save session to Redis for key '$key': " . $e->getMessage());
+                DotApp::DotApp()->Logger->error("SessionDriverRedis: Failed to save session to Redis for key '$key': " . $e->getMessage());
                 throw new \Exception("Failed to save session to Redis: " . $e->getMessage());
             }
         };
@@ -252,9 +245,9 @@ class SessionDriverRedis {
             $key = $this->getRedisKey($dsm->sessname);
             try {
                 $this->redis->del($key);
-                error_log("SessionDriverRedis: Destroyed session for key '$key'");
+                DotApp::DotApp()->Logger->info("SessionDriverRedis: Destroyed session for key '$key'");
             } catch (\RedisException $e) {
-                error_log("SessionDriverRedis: Failed to destroy session in Redis for key '$key': " . $e->getMessage());
+                DotApp::DotApp()->Logger->error("SessionDriverRedis: Failed to destroy session in Redis for key '$key': " . $e->getMessage());
                 throw new \Exception("Failed to destroy session in Redis: " . $e->getMessage());
             }
 
@@ -277,15 +270,13 @@ class SessionDriverRedis {
                             $this->sessionDataStorage['values'][$dsm->sessname] = $sessionData['values'] ?? [];
                             $this->sessionDataStorage['variables'][$dsm->sessname] = $sessionData['variables'] ?? [];
                             $driverFn['save']($dsm); // Update TTL
-                            error_log("SessionDriverRedis: Loaded session data for key '$key'");
                         }
                     } else {
                         $this->sessionDataStorage['values'][$dsm->sessname] = [];
                         $this->sessionDataStorage['variables'][$dsm->sessname] = [];
-                        error_log("SessionDriverRedis: No session data found for key '$key'");
                     }
                 } catch (\RedisException $e) {
-                    error_log("SessionDriverRedis: Failed to load session from Redis for key '$key': " . $e->getMessage());
+                    DotApp::DotApp()->Logger->error("SessionDriverRedis: Failed to load session from Redis for key '$key': " . $e->getMessage());
                     throw new \Exception("Failed to load session from Redis: " . $e->getMessage());
                 }
             }
@@ -302,11 +293,9 @@ class SessionDriverRedis {
                     $value = unserialize($value);
                 }
 
-                error_log("SessionDriverRedis: Retrieved value for '$name' in sessname '{$dsm->sessname}': " . json_encode($value));
                 return $value;
             }
 
-            error_log("SessionDriverRedis: No value found for '$name' in sessname '{$dsm->sessname}'");
             return null;
         };
 
@@ -326,7 +315,6 @@ class SessionDriverRedis {
 
             $this->sessionDataStorage['values'][$dsm->sessname][$varid] = $value;
             $driverFn['save']($dsm);
-            error_log("SessionDriverRedis: Set value for '$name' in sessname '{$dsm->sessname}'");
 
             return $this;
         };
@@ -338,7 +326,6 @@ class SessionDriverRedis {
                 unset($this->sessionDataStorage['variables'][$dsm->sessname][$name]);
                 unset($this->sessionDataStorage['values'][$dsm->sessname][$varid]);
                 $driverFn['save']($dsm);
-                error_log("SessionDriverRedis: Deleted '$name' from sessname '{$dsm->sessname}'");
             }
         };
 
@@ -347,7 +334,7 @@ class SessionDriverRedis {
             $this->sessionDataStorage['values'][$dsm->sessname] = [];
             $this->sessionDataStorage['variables'][$dsm->sessname] = [];
             $driverFn['save']($dsm);
-            error_log("SessionDriverRedis: Cleared session data for sessname '{$dsm->sessname}'");
+            DotApp::DotApp()->Logger->info("SessionDriverRedis: Cleared session data for sessname '{$dsm->sessname}'");
         };
 
         // REGENERATE_ID function
@@ -374,18 +361,17 @@ class SessionDriverRedis {
                         if ($deleteOld) {
                             $this->redis->del($oldKey);
                         }
-                        error_log("SessionDriverRedis: Transferred session data from '$oldKey' to '$newKey'");
                     }
                     $driverFn['save']((object)['sessname' => $sessname]);
                 } catch (\RedisException $e) {
-                    error_log("SessionDriverRedis: Failed to regenerate session ID from '$oldKey' to '$newKey': " . $e->getMessage());
+                    DotApp::DotApp()->Logger->error("SessionDriverRedis: Failed to regenerate session ID from '$oldKey' to '$newKey': " . $e->getMessage());
                     throw new \Exception("Failed to regenerate session ID in Redis: " . $e->getMessage());
                 }
             }
 
             // Update cookie
             $this->setSessionCookie();
-            error_log("SessionDriverRedis: Regenerated session ID from '$oldSessionId' to '$newSessionId'");
+            DotApp::DotApp()->Logger->info("SessionDriverRedis: Regenerated session ID from '$oldSessionId' to '$newSessionId'");
         };
 
         // SESSION_ID function
@@ -395,7 +381,7 @@ class SessionDriverRedis {
                 $oldSessionId = $this->sessionId;
 
                 if (!empty($this->redis->keys("{$prefix}{$new}:*"))) {
-                    error_log("SessionDriverRedis: Session ID '$new' already exists");
+                    DotApp::DotApp()->Logger->error("SessionDriverRedis: Session ID '$new' already exists");
                     throw new \Exception("Session ID $new already exists");
                 }
 
@@ -411,18 +397,17 @@ class SessionDriverRedis {
                             $lifetime = Config::session('lifetime');
                             $this->redis->setex($newKey, $lifetime, $data);
                             $this->redis->del($oldKey);
-                            error_log("SessionDriverRedis: Transferred session ID from '$oldKey' to '$newKey'");
                         }
                         $driverFn['save']((object)['sessname' => $sessname]);
                     } catch (\RedisException $e) {
-                        error_log("SessionDriverRedis: Failed to set session ID from '$oldKey' to '$newKey': " . $e->getMessage());
+                        DotApp::DotApp()->Logger->error("SessionDriverRedis: Failed to set session ID from '$oldKey' to '$newKey': " . $e->getMessage());
                         throw new \Exception("Failed to set session ID in Redis: " . $e->getMessage());
                     }
                 }
 
                 // Update cookie
                 $this->setSessionCookie();
-                error_log("SessionDriverRedis: Set new session ID '$new'");
+                DotApp::DotApp()->Logger->info("SessionDriverRedis: Set new session ID '$new'");
             }
             return $this->sessionId;
         };
@@ -436,12 +421,11 @@ class SessionDriverRedis {
                     // Redis handles expiration via SETEX TTL, but check for negative TTL
                     if ($this->redis->ttl($key) < 0) {
                         $this->redis->del($key);
-                        error_log("SessionDriverRedis: Garbage collected expired key '$key'");
                     }
                 }
-                error_log("SessionDriverRedis: Garbage collection completed, checked " . count($keys) . " keys");
+                DotApp::DotApp()->Logger->info("SessionDriverRedis: Garbage collection completed, checked " . count($keys) . " keys");
             } catch (\RedisException $e) {
-                error_log("SessionDriverRedis: Failed to perform garbage collection in Redis: " . $e->getMessage());
+                DotApp::DotApp()->Logger->error("SessionDriverRedis: Failed to perform garbage collection in Redis: " . $e->getMessage());
                 throw new \Exception("Failed to perform garbage collection in Redis: " . $e->getMessage());
             }
         };

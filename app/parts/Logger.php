@@ -13,6 +13,8 @@
  * - Configurable via DotApp's Config class for folder, driver, and log level settings.
  * - Log rotation and cleanup support for file-based drivers.
  * - Thread-safe and performant with centralized instance management.
+ * - Configurable log levels via an array of enabled levels.
+ * - Core logging can be disabled (core_log_enabled = false), allowing only dotapp.log hook to handle logs.
  *
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
@@ -24,11 +26,9 @@
 
 namespace Dotsystems\App\Parts;
 
+use Dotsystems\App\DotApp;
 use Dotsystems\App\Parts\Config;
 
-/**
- * Logger class for DotApp framework.
- */
 class Logger {
     /** @var array Logger instances */
     private static $instances = [];
@@ -39,8 +39,11 @@ class Logger {
     /** @var string Logging driver */
     private $driver;
     
-    /** @var int Minimum log level */
-    private $logLevel;
+    /** @var array Enabled log levels */
+    private $logLevels;
+    
+    /** @var bool Whether core logging is enabled */
+    private $coreLogEnabled;
     
     /** @var array Logger manager configuration */
     private $logger_manager;
@@ -79,9 +82,8 @@ class Logger {
     public function __construct($loggerName, $driver) {
         $this->loggerName = $loggerName;
         $this->driver = $driver;
-        $this->logLevel = isset(self::$levels[Config::get('logger', 'min_level')]) 
-            ? self::$levels[Config::get('logger', 'min_level')] 
-            : self::LEVEL_INFO;
+        $this->logLevels = Config::get('logger', 'log_levels') ?? ['emergency', 'alert', 'critical', 'error', 'warning'];
+        $this->coreLogEnabled = Config::get('logger', 'core_log_enabled') ?? false;
         self::$instances[$loggerName] = $this;
         $this->logger_manager['managers'] = [];
         foreach (Config::loggerDriver($this->driver) as $way => $wayFn) {
@@ -98,7 +100,7 @@ class Logger {
      */
     public static function use($loggerName = null, $driver = null) {
         if ($loggerName === null) {
-            $loggerName = hash('sha256', 'DotApp Framework null Logger :)');
+            $loggerName = hash('sha256', 'DotApp Framework default Logger :)');
         }
         if ($driver === null) {
             $driver = Config::get('logger', 'driver') ?? 'default';
@@ -138,13 +140,24 @@ class Logger {
      * @return Logger
      */
     public function log($level, $message, array $context = array()) {
+        DotApp::DotApp()->trigger("dotapp.log", $level, $message, $context, $this->loggerName, $this->driver);
+        
         if (!isset(self::$levels[$level])) {
-            $this->log('warning', "Invalid log level '$level' used.", array('original_level' => $level));
+            if ($this->coreLogEnabled && in_array('warning', $this->logLevels)) {
+                $this->log('warning', "Invalid log level '$level' used.", array('original_level' => $level));
+            }
             return $this;
         }
-        if (self::$levels[$level] > $this->logLevel) {
-            return $this; // Skip logging if level is below minimum
+        
+        if (!in_array($level, $this->logLevels)) {
+            return $this;
         }
+        
+        if (!$this->coreLogEnabled) {
+            return $this;
+        }
+        
+        // Loguj cez driver
         $context = array_merge($this->defaultContext, $context);
         call_user_func(
             $this->logger_manager['managers'][$this->driver]['log'],
@@ -250,7 +263,9 @@ class Logger {
      * @return Logger
      */
     public function rotate() {
-        call_user_func($this->logger_manager['managers'][$this->driver]['rotate'], $this);
+        if ($this->coreLogEnabled) {
+            call_user_func($this->logger_manager['managers'][$this->driver]['rotate'], $this);
+        }
         return $this;
     }
 
@@ -260,7 +275,9 @@ class Logger {
      * @return Logger
      */
     public function clean() {
-        call_user_func($this->logger_manager['managers'][$this->driver]['clean'], $this);
+        if ($this->coreLogEnabled) {
+            call_user_func($this->logger_manager['managers'][$this->driver]['clean'], $this);
+        }
         return $this;
     }
 

@@ -44,12 +44,12 @@ abstract class Controller {
 
     // Zabezpecime kontajner DI
     private static function ensureDi() {
-        if (!isset(self::$di)) {
+        if (!isset(static::$di)) {
             $dotApp = DotApp::dotApp();
             if (!isset($dotApp)) {
                 throw new \Exception("Global DotApp instance not found.");
             }
-            self::$di = new DI(static::class, $dotApp);
+            static::$di = new DI(static::class, $dotApp);
         }
     }
 	
@@ -64,11 +64,11 @@ abstract class Controller {
 
     // Alias ku call, lepsie zapamtatelne ze ide o injection
     public static function di($method, ...$arguments) {
-        self::call($method, $arguments);
+        static::call($method, $arguments);
     }
     
     public static function call($method, ...$arguments) {
-        self::ensureDi();
+        static::ensureDi();
 
         if (strpos($method,"@") === false) {
             if (method_exists(static::class, $method)) {
@@ -93,13 +93,13 @@ abstract class Controller {
 		if ($resource) {
 			$targetMethod = $method . ucfirst($resource);
 			if (method_exists(static::class, $targetMethod)) {
-				return self::$di->callStatic($targetMethod, [$request]);
+				return static::$di->callStatic($targetMethod, [$request]);
 			}
 		}
 
 		// Skúsime volať error404, ak existuje
 		if (method_exists(static::class, 'error404')) {
-			return self::$di->callStatic('error404', [$request]);
+			return static::$di->callStatic('error404', [$request]);
 		}
 
 		// Predvolená odpoveď, ak error404 neexistuje
@@ -109,7 +109,7 @@ abstract class Controller {
 	
 	public static function api($request) {
 		// Alias kratsi. 
-		return self::apiDispatch($request);
+		return static::apiDispatch($request);
 	}
 	
     public function __debugInfo() {

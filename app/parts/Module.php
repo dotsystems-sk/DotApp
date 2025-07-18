@@ -134,6 +134,72 @@ abstract class Module {
         }
     }
 
+    /**
+     * Retrieves or sets settings for the module.
+     *
+     * This function allows you to either retrieve module settings or update them.
+     * - If an array is provided as input, it will update the entire settings file with the provided array.
+     * - If two arguments are provided (key and value), it will update a specific setting in the settings file.
+     * - If a string is provided, it will return the value of that specific setting.
+     * - If no input is provided (null), it will return all settings as an array.
+     *
+     * @param string|array|null $input The setting key (string), an array of settings to update, or null to retrieve all settings.
+     * @param mixed $value Optional value to set for a specific key (used when $input is a string).
+     *
+     * @return mixed|bool|null If updating settings (array or key-value input), returns true on success, false on failure.
+     *                         If retrieving a specific setting (string input), returns the value of the setting or null if not found.
+     *                         If retrieving all settings (null input), returns an associative array of all settings or an empty array if the settings file does not exist.
+     */
+    public function settings($input = null, $value = null) {
+        $settingsFile = $this->path . "/settings.php";
+
+        // Setter: If input is an array, update the entire settings file
+        if (is_array($input)) {
+            $content = "<?php\nreturn " . var_export($input, true) . ";\n?>";
+            try {
+                file_put_contents($settingsFile, $content);
+                return true;
+            } catch (\Exception $e) {
+                return false;
+            }
+        }
+
+        // Setter: If input is a string and value is provided, update a specific setting
+        if (is_string($input) && $value !== null) {
+            $settings = file_exists($settingsFile) ? include $settingsFile : [];
+            if (!is_array($settings)) {
+                $settings = [];
+            }
+            $settings[$input] = $value;
+            $content = "<?php\nreturn " . var_export($settings, true) . ";\n?>";
+            try {
+                file_put_contents($settingsFile, $content);
+                return true;
+            } catch (\Exception $e) {
+                return false;
+            }
+        }
+
+        // Getter: Load settings file if it exists
+        if (file_exists($settingsFile)) {
+            $settings = include $settingsFile;
+            if (!is_array($settings)) {
+                return is_string($input) ? null : [];
+            }
+
+            // If input is a string, return the specific setting
+            if (is_string($input)) {
+                return isset($settings[$input]) ? $settings[$input] : null;
+            }
+
+            // If input is null, return all settings
+            return $settings;
+        }
+
+        // If the settings file does not exist, return null for string input or empty array for null input
+        return is_string($input) ? null : [];
+    }
+
     public static function moduleName($name=null) {
         if ($name === null) {
             return self::$staticModuleName;

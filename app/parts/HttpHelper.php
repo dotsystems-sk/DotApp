@@ -1,12 +1,10 @@
 <?php
-namespace Dotsystems\App\Parts;
-
 /**
  * CLASS HttpHelper - DotApp HTTP Request Utility
  *
  * Provides a utility for executing HTTP requests within the DotApp framework, supporting
- * various HTTP methods, authentication mechanisms, and SSL configurations. Designed for
- * seamless integration with search engine APIs and other external services.
+ * various HTTP methods, authentication mechanisms, SSL configurations, and binary file downloads.
+ * Designed for seamless integration with search engine APIs and other external services.
  *
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
@@ -16,9 +14,13 @@ namespace Dotsystems\App\Parts;
  * @date      2014 - 2025
  */
 
+namespace Dotsystems\App\Parts;
+
+use \Dotsystems\App\DotApp;
+
 class HttpHelper {
     /**
-     * Execute an HTTP request with optional authentication and SSL support.
+     * Execute an HTTP request with optional authentication, SSL support, and binary file download.
      *
      * @param string $method HTTP method (GET, POST, PUT, DELETE, etc.)
      * @param string $url Target URL
@@ -27,6 +29,7 @@ class HttpHelper {
      * @param array $headers Additional HTTP headers (optional)
      * @param array $queryParams Query parameters for GET requests (optional)
      * @param string|null $rawBody Raw body data to send (e.g., NDJSON for bulk operations)
+     * @param bool $binary Whether to expect binary response (e.g., for ZIP files, images)
      * @return array Response array with keys: success, http_code, response, error
      */
     public static function request(
@@ -36,7 +39,8 @@ class HttpHelper {
         array $auth = [],
         array $headers = [],
         array $queryParams = [],
-        ?string $rawBody = null
+        ?string $rawBody = null,
+        bool $binary = false
     ): array {
         $ch = curl_init();
 
@@ -48,13 +52,13 @@ class HttpHelper {
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Add Follow Location for redirects
 
-        // Explicitne nastavenie pre HEAD
+        // Explicit setting for HEAD
         if (strtoupper($method) === 'HEAD') {
             curl_setopt($ch, CURLOPT_NOBODY, true);
-            // Ignorovať akékoľvek neočakávané telo odpovede
             curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($ch, $data) {
-                return strlen($data); // Ignorovať dáta
+                return strlen($data); // Ignore data
             });
         }
 
@@ -63,7 +67,9 @@ class HttpHelper {
         if ($rawBody !== null) {
             $defaultHeaders = ['Content-Type: application/x-ndjson'];
         }
-        // Pridať Connection: close pre HEAD, aby server uzavrel spojenie
+        if ($binary) {
+            $defaultHeaders = []; // No Content-Type for binary downloads
+        }
         if (strtoupper($method) === 'HEAD') {
             $defaultHeaders[] = 'Connection: close';
         }
@@ -89,11 +95,17 @@ class HttpHelper {
         } elseif (!empty($auth['ca_fingerprint'])) {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            error_log("Warning: CA fingerprint not supported by cURL, SSL verification disabled for $url");
+            DotApp::DotApp()->Logger->warning("CA fingerprint not supported by cURL, SSL verification disabled", [
+                'url' => $url,
+                'method' => $method
+            ]);
         } else {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            error_log("Warning: No CA file or fingerprint provided, SSL verification disabled for $url");
+            DotApp::DotApp()->Logger->warning("No CA file or fingerprint provided, SSL verification disabled", [
+                'url' => $url,
+                'method' => $method
+            ]);
         }
 
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -109,13 +121,12 @@ class HttpHelper {
 
         // Set timeouts
         if (strtoupper($method) === 'HEAD') {
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 500); // 0.5 sekundy na pripojenie
-            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1000);       // 1 sekunda celkovo
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 500); // 0.5 seconds for connection
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1000);       // 1 second total
         } else {
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Increased timeout for binary downloads
         }
-
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -134,7 +145,7 @@ class HttpHelper {
             return $result;
         }
 
-        // Pre HEAD požiadavky neskúšame dekódovať odpoveď
+        // Handle HEAD requests
         if (strtoupper($method) === 'HEAD') {
             $result['success'] = $httpCode >= 200 && $httpCode < 300;
             if (!$result['success']) {
@@ -143,6 +154,17 @@ class HttpHelper {
             return $result;
         }
 
+        // Handle binary response
+        if ($binary) {
+            $result['success'] = $httpCode >= 200 && $httpCode < 300;
+            $result['response'] = $response; // Return raw binary data
+            if (!$result['success']) {
+                $result['error'] = "HTTP error: $httpCode, URL: $url, Method: $method";
+            }
+            return $result;
+        }
+
+        // Handle JSON response
         $decoded = json_decode($response, true);
         if (!is_array($decoded)) {
             $result['error'] = "Invalid JSON response: $response, URL: $url, Method: $method";

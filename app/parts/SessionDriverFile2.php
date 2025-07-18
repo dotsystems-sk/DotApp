@@ -1,5 +1,6 @@
 <?php
 namespace Dotsystems\App\Parts;
+use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\Config;
 
 /**

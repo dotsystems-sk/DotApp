@@ -1,8 +1,8 @@
 /*
     DOTAPP.js
     Author: Štefan Miščík
-    Website: https://dotsystems.sk/
-    Email: info@dotsystems.sk
+    Website: https://dotapp.dev/
+    Email: dotapp@dotapp.dev
 
     Version: 1.0 (Stable)
     License: MIT License

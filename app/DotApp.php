@@ -45,6 +45,7 @@ $translator = new \stdClass();
 
 class DotApp {
     private static $dotAppForStatic;
+    private static $version = 1.7;
     public $auth; // Kvoli fasade AuthObj
     public $dotapper = array();
     public $initialized;
@@ -180,8 +181,9 @@ class DotApp {
         $this->singleton(RequestObj::class, function() {return $this->request;});
         $this->singleton(Auth::class, function() {return $this->request->auth;});
         $this->logger = Logger::use();
-        $this->singleton(Logger::class, function() {return $this->logger;});
         $this->Logger = $this->logger; // Alias pre pascalcase
+        $this->singleton(Logger::class, function() {return $this->logger;});
+        
 
         
         if ($this->dsm->get('_formCSRF') != null) {
@@ -519,6 +521,7 @@ class DotApp {
 		}
         
         if (!in_array($modulename,$this->module_asked)) {
+            $this->load_module_listeners($modulename);
             $this->load_module($modulename);
         }
         if (!isSet($this->modules[$modulename])) throw new \InvalidArgumentException("Module ".$modulename." not registered correctly !");
@@ -969,6 +972,33 @@ class DotApp {
         }
     }
 
+    /**
+     * Registers a listener for a specified event. When the event occurs,
+    * the corresponding callback function will be executed. The method returns
+    * a unique listener ID that can be used for reference or removal of the listener.
+    *
+    * The function supports three modes:
+    *
+    * 1. **Basic event listener:** Registers a listener for a specific event.
+    *    Example usage: $listenerid = $dotapp->on("user.registered", function() { echo "Finally someone registered."; });
+    *
+    * 2. **Route-based event listener:** Registers a listener that is triggered only
+    *    if the current URL matches the specified route pattern.
+    *    Example usage: $listenerid = $dotapp->on("/product/*", "product.sold", function() { echo "A product has been sold."; });
+    *    The event "product.sold" will be registered only if the current URL matches "/product/*". Otherwise, the function returns without registering the listener.
+    *
+    * 3. **Method and route-based event listener:** Registers a listener that is triggered only
+    *    if the current HTTP method (e.g., GET, POST) and URL match the specified method and route pattern.
+    *    Example usage: $listenerid = $dotapp->on("get", "/product/{id:i}", "product.view", function($params) { echo "Viewing product ID: " . $params['id']; });
+    *    The event "product.view" will be registered only if the HTTP method is "GET" and the current URL matches "/product/{id:i}".
+    *
+    * @param string $eventname The name of the event to listen for (used in modes 1 and 2), or the HTTP method (e.g., "get", "post") in mode 3.
+    * @param callable $callback The function to be executed when the event occurs.
+    * @param string|null $route (Optional) A route pattern that must match the current URL for the event to be registered (used in modes 2 and 3).
+    * @param string|null $method (Optional) An HTTP method that must match the current request method (used in mode 3).
+    * @return $this The current instance for method chaining.
+    * @throws InvalidArgumentException If the provided callback is not callable or the number of arguments is invalid.
+    */
     public function on(...$args) {
         // Aliasy som zaviedol kvoli tomu ze niekto moze z ineho frameworku byt zvyknuty na ine nazvy. Tak ak je taky odvazny nech si ich tu nastrka kolko chce.
         // Akurat ze po update jadra tu najde prd makovy.
@@ -1049,9 +1079,19 @@ class DotApp {
                 throw new \InvalidArgumentException("Incorrect number of inputs! 2 or 3 expected");
                 break;
         }
-		
-	}
+        
+    }
 
+    /**
+     * Creates and returns an anonymous class instance for handling listener removal.
+     *
+     * This method generates an anonymous class with a reference to the DotApp instance
+     * and the listener ID. The anonymous class provides an `off` method to remove the
+     * associated listener.
+     *
+     * @param string $listenerid The unique ID of the listener to be removed.
+     * @return object An instance of an anonymous class with an `off` method for listener removal.
+     */
     private function offhandler($listenerid) {
         return new class($this, $listenerid) {
             private $dotapp;
@@ -1141,11 +1181,9 @@ class DotApp {
          * It returns `true` if at least one listener is registered, otherwise `false`.
          *
          * Example usage:
-         * ```php
          * if ($dotapp->hasListener("user.registered")) {
          *     echo "A listener is registered for this event.";
          * }
-         * ```
          *
          * @param string $eventname The name of the event to check.
          * @return bool Returns `true` if the event has a registered listener, otherwise `false`.
@@ -1359,16 +1397,8 @@ class DotApp {
                         }
 
                         if ($matched === true) {
-                            $modulinit = __ROOTDIR__."/app/modules/".$modul.'/module.listeners.php'; // Aktivujeme listeners
                             $nacitaj[] = $modul;
-                            
-                            // Include the initialization script if it exists
-                            if (file_exists($modulinit)) {
-                                $dotapp = $this;
-                                $dotApp = $this;
-                                $DotApp = $this;
-                                include $modulinit;
-                            }
+                            $this->load_module_listeners($modul);
                         }                        
                     }
 
@@ -1388,15 +1418,7 @@ class DotApp {
                 $moduly = glob(__ROOTDIR__."/app/modules/*", GLOB_ONLYDIR); // Get all module directories
                 $dotapp = $this; // Reference to the current instance
                 foreach ($moduly as $modul) {
-                    $modulinit = $modul.'/module.listeners.php'; // Aktivujeme lsiteners
-                    
-                    // Include the initialization script if it exists
-                    if (file_exists($modulinit)) {
-                        $dotapp = $this;
-                        $dotApp = $this;
-                        $DotApp = $this;
-                        include $modulinit;
-                    }
+                    $this->load_module_listeners($modul);
                 }
                 
                 define('__DOTAPP_MODULES_CAN_LOAD__',1);
@@ -1427,8 +1449,8 @@ class DotApp {
         $this->module_asked[] = $modul;
         $modul = __ROOTDIR__."/app/modules/".$modul;
         $modulinit = $modul.'/module.init.php'; // Path to module initialization script
-        $modullng= $modul.'/translations/'.$this->lang.'.php'; // Path to module language file
-        $modullng2= $modul.'/Translations/'.$this->lang.'.php'; // Path to module language file
+        $modullng = $modul.'/translations/'.$this->lang.'.php'; // Path to module language file
+        $modullng2 = $modul.'/Translations/'.$this->lang.'.php'; // Path to module language file
             
         // Include the initialization script if it exists and was not used before
         $modulClassName = "Dotsystems\\App\\Modules\\".$moduleName."\\Module";
@@ -1447,6 +1469,19 @@ class DotApp {
 
         if (file_exists($modullng2)) {
             include $modullng2;
+        }
+    }
+
+    function load_module_listeners($modul) {
+        $modul = str_replace(__ROOTDIR__."/app/modules/","",$modul);
+        $modulinit = __ROOTDIR__."/app/modules/".$modul.'/module.listeners.php'; // Aktivujeme listeners
+      
+        // Include the initialization script if it exists
+        if (file_exists($modulinit)) {
+            $dotapp = $this;
+            $dotApp = $this;
+            $DotApp = $this;
+            include $modulinit;
         }
     }
 
@@ -1716,21 +1751,7 @@ class DotApp {
 	*/
 	function encrypta($array, $key2 = "") {
 		$text = json_encode($array);
-		$key2 = $this->key2_upgrade($key2);
-		$userkey = "";
-		
-		if (isset($this->c_enc_key)) {
-			$userkey = $this->c_enc_key;
-		}
-		
-		$key = $userkey . $this->enc_key . $key2;
-		$key = hash('sha256', $key, true);
-		$cipher = "aes-256-cbc";
-		$ivlen = openssl_cipher_iv_length($cipher);
-		$iv = openssl_random_pseudo_bytes($ivlen);
-		$encrypted = openssl_encrypt($text, $cipher, $key, 0, $iv);
-		
-		return base64_encode($iv . $encrypted);
+		return $this->encrypt($text, $key2);
 	}
 
     public function subtractKey(string $encoded, string $key) {
@@ -1949,17 +1970,37 @@ class DotApp {
 		return $password;
 	}
 
+    /**
+     * Enhances the strength of a password by applying a key upgrade.
+     * This function is used to further secure the password before hashing.
+     *
+     * @param string $pass The password to be made stronger.
+     * @return string The upgraded (more secure) password.
+     */
     private function makePasswordStrongerAgain($pass) {
         /* Vnutro bolo odstranene aby nebolo naviazane na kluc a pri zmene zabezpecenia nedoslo k*/
         $pass = $this->key2_upgrade($pass);
         return $pass;
     }
 
+    /**
+     * Generates a password hash using bcrypt.
+     *
+     * @param string $pass The password to be hashed.
+     * @return string The generated password hash.
+     */
     public function generatePasswordHash($pass) {
         $passhash = password_hash($this->makePasswordStrongerAgain($pass), PASSWORD_BCRYPT, ['cost' => 8]);
         return($passhash);
     }
 
+    /**
+     * Verifies that a password matches a hash using bcrypt.
+     *
+     * @param string $pass The password to be verified.
+     * @param string $hash The hash to compare the password against.
+     * @return bool Returns true if the password matches the hash, false otherwise.
+     */
     public function verifyPassword($pass, $hash) {
         return password_verify($this->makePasswordStrongerAgain($pass), $hash);
     }
@@ -1970,23 +2011,34 @@ class DotApp {
 
 		V dotappe vyuzivam pri synchronizacii udajov medzi 2 aplikaciami ktore bezia na inom serveri.
 	*/
-	function post_request($url, $postData) {
-		$ch = curl_init();
+    /**
+     * Sends a POST request to a specified URL with the given data.
+    *
+    * This function uses curl to send a POST request to the specified URL
+    * with the provided data. It returns the response from the URL or false
+    * if an error occurred during the request.
+    *
+    * @param string $url The URL to send the POST request to.
+    * @param array $postData An associative array of data to send in the POST request.
+    * @return mixed The response from the URL on success, or false on failure.
+    */
+    function post_request($url, $postData) {
+        $ch = curl_init();
 
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-		$response = curl_exec($ch);
+        $response = curl_exec($ch);
 
-		if (curl_errno($ch)) {
-			return(false);
-		}
+        if (curl_errno($ch)) {
+            return(false);
+        }
 
-		curl_close($ch);
-		return $response;
-	}
+        curl_close($ch);
+        return $response;
+    }
 	
 	/*
 		Aby som si bol isty ze nejaka URl je zarucene v spravnom formate... 
