@@ -45,7 +45,11 @@ class DotApper {
         foreach ($this->options as $key => $value) {
             switch ($key) {
                 case 'install':
-                    $this->installDotapp();
+                    if ($this->modul == "") {
+                        $this->installDotapp();
+                    } else {
+                        $this->runModuleInstaller($value);
+                    }
                     break;
                 case 'update':
                     $this->updateDotapp();
@@ -253,7 +257,7 @@ class DotApper {
         if (file_exists(__DIR__."/app/DotApp.php")) {
             $install = $this->confirmAction("Do you want to UPDATE the DotApp PHP Framework?");
             if ($install === true) {
-                $installation = $this->downloadAndUnzip("https://github.com/dotsystems-sk/DotApp/archive/refs/heads/main.zip", __DIR__, true, null, [__DIR__.'/index.php',__DIR__.'/app/config.php'], "DotApp-main", true);
+                $installation = $this->downloadAndUnzip("https://github.com/dotsystems-sk/DotApp/archive/refs/heads/main.zip", __DIR__, true, null, [__DIR__.'/index.php',__DIR__.'/app/config.php',__DIR__.'/app/listeners.php'], "DotApp-main", true);
                 if ($installation === true) {
                     echo $this->colorText("green", "UPDATE successful.");
                 } else {
@@ -529,6 +533,21 @@ class DotApper {
             $this->createFile($this->basePath."/".$this->modul."/Models/".$modelName.".php",base64_encode($file_body));
             echo "Model '".$modelName."' sucesfully created !\n";
         }
+    }
+
+    private function runModuleInstaller(string $moduleName) {
+        $moduleName = ucfirst($moduleName);
+        $basePath = $this->basePath;
+        $modulePath = "$basePath/$moduleName";
+
+        // 1. Skontroluj, či existuje cesta ./app/modules/modulename
+        if (!is_dir($basePath)) {
+            echo "Module $moduleName not found !\n";
+            exit(1);
+        }
+
+        
+
     }
 
     /**
