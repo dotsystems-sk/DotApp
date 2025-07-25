@@ -77,11 +77,23 @@ class Renderer {
 		uplatnuju sa premenne pre view !!! A teda $viewData
 	*/
 	public $layoutVars;
+
+    /*
+     * @viewFallbacks - Pole s fallback view pre každý view
+     */
+    private $viewFallbacks = [];
+
+    /*
+     * @layoutFallbacks - Pole s fallback layout pre každý layout
+     */
+    private $layoutFallbacks = [];
+
 	/*
 		*
 		* @renderedCode - Kod, ktory upravujeme pocas renderingu...
 		*
 	*/
+    
 	private $renderedCode;
     /*
 		*
@@ -143,7 +155,7 @@ class Renderer {
     }
 
     public static function add($name,$renderer) {
-        return $this->dotApp->customRenderer->addRenderer($name,$renderer);
+        return DotApp::DotApp()->customRenderer->addRenderer($name,$renderer);
     }
 	
 	public function addRenderer($name,$renderer) {
@@ -297,20 +309,60 @@ class Renderer {
 		return $this;
 	}
 	
-	public function setLayout($layout) {
-		$this->layout = $layout;
-		if (!isset($this->layoutVars[$this->layout])) $this->layoutVars[$this->layout] = array();
-		return $this;
-	}
+	public function setLayout($layout, $fallbackLayout = null) {
+        $this->layout = $layout;
+        if (!isset($this->layoutVars[$this->layout])) {
+            $this->layoutVars[$this->layout] = array();
+        }
+        // Store fallback layout
+        $this->layoutFallbacks[$this->layout] = $fallbackLayout;
+
+        // Check for moduleName:layoutName syntax
+        if (strpos($layout, ':') !== false) {
+            list($module, $layoutPath) = explode(':', $layout, 2);
+            $this->dirl = __ROOTDIR__ . "/app/modules/" . $module . "/views/layouts/";
+            $this->layout = $layoutPath; // Store only the layout path
+        } else {
+            // Use default layouts directory or module set by module()
+            $this->dirl = $this->dirl ?: __ROOTDIR__ . "/app/parts/views/layouts/";
+        }
+
+        return $this;
+    }
 	
 	private function getLayout($layout) {
-		/*
-			LOADNEME LAYOUT					
-		*/
-		if ($layout != "" && file_exists($this->dirl.$layout.".layout.php")) {
-			return(file_get_contents($this->dirl.$layout.".layout.php"));
-		} else return("");
-	}
+        $dir = $this->dirl ?: __ROOTDIR__ . "/app/parts/views/layouts/";
+
+        // Load layout if it exists
+        if ($layout !== "" && file_exists($dir . $layout . ".layout.php")) {
+            return file_get_contents($dir . $layout . ".layout.php");
+        }
+
+        // Log warning if primary layout doesn't exist
+        if ($layout !== "") {
+            $this->dotApp->logger->warning("Failed to load layout: " . $dir . $layout . ".layout.php", [
+                'layout' => $layout,
+                'directory' => $dir
+            ]);
+        }
+
+        // Try fallback layout if defined
+        if (isset($this->layoutFallbacks[$layout]) && $this->layoutFallbacks[$layout] !== null) {
+            $fallbackLayout = $this->layoutFallbacks[$layout];
+            $fallbackDir = $this->dirl ?: __ROOTDIR__ . "/app/parts/views/layouts/";
+
+            if (file_exists($fallbackDir . $fallbackLayout . ".layout.php")) {
+                return file_get_contents($fallbackDir . $fallbackLayout . ".layout.php");
+            }
+
+            $this->dotApp->logger->warning("Failed to load fallback layout: " . $fallbackDir . $fallbackLayout . ".layout.php", [
+                'fallbackLayout' => $fallbackLayout,
+                'directory' => $fallbackDir
+            ]);
+        }
+
+        return "";
+    }
 
 	public function setLayoutVar($varname,$data) {
 		$this->layoutVars[$this->layout][$varname] = $data;
@@ -333,11 +385,27 @@ class Renderer {
 		}
 	}
 	
-	public function setView($view) {
-		$this->view = $view;
-		if (!isset($this->viewVars[$this->view])) $this->viewVars[$this->view] = array();
-		return $this;
-	}
+	public function setView($view, $fallbackView = null) {
+        $this->view = $view;
+        if (!isset($this->viewVars[$this->view])) {
+            $this->viewVars[$this->view] = array();
+        }
+
+        // Store fallback view
+        $this->viewFallbacks[$this->view] = $fallbackView;
+
+        // Check for moduleName:viewPath syntax
+        if (strpos($view, ':') !== false) {
+            list($module, $viewPath) = explode(':', $view, 2);
+            $this->dirw = __ROOTDIR__ . "/app/modules/" . $module . "/views/";
+            $this->view = $viewPath; // Store only the view path
+        } else {
+            // Use default views directory or module set by module()
+            $this->dirw = $this->dirw ?? __ROOTDIR__ . "/app/parts/views/";
+        }
+
+        return $this;
+    }
 
 	public function setViewVar($varname,$data) {
 		$this->viewVars[$this->view][$varname] = $data;
@@ -916,59 +984,57 @@ class Renderer {
 				Takto by sa to cyklilo donekonecna a pre tento pripad mame MAX. Zaroven cislo 20 je maxialne dostacujuce na to aby pokrylo vsetky potreby.
 		$actual - aktualna hlbka vnorenia.
 	*/
-	public function concatInnerLayouts($layout,$code="",$actual=0,$max=20) {
-		// Pravdepodobne sme sa zacyklili... Takze ukoncime skript.
-		if ($actual == $max ) {
-			return("");
-		} else {
-			$actual++;
-		}
-		
-		if ($code != "") {
-			$layoutcode = $code;
-		} else {
-			$layoutcode = $this->getLayout($layout);
-		}
-		
-		$pattern = 
-			/* 	Vnorene layouty
-				{{layout:hlavnecasti/navbar.search.small}}
-			*/
-			'/\{\{\s*layout\s*:\s*([^\}\s]+)\s*\}\}/';
-			
-		if (preg_match_all($pattern, $layoutcode, $matches)) {
-			$found = $matches[1];
-			
-			foreach ($found as $found_layout) {
-				$layoutcode = str_replace('{{ layout:'.$found_layout.' }}',$this->concatInnerLayouts($found_layout,"",$actual,$max),$layoutcode);
-			}
-		}	
-		
+	public function concatInnerLayouts($layout, $code = "", $actual = 0, $max = 20) {
+        // Prevent infinite recursion
+        if ($actual >= $max) {
+            $this->dotApp->logger->warning("Maximum layout nesting depth reached", [
+                'layout' => $layout,
+                'depth' => $actual
+            ]);
+            return "";
+        }
+        $actual++;
 
-		$pattern = 
-			/* 	Vnorene baselayouty
-				{{ baselayout:hlavnecasti/navbar.search.small }}
-			*/
-			'/\{\{\s*baselayout\s*:\s*([^\}\s]+)\s*\}\}/';
-			
+        if ($code != "") {
+            $layoutcode = $code;
+        } else {
+            $layoutcode = $this->getLayout($layout);
+        }
+
+        $pattern = '/\{\{\s*layout\s*:\s*([^\}\s]+)\s*\}\}/';
+        if (preg_match_all($pattern, $layoutcode, $matches)) {
+            $found = $matches[1];
+            foreach ($found as $found_layout) {
+                $layoutcode = str_replace(
+                    '{{ layout:' . $found_layout . ' }}',
+                    $this->concatInnerLayouts($found_layout, "", $actual, $max),
+                    $layoutcode
+                );
+            }
+        }
+
+        $pattern = '/\{\{\s*baselayout\s*:\s*([^\}\s]+)\s*\}\}/';
         $remdirl = $this->dirl;
-		$remdirw = $this->dirw;
-		$this->dirl = __ROOTDIR__."/app/parts/views/layouts/";
-		$this->dirw = __ROOTDIR__."/app/parts/views/";
-	
-		if (preg_match_all($pattern, $layoutcode, $matches)) {
-			$found = $matches[1];
-			
-			foreach ($found as $found_layout) {
-				$layoutcode = str_replace('{{ baselayout:'.$found_layout.' }}',$this->concatInnerLayouts($found_layout,"",$actual,$max),$layoutcode);
-			}
-		}
-		
-		$this->dirl = $remdirl;
-		$this->dirw = $remdirw;
-		
-		return($layoutcode);
-	}
+        $remdirw = $this->dirw;
+        $this->dirl = __ROOTDIR__ . "/app/parts/views/layouts/";
+        $this->dirw = __ROOTDIR__ . "/app/parts/views/";
+
+        if (preg_match_all($pattern, $layoutcode, $matches)) {
+            $found = $matches[1];
+            foreach ($found as $found_layout) {
+                $layoutcode = str_replace(
+                    '{{ baselayout:' . $found_layout . ' }}',
+                    $this->concatInnerLayouts($found_layout, "", $actual, $max),
+                    $layoutcode
+                );
+            }
+        }
+
+        $this->dirl = $remdirl;
+        $this->dirw = $remdirw;
+
+        return $layoutcode;
+    }
 
 	
 
@@ -1210,8 +1276,38 @@ class Renderer {
 	}
 	
 	public function loadView($view) {
-		return(file_get_contents($this->dirw.$view.".view.php"));
-	}
+        $dir = $this->dirw ?: __ROOTDIR__ . "/app/parts/views/";
+
+        // Load view if it exists
+        if ($view !== "" && file_exists($dir . $view . ".view.php")) {
+            return file_get_contents($dir . $view . ".view.php");
+        }
+
+        // Log warning if primary view doesn't exist
+        if ($view !== "") {
+            $this->dotApp->logger->warning("Failed to load view: " . $dir . $view . ".view.php", [
+                'view' => $view,
+                'directory' => $dir
+            ]);
+        }
+
+        // Try fallback view if defined
+        if (isset($this->viewFallbacks[$view]) && $this->viewFallbacks[$view] !== null) {
+            $fallbackView = $this->viewFallbacks[$view];
+            $fallbackDir = $this->dirw ?: __ROOTDIR__ . "/app/parts/views/";
+
+            if (file_exists($fallbackDir . $fallbackView . ".view.php")) {
+                return file_get_contents($fallbackDir . $fallbackView . ".view.php");
+            }
+
+            $this->dotApp->logger->warning("Failed to load fallback view: " . $fallbackDir . $fallbackView . ".view.php", [
+                'fallbackView' => $fallbackView,
+                'directory' => $fallbackDir
+            ]);
+        }
+
+        return "";
+    }
 	
 	public function loadViewStatic($view) {
 		/*
@@ -1512,6 +1608,7 @@ class PrivateBlock {
             return($html);
         }        
     }
+
 
 }
 

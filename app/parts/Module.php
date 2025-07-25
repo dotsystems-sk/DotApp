@@ -43,7 +43,6 @@
     DotApp framework while maintaining a standardized approach to module development.
 */
 
-
 namespace Dotsystems\App\Parts;
 use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\DI;
@@ -68,67 +67,69 @@ abstract class Module {
     private $assetsLoaded;
     protected static $staticModuleName;
     protected static $staticModuleNameLock = false;
+    private $settingsCache = null; // Cache for settings to reduce I/O operations
+    private $settingsLoaded = false; // Flag to track if settings are loaded
 	//public $menu; /* Ci ma modul svoje vlastne menu alebo nie. 0 - Nie, 1 - Ano */
 	
-	function __construct($dotapp,$optimalizacia = false) {
+	function __construct($dotapp, $optimalizacia = false) {
         $this->initialized = false;
 		$this->dotapp = $dotapp;
         $this->dotApp = $this->dotapp;
         $this->DotApp = $this->dotapp;
-        if ( $optimalizacia === true || defined("__DOTAPPER_OPTIMIZER__") || !defined("__DOTAPP_MODULES_CAN_LOAD__") ) return;
+        if ($optimalizacia === true || defined("__DOTAPPER_OPTIMIZER__") || !defined("__DOTAPP_MODULES_CAN_LOAD__")) return;
         $classname = get_class($this);
         $this->assetsLoaded = false;
         // New PascalCase
-        $classname = str_replace("Dotsystems\\App\\Modules\\","",$classname);
-		$classnamea = explode("\\",$classname);
+        $classname = str_replace("Dotsystems\\App\\Modules\\", "", $classname);
+		$classnamea = explode("\\", $classname);
 		$classname = $classnamea[0];
-		$classname = str_replace("module_","",$classname);
+		$classname = str_replace("module_", "", $classname);
 		$this->modulename = $classname;
-		$this->path = __ROOTDIR__."/app/modules/".$classname;
-		$this->di = new DI($this,$dotapp);
+		$this->path = __ROOTDIR__ . "/app/modules/" . $classname;
+		$this->di = new DI($this, $dotapp);
         $this->DI = $this->di; // Alias pre di, blbuvzdornost.
         self::$staticDI = $this->di;
         $this->call = $this->di; // Alias pre di, blbuvzdornost.
         $this->Call = $this->di; // Alias pre di, blbuvzdornost.
         $this->installation();
-		$dotapp->module_add($this->modulename,$this->di);
+		$dotapp->module_add($this->modulename, $this->di);
         self::moduleName($this->modulename);
-        $dotapp->trigger("dotapp.module.".$this->modulename.".init.start",$this);
+        $dotapp->trigger("dotapp.module." . $this->modulename . ".init.start", $this);
         if ($this->initializeConditionAndListener() || defined('__DOTAPPER_RUN__')) {
             $this->dotapp->dotapper['routes_module'] = $this->modulename;
             $this->load();
         }
-        $dotapp->trigger("dotapp.module.".$this->modulename.".init.end",$this);
+        $dotapp->trigger("dotapp.module." . $this->modulename . ".init.end", $this);
 	}
 
     public static function optimize() {
         try {
-            define('__DOTAPPER_OPTIMIZER__',1);
-            $moduly = glob(__ROOTDIR__."/app/modules/*", GLOB_ONLYDIR); // Get all module directories
+            define('__DOTAPPER_OPTIMIZER__', 1);
+            $moduly = glob(__ROOTDIR__ . "/app/modules/*", GLOB_ONLYDIR); // Get all module directories
             $routyModulov = [];
             foreach ($moduly as $modul) {
-                $modulinit = $modul.'/module.init.php';
-                $modulName = str_replace("\\","/",$modul);
-                $modulName = explode("/",$modulName);
-                $modulName = $modulName[count($modulName)-1];
+                $modulinit = $modul . '/module.init.php';
+                $modulName = str_replace("\\", "/", $modul);
+                $modulName = explode("/", $modulName);
+                $modulName = $modulName[count($modulName) - 1];
                 if (file_exists($modulinit)) {
-                    $className = "Dotsystems\\App\\Modules\\".$modulName."\\Module";
+                    $className = "Dotsystems\\App\\Modules\\" . $modulName . "\\Module";
                     if (!class_exists($className, false)) {
                         include $modulinit;
                     }
                     if (!class_exists($className, false)) {
                         throw new \RuntimeException("Module class $className not found");
                     }
-                    $objekt = new $className(null,true);
+                    $objekt = new $className(null, true);
                     $routes = $objekt->initializeRoutes();
                     if (!is_array($routes) || array_filter($routes, fn($item) => !is_string($item)) !== []) {
-                        throw new \InvalidArgumentException("initializeRoutes() must return a one-dimensional array of strings in module {$this->modulename}");
+                        throw new \InvalidArgumentException("initializeRoutes() must return a one-dimensional array of strings in module {$objekt->modulename}");
                     }
                     $routyModulov[$modulName] = $routes;
                 }
             }
             file_put_contents(__ROOTDIR__ . "/app/modules/modulesAutoLoader.php", "<?php\n\$modules = " . var_export($routyModulov, true) . ";\n ?>");
-            return (true);
+            return true;
         } catch (\Exception $e) {
             return $e;
         }
@@ -137,24 +138,35 @@ abstract class Module {
     /**
      * Retrieves or sets settings for the module.
      *
-     * This function allows you to either retrieve module settings or update them.
-     * - If an array is provided as input, it will update the entire settings file with the provided array.
-     * - If two arguments are provided (key and value), it will update a specific setting in the settings file.
-     * - If a string is provided, it will return the value of that specific setting.
-     * - If no input is provided (null), it will return all settings as an array.
+     * This function allows you to either retrieve module settings or update them, using an in-memory cache to reduce I/O operations.
+     * - If an array is provided as input, it updates the entire settings file and cache with the provided array.
+     * - If two arguments are provided (key and value), it updates a specific setting in the cache and file.
+     * - If a string is provided, it returns the value of that specific setting from the cache.
+     * - If no input is provided (null), it returns all settings from the cache as an array.
      *
      * @param string|array|null $input The setting key (string), an array of settings to update, or null to retrieve all settings.
      * @param mixed $value Optional value to set for a specific key (used when $input is a string).
      *
      * @return mixed|bool|null If updating settings (array or key-value input), returns true on success, false on failure.
      *                         If retrieving a specific setting (string input), returns the value of the setting or null if not found.
-     *                         If retrieving all settings (null input), returns an associative array of all settings or an empty array if the settings file does not exist.
+     *                         If retrieving all settings (null input), returns an associative array of all settings or an empty array if no settings exist.
      */
     public function settings($input = null, $value = null) {
         $settingsFile = $this->path . "/settings.php";
 
-        // Setter: If input is an array, update the entire settings file
+        // Load settings into cache if not already loaded
+        if (!$this->settingsLoaded && file_exists($settingsFile)) {
+            $settings = include $settingsFile;
+            $this->settingsCache = is_array($settings) ? $settings : [];
+            $this->settingsLoaded = true;
+        } elseif (!$this->settingsLoaded) {
+            $this->settingsCache = [];
+            $this->settingsLoaded = true;
+        }
+
+        // Setter: If input is an array, update the entire settings file and cache
         if (is_array($input)) {
+            $this->settingsCache = $input;
             $content = "<?php\nreturn " . var_export($input, true) . ";\n?>";
             try {
                 file_put_contents($settingsFile, $content);
@@ -166,12 +178,8 @@ abstract class Module {
 
         // Setter: If input is a string and value is provided, update a specific setting
         if (is_string($input) && $value !== null) {
-            $settings = file_exists($settingsFile) ? include $settingsFile : [];
-            if (!is_array($settings)) {
-                $settings = [];
-            }
-            $settings[$input] = $value;
-            $content = "<?php\nreturn " . var_export($settings, true) . ";\n?>";
+            $this->settingsCache[$input] = $value;
+            $content = "<?php\nreturn " . var_export($this->settingsCache, true) . ";\n?>";
             try {
                 file_put_contents($settingsFile, $content);
                 return true;
@@ -180,27 +188,16 @@ abstract class Module {
             }
         }
 
-        // Getter: Load settings file if it exists
-        if (file_exists($settingsFile)) {
-            $settings = include $settingsFile;
-            if (!is_array($settings)) {
-                return is_string($input) ? null : [];
-            }
-
-            // If input is a string, return the specific setting
-            if (is_string($input)) {
-                return isset($settings[$input]) ? $settings[$input] : null;
-            }
-
-            // If input is null, return all settings
-            return $settings;
+        // Getter: If input is a string, return the specific setting from cache
+        if (is_string($input)) {
+            return isset($this->settingsCache[$input]) ? $this->settingsCache[$input] : null;
         }
 
-        // If the settings file does not exist, return null for string input or empty array for null input
-        return is_string($input) ? null : [];
+        // Getter: If input is null, return all settings from cache
+        return $this->settingsCache;
     }
 
-    public static function moduleName($name=null) {
+    public static function moduleName($name = null) {
         if ($name === null) {
             return self::$staticModuleName;
         } else {
@@ -216,10 +213,10 @@ abstract class Module {
     public function load() {
         if (!$this->initialized) {
             $this->initialized = true;
-            $this->dotapp->trigger("dotapp.module.".$this->modulename.".loading",$this);
+            $this->dotapp->trigger("dotapp.module." . $this->modulename . ".loading", $this);
             $this->load_libraries();
             $this->initialize($this->dotapp);            
-            $this->dotapp->trigger("dotapp.module.".$this->modulename.".loaded",$this);
+            $this->dotapp->trigger("dotapp.module." . $this->modulename . ".loaded", $this);
         }
         if (defined("__DOTAPPER_RUN__")) {
 			$routes = $this->initializeRoutes();
@@ -248,10 +245,10 @@ abstract class Module {
 
     public function initializeConditionAndListener() {
         $result = $this->autoInitializeCondition();
-        if ($this->dotapp->hasListener("dotapp.module.".$this->modulename.".init.condition")) {
-            $result = $this->dotapp->trigger("dotapp.module.".$this->modulename.".init.condition", $result, $this) ?? $result;
+        if ($this->dotapp->hasListener("dotapp.module." . $this->modulename . ".init.condition")) {
+            $result = $this->dotapp->trigger("dotapp.module." . $this->modulename . ".init.condition", $result, $this) ?? $result;
         }
-        return($result);
+        return $result;
     }
 
     public function initializeCondition($routeMatch) {
@@ -269,7 +266,7 @@ abstract class Module {
     }
 
     public static function willInitilaize() {
-        $instance = new static(DotApp::DotApp(),true);
+        $instance = new static(DotApp::DotApp(), true);
         return $instance->autoInitializeCondition();
     }
 
@@ -278,7 +275,7 @@ abstract class Module {
     }
     
     public static function call($method, ...$arguments) {
-        if (strpos($method,"@") === false) {
+        if (strpos($method, "@") === false) {
             if (method_exists(static::class, $method)) {
                 return self::$staticDI->callStatic($method, ...$arguments);
             }
@@ -288,7 +285,6 @@ abstract class Module {
             $fn = DotApp::DotApp()->stringToCallable($method);
             return $fn(...$arguments);
         }
-        
     }
 
     public function autoInitializeCondition() {
@@ -301,8 +297,8 @@ abstract class Module {
         } else {
             if (is_array($navrat)) {
                 $predajDalej = false;
-                foreach($navrat as $route) {
-                    if ($this->dotApp->router->match_url($route) !== false ) {
+                foreach ($navrat as $route) {
+                    if ($this->dotApp->router->match_url($route) !== false) {
                         $predajDalej = true;
                         break;
                     }
@@ -322,14 +318,13 @@ abstract class Module {
 		( nie je povinne ale ak je to modul pre dotapp tak je na nic ak nema polozky v menu )
 	*/
 	public function installation() {
-		if (file_exists($this->path."/install.php")) {
+		if (file_exists($this->path . "/install.php")) {
 			$dotapp = $this->dotapp;
-            $dotapp->trigger("dotapp.module.".$this->modulename.".install",$this);
-			require_once $this->path."/install.php";
-			rename($this->path."/install.php", $this->path."/installed_".md5(time().rand(100,999).rand(100,999))."_install.php");
+            $dotapp->trigger("dotapp.module." . $this->modulename . ".install", $this);
+			require_once $this->path . "/install.php";
+			rename($this->path . "/install.php", $this->path . "/installed_" . md5(time() . rand(100, 999) . rand(100, 999)) . "_install.php");
 		}
 	}
-	
 	
 	// camelCase alias
 	public function loadLibrary($file) {
@@ -344,20 +339,19 @@ abstract class Module {
 			
 			Kazda kniznica vytvara svoj objekt.
 		*/
-		require_once $this->path . '/Libraries/'.$file.".php";
+		require_once $this->path . '/Libraries/' . $file . ".php";
 	}
 
-    public function assets($request,$file) {
+    public function assets($request, $file) {
         if ($this->assetsLoaded === false) {
-
-            if ( is_dir($file) ) {
+            if (is_dir($file)) {
                 $request->response->status = 403;
-                return(null);
+                return null;
             }
 
-            if ( !is_file($file) || !is_readable($file) ) {
+            if (!is_file($file) || !is_readable($file)) {
                 $request->response->status = 404;
-                return(null);
+                return null;
             }
 
             /* Ideme poslat subor ak je najdeny */ 
@@ -366,9 +360,9 @@ abstract class Module {
                 $mimeType = 'application/octet-stream'; // Fallback pre neznáme typy
             }
 
-            $request->response->headers['Content-Type'] =  $mimeType;
-            $request->response->headers['Cache-Control'] =  'public, max-age=31536000';
-            $request->response->headers['Last-Modified'] =  gmdate('D, d M Y H:i:s', filemtime($file));
+            $request->response->headers['Content-Type'] = $mimeType;
+            $request->response->headers['Cache-Control'] = 'public, max-age=31536000';
+            $request->response->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', filemtime($file));
 
             foreach ($request->response->headers as $name => $value) {
                 header("$name: $value");
@@ -380,36 +374,33 @@ abstract class Module {
         }
         // V tejto funkcii si definujeme co chceme robit so subormi assets, ci ich chceme vkladat ci nie...
         // Automaticky definovana funkcia to vyriesi za nas, ale ak chce uzivatel mat kontrolu tak si moze funkciu prepisat.
-        
     }
 
     public function isSetData($name) {
-		return($this->isset_data($name));
+		return $this->isset_data($name);
 	}
 	
 	public function isset_data($name) {
-		return(isset($this->moduledata[md5($name)]));
+		return isset($this->moduledata[md5($name)]);
 	}
 	
-	public function setData($name,$value) {
-        return($this->set_data($name,$value));
+	public function setData($name, $value) {
+        return $this->set_data($name, $value);
     }
     
-    public function set_data($name,$value) {
+    public function set_data($name, $value) {
 		$this->moduledata[md5($name)] = $value;
         return $this;
 	}
 	
     public function getData($name) {
-        return($this->get_data($name));
+        return $this->get_data($name);
     }
 
 	public function get_data($name) {
-		if (isSet($this->moduledata[md5($name)])) return($this->moduledata[md5($name)]); else return(false);
+		if (isset($this->moduledata[md5($name)])) return $this->moduledata[md5($name)]; else return false;
 	}
     
 	abstract function initialize($dotapp);
-	
 }
-
 ?>

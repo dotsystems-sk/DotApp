@@ -2,10 +2,11 @@
 /**
  * CLASS Installer - DotApp Module Installation
  *
- * This class provides a robust framework for managing module installations and uninstallations
- * within the DotApp ecosystem. It supports versioned migrations, installation from GitHub or DotHub,
- * and handles both CLI and application-based usage. It ensures compatibility with the DotApp framework
- * without external dependencies and gracefully manages module-specific migration logic.
+ * This class provides a robust framework for managing module installations, uninstallations,
+ * and global listener registration within the DotApp ecosystem. It supports versioned migrations,
+ * installation from GitHub or DotHub, and handles both CLI and application-based usage. It ensures
+ * compatibility with the DotApp framework without external dependencies and gracefully manages
+ * module-specific migration logic and global listener configuration.
  *
  * @package   DotApp Framework
  * @author    Štefan Miščík <stefan@dotsystems.sk>
@@ -37,6 +38,10 @@ ERROR CODES:
 18: Failed to create target directory
 19: Failed to copy files
 20: Installation canceled by user
+21: Invalid listener format
+22: Listener already registered
+23: Failed to save listeners
+24: Listener not found
 */
 
 namespace Dotsystems\App\Parts;
@@ -50,6 +55,17 @@ class Installer {
     private $moduleName;
 
     /**
+     * Constructor for the Installer class.
+     *
+     * Initializes the Installer with the provided module name.
+     *
+     * @param string $moduleName The name of the module to be installed.
+     */
+    function __construct($moduleName) {
+        $this->moduleName = $moduleName;
+    }
+
+    /**
      * Get an installer instance for a specific module.
      *
      * @param string $module Module name
@@ -59,8 +75,7 @@ class Installer {
         if (isset(self::$installers[$module])) {
             return self::$installers[$module];
         }
-        self::$installers[$module] = new static();
-        self::$installers[$module]->moduleName = $module;
+        self::$installers[$module] = new static($module);
         return self::$installers[$module];
     }
 
@@ -224,7 +239,7 @@ class Installer {
         $force = !empty($options['force']);
         $githubToken = $options['github_token'] ?? null;
 
-        // Tu nacitame URL z dothub repozitara... A dalej pokracujeme uz klasicky
+        // Construct GitHub URL for DotHub module
         $gitUrl = "https://github.com/dotsystems-sk/$moduleName"; // Placeholder
 
         // Validate pseudo-DotHub URL
@@ -793,5 +808,204 @@ class Installer {
      */
     public static function uninstaller() {
         return [];
+    }
+
+    /**
+     * Registers a global listener for an event for the specified module.
+     *
+     * @param string $event The event to listen for (e.g., "dotapp.module.FrontendCMS.loaded")
+     * @param string $listener The listener in format "module" or "module:controller@function"
+     * @return array ['success' => bool, 'error_code' => int, 'error_message' => string]
+     */
+    public function registerGlobalListener($event, $listener) {
+        $listenersFile = __ROOTDIR__ . '/app/listeners.php';
+        $lockFile = __ROOTDIR__ . '/app/listeners.lock';
+
+        // Validate listener format
+        if (!$this->validateListenerFormat($listener)) {
+            return [
+                'success' => false,
+                'error_code' => 21,
+                'error_message' => "Invalid listener format: $listener. Expected 'module' or 'module:controller@function'."
+            ];
+        }
+
+        // Load existing listeners
+        $listeners = $this->loadGlobalListeners($listenersFile);
+
+        // Check if listener already exists for this event and module
+        if (isset($listeners[$this->moduleName][$event]) && in_array($listener, $listeners[$this->moduleName][$event])) {
+            return [
+                'success' => false,
+                'error_code' => 22,
+                'error_message' => "Listener '$listener' is already registered for event '$event' in module '{$this->moduleName}'."
+            ];
+        }
+
+        // Add new listener
+        if (!isset($listeners[$this->moduleName])) {
+            $listeners[$this->moduleName] = [];
+        }
+        if (!isset($listeners[$this->moduleName][$event])) {
+            $listeners[$this->moduleName][$event] = [];
+        }
+        $listeners[$this->moduleName][$event][] = $listener;
+
+        // Save listeners with file locking
+        $result = $this->saveGlobalListeners($listenersFile, $lockFile, $listeners);
+        if (!$result) {
+            return [
+                'success' => false,
+                'error_code' => 23,
+                'error_message' => "Failed to save listeners to $listenersFile."
+            ];
+        }
+
+        return [
+            'success' => true,
+            'error_code' => 0,
+            'error_message' => null
+        ];
+    }
+
+    /**
+     * Checks if a global listener exists for an event in the specified module.
+     *
+     * @param string $event The event to check
+     * @param string $listener The listener in format "module" or "module:controller@function"
+     * @return bool Returns true if the listener exists for the event, false otherwise
+     */
+    public function hasGlobalListener($event, $listener) {
+        $listenersFile = __ROOTDIR__ . '/app/listeners.php';
+        $listeners = $this->loadGlobalListeners($listenersFile);
+
+        return isset($listeners[$this->moduleName][$event]) && in_array($listener, $listeners[$this->moduleName][$event]);
+    }
+
+    /**
+     * Retrieves all global listeners for the specified module or a specific event.
+     *
+     * @param string|null $event Optional event to filter listeners. If null, returns all listeners for the module
+     * @return array Returns an array of listeners for the module or event
+     */
+    public function getGlobalListeners($event = null) {
+        $listenersFile = __ROOTDIR__ . '/app/listeners.php';
+        $listeners = $this->loadGlobalListeners($listenersFile);
+
+        if ($event === null) {
+            return $listeners[$this->moduleName] ?? [];
+        }
+
+        return $listeners[$this->moduleName][$event] ?? [];
+    }
+
+    /**
+     * Removes a global listener for an event from the specified module.
+     *
+     * @param string $event The event to remove the listener from
+     * @param string $listener The listener to remove
+     * @return array ['success' => bool, 'error_code' => int, 'error_message' => string]
+     */
+    public function removeGlobalListener($event, $listener) {
+        $listenersFile = __ROOTDIR__ . '/app/listeners.php';
+        $lockFile = __ROOTDIR__ . '/app/listeners.lock';
+
+        // Load existing listeners
+        $listeners = $this->loadGlobalListeners($listenersFile);
+
+        // Check if listener exists
+        if (!isset($listeners[$this->moduleName][$event]) || !in_array($listener, $listeners[$this->moduleName][$event])) {
+            return [
+                'success' => false,
+                'error_code' => 24,
+                'error_message' => "Listener '$listener' not found for event '$event' in module '{$this->moduleName}'."
+            ];
+        }
+
+        // Remove listener
+        $listeners[$this->moduleName][$event] = array_diff($listeners[$this->moduleName][$event], [$listener]);
+
+        // Clean up empty event or module arrays
+        if (empty($listeners[$this->moduleName][$event])) {
+            unset($listeners[$this->moduleName][$event]);
+        }
+        if (empty($listeners[$this->moduleName])) {
+            unset($listeners[$this->moduleName]);
+        }
+
+        // Save updated listeners
+        $result = $this->saveGlobalListeners($listenersFile, $lockFile, $listeners);
+        if (!$result) {
+            return [
+                'success' => false,
+                'error_code' => 23,
+                'error_message' => "Failed to save listeners to $listenersFile."
+            ];
+        }
+
+        return [
+            'success' => true,
+            'error_code' => 0,
+            'error_message' => null
+        ];
+    }
+
+    /**
+     * Loads global listeners from the listeners.php file.
+     *
+     * @param string $listenersFile Path to the listeners file
+     * @return array Returns the loaded listeners array
+     */
+    private function loadGlobalListeners($listenersFile) {
+        if (file_exists($listenersFile)) {
+            $listeners = include $listenersFile;
+            return is_array($listeners) ? $listeners : [];
+        }
+        return [];
+    }
+
+    /**
+     * Saves global listeners to the listeners.php file with file locking.
+     *
+     * @param string $listenersFile Path to the listeners file
+     * @param string $lockFile Path to the lock file
+     * @param array $listeners The listeners array to save
+     * @return bool Returns true on success, false on failure
+     */
+    private function saveGlobalListeners($listenersFile, $lockFile, $listeners) {
+        // Create lock file
+        $lock = fopen($lockFile, 'w');
+        if (!$lock || !flock($lock, LOCK_EX)) {
+            return false;
+        }
+
+        try {
+            $content = "<?php\nreturn " . var_export($listeners, true) . ";\n?>";
+            $result = file_put_contents($listenersFile, $content);
+            flock($lock, LOCK_UN);
+            fclose($lock);
+            return $result !== false;
+        } catch (\Exception $e) {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+            return false;
+        }
+    }
+
+    /**
+     * Validates the listener format.
+     *
+     * @param string $listener The listener in format "module", "module:controller@function", or "module:Namespace\Subnamespace\Class@function"
+     * @return bool Returns true if the format is valid, false otherwise
+     */
+    private function validateListenerFormat($listener) {
+        // Allow simple module name, module:controller@function, or module:Namespace\Subnamespace\Class@function
+        if (preg_match('/^[a-zA-Z0-9_]+$/', $listener)) {
+            return true; // Simple module name
+        }
+        if (preg_match('/^[a-zA-Z0-9_]+:[a-zA-Z0-9_\\]+@[a-zA-Z0-9_]+$/', $listener)) {
+            return true; // module:controller@function or module:Namespace\Subnamespace\Class@function
+        }
+        return false;
     }
 }

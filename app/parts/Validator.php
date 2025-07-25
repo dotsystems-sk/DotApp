@@ -3,6 +3,255 @@ namespace Dotsystems\App\Parts;
 
 class Validator {
     /**
+     * Validates the input data against the provided rules.
+     *
+     * This method checks each field in the input array against the specified rules.
+     * Rules are provided as strings separated by pipes (|), and each rule can have parameters
+     * separated by colons (:) and commas (,) for multiple parameters.
+     * If a field fails any rule, an error message is added to the result array.
+     * The method uses existing validation functions in this class to perform checks.
+     *
+     * Supported rules include: required, set, email, number, integer, positive_number, in_range:min,max,
+     * min_length:min, max_length:max, url, alpha, alphanumeric, strong_password:special,
+     * phone, date, one_of:val1,val2,..., json, username:minLength,maxLength,allowDash,allowDot,
+     * boolean, credit_card, hex_color, ip, uuid, not_empty_array, valid_file_name,
+     * regex:pattern, unique:key.
+     *
+     * @param array $input Associative array of input data to validate, e.g., ['email' => 'info@dotsystems.sk'].
+     * @param array $rules Associative array of validation rules, e.g., ['email' => 'required|email'].
+     * @return array Associative array of errors, keyed by field name with arrays of error messages. Empty array if no errors.
+     * @throws \InvalidArgumentException If an unknown rule is used or if rule parameters are invalid.
+     *
+     * @example
+     * // Example 1: Simple email and password validation
+     * $input = [
+     *     'email' => 'info@dotsystems.sk',
+     *     'password' => 'StrongPass1',
+     * ];
+     * $rules = [
+     *     'email' => 'required|email',
+     *     'password' => 'required|min_length:8|strong_password',
+     * ];
+     * $errors = Validator::validate($input, $rules);
+     * // $errors will be empty if validation passes
+     *
+     * @example
+     * // Example 2: Validation with range and unique array
+     * $input = [
+     *     'age' => 25,
+     *     'colors' => ['red', 'blue', 'green'],
+     * ];
+     * $rules = [
+     *     'age' => 'integer|in_range:18,100|positive_number',
+     *     'colors' => 'not_empty_array|unique',
+     * ];
+     * $errors = Validator::validate($input, $rules);
+     * // $errors will be empty if validation passes
+     *
+     * @example
+     * // Example 3: Handling invalid input and exceptions
+     * try {
+     *     $input = ['email' => 'invalid'];
+     *     $rules = ['email' => 'required|email'];
+     *     $errors = Validator::validate($input, $rules);
+     *     // $errors['email'] will contain error messages
+     * } catch (\InvalidArgumentException $e) {
+     *     echo $e->getMessage();
+     * }
+    */
+    public static function validate(array $input, array $rules): array {
+        $errors = [];
+
+        foreach ($rules as $field => $ruleString) {
+            $value = $input[$field] ?? null;
+            $subRules = explode('|', $ruleString);
+
+            foreach ($subRules as $subRule) {
+                $parts = explode(':', $subRule, 2);
+                $ruleName = trim($parts[0]);
+                $params = isset($parts[1]) ? array_map('trim', explode(',', $parts[1])) : [];
+
+                $isValid = false;
+
+                switch ($ruleName) {
+                    case 'required':
+                        $isValid = self::isRequired($value);
+                        $message = "The {$field} field is required.";
+                        break;
+
+                    case 'set':
+                        $isValid = self::isSet($value);
+                        $message = "The {$field} field must be set.";
+                        break;
+
+                    case 'email':
+                        $isValid = self::isEmail($value);
+                        $message = "The {$field} must be a valid email address.";
+                        break;
+
+                    case 'number':
+                        $isValid = self::isNumber($value);
+                        $message = "The {$field} must be a number.";
+                        break;
+
+                    case 'integer':
+                        $isValid = self::isInteger($value);
+                        $message = "The {$field} must be an integer.";
+                        break;
+
+                    case 'positive_number':
+                        $isValid = self::isPositiveNumber($value);
+                        $message = "The {$field} must be a positive number.";
+                        break;
+
+                    case 'in_range':
+                        if (count($params) !== 2 || !is_numeric($params[0]) || !is_numeric($params[1])) {
+                            throw new \InvalidArgumentException("in_range rule for {$field} requires exactly two numeric parameters: min,max.");
+                        }
+                        $min = (float)$params[0];
+                        $max = (float)$params[1];
+                        $isValid = self::isInRange($value, $min, $max);
+                        $message = "The {$field} must be between {$min} and {$max}.";
+                        break;
+
+                    case 'min_length':
+                        if (count($params) !== 1 || !is_numeric($params[0])) {
+                            throw new \InvalidArgumentException("min_length rule for {$field} requires one integer parameter: min.");
+                        }
+                        $min = (int)$params[0];
+                        $isValid = self::isMinLength($value, $min);
+                        $message = "The {$field} must be at least {$min} characters long.";
+                        break;
+
+                    case 'max_length':
+                        if (count($params) !== 1 || !is_numeric($params[0])) {
+                            throw new \InvalidArgumentException("max_length rule for {$field} requires one integer parameter: max.");
+                        }
+                        $max = (int)$params[0];
+                        $isValid = self::isMaxLength($value, $max);
+                        $message = "The {$field} must not exceed {$max} characters.";
+                        break;
+
+                    case 'url':
+                        $isValid = self::isUrl($value);
+                        $message = "The {$field} must be a valid URL.";
+                        break;
+
+                    case 'alpha':
+                        $isValid = self::isAlpha($value);
+                        $message = "The {$field} must contain only alphabetic characters.";
+                        break;
+
+                    case 'alphanumeric':
+                        $isValid = self::isAlphanumeric($value);
+                        $message = "The {$field} must contain only alphanumeric characters.";
+                        break;
+
+                    case 'strong_password':
+                        $special = count($params) > 0 && filter_var($params[0], FILTER_VALIDATE_BOOLEAN);
+                        $isValid = self::isStrongPassword($value, $special);
+                        $message = "The {$field} must be a strong password" . ($special ? " with special characters." : ".");
+                        break;
+
+                    case 'phone':
+                        $isValid = self::isPhoneNumber($value);
+                        $message = "The {$field} must be a valid phone number.";
+                        break;
+
+                    case 'date':
+                        $isValid = self::isDate($value);
+                        $message = "The {$field} must be a valid date.";
+                        break;
+
+                    case 'one_of':
+                        if (count($params) < 1) {
+                            throw new \InvalidArgumentException("one_of rule for {$field} requires at least one parameter: val1,val2,...");
+                        }
+                        $isValid = self::isOneOf($value, $params);
+                        $message = "The {$field} must be one of: " . implode(', ', $params) . ".";
+                        break;
+
+                    case 'json':
+                        $isValid = self::isJson($value);
+                        $message = "The {$field} must be valid JSON.";
+                        break;
+
+                    case 'username':
+                        $minLength = count($params) > 0 && is_numeric($params[0]) ? (int)$params[0] : 3;
+                        $maxLength = count($params) > 1 && is_numeric($params[1]) ? (int)$params[1] : 20;
+                        $allowDash = count($params) > 2 ? filter_var($params[2], FILTER_VALIDATE_BOOLEAN) : false;
+                        $allowDot = count($params) > 3 ? filter_var($params[3], FILTER_VALIDATE_BOOLEAN) : false;
+                        $isValid = self::isUsername($value, $minLength, $maxLength, $allowDash, $allowDot);
+                        $message = "The {$field} must be a valid username.";
+                        break;
+
+                    case 'boolean':
+                        $isValid = self::isBoolean($value);
+                        $message = "The {$field} must be a boolean.";
+                        break;
+
+                    case 'credit_card':
+                        $isValid = self::isCreditCard($value);
+                        $message = "The {$field} must be a valid credit card number.";
+                        break;
+
+                    case 'hex_color':
+                        $isValid = self::isHexColor($value);
+                        $message = "The {$field} must be a valid hex color code.";
+                        break;
+
+                    case 'ip':
+                        $isValid = self::isIpAddress($value);
+                        $message = "The {$field} must be a valid IP address.";
+                        break;
+
+                    case 'uuid':
+                        $isValid = self::isUuid($value);
+                        $message = "The {$field} must be a valid UUID.";
+                        break;
+
+                    case 'not_empty_array':
+                        $isValid = self::isNotEmptyArray($value);
+                        $message = "The {$field} must be a non-empty array.";
+                        break;
+
+                    case 'valid_file_name':
+                        $isValid = self::isValidFileName($value);
+                        $message = "The {$field} must be a valid file name.";
+                        break;
+
+                    case 'regex':
+                        if (count($params) !== 1) {
+                            throw new \InvalidArgumentException("regex rule for {$field} requires exactly one parameter: pattern.");
+                        }
+                        $regex = $params[0];
+                        $isValid = self::isMatchingRegex($value, $regex);
+                        $message = "The {$field} must match the regex pattern: {$regex}.";
+                        break;
+
+                    case 'unique':
+                        if (count($params) > 1) {
+                            throw new \InvalidArgumentException("unique rule for {$field} accepts at most one parameter: key.");
+                        }
+                        $key = count($params) > 0 ? $params[0] : null;
+                        $isValid = self::isUniqueInArray($value, $key);
+                        $message = "The {$field} must contain unique values" . ($key ? " by key '{$key}'." : ".");
+                        break;
+
+                    default:
+                        throw new \InvalidArgumentException("Unknown validation rule '{$ruleName}' for field '{$field}'.");
+                }
+
+                if (!$isValid) {
+                    $errors[$field][] = $message ?? "Validation failed for {$field} with rule '{$ruleName}'.";
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
      * Checks if the provided text is a valid email address.
      *
      * @param mixed $text The text to validate.
