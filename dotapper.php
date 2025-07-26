@@ -972,25 +972,22 @@ class DotApper {
                     }
 
                     $destination = rtrim($whereToExtract, '/\\') . DIRECTORY_SEPARATOR . $relativeEntry;
+                    $destRealPath = realpath($destination) ?: $destination;
+                    $destParentRealPath = realpath(dirname($destination)) ?: dirname($destination);
 
                     // Skip if file is in $filesToSkip
-                    if (is_array($filesToSkip) && in_array(realpath($destination) ?: $destination, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip))) {
+                    if (is_array($filesToSkip) && (in_array($destRealPath, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip)) || in_array($destParentRealPath, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip)))) {
                         continue;
                     }
 
                     // If $filesToCopy is set, only check those files
                     if (is_array($filesToCopy) && !empty($filesToCopy)) {
-                        if (!in_array(realpath($destination) ?: $destination, array_map(function($path) { return realpath($path) ?: $path; }, $filesToCopy))) {
+                        if (!in_array($destRealPath, array_map(function($path) { return realpath($path) ?: $path; }, $filesToCopy)) && !in_array($destParentRealPath, array_map(function($path) { return realpath($path) ?: $path; }, $filesToCopy))) {
                             continue;
                         }
                     }
 
                     if (file_exists($destination)) {
-                        // Check if the file is in $filesToSkip; if so, skip the error
-                        if (is_array($filesToSkip) && in_array(realpath($destination) ?: $destination, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip))) {
-                            continue; // Skip this file as it's in $filesToSkip
-                        }
-
                         $zip->close();
                         echo "Error: File '$destination' already exists and overwrite is disabled.\n";
                         // Clean up temporary directory
@@ -1104,44 +1101,10 @@ class DotApper {
                 $sourcePath = $item->getPathname();
                 $relativePath = substr($sourcePath, strlen($effectiveSourceDir) + 1);
                 $destPath = rtrim($whereToExtract, '/\\') . DIRECTORY_SEPARATOR . $relativePath;
+                $destRealPath = realpath($destPath) ?: $destPath;
+                $destParentRealPath = realpath(dirname($destPath)) ?: dirname($destPath);
 
-                $sourceRealPath = realpath($sourcePath) ?: $sourcePath;
-                $sourceParentRealPath = realpath($item->getPath()) ?: $item->getPath();
-                if (in_array($sourceRealPath, $filesToCopy) || in_array($sourceParentRealPath, $filesToCopy)) {
-                    if ($item->isDir()) {
-                        if (!is_dir($destPath) && !mkdir($destPath, 0755, true)) {
-                            echo "Error: Failed to create directory $destPath.\n";
-                            $success = false;
-                            break;
-                        }
-                    } else {
-                        // Skip existence check for files in $filesToSkip
-                        if (is_array($filesToSkip) && (in_array($sourceRealPath, $filesToSkip) || in_array($sourceParentRealPath, $filesToSkip))) {
-                            continue;
-                        }
-                        if (file_exists($destPath) && !$overwrite) {
-                            echo "Error: File '$destPath' already exists and overwrite is disabled.\n";
-                            $success = false;
-                            break;
-                        }
-                        if (!copy($sourcePath, $destPath)) {
-                            echo "Error: Failed to copy $sourcePath to $destPath.\n";
-                            $success = false;
-                            break;
-                        }
-                    }
-                }
-            }
-        } else {
-            // Copy all files except those in $filesToSkip
-            foreach ($iterator as $item) {
-                $sourcePath = $item->getPathname();
-                $relativePath = substr($sourcePath, strlen($effectiveSourceDir) + 1);
-                $destPath = rtrim($whereToExtract, '/\\') . DIRECTORY_SEPARATOR . $relativePath;
-
-                $sourceRealPath = realpath($sourcePath) ?: $sourcePath;
-                $sourceParentRealPath = realpath($item->getPath()) ?: $item->getPath();
-                if (is_array($filesToSkip) && (in_array($sourceRealPath, $filesToSkip) || in_array($sourceParentRealPath, $filesToSkip))) {
+                if (!in_array($destRealPath, $filesToCopy) && !in_array($destParentRealPath, $filesToCopy)) {
                     continue;
                 }
 
@@ -1152,11 +1115,39 @@ class DotApper {
                         break;
                     }
                 } else {
-                    // Existence check is not needed for files in $filesToSkip as they are already skipped above
-                    if (file_exists($destPath) && !$overwrite) {
-                        if (is_array($filesToSkip) && in_array(realpath($destPath) ?: $destPath, array_map(function($path) { return realpath($path) ?: $path; }, $filesToSkip))) {
-                            continue; // Skip this file as it's in $filesToSkip
-                        }
+                    if (!$overwrite && file_exists($destPath)) {
+                        echo "Error: File '$destPath' already exists and overwrite is disabled.\n";
+                        $success = false;
+                        break;
+                    }
+                    if (!copy($sourcePath, $destPath)) {
+                        echo "Error: Failed to copy $sourcePath to $destPath.\n";
+                        $success = false;
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Copy all files except those in $filesToSkip
+            foreach ($iterator as $item) {
+                $sourcePath = $item->getPathname();
+                $relativePath = substr($sourcePath, strlen($effectiveSourceDir) + 1);
+                $destPath = rtrim($whereToExtract, '/\\') . DIRECTORY_SEPARATOR . $relativePath;
+                $destRealPath = realpath($destPath) ?: $destPath;
+                $destParentRealPath = realpath(dirname($destPath)) ?: dirname($destPath);
+
+                if (is_array($filesToSkip) && (in_array($destRealPath, $filesToSkip) || in_array($destParentRealPath, $filesToSkip))) {
+                    continue;
+                }
+
+                if ($item->isDir()) {
+                    if (!is_dir($destPath) && !mkdir($destPath, 0755, true)) {
+                        echo "Error: Failed to create directory $destPath.\n";
+                        $success = false;
+                        break;
+                    }
+                } else {
+                    if (!$overwrite && file_exists($destPath)) {
                         echo "Error: File '$destPath' already exists and overwrite is disabled.\n";
                         $success = false;
                         break;
