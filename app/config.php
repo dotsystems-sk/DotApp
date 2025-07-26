@@ -29,17 +29,23 @@ use \Dotsystems\App\Parts\LoggerDriverDefault;
  *  Global translation function that interacts with the translator system.
  *  It checks if the translator is callable and returns a translated string or the text as is.
  */
-function translator($text="",...$args) {
-    global $translator;
+if (!function_exists('translator')) {
+    function translator($text = "", ...$args) {
+        global $translator;
 
-    if (is_callable($translator) && $translator([]) instanceof \Dotsystems\App\Parts\Translator) {
-        if ($text === []) {
-            return($translator([]));
+        if (is_callable($translator) && $translator([]) instanceof \Dotsystems\App\Parts\Translator) {
+            if ($text === []) {
+                return $translator([]);
+            }
+            if (isset($text) && !is_array($text)) {
+                return $translator([])->translate($text, $args);
+            } else {
+                return $text;
+            }
+        } else {
+            return $text;
         }
-        if (isset($text) && ( ! is_array($text) ) ) {
-            return($translator([])->translate($text,$args));
-        } else return($text);
-    } else return($text);
+    }
 }
 
 /*
