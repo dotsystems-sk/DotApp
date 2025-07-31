@@ -49,6 +49,8 @@ use \Dotsystems\App\Parts\DI;
 
 abstract class Module {
     use StaticGetSet;
+    public const IF_NOT_EXIST = 1;
+    public const DELETE = 2;
 	/*
 		Namiesto INTERFACE ideme do abstract triedy, lebo potrebujeme premenne
 	*/
@@ -76,24 +78,25 @@ abstract class Module {
 		$this->dotapp = $dotapp;
         $this->dotApp = $this->dotapp;
         $this->DotApp = $this->dotapp;
-        if ($optimalizacia === true || defined("__DOTAPPER_OPTIMIZER__") || !defined("__DOTAPP_MODULES_CAN_LOAD__")) return;
         $classname = get_class($this);
         $this->assetsLoaded = false;
-        // New PascalCase
         $classname = str_replace("Dotsystems\\App\\Modules\\", "", $classname);
 		$classnamea = explode("\\", $classname);
 		$classname = $classnamea[0];
 		$classname = str_replace("module_", "", $classname);
 		$this->modulename = $classname;
-		$this->path = __ROOTDIR__ . "/app/modules/" . $classname;
+        static::moduleName($this->modulename);
+		$this->path = __ROOTDIR__ . "/app/modules/" . $classname;        
+        // Ukoncime nacitavanie dalej
+        if ($optimalizacia === true || defined("__DOTAPPER_OPTIMIZER__") || !defined("__DOTAPP_MODULES_CAN_LOAD__")) return;
+
 		$this->di = new DI($this, $dotapp);
         $this->DI = $this->di; // Alias pre di, blbuvzdornost.
-        self::$staticDI = $this->di;
+        static::$staticDI = $this->di;
         $this->call = $this->di; // Alias pre di, blbuvzdornost.
         $this->Call = $this->di; // Alias pre di, blbuvzdornost.
         $this->installation();
 		$dotapp->module_add($this->modulename, $this->di);
-        self::moduleName($this->modulename);
         $dotapp->trigger("dotapp.module." . $this->modulename . ".init.start", $this);
         if ($this->initializeConditionAndListener() || defined('__DOTAPPER_RUN__')) {
             $this->dotapp->dotapper['routes_module'] = $this->modulename;
@@ -138,20 +141,51 @@ abstract class Module {
     /**
      * Retrieves or sets settings for the module.
      *
-     * This function allows you to either retrieve module settings or update them, using an in-memory cache to reduce I/O operations.
+     * This function allows you to either retrieve module settings, update them, or delete a specific setting, using an in-memory cache to reduce I/O operations.
      * - If an array is provided as input, it updates the entire settings file and cache with the provided array.
-     * - If two arguments are provided (key and value), it updates a specific setting in the cache and file.
+     * - If a string key and value are provided, it updates a specific setting in the cache and file based on the mode.
+     * - If a string key and mode is DELETE, it removes the specific setting from the cache and file.
      * - If a string is provided, it returns the value of that specific setting from the cache.
      * - If no input is provided (null), it returns all settings from the cache as an array.
      *
      * @param string|array|null $input The setting key (string), an array of settings to update, or null to retrieve all settings.
-     * @param mixed $value Optional value to set for a specific key (used when $input is a string).
+     * @param mixed $value Optional value to set for a specific key (used when $input is a string and $mode is 0 or 1).
+     * @param int $mode Optional mode to control setting behavior:
+     *                  - 0: Set the value unconditionally (default).
+     *                  - Module::IF_NOT_EXIST (1): Set the value only if the key does not exist.
+     *                  - Module::DELETE (2): Delete the specified key from settings.
      *
-     * @return mixed|bool|null If updating settings (array or key-value input), returns true on success, false on failure.
-     *                         If retrieving a specific setting (string input), returns the value of the setting or null if not found.
-     *                         If retrieving all settings (null input), returns an associative array of all settings or an empty array if no settings exist.
+     * @return mixed|bool|null If updating or deleting settings, returns true on success, false on failure.
+     *                        If retrieving a specific setting (string input), returns the value of the setting or null if not found.
+     *                        If retrieving all settings (null input), returns an associative array of all settings or an empty array if no settings exist.
+     *
+     * ### Usage examples:
+     *
+     * // GET: Retrieve all settings
+     * $module->settings();
+     *
+     * // GET: Retrieve a specific setting
+     * $module->settings("enable2FA");
+     *
+     * // SET: Set value unconditionally
+     * $module->settings("enable2FA", true);
+     *
+     * // SET-IF-NOT-EXISTS: Only set if the value is not already defined
+     * $module->settings("maxLoginAttempts", 5, Module::IF_NOT_EXIST);
+     *
+     * // DELETE: Remove a specific setting
+     * $module->settings("enable2FA", null, Module::DELETE);
+     *
+     * // Example for IF_NOT_EXIST:
+     * // If settings already have: "uploadLimit" => 700
+     * $module->settings("uploadLimit", 100, Module::IF_NOT_EXIST);
+     * // Result: The value remains 700 because it was already defined — the new value 100 is ignored.
+     *
+     * // Example for DELETE:
+     * $module->settings("uploadLimit", null, Module::DELETE);
+     * // Result: The "uploadLimit" key is removed from settings.
      */
-    public function settings($input = null, $value = null) {
+    public function settings($input = null, $value = null, $mode = 0) {
         $settingsFile = $this->path . "/settings.php";
 
         // Load settings into cache if not already loaded
@@ -176,20 +210,50 @@ abstract class Module {
             }
         }
 
-        // Setter: If input is a string and value is provided, update a specific setting
-        if (is_string($input) && $value !== null) {
-            $this->settingsCache[$input] = $value;
-            $content = "<?php\nreturn " . var_export($this->settingsCache, true) . ";\n?>";
-            try {
-                file_put_contents($settingsFile, $content);
-                return true;
-            } catch (\Exception $e) {
-                return false;
-            }
-        }
-
-        // Getter: If input is a string, return the specific setting from cache
+        // Handle string input for setting, deleting, or getting a specific key
         if (is_string($input)) {
+            // DELETE mode: Remove the specified key
+            if ($mode === self::DELETE) {
+                if (isset($this->settingsCache[$input])) {
+                    unset($this->settingsCache[$input]);
+                    $content = "<?php\nreturn " . var_export($this->settingsCache, true) . ";\n?>";
+                    try {
+                        file_put_contents($settingsFile, $content);
+                        return true;
+                    } catch (\Exception $e) {
+                        return false;
+                    }
+                }
+                return true; // Key doesn't exist, so deletion is effectively successful
+            }
+
+            // Setter: Update a specific setting
+            if ($value !== null) {
+                if ($mode === self::IF_NOT_EXIST) {
+                    if (!isset($this->settingsCache[$input])) {
+                        $this->settingsCache[$input] = $value;
+                        $content = "<?php\nreturn " . var_export($this->settingsCache, true) . ";\n?>";
+                        try {
+                            file_put_contents($settingsFile, $content);
+                            return true;
+                        } catch (\Exception $e) {
+                            return false;
+                        }
+                    }
+                    return isset($this->settingsCache[$input]) ? $this->settingsCache[$input] : null;
+                } else {
+                    $this->settingsCache[$input] = $value;
+                    $content = "<?php\nreturn " . var_export($this->settingsCache, true) . ";\n?>";
+                    try {
+                        file_put_contents($settingsFile, $content);
+                        return true;
+                    } catch (\Exception $e) {
+                        return false;
+                    }
+                }
+            }
+
+            // Getter: Return the specific setting from cache
             return isset($this->settingsCache[$input]) ? $this->settingsCache[$input] : null;
         }
 
@@ -199,11 +263,11 @@ abstract class Module {
 
     public static function moduleName($name = null) {
         if ($name === null) {
-            return self::$staticModuleName;
+            return static::$staticModuleName;
         } else {
-            if (self::$staticModuleNameLock === false) {
-                self::$staticModuleName = $name;
-                self::$staticModuleNameLock = true;
+            if (static::$staticModuleNameLock === false) {
+                static::$staticModuleName = $name;
+                static::$staticModuleNameLock = true;
                 return true;
             }            
             return false;
@@ -271,13 +335,13 @@ abstract class Module {
     }
 
     public static function di($method, ...$arguments) {
-        self::call($method, $arguments);
+        static::call($method, $arguments);
     }
     
     public static function call($method, ...$arguments) {
         if (strpos($method, "@") === false) {
             if (method_exists(static::class, $method)) {
-                return self::$staticDI->callStatic($method, ...$arguments);
+                return static::$staticDI->callStatic($method, ...$arguments);
             }
     
             throw new \Exception("Static method $method does not exist in " . static::class);

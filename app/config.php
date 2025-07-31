@@ -100,6 +100,10 @@ Config::email("testAcc","imap",[
  *  Set a custom encryption key to secure your data. 
  *  IMPORTANT: Replace the value of the encryption key with your own custom value.
  */
+
+/* DO NOT TOUCH THIS SECTION !!! */
+/* @AUTOCONFIG */
+/* @END[AUTOCONFIG] */
  
 // The old way of setting encryption key: new \Dotsystems\App\DotApp(md5("YourSuperSecretKey")); - still working but will be removed in future
 $dotapp = new \Dotsystems\App\DotApp();

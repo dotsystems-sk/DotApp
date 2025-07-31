@@ -39,10 +39,11 @@ use \Dotsystems\App\DotApp;
 // -----------------------------------------------------------------------------
 
 class Config {
+    public const IF_NOT_EXIST = true;
+
     private static $settings = [
-        'databases' => [
-        ],
-       'searchEngines' => [
+        'databases' => [],
+        'searchEngines' => [
             'driver' => 'default',
             // Elasticsearch
             'elasticsearch_host' => 'https://127.0.0.1:9200',
@@ -80,7 +81,6 @@ class Config {
         ], 
         'db' => [
             'prefix' => 'dotapp_', // Predpona v databaze
-            'driver' => 'pdo', // Nazov default drivera zvoleneho uzivatelom
             'maindb' => 'main', // Nazov hlavnej databazy ak si ju uzivatel pomenoval inak nez main, moduly si to nacitaju
             'cache' => false, // Allow cache for queries?
         ],
@@ -152,7 +152,7 @@ class Config {
             'folder' => 'default', // Subfolder for file driver
             'max_files' => 7, // Max log files before rotation (file driver)
             'max_size' => 10485760, // Max file size in bytes (10MB, file driver)
-            'core_log_enabled' => false, // Enable core logging, if false -> logging is available only via hook dotapp.log
+            'core_log_enabled' => true, // Enable core logging, if false -> logging is available only via hook dotapp.log
         ],
     ];
 
@@ -332,16 +332,90 @@ class Config {
         }        
     }
 
-    public static function module($moduleName, $key, $value = null) {
+    /**
+     * Static method to get or set configuration values specific to a module.
+     *
+     * This method allows retrieving or updating configuration entries stored
+     * under the `modules` section of the global configuration array. It supports:
+     *
+     * - Getting the whole module configuration
+     * - Getting a specific key from a module
+     * - Setting a specific key or whole module configuration
+     * - Optionally setting a value only if it has not been defined yet (default-value pattern)
+     *
+     * @param string $moduleName         Name of the module.
+     * @param string|null $key           Optional key within the module. If null, returns the whole module configuration.
+     * @param mixed|null $value          Optional value to set. If null, the function acts as a getter.
+     * @param bool $onlyIfNotExist       Optional flag to only set the value **if it does not exist already**.
+     *                                   Use Config::IF_NOT_EXIST for readability.
+     *
+     * @return mixed|null Returns the requested configuration value, or null if not set.
+     *
+     * ### Usage examples:
+     *
+     * // GET: Retrieve entire module configuration
+     * Config::module("auth");
+     *
+     * // GET: Retrieve a specific key from module
+     * Config::module("auth", "enable2FA");
+     *
+     * // SET: Set value unconditionally
+     * Config::module("auth", "enable2FA", true);
+     *
+     * // SET-IF-NOT-EXISTS: Only set if the value is not already defined
+     * Config::module("auth", "maxLoginAttempts", 5, Config::IF_NOT_EXIST);
+     *
+     * // ⚠️ IMPORTANT NOTE on IF_NOT_EXIST behavior:
+     * // If a configuration key already exists, it will NOT be overwritten,
+     * // even if a new value is passed.
+     *
+     * // Example:
+     * // Let's say in config we already have:
+     * // "uploadLimit" => 700
+     *
+     * Config::module("media", "uploadLimit", 100, Config::IF_NOT_EXIST);
+     *
+     * // Result:
+     * // The value remains 700 because it was already defined — the new value 100 is ignored.
+     */
+
+    public static function module($moduleName, $key = null, $value = null, $onlyIfNotExist = false) {
         if ($value === null) {
             // Getter
-            return self::$settings['modules'][$moduleName] ?? null;
+            if (!isset(self::$settings['modules'][$moduleName])) {
+                return null;
+            }
+
+            if ($key === null) {
+                return self::$settings['modules'][$moduleName]; // Celý modul
+            } else {
+                return self::$settings['modules'][$moduleName][$key] ?? null; // Konkrétny kľúč
+            }
         } else {
-            // Setter
-            if (!isset(self::$settings['modules'][$moduleName])) self::$settings['modules'][$moduleName] = [];
-            self::$settings['modules'][$moduleName] = $value;            
-        }        
+            // Setter / or 'set if not exist'
+            if (!isset(self::$settings['modules'][$moduleName])) {
+                self::$settings['modules'][$moduleName] = [];
+            }
+
+            if ($key === null) {
+                // Nastavenie celého modulu
+                self::$settings['modules'][$moduleName] = $value;
+                return $value;
+            } else {
+                if ($onlyIfNotExist) {
+                    if (!isset(self::$settings['modules'][$moduleName][$key])) {
+                        self::$settings['modules'][$moduleName][$key] = $value;
+                    }
+                    return self::$settings['modules'][$moduleName][$key];
+                } else {
+                    self::$settings['modules'][$moduleName][$key] = $value;
+                    return $value;
+                }
+            }
+        }
     }
+
+
 
     public static function sessionDriver($name, $driver = null) {
         if ($driver === null) {
@@ -439,6 +513,10 @@ class Config {
                 throw new \Exception("Incompatible logger driver!");
             }
         }
+    }
+
+    public static function firewallFn($firewallFunction = null) {
+        return RequestObj::firewallFn($firewallFunction);
     }
 }
 

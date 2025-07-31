@@ -17,6 +17,7 @@ interface SchemaAdapter {
     public function foreignKeyExists($table, $constraintName);
     public function formatAlterAction($action);
     public function getAutoIncrementClause($type);
+    public function getCharsetAndCollationClause($charset, $collation);
 }
 
 /**
@@ -113,20 +114,93 @@ class ColumnDefinition {
 /**
  * Represents a constraint definition with chainable properties.
  */
+/**
+ * Represents a constraint definition with chainable properties.
+ */
 class ConstraintDefinition {
     private $schemaBuilder;
     private $type;
     private $name;
     private $properties = [];
+    private $foreignKeyData = [];
+    private $dbType;
+    private $isManualName = false; // Track if name was manually set
 
-    public function __construct(SchemaBuilder $schemaBuilder, $type, $name) {
+    public function __construct(SchemaBuilder $schemaBuilder, $type, $name, $column = null) {
         $this->schemaBuilder = $schemaBuilder;
-        $this->type = $type;
+        $this->type = strtoupper($type);
         $this->name = $name;
+        $this->dbType = $schemaBuilder->getDbType();
+        $this->isManualName = ($name !== null); // Mark if name was manually provided
+        if ($column !== null) {
+            $this->foreignKeyData['column'] = $this->schemaBuilder->sanitizeName($column);
+        }
     }
 
     public function comment($comment) {
+        if ($this->dbType === 'sqlite' && $this->type !== 'CHECK') {
+            throw new InvalidArgumentException("SQLite only supports comments on CHECK constraints.");
+        }
         $this->properties['comment'] = $comment;
+        return $this;
+    }
+
+    public function references($column) {
+        if ($this->type !== 'FOREIGN_KEY') {
+            throw new InvalidArgumentException("The 'references' method is only valid for FOREIGN_KEY constraints.");
+        }
+        if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
+            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+        }
+        $this->foreignKeyData['references'] = $this->schemaBuilder->sanitizeName($column);
+        return $this;
+    }
+
+    public function on($table) {
+        if ($this->type !== 'FOREIGN_KEY') {
+            throw new InvalidArgumentException("The 'on' method is only valid for FOREIGN_KEY constraints.");
+        }
+        if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
+            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+        }
+        $this->foreignKeyData['on'] = $this->schemaBuilder->sanitizeName($table);
+        // Only update name if it wasn't manually set
+        if (!$this->isManualName) {
+            $this->name = $this->generateForeignKeyName();
+        }
+        return $this;
+    }
+
+    public function onDelete($action) {
+        if ($this->type !== 'FOREIGN_KEY') {
+            throw new InvalidArgumentException("The 'onDelete' method is only valid for FOREIGN_KEY constraints.");
+        }
+        if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
+            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+        }
+        $validActions = $this->getValidActions();
+        if (!in_array(strtoupper($action), $validActions)) {
+            throw new InvalidArgumentException("Invalid ON DELETE action for {$this->dbType}: $action. Valid actions: " . implode(', ', $validActions));
+        }
+        $this->foreignKeyData['onDelete'] = strtoupper($action);
+        return $this;
+    }
+
+    public function onUpdate($action) {
+        if ($this->type !== 'FOREIGN_KEY') {
+            throw new InvalidArgumentException("The 'onUpdate' method is only valid for FOREIGN_KEY constraints.");
+        }
+        if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
+            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+        }
+        if ($this->dbType === 'oci' && strtoupper($action) !== 'NO ACTION') {
+            throw new InvalidArgumentException("Oracle only supports 'NO ACTION' for ON UPDATE in FOREIGN KEY constraints.");
+        }
+        $validActions = $this->getValidActions();
+        if (!in_array(strtoupper($action), $validActions)) {
+            throw new InvalidArgumentException("Invalid ON UPDATE action for {$this->dbType}: $action. Valid actions: " . implode(', ', $validActions));
+        }
+        $this->foreignKeyData['onUpdate'] = strtoupper($action);
         return $this;
     }
 
@@ -138,8 +212,44 @@ class ConstraintDefinition {
         return $this->name;
     }
 
+    public function setName($name) {
+        $this->name = $this->schemaBuilder->sanitizeName($name);
+        $this->isManualName = true; // Mark name as manually set
+        return $this;
+    }
+
     public function getProperties() {
         return $this->properties;
+    }
+
+    public function getForeignKeyData() {
+        return $this->foreignKeyData;
+    }
+
+    private function getValidActions() {
+        switch ($this->dbType) {
+            case 'mysql':
+            case 'pgsql':
+            case 'sqlsrv':
+                return ['CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'];
+            case 'sqlite':
+                return ['CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'];
+            case 'oci':
+                return ['CASCADE', 'SET NULL', 'NO ACTION'];
+            default:
+                return ['NO ACTION'];
+        }
+    }
+
+    private function isForeignKeySupported() {
+        return true;
+    }
+
+    private function generateForeignKeyName() {
+        if (isset($this->foreignKeyData['on'], $this->foreignKeyData['column'])) {
+            return "fk_{$this->foreignKeyData['column']}_{$this->foreignKeyData['on']}";
+        }
+        return $this->name;
     }
 }
 
@@ -183,15 +293,15 @@ class MySqlSchemaAdapter implements SchemaAdapter {
         DB::module("RAW")
             ->q(function ($qb) use ($table) {
                 $qb->select('1')
-                   ->from('information_schema.tables')
-                   ->where('table_name', '=', $table);
+                   ->from($table)
+                   ->limit(1); // Minimalizujeme dopad dotazu
             })
             ->execute(
                 function ($rows) use (&$result) {
-                    $result = !empty($rows);
+                    $result = true;
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking table existence: {$error['error']} (code: {$error['errno']})");
+                    $result = false;
                 }
             );
 
@@ -273,6 +383,12 @@ class MySqlSchemaAdapter implements SchemaAdapter {
         return ' AUTO_INCREMENT';
     }
 
+    public function getCharsetAndCollationClause($charset, $collation) {
+        $charsetClause = $charset ? " CHARACTER SET $charset" : '';
+        $collationClause = $collation ? " COLLATE $collation" : '';
+        return $charsetClause . $collationClause;
+    }
+
     private function sanitizeDefault($value, $type) {
         if ($value === null) {
             return 'NULL';
@@ -343,16 +459,15 @@ class PgSqlSchemaAdapter implements SchemaAdapter {
         DB::module("RAW")
             ->q(function ($qb) use ($table) {
                 $qb->select('1')
-                   ->from('information_schema.tables')
-                   ->where('table_schema', '=', 'public')
-                   ->where('table_name', '=', $table);
+                   ->from($table)
+                   ->limit(1); // Minimalizujeme dopad dotazu
             })
             ->execute(
                 function ($rows) use (&$result) {
-                    $result = !empty($rows);
+                    $result = true;
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking table existence: {$error['error']} (code: {$error['errno']})");
+                    $result = false;
                 }
             );
 
@@ -435,6 +550,11 @@ class PgSqlSchemaAdapter implements SchemaAdapter {
 
     public function getAutoIncrementClause($type) {
         return $type === 'BIGINT' ? ' BIGSERIAL' : ' SERIAL';
+    }
+
+    public function getCharsetAndCollationClause($charset, $collation) {
+        // PostgreSQL supports encoding at the database level, not table level
+        return $charset ? " ENCODING '$charset'" : '';
     }
 
     private function convertType($type) {
@@ -521,16 +641,15 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
         DB::module("RAW")
             ->q(function ($qb) use ($table) {
                 $qb->select('1')
-                   ->from('sqlite_master')
-                   ->where('type', '=', 'table')
-                   ->where('name', '=', $table);
+                   ->from($table)
+                   ->limit(1); // Minimalizujeme dopad dotazu
             })
             ->execute(
                 function ($rows) use (&$result) {
-                    $result = !empty($rows);
+                    $result = true;
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking table existence: {$error['error']} (code: {$error['errno']})");
+                    $result = false;
                 }
             );
 
@@ -620,6 +739,11 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
         return ' AUTOINCREMENT';
     }
 
+    public function getCharsetAndCollationClause($charset, $collation) {
+        // SQLite does not support charset or collation at the table level
+        return '';
+    }
+
     private function convertType($type) {
         switch ($type) {
             case 'VARCHAR':
@@ -702,15 +826,15 @@ class OracleSchemaAdapter implements SchemaAdapter {
         DB::module("RAW")
             ->q(function ($qb) use ($table) {
                 $qb->select('1')
-                   ->from('user_tables')
-                   ->where('table_name', '=', strtoupper($table));
+                   ->from($table)
+                   ->limit(1); // Minimalizujeme dopad dotazu
             })
             ->execute(
                 function ($rows) use (&$result) {
-                    $result = !empty($rows);
+                    $result = true;
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking table existence: {$error['error']} (code: {$error['errno']})");
+                    $result = false;
                 }
             );
 
@@ -790,6 +914,11 @@ class OracleSchemaAdapter implements SchemaAdapter {
         return ' GENERATED ALWAYS AS IDENTITY';
     }
 
+    public function getCharsetAndCollationClause($charset, $collation) {
+        // Oracle supports character set at the database level
+        return $charset ? " CHARACTER SET $charset" : '';
+    }
+
     private function convertType($type) {
         switch ($type) {
             case 'VARCHAR':
@@ -858,9 +987,12 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
     }
 
     public function formatIndex(array $columns, $unique, $name, $comment = null) {
-        $indexType = $unique ? 'UNIQUE INDEX' : 'INDEX';
         $columnList = '[' . implode('],[', $columns) . ']';
-        return "$indexType [$name] ON ($columnList)";
+        if ($unique) {
+            return "CONSTRAINT [$name] UNIQUE ($columnList)";
+        } else {
+            return "INDEX [$name] ($columnList)";
+        }
     }
 
     public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null) {
@@ -873,15 +1005,15 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
         DB::module("RAW")
             ->q(function ($qb) use ($table) {
                 $qb->select('1')
-                   ->from('information_schema.tables')
-                   ->where('table_name', '=', $table);
+                   ->from($table)
+                   ->limit(1); // Minimalizujeme dopad dotazu
             })
             ->execute(
                 function ($rows) use (&$result) {
-                    $result = !empty($rows);
+                    $result = true;
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking table existence: {$error['error']} (code: {$error['errno']})");
+                    $result = false;
                 }
             );
 
@@ -963,6 +1095,11 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
         return ' IDENTITY(1,1)';
     }
 
+    public function getCharsetAndCollationClause($charset, $collation) {
+        // SQL Server uses collation at the database or column level, not table level
+        return '';
+    }
+
     private function convertType($type) {
         switch ($type) {
             case 'VARCHAR':
@@ -1005,10 +1142,10 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
                 return (string)$value;
             case 'date':
             case 'datetime2':
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value)) {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value) && $value !== 'CURRENT_TIMESTAMP') {
+                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
                 }
-                return "'$value'";
+                return $value === 'CURRENT_TIMESTAMP' ? 'CURRENT_TIMESTAMP' : "'$value'";
             default:
                 return (string)$value;
         }
@@ -1027,9 +1164,11 @@ class SchemaBuilder {
     private $dbType;
     private $databaser;
     private $adapter;
+    private $engine = null;
+    private $charset = null;
+    private $collation = null;
 
     public function __construct($databaser = null) {
-        // Handle Databaser instance or DI instance
         if ($databaser instanceof Databaser) {
             $this->databaser = $databaser;
         } elseif ($databaser instanceof DI && $databaser->classname === Databaser::class) {
@@ -1038,22 +1177,73 @@ class SchemaBuilder {
             $this->databaser = null;
         }
 
-        // Determine dbType
         if ($this->databaser) {
-            if (isset($this->databaser->database_drivers['driver'])) {
-                $driver = $this->databaser->database_drivers['driver'];
-                $name = key($this->databaser->databases[$driver] ?? []);
-                $this->dbType = strtolower($this->databaser->databases[$driver][$name]['type'] ?? 'mysql');
+            // Get all databases and the selected database
+            $allDatabasesInOne = [];
+            $allDatabases = $databaser->getDatabases();
+            foreach ($allDatabases as $dbData) {
+                $allDatabasesInOne = array_merge($allDatabasesInOne, $dbData);
+            }
+            $allDatabases = $allDatabasesInOne;
+            unset($allDatabasesInOne);
+            $usedDatabase = $this->databaser->getSelectedDatabase();
+            if ($usedDatabase !== null) {
+                $typeInfo = strtolower($allDatabases[$usedDatabase]['type'] ?? 'mysql');
+                if (in_array($typeInfo, ['mysql', 'pgsql', 'sqlite', 'oci', 'sqlsrv'])) {
+                    $this->dbType = $typeInfo;
+                } else {
+                    throw new \Exception("Unsupported database type: $typeInfo");
+                }
             } else {
                 $this->dbType = 'mysql';
             }
         } elseif (is_string($databaser) && in_array(strtolower($databaser), ['mysql', 'pgsql', 'sqlite', 'oci', 'sqlsrv'])) {
+            // If $databaser is a string and contains a supported database type
             $this->dbType = strtolower($databaser);
         } else {
+            // Default value
             $this->dbType = 'mysql';
         }
 
+        $this->setDefaultCharsetAndCollation();
         $this->initializeAdapter();
+    }
+
+    private function quoteIdentifier($name) {
+        switch ($this->dbType) {
+            case 'mysql':
+            case 'sqlite':
+                return "`$name`";
+            case 'pgsql':
+            case 'oci':
+                return "\"$name\"";
+            case 'sqlsrv':
+                return "[$name]";
+            default:
+                return $name;
+        }
+    }
+
+    private function setDefaultCharsetAndCollation() {
+        switch ($this->dbType) {
+            case 'mysql':
+                $this->charset = 'utf8mb4';
+                $this->collation = 'utf8mb4_unicode_ci';
+                break;
+            case 'pgsql':
+                $this->charset = 'UTF8';
+                $this->collation = null;
+                break;
+            case 'oci':
+                $this->charset = 'AL32UTF8';
+                $this->collation = null;
+                break;
+            case 'sqlite':
+            case 'sqlsrv':
+                $this->charset = null;
+                $this->collation = null;
+                break;
+        }
     }
 
     private function initializeAdapter() {
@@ -1082,7 +1272,37 @@ class SchemaBuilder {
         return $this->dbType;
     }
 
-    public function id($name = 'id') {
+    public function charset($charset) {
+        if (is_array($charset)) {
+            $charset = $charset[$this->dbType] ?? null;
+        }
+        if ($charset !== null) {
+            $this->validateCharset($charset);
+            $this->charset = $charset;
+        }
+        return $this;
+    }
+
+    public function collation($collation) {
+        if (is_array($collation)) {
+            $collation = $collation[$this->dbType] ?? null;
+        }
+        if ($collation !== null) {
+            $this->validateCollation($collation);
+            $this->collation = $collation;
+        }
+        return $this;
+    }
+
+    private function validateCharset($charset) {
+        return;
+    }
+
+    private function validateCollation($collation) {
+        return;
+    }
+
+    public function id($name = 'id', $defaultType = 'BIGINT') {
         $column = new ColumnDefinition($this, $name, 'BIGINT');
         $column->autoIncrement();
         $this->columnDefinitions[] = $column;
@@ -1190,7 +1410,7 @@ class SchemaBuilder {
         return $column;
     }
 
-    public function primaryKey($columns) {
+    public function primaryKey($columns, $constraintName = null) {
         if (is_string($columns)) {
             $columns = [$columns];
         }
@@ -1199,9 +1419,9 @@ class SchemaBuilder {
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $columnList = $this->formatColumnList($columns);
-        $name = 'pk_' . implode('_', $columns);
+        $name = $constraintName ? $this->sanitizeName($constraintName) : 'pk_' . implode('_', $columns)."_".substr(md5(microtime()),0,8);
         $constraint = new ConstraintDefinition($this, 'PRIMARY_KEY', $name);
-        $this->constraints[] = ['definition' => "CONSTRAINT `$name` PRIMARY KEY ($columnList)", 'constraint' => $constraint];
+        $this->constraints[] = ['definition' => "CONSTRAINT " . $this->quoteIdentifier($name) . " PRIMARY KEY ($columnList)", 'constraint' => $constraint];
         return $constraint;
     }
 
@@ -1214,20 +1434,47 @@ class SchemaBuilder {
         return $this;
     }
 
-    public function foreign($column, $references = 'id', $on = null, $onDelete = 'CASCADE', $onUpdate = 'NO ACTION') {
-        $validActions = ['CASCADE', 'RESTRICT', 'SET NULL', 'NO ACTION'];
-        if (!in_array($onDelete, $validActions)) {
-            throw new InvalidArgumentException("Invalid ON DELETE action: $onDelete");
-        }
-        if (!in_array($onUpdate, $validActions)) {
-            throw new InvalidArgumentException("Invalid ON UPDATE action: $onUpdate");
-        }
+    public function foreign($column, $constraintName = null) {
         $column = $this->sanitizeName($column);
-        $references = $this->sanitizeName($references);
-        $on = $this->sanitizeName($on ?: $this->guessTableName($column));
-        $name = "fk_{$on}_{$column}";
-        $constraint = new ConstraintDefinition($this, 'FOREIGN_KEY', $name);
-        $this->foreignKeys[] = ['definition' => $this->adapter->formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name), 'constraint' => $constraint];
+        $references = $this->sanitizeName('id');
+        $on = $this->guessTableName($column);
+        if (empty($on)) {
+            throw new InvalidArgumentException("Foreign key table name must be specified or inferred from column name.");
+        }
+
+        // Set database-specific defaults
+        switch ($this->dbType) {
+            case 'mysql':
+                $onDelete = 'RESTRICT';
+                $onUpdate = 'NO ACTION';
+                break;
+            case 'pgsql':
+            case 'sqlsrv':
+                $onDelete = 'NO ACTION';
+                $onUpdate = 'NO ACTION';
+                break;
+            case 'sqlite':
+                $onDelete = 'RESTRICT';
+                $onUpdate = 'NO ACTION';
+                break;
+            case 'oci':
+                $onDelete = 'NO ACTION';
+                $onUpdate = 'NO ACTION';
+                break;
+            default:
+                $onDelete = 'NO ACTION';
+                $onUpdate = 'NO ACTION';
+        }
+
+        // Generate name after defaults are set
+        $name = $constraintName ? $this->sanitizeName($constraintName) : "fk_{$column}_{$on}";
+        $constraint = new ConstraintDefinition($this, 'FOREIGN_KEY', $name, $column);
+        $constraint->references($references)
+                ->on($on)
+                ->onDelete($onDelete)
+                ->onUpdate($onUpdate);
+
+        $this->foreignKeys[] = ['column' => $column, 'constraint' => $constraint];
         return $constraint;
     }
 
@@ -1241,30 +1488,46 @@ class SchemaBuilder {
         return $this;
     }
 
-    public function index($columns, $unique = false) {
+    public function index($columns, $indexName = null) {
         if (is_string($columns)) {
             $columns = [$columns];
         }
+        if (!is_array($columns) || empty($columns)) {
+            throw new InvalidArgumentException("Index must have at least one column.");
+        }
         $columns = array_map([$this, 'sanitizeName'], $columns);
-        $name = 'idx_' . implode('_', $columns);
-        $constraint = new ConstraintDefinition($this, $unique ? 'UNIQUE_INDEX' : 'INDEX', $name);
-        $this->indexes[] = ['columns' => $columns, 'unique' => $unique, 'name' => $name, 'constraint' => $constraint];
+        $name = $indexName ? $this->sanitizeName($indexName) : 'idx_' . implode('_', $columns);
+        $constraint = new ConstraintDefinition($this, 'INDEX', $name);
+        $this->indexes[] = ['columns' => $columns, 'unique' => false, 'name' => $name, 'constraint' => $constraint];
         return $constraint;
     }
 
-    public function unique($columns) {
-        return $this->index($columns, true);
+    public function unique($columns, $indexName = null) {
+        if (is_string($columns)) {
+            $columns = [$columns];
+        }
+        if (!is_array($columns) || empty($columns)) {
+            throw new InvalidArgumentException("Unique index must have at least one column.");
+        }
+        $columns = array_map([$this, 'sanitizeName'], $columns);
+        $name = $indexName ? $this->sanitizeName($indexName) : 'uniq_' . implode('_', $columns);
+        $constraint = new ConstraintDefinition($this, 'UNIQUE_INDEX', $name);
+        $this->indexes[] = ['columns' => $columns, 'unique' => true, 'name' => $name, 'constraint' => $constraint];
+        return $constraint;
     }
 
-    public function fullTextIndex($columns) {
+    public function fullTextIndex($columns, $indexName = null) {
         if (!in_array($this->dbType, ['mysql', 'pgsql'])) {
             throw new InvalidArgumentException("FULLTEXT index is only supported in MySQL and PostgreSQL.");
         }
         if (is_string($columns)) {
             $columns = [$columns];
         }
+        if (!is_array($columns) || empty($columns)) {
+            throw new InvalidArgumentException("FULLTEXT index must have at least one column.");
+        }
         $columns = array_map([$this, 'sanitizeName'], $columns);
-        $name = 'ft_idx_' . implode('_', $columns);
+        $name = $indexName ? $this->sanitizeName($indexName) : 'ft_idx_' . implode('_', $columns);
         $columnList = $this->dbType === 'mysql' ? '`' . implode('`,`', $columns) . '`' : '"' . implode('","', $columns) . '"';
         $constraint = new ConstraintDefinition($this, 'FULLTEXT_INDEX', $name);
         $this->indexes[] = ['definition' => $this->dbType === 'mysql'
@@ -1415,6 +1678,9 @@ class SchemaBuilder {
         }, $this->columnDefinitions);
 
         $indexes = array_map(function ($index) {
+            if (isset($index['definition'])) {
+                return $index['definition'];
+            }
             $columns = $index['columns'];
             $unique = $index['unique'];
             $name = $index['name'];
@@ -1423,17 +1689,28 @@ class SchemaBuilder {
         }, $this->indexes);
 
         $foreignKeys = array_map(function ($fk) {
-            $comment = $fk['constraint']->getProperties()['comment'] ?? null;
-            preg_match('/FOREIGN KEY \(`?([^`\)]+)`?\)/', $fk['definition'], $matches);
-            $column = $matches[1] ?? '';
-            preg_match('/REFERENCES `?([^`\s]+)`? \(`?([^`\)]+)`?\)/', $fk['definition'], $matches);
-            $on = $matches[1] ?? '';
-            $references = $matches[2] ?? '';
-            preg_match('/ON DELETE (\w+)/', $fk['definition'], $matches);
-            $onDelete = $matches[1] ?? 'CASCADE';
-            preg_match('/ON UPDATE ([A-Z\s]+)/', $fk['definition'], $matches);
-            $onUpdate = $matches[1] ?? 'NO ACTION';
-            return $this->adapter->formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $fk['constraint']->getName(), $comment);
+            $constraint = $fk['constraint'];
+            $comment = $constraint->getProperties()['comment'] ?? null;
+            $fkData = $constraint->getForeignKeyData();
+
+            $references = $fkData['references'] ?? 'id';
+            $on = $fkData['on'] ?? $this->guessTableName($fk['column']);
+            $onDelete = $fkData['onDelete'] ?? ($this->dbType === 'mysql' || $this->dbType === 'sqlite' ? 'RESTRICT' : 'NO ACTION');
+            $onUpdate = $fkData['onUpdate'] ?? ($this->dbType === 'oci' ? 'NO ACTION' : 'NO ACTION');
+
+            if (empty($on)) {
+                throw new InvalidArgumentException("Foreign key table name must be specified or inferred for constraint {$constraint->getName()}.");
+            }
+
+            return $this->adapter->formatForeignKey(
+                $fk['column'],
+                $references,
+                $on,
+                $onDelete,
+                $onUpdate,
+                $constraint->getName(),
+                $comment
+            );
         }, $this->foreignKeys);
 
         $constraints = array_map(function ($constraint) {
@@ -1441,7 +1718,16 @@ class SchemaBuilder {
             return $constraint['definition'] . ($comment && $this->dbType === 'mysql' ? " COMMENT '" . str_replace("'", "''", $comment) . "'" : '');
         }, $this->constraints);
 
-        return implode(', ', array_merge($columns, $indexes, $foreignKeys, $constraints));
+        $definition = implode(', ', array_merge($columns, $indexes, $foreignKeys, $constraints));
+
+        $charsetAndCollation = $this->adapter->getCharsetAndCollationClause($this->charset, $this->collation);
+
+        if ($this->dbType === 'mysql') {
+            $engine = $this->getEngine() ?? 'InnoDB';
+            return "($definition) $charsetAndCollation ENGINE=$engine";
+        }
+
+        return "($definition) $charsetAndCollation";
     }
 
     public function getAlterDefinition() {
@@ -1452,7 +1738,7 @@ class SchemaBuilder {
         return rtrim($column, '_id');
     }
 
-    private function sanitizeName($name) {
+    public function sanitizeName($name) {
         if (empty($name) || !preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
             throw new InvalidArgumentException("Column or table name must be a non-empty string with valid characters: $name");
         }
@@ -1512,12 +1798,12 @@ class SchemaBuilder {
         $valueList = implode(',', $sanitizedValues);
         switch ($this->dbType) {
             case 'mysql':
-                return "`$name` ENUM($valueList)";
+                return $this->quoteIdentifier($name) . " ENUM($valueList)";
             case 'pgsql':
                 $typeName = $name . '_enum';
-                return "CREATE TYPE \"$typeName\" AS ENUM ($valueList)";
+                return "CREATE TYPE " . $this->quoteIdentifier($typeName) . " AS ENUM ($valueList)";
             default:
-                return "CHECK (`$name` IN ($valueList))";
+                return "CHECK (" . $this->quoteIdentifier($name) . " IN ($valueList))";
         }
     }
 
@@ -1526,7 +1812,21 @@ class SchemaBuilder {
             return "'" . str_replace("'", "''", $value) . "'";
         }, $values);
         $valueList = implode(',', $sanitizedValues);
-        return "`$name` SET($valueList)";
+        return $this->quoteIdentifier($name) . " SET($valueList)";
+    }
+
+    public function engine($engine) {
+        if ($this->dbType === 'mysql') {
+            if (!in_array(strtoupper($engine), ['INNODB', 'MYISAM'])) {
+                throw new InvalidArgumentException("Unsupported MySQL engine: $engine. Supported engines: InnoDB, MyISAM.");
+            }
+            $this->engine = strtoupper($engine);
+        }
+        return $this;
+    }
+
+    public function getEngine() {
+        return $this->engine;
     }
 }
 

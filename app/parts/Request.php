@@ -33,7 +33,8 @@ class Request extends Facade {
         'crcCheck',
         'formSignatureCheck',
         'form',
-        'lock'
+        'lock',
+        'firewall'
     ];
 
     public static function middleware(string $name, $callback=null, ...$args) {

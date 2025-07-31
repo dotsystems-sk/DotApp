@@ -40,6 +40,7 @@
 
 namespace Dotsystems\App\Parts;
 use \Dotsystems\App\DotApp;
+use Dotsystems\App\Parts\Config;
 
 class RequestObj {
 
@@ -77,6 +78,8 @@ class RequestObj {
     private $isLoadBalanced = false;
     private $originalServerData = []; // Preserves original server values
 
+    private static $firewallFn;
+
     public function __set($name, $value) {
         if ($name == "response") throw new \InvalidArgumentException("request->response locked for edit !");
     }
@@ -107,7 +110,20 @@ class RequestObj {
         $this->auth = new AuthObj($this->dotapp, $this->dsm);
         $this->CSRF = $this->dsm->get('_CSRF') ?? array();
         $this->initializeProxyHeaders();
+        $this->checkAppFirewall();
         $this->data();
+    }
+
+    private function checkAppFirewall() {
+        $rules = Config::app("firewall");
+        if (is_array($rules)) {
+            $firewallOK = self::firewall($rules,$_SERVER['REMOTE_ADDR']);
+        }
+        if ($firewallOK === false) {
+            http_response_code(403);
+            exit();
+            die();
+        }
     }
 
     /**
@@ -657,6 +673,163 @@ class RequestObj {
                 throw new \Exception("Error callback is not callable ! Signature is also invalid !");
             }
         }
+    }
+
+    /**
+     * Evaluates IP address rules against a firewall function.
+     *
+     * This function checks if the given IP address matches any rule in the provided associative array.
+     * The rules can be defined as IP addresses or ranges using CIDR notation (e.g., '192.168.1.0/24').
+     * Each rule corresponds to an action ('allow' or 'drop') that determines whether the IP address is allowed or denied.
+     *
+     * @param array $array An associative array containing IP address rules and their corresponding actions.
+     * @param string $ip The IP address to be evaluated against the rules.
+     * @param bool $default The default behavior if no rule matches the given IP address.
+     *                       By default, the default behavior is to allow the IP address (true).
+     *
+     * @return bool Returns true if the IP address is allowed (action is 'allow' or 1),
+     *              or false if the IP address is denied (action is 'drop' or 0).
+     *              If no rule matches the IP address, it returns the default behavior.
+     *
+     * @throws InvalidArgumentException If a provided firewall function is not callable.
+     *
+     * @example
+     * // Set a custom firewall function
+     * $firewallRules = [
+     *     '192.168.1.0/24' => 'allow',
+     *     '192.168.2.0/24' => 'drop',
+     *     '0.0.0.0/0' => 'allow',
+     * ];
+     *
+     * $customFirewallFn = function($array, $ip, $default = true) {
+     *     // Implement your custom firewall logic here
+     *     // ...
+     *     return $default; // Return the default behavior if no rule matches
+     * };
+     *
+     * Request::firewallFn($customFirewallFn);
+     *
+     * // Use the custom firewall function
+     * $result = Request::firewall($firewallRules, '192.168.1.100'); // Returns true (allowed by first rule)
+     * $result = Request::firewall($firewallRules, '192.168.2.100'); // Returns false (dropped by second rule)
+     * $result = Request::firewall($firewallRules, '10.0.0.1'); // Returns true (allowed by third rule)
+     * $result = Request::firewall([], '10.0.0.1', false); // Returns false (no rules, default deny)
+     */
+    public function firewall($array, $ip, $default = true) {
+        if (!is_callable(static::$firewallFn)) {
+            $this->setDefaultFirewallFunction();
+        }
+        return call_user_func(static::$firewallFn, $array, $ip, $default);
+    }
+
+    /**
+     * Sets the default firewall function for the Request class.
+     * This function is used to evaluate firewall rules and determine if an IP address is allowed or denied.
+     *
+     * @return void
+     *
+     * ### Usage:
+     * This function is called internally when the Request class is instantiated.
+     * It sets the default firewall function to be used for IP address evaluation.
+     *
+     * ### Firewall Rules:
+     * The firewall rules are defined as an associative array, where each key represents an IP address or range,
+     * and the corresponding value represents the action to take ('allow' or 'drop').
+     *
+     * ### IP Address Matching:
+     * The function checks if the given IP address matches any rule by comparing it with the IP addresses or ranges in the array.
+     * It supports both exact IP matches and IP range matches using CIDR notation (e.g., '192.168.1.0/24').
+     *
+     * ### Default Behavior:
+     * If no rule matches the given IP address, the function returns the default behavior specified by the $default parameter.
+     * By default, the default behavior is to allow the IP address (true).
+     *
+     * ### Example:
+     * ```php
+     * $firewallRules = [
+     *     '192.168.1.0/24' => 'allow',
+     *     '192.168.2.0/24' => 'drop',
+     *     '0.0.0.0/0' => 'allow',
+     * ];
+     *
+     * // Check IP address
+     * $result = $request->firewall($firewallRules, '192.168.1.100'); // Returns true (allowed by first rule)
+     * $result = $request->firewall($firewallRules, '192.168.2.100'); // Returns false (dropped by second rule)
+     * $result = $request->firewall($firewallRules, '10.0.0.1'); // Returns true (allowed by third rule)
+     * $result = $request->firewall([], '10.0.0.1', false); // Returns false (no rules, default deny)
+     * ```
+     */
+    private function setDefaultFirewallFunction() {
+        static::$firewallFn = function($array, $ip, $default = true) {
+            foreach ($array as $rule => $action) {
+                // Check if the IP matches the rule
+                if (strpos($rule, '/') !== false) {
+                    // Handle IP range (CIDR notation, e.g., '192.168.1.0/24')
+                    list($subnet, $mask) = explode('/', $rule);
+                    $subnet = ip2long($subnet);
+                    $ipLong = ip2long($ip);
+                    if ($subnet === false || $ipLong === false) {
+                        continue; // Skip invalid IP or subnet
+                    }
+                    $mask = ~((1 << (32 - $mask)) - 1);
+                    if (($ipLong & $mask) === ($subnet & $mask)) {
+                        return $action === 'allow' || $action === 1;
+                    }
+                } else {
+                    // Handle exact IP match
+                    if ($ip === $rule) {
+                        return $action === 'allow' || $action === 1;
+                    }
+                }
+            }
+            // Default: Return the default behavior if no rule matches
+            return $default;
+        };
+    }
+
+    /**
+     * Sets or retrieves the custom firewall function for the Request class.
+     *
+     * This function allows you to define your own logic for evaluating IP address rules.
+     * By default, the Request class uses its own internal firewall function to check IP addresses against rules.
+     *
+     * @param callable|null $firewallFunction The custom firewall function to be used.
+     *                                       If null is provided, the function will return the currently set firewall function.
+     *
+     * @return callable|null The currently set firewall function, or null if no custom function is set.
+     *
+     * @throws InvalidArgumentException If a provided firewall function is not callable.
+     *
+     * @example
+     * // Set a custom firewall function
+     * $firewallRules = [
+     *     '192.168.1.0/24' => 'allow',
+     *     '192.168.2.0/24' => 'drop',
+     *     '0.0.0.0/0' => 'allow',
+     * ];
+     *
+     * $customFirewallFn = function($array, $ip, $default = true) {
+     *     // Implement your custom firewall logic here
+     *     // ...
+     *     return $default; // Return the default behavior if no rule matches
+     * };
+     *
+     * Request::firewallFn($customFirewallFn);
+     *
+     * // Use the custom firewall function
+     * $result = Request::firewall($firewallRules, '192.168.1.100'); // Returns true (allowed by first rule)
+     * $result = Request::firewall($firewallRules, '192.168.2.100'); // Returns false (dropped by second rule)
+     * $result = Request::firewall($firewallRules, '10.0.0.1'); // Returns true (allowed by third rule)
+     * $result = Request::firewall([], '10.0.0.1', false); // Returns false (no rules, default deny)
+     */
+    public static function firewallFn($firewallFunction = null) {
+        if ($firewallFunction !== null) {
+            if (!is_callable($firewallFunction)) {
+                throw new \InvalidArgumentException("Provided firewall function must be callable.");
+            }
+            static::$firewallFn = $firewallFunction;
+        }
+        return static::$firewallFn;
     }
 }
 ?>

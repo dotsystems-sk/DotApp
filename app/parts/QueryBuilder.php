@@ -4,6 +4,7 @@ namespace Dotsystems\App\Parts;
 use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\Databaser;
 use \Dotsystems\App\Parts\SchemaBuilder;
+use \Dotsystems\App\Parts\DB;
 
 class QueryBuilder {
     private $queryParts;
@@ -20,10 +21,21 @@ class QueryBuilder {
         
         if ($databaser instanceof Databaser) {
             // Ak je $databaser inštancia Databaser, použi existujúcu logiku
-            if (isset($databaser->database_drivers['driver'])) {
-                $driver = $databaser->database_drivers['driver'];
-                $name = key($databaser->databases[$driver] ?? []);
-                $this->dbType = strtolower($databaser->databases[$driver][$name]['type'] ?? 'mysql');
+            $allDatabasesInOne = [];
+            $allDatabases = $databaser->getDatabases();
+            foreach ($allDatabases as $dbData) {
+                $allDatabasesInOne = array_merge($allDatabasesInOne, $dbData);
+            }
+            $allDatabases = $allDatabasesInOne;
+            unset($allDatabasesInOne);
+            $usedDatabase = $databaser->getSelectedDatabase();
+            if ($usedDatabase !== null) {
+                $typeInfo = strtolower($allDatabases[$usedDatabase]['type']) ?? null;
+                if (in_array($typeInfo, ['mysql', 'pgsql', 'sqlite', 'oci', 'sqlsrv'])) {
+                    $this->dbType = $typeInfo;
+                } else {
+                    throw new \Exception("Unsupported database type: $typeInfo");
+                }
             } else {
                 $this->dbType = 'mysql';
             }
@@ -309,8 +321,9 @@ class QueryBuilder {
             if (!isset($this->queryParts['select'])) {
                 throw new \Exception("LIMIT (TOP) môže byť použité len s SELECT v SQL Server.");
             }
-            $this->queryParts['select'] = preg_replace('/^SELECT/', "SELECT TOP ? ", $this->queryParts['select'], 1);
+            $this->queryParts['select'] = preg_replace('/^SELECT/', "SELECT TOP (?) ", $this->queryParts['select'], 1);
             $this->addBindings([(int) $limit]);
+            $this->queryParts['limit_value'] = (int) $limit; // Store for offset use
         } elseif ($this->dbType === 'oci') {
             $this->queryParts['limit'] = "FETCH FIRST ? ROWS ONLY";
             $this->addBindings([(int) $limit]);
@@ -323,12 +336,16 @@ class QueryBuilder {
 
     public function offset($offset) {
         if ($this->dbType === 'sqlsrv') {
+            if (!isset($this->queryParts['orderBy'])) {
+                throw new \Exception("OFFSET requires an ORDER BY clause in SQL Server.");
+            }
             $this->queryParts['offset'] = "OFFSET ? ROWS";
             $this->addBindings([(int) $offset]);
             if (!isset($this->queryParts['limit'])) {
                 $this->queryParts['fetch'] = "FETCH NEXT 18446744073709551615 ROWS ONLY";
             } else {
                 $this->queryParts['fetch'] = "FETCH NEXT ? ROWS ONLY";
+                $this->addBindings([$this->queryParts['limit_value']]);
             }
         } elseif ($this->dbType === 'oci') {
             $this->queryParts['offset'] = "OFFSET ? ROWS";
@@ -401,10 +418,6 @@ class QueryBuilder {
                 $query .= " " . $this->queryParts['offset'];
                 if (!empty($this->queryParts['fetch'])) {
                     $query .= " " . $this->queryParts['fetch'];
-                    if (isset($this->queryParts['limit'])) {
-                        $limitIndex = array_search($this->queryParts['limit'], array_map('strval', $this->bindings));
-                        $this->bindings[] = (int) $this->bindings[$limitIndex];
-                    }
                 }
             }
         } elseif ($this->dbType === 'oci') {
@@ -615,12 +628,27 @@ class QueryBuilder {
     }
 
     public function createTable($table, callable $callback) {
+        $this->queryParts['ifNotExistUsed'] = false;
         $this->queryParts['type'] = 'CREATE_TABLE';
         $this->queryParts['table'] = $this->sanitizeTable($table);
         $schema = new SchemaBuilder($this->databaser);
         $callback($schema);
-        $this->queryParts['create'] = "CREATE TABLE {$this->queryParts['table']} (" . $schema->getDefinition() . ")";
+        $this->queryParts['create'] = "CREATE TABLE {$this->queryParts['table']}". $schema->getDefinition();
         return $this;
+    }
+
+    public function createTableIfNotExist($table, callable $callback) {
+        $this->queryParts['ifNotExistUsed'] = true;
+        if (DB::schemaBuilder()->tableExists($table)) {
+            return $this;
+        } else {            
+            $this->queryParts['type'] = 'CREATE_TABLE';
+            $this->queryParts['table'] = $this->sanitizeTable($table);
+            $schema = new SchemaBuilder($this->databaser);
+            $callback($schema);
+            $this->queryParts['create'] = "CREATE TABLE {$this->queryParts['table']}". $schema->getDefinition();
+            return $this;
+        }
     }
 
     /**
