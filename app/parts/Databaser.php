@@ -73,10 +73,6 @@ class Databaser {
         //echo "Nova instancia DATABASERU ".self::$counter."<br>";
     }
 
-    function __destruct() {
-        echo "NICIM instanciu DATABASERU ".$this->cisloInstancie."<br>";
-    }
-
     private function loadDatabases() {
         if (empty($this->allDB)) return;
         foreach ($this->allDB as $name => $db) {

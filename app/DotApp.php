@@ -158,7 +158,6 @@ class DotApp {
 		$this->unprotected['get'] = $_GET;
         $this->db = new DI(new Databaser($this),$this);
         $this->DB = $this->db;
-        $this->db->diSet();
 		$this->dsm = new DSM("dotapp");
         $this->DSM = $this->dsm; // Pascalcase
 		$this->dsm->load();
@@ -650,7 +649,7 @@ class DotApp {
                 Auth::autoLogin();             
             }
         }
-        $request = $request ?? $request = $this->router->resolve();
+        $request = $request ?? $this->router->resolve();
         $this->runRequest($request);
     }
 
