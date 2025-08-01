@@ -69,10 +69,18 @@ There are three ways to install dotApp:
 
 2. **Using DotApper CLI** (Recommended):  
 
-   Download the dotapper.php file from the [dotapper.php](https://install.dotapp.dev/dotapper.php), place it in your project directory, and run:
+   Obtain the `dotapper.php` file and run it to install dotApp. You can either:
+
+   - **Download it manually**: Visit [https://install.dotapp.dev/dotapper.php](https://install.dotapp.dev/dotapper.php), download the file, and place it in your project directory.
+   - **Use `wget`**: Run the following command to download `dotapper.php` directly:
+
+     ```bash
+     wget https://install.dotapp.dev/dotapper.php
+     ```
+
+   Then, execute the installer:
 
    ```bash
-   wget install.dotapp.dev/dotapper.php
    php dotapper.php --install
    ```
 
