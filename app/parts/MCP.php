@@ -205,6 +205,12 @@ class MCP {
      * }
      */
     public static function execute($request) {
+        if ($data = $request->getJson()) {
+            $request = $data;
+        } else {
+            $request = null;
+        }
+        
         if (!is_array($request)) {
             return [
                 'jsonrpc' => '2.0',
