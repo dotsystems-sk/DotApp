@@ -399,6 +399,15 @@ class RequestObj {
         return [];
     }
 
+    public function getJson($orig = true) {
+        $data = $this->data($orig);
+        if (DotApp::DotApp()->is_json($data)) {
+            return json_encode($data);
+        } else {
+            return null;
+        }
+    }
+
     public function lock() {
         $this->gsLocked = true;
         return $this;
