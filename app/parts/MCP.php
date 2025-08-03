@@ -4,20 +4,21 @@
  * MCP (Model Context Protocol) Library
  * 
  * This class provides a robust implementation of a Model Context Protocol (MCP) server 
- * within the DotApp framework. It allows developers to define and manage tools that can 
- * be accessed by AI models or other clients via standardized JSON-RPC requests. Each tool 
- * is registered with a callback function that defines its logic, enabling seamless 
- * integration with external systems for automation, data access, or device control.
+ * within the DotApp framework. It allows developers to define and manage tools, resources, 
+ * and prompts that can be accessed by AI models or other clients via standardized JSON-RPC 
+ * requests. Each entity (tool, resource, prompt) is registered with metadata and a callback 
+ * function, enabling seamless integration with external systems for automation, data access, 
+ * or device control.
  * 
  * The library is designed to be extensible, secure, and easy to integrate into the 
- * DotApp architecture. It leverages static storage for tools, ensuring that tools and 
- * their callbacks are globally accessible and can be registered at runtime. The library 
- * does not define endpoints directly, leaving routing to the developer.
+ * DotApp architecture. It leverages static storage for tools, resources, and prompts, 
+ * ensuring global accessibility and runtime registration. The library does not define 
+ * endpoints directly, leaving routing to the developer.
  * 
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7
+ * @version   1.8
  * @license   MIT License
  * @date      2025
  * 
@@ -30,58 +31,105 @@
 namespace Dotsystems\App\Parts;
 
 use Dotsystems\App\DotApp;
+use Exception;
 
 class MCP {
     /**
-     * Static storage for registered tools.
-     * 
-     * This array holds all tools registered via the addTool method. Each tool is stored 
-     * as an associative array with details such as name, description, parameters, 
-     * authentication requirements, and the callback function to execute the tool's logic.
+     * Static storage for registered tools, resources, and prompts.
      * 
      * @var array
      */
     private static $tools = [];
+    private static $resources = [];
+    private static $prompts = [];
+
+    /**
+     * Server configuration.
+     * 
+     * @var array
+     */
+    private static $serverConfig = [
+        'name' => 'mcp-dotapp-server',
+        'version' => '1.8',
+        'protocolVersion' => '2025-06-18'
+    ];
+
+    /**
+     * Validates and converts a value to boolean.
+     * 
+     * @param mixed $value The input value to validate/convert
+     * @return bool Returns converted boolean
+     */
+    private static function validateAndConvertBoolean($value) {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if ($value === null || $value === '') {
+            return false;
+        }
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            if ($normalized === 'true') {
+                return true;
+            }
+            if ($normalized === 'false') {
+                return false;
+            }
+        }
+        if (is_int($value)) {
+            if ($value === 1) {
+                return true;
+            }
+            if ($value === 0) {
+                return false;
+            }
+        }
+        return false; // Default to false for any other invalid value
+    }
+
+    /**
+     * Generates dynamic server info with capabilities based on registered entities.
+     * 
+     * @return array Server info including dynamic capabilities.
+     */
+    private static function getServerInfo() {
+        $capabilities = [
+            'tools' => [
+                'list' => !empty(self::$tools),
+                'call' => !empty(self::$tools)
+            ],
+            'resources' => [
+                'list' => !empty(self::$resources),
+                'read' => !empty(self::$resources)
+            ],
+            'prompts' => [
+                'list' => !empty(self::$prompts),
+                'get' => !empty(self::$prompts)
+            ]
+        ];
+
+        return [
+            'name' => self::$serverConfig['name'],
+            'version' => self::$serverConfig['version'],
+            'protocolVersion' => self::$serverConfig['protocolVersion'],
+            'capabilities' => $capabilities
+        ];
+    }
 
     /**
      * Adds a tool to the MCP server.
      * 
-     * This static method registers a new tool with its details and a callback function 
-     * that defines the tool's logic. The tool is stored in the static $tools array and 
-     * can be retrieved via the discovery method or executed via the execute method.
-     * 
-     * @param string $name Unique name of the tool (e.g., "send_email", "turn_on_light").
+     * @param string $name Unique name of the tool (e.g., "send_email").
      * @param string $description Description of what the tool does.
      * @param array $parameters Associative array of parameters (name => details).
-     *                          Each parameter should have 'type' and 'description'.
-     *                          Example: ["room" => ["type" => "string", "description" => "Room name"]]
      * @param callable $callback Callback function to execute the tool's logic.
-     *                          Signature: function(array $params): array
-     * @param array|null $authentication Optional authentication details (e.g., type, description).
-     *                                   Example: ["type" => "bearer", "description" => "Requires Bearer token"]
-     * @return bool True on successful addition, false if tool already exists or invalid.
-     * 
-     * Example:
-     * MCP::addTool(
-     *     "send_email",
-     *     "Sends an email to a specified recipient",
-     *     [
-     *         "to_email" => ["type" => "string", "description" => "Recipient email address"],
-     *         "subject" => ["type" => "string", "description" => "Email subject"],
-     *         "password" => ["type" => "string", "description" => "Password for authentication"]
-     *     ],
-     *     function(array $params) {
-     *         if ($params['password'] !== '888') {
-     *             throw new Exception('Invalid password');
-     *         }
-     *         // Logic to send email
-     *         return ['status' => 'success', 'message' => 'Email sent to ' . $params['to_email']];
-     *     },
-     *     ["type" => "password", "description" => "Prompt user for password. Password is 888."]
-     * );
+     * @param array|null $authentication Optional authentication details.
+     * @return bool True on success, false if invalid or tool exists.
      */
     public static function addTool($name, $description, $parameters, $callback, $authentication = null) {
-        if (!is_callable($callback)) $callback = DotApp::DotApp()->stringToCallable($callback);
+        if (!is_callable($callback)) {
+            $callback = DotApp::DotApp()->stringToCallable($callback);
+        }
         if (!is_string($name) || !is_string($description) || !is_array($parameters) || !is_callable($callback)) {
             return false;
         }
@@ -114,35 +162,124 @@ class MCP {
     }
 
     /**
-     * Returns the list of registered tools.
+     * Adds a resource to the MCP server.
      * 
-     * This method resolves to the /mcp/discovery endpoint and returns a JSON-compatible 
-     * array containing metadata for all registered tools (excluding callbacks). The 
-     * response follows the MCP discovery format, enabling AI clients to understand 
-     * available tools and their requirements.
+     * @param string $name Unique name of the resource (e.g., "config/app").
+     * @param string $description Description of the resource.
+     * @param string $uri URI of the resource (e.g., "config://app").
+     * @param string $mimeType MIME type of the resource data.
+     * @param array $arguments Associative array of arguments (name => details).
+     * @param callable $callback Callback function to read the resource.
+     * @return bool True on success, false if invalid or resource exists.
+     */
+    public static function addResource($name, $description, $uri, $mimeType, $arguments, $callback) {
+        if (!is_callable($callback)) {
+            $callback = DotApp::DotApp()->stringToCallable($callback);
+        }
+        if (!is_string($name) || !is_string($description) || !is_string($uri) || 
+            !is_string($mimeType) || !is_array($arguments) || !is_callable($callback)) {
+            return false;
+        }
+
+        if (isset(self::$resources[$name])) {
+            return false;
+        }
+
+        foreach ($arguments as $argName => $argDetails) {
+            if (!is_string($argName) || !is_array($argDetails) || 
+                !isset($argDetails['type'], $argDetails['description'])) {
+                return false;
+            }
+        }
+
+        self::$resources[$name] = [
+            'name' => $name,
+            'description' => $description,
+            'uri' => $uri,
+            'mimeType' => $mimeType,
+            'arguments' => $arguments,
+            'callback' => $callback
+        ];
+
+        return true;
+    }
+
+    /**
+     * Adds a prompt to the MCP server.
      * 
-     * @return array JSON-compatible array with tools, resources, and prompts.
+     * @param string $name Unique name of the prompt (e.g., "review-code").
+     * @param string $description Description of the prompt.
+     * @param array $parameters Associative array of parameters (name => details).
+     * @param callable $callback Callback function to generate the prompt.
+     * @return bool True on success, false if invalid or prompt exists.
+     */
+    public static function addPrompt($name, $description, $parameters, $callback) {
+        if (!is_callable($callback)) {
+            $callback = DotApp::DotApp()->stringToCallable($callback);
+        }
+        if (!is_string($name) || !is_string($description) || !is_array($parameters) || !is_callable($callback)) {
+            return false;
+        }
+
+        if (isset(self::$prompts[$name])) {
+            return false;
+        }
+
+        foreach ($parameters as $paramName => $paramDetails) {
+            if (!is_string($paramName) || !is_array($paramDetails) || 
+                !isset($paramDetails['type'], $paramDetails['description'])) {
+                return false;
+            }
+        }
+
+        self::$prompts[$name] = [
+            'name' => $name,
+            'description' => $description,
+            'parameters' => $parameters,
+            'callback' => $callback
+        ];
+
+        return true;
+    }
+
+    /**
+     * Handles JSON-RPC initialization request.
      * 
-     * Example Response:
-     * {
-     *     "tools": [
-     *         {
-     *             "name": "send_email",
-     *             "description": "Sends an email to a specified recipient",
-     *             "parameters": {
-     *                 "to_email": {"type": "string", "description": "Recipient email address"},
-     *                 "subject": {"type": "string", "description": "Email subject"},
-     *                 "password": {"type": "string", "description": "Password for authentication"}
-     *             },
-     *             "authentication": {
-     *                 "type": "password",
-     *                 "description": "Prompt user for password. Password is 888."
-     *             }
-     *         }
-     *     ],
-     *     "resources": [],
-     *     "prompts": []
-     * }
+     * @param array $request JSON-RPC request array.
+     * @return array JSON-RPC response.
+     */
+    private static function handleInitialize($request) {
+        $response = [
+            'jsonrpc' => '2.0',
+            'id' => isset($request['id']) ? $request['id'] : null
+        ];
+
+        if (!isset($request['params']['protocolVersion']) || 
+            $request['params']['protocolVersion'] !== self::$serverConfig['protocolVersion']) {
+            $response['error'] = [
+                'code' => -32602,
+                'message' => 'Incompatible protocol version'
+            ];
+            return $response;
+        }
+
+        $serverInfo = self::getServerInfo();
+        $response['result'] = [
+            'serverInfo' => [
+                'name' => $serverInfo['name'],
+                'version' => $serverInfo['version']
+            ],
+            'protocolVersion' => $serverInfo['protocolVersion'],
+            'capabilities' => $serverInfo['capabilities']
+        ];
+
+        return $response;
+    }
+
+    /**
+     * Returns the list of registered tools, resources, and prompts.
+     * 
+     * @return array JSON-compatible array with discovery data.
      */
     public static function discovery() {
         $tools = array_map(function($tool) {
@@ -154,63 +291,46 @@ class MCP {
             ];
         }, self::$tools);
 
+        $resources = array_map(function($resource) {
+            return [
+                'name' => $resource['name'],
+                'description' => $resource['description'],
+                'uri' => $resource['uri'],
+                'mimeType' => $resource['mimeType'],
+                'arguments' => $resource['arguments']
+            ];
+        }, self::$resources);
+
+        $prompts = array_map(function($prompt) {
+            return [
+                'name' => $prompt['name'],
+                'description' => $prompt['description'],
+                'parameters' => $prompt['parameters']
+            ];
+        }, self::$prompts);
+
         return [
             'tools' => array_values($tools),
-            'resources' => [],
-            'prompts' => []
+            'resources' => array_values($resources),
+            'prompts' => array_values($prompts)
         ];
     }
 
     /**
-     * Executes a tool based on the provided JSON-RPC request.
+     * Executes a JSON-RPC request.
      * 
-     * This method resolves to the /mcp endpoint and processes incoming JSON-RPC requests. 
-     * It validates the request structure, checks if the requested tool exists, and executes 
-     * the tool's registered callback function with the provided parameters. If the tool 
-     * requires authentication, the callback is responsible for validating it.
-     * 
-     * @param array $request JSON-RPC request array with 'jsonrpc', 'id', 'method', and 'params'.
-     * @return array JSON-RPC response with 'result' or 'error'.
-     * 
-     * Example Request:
-     * {
-     *     "jsonrpc": "2.0",
-     *     "id": "req-1",
-     *     "method": "tool.send_email",
-     *     "params": {
-     *         "to_email": "user@example.com",
-     *         "subject": "Test",
-     *         "password": "888"
-     *     }
-     * }
-     * 
-     * Example Response (Success):
-     * {
-     *     "jsonrpc": "2.0",
-     *     "id": "req-1",
-     *     "result": {
-     *         "status": "success",
-     *         "message": "Email sent to user@example.com"
-     *     }
-     * }
-     * 
-     * Example Response (Error):
-     * {
-     *     "jsonrpc": "2.0",
-     *     "id": "req-1",
-     *     "error": {
-     *         "code": -32601,
-     *         "message": "Method not found"
-     *     }
-     * }
+     * @param array $request JSON-RPC request array.
+     * @return array JSON-RPC response.
      */
     public static function execute($request) {
-        if ($data = $request->getJson()) {
+        $data = $request->data(true);
+        
+        if (is_array($data)) {
             $request = $data;
         } else {
             $request = null;
         }
-        
+
         if (!is_array($request)) {
             return [
                 'jsonrpc' => '2.0',
@@ -240,60 +360,205 @@ class MCP {
         $method = $request['method'];
         $params = $request['params'];
 
-        $toolName = str_replace('tool.', '', $method);
-        if (!isset(self::$tools[$toolName])) {
-            $response['error'] = [
-                'code' => -32601,
-                'message' => 'Method not found'
-            ];
-            return $response;
-        }
+        switch ($method) {
+            case 'initialize':
+                return self::handleInitialize($request);
+            
+            case 'tools/list':
+                $response['result'] = ['tools' => self::discovery()['tools']];
+                return $response;
 
-        $tool = self::$tools[$toolName];
+            case 'resources/list':
+                $response['result'] = ['resources' => self::discovery()['resources']];
+                return $response;
 
-        foreach ($tool['parameters'] as $paramName => $paramDetails) {
-            if (!array_key_exists($paramName, $params)) {
+            case 'prompts/list':
+                $response['result'] = ['prompts' => self::discovery()['prompts']];
+                return $response;
+
+            case 'tools/call':
+                if (!isset($params['name']) || !isset(self::$tools[$params['name']])) {
+                    $response['error'] = [
+                        'code' => -32601,
+                        'message' => 'Tool not found'
+                    ];
+                    return $response;
+                }
+
+                $tool = self::$tools[$params['name']];
+                $toolParams = $params['arguments'] ?? [];
+
+                foreach ($tool['parameters'] as $paramName => $paramDetails) {
+                    if (!array_key_exists($paramName, $toolParams)) {
+                        $response['error'] = [
+                            'code' => -32602,
+                            'message' => "Missing required parameter: $paramName"
+                        ];
+                        return $response;
+                    }
+
+                    $expectedType = $paramDetails['type'];
+                    $actualValue = $toolParams[$paramName];
+
+                    if ($expectedType === 'boolean') {
+                        $convertedValue = self::validateAndConvertBoolean($actualValue);
+                        $toolParams[$paramName] = $convertedValue;
+                    } elseif (($expectedType === 'string' && !is_string($actualValue)) ||
+                             ($expectedType === 'integer' && !is_int($actualValue))) {
+                        $response['error'] = [
+                            'code' => -32602,
+                            'message' => "Invalid type for parameter: $paramName (expected $expectedType)"
+                        ];
+                        return $response;
+                    }
+                }
+
+                try {
+                    $callback = $tool['callback'];
+                    $response['result'] = call_user_func($callback, $toolParams);
+                } catch (Exception $e) {
+                    $response['error'] = [
+                        'code' => -32001,
+                        'message' => $e->getMessage()
+                    ];
+                }
+                return $response;
+
+            case 'resources/read':
+                if (!isset($params['uri']) || !isset($params['arguments'])) {
+                    $response['error'] = [
+                        'code' => -32602,
+                        'message' => 'Missing required parameters: uri or arguments'
+                    ];
+                    return $response;
+                }
+
+                $resource = null;
+                foreach (self::$resources as $res) {
+                    if ($res['uri'] === $params['uri']) {
+                        $resource = $res;
+                        break;
+                    }
+                }
+
+                if (!$resource) {
+                    $response['error'] = [
+                        'code' => -32601,
+                        'message' => 'Resource not found'
+                    ];
+                    return $response;
+                }
+
+                $resParams = $params['arguments'];
+                foreach ($resource['arguments'] as $argName => $argDetails) {
+                    if ($argDetails['required'] && !array_key_exists($argName, $resParams)) {
+                        $response['error'] = [
+                            'code' => -32602,
+                            'message' => "Missing required argument: $argName"
+                        ];
+                        return $response;
+                    }
+
+                    if (array_key_exists($argName, $resParams)) {
+                        $expectedType = $argDetails['type'];
+                        $actualValue = $resParams[$argName];
+
+                        if ($expectedType === 'boolean') {
+                            $convertedValue = self::validateAndConvertBoolean($actualValue);
+                            $resParams[$argName] = $convertedValue;
+                        } elseif (($expectedType === 'string' && !is_string($actualValue)) ||
+                                 ($expectedType === 'integer' && !is_int($actualValue))) {
+                            $response['error'] = [
+                                'code' => -32602,
+                                'message' => "Invalid type for argument: $argName (expected $expectedType)"
+                            ];
+                            return $response;
+                        }
+                    }
+                }
+
+                try {
+                    $callback = $resource['callback'];
+                    $response['result'] = [
+                        'data' => call_user_func($callback, $resParams),
+                        'mimeType' => $resource['mimeType']
+                    ];
+                } catch (Exception $e) {
+                    $response['error'] = [
+                        'code' => -32001,
+                        'message' => $e->getMessage()
+                    ];
+                }
+                return $response;
+
+            case 'prompts/get':
+                if (!isset($params['name']) || !isset(self::$prompts[$params['name']])) {
+                    $response['error'] = [
+                        'code' => -32601,
+                        'message' => 'Prompt not found'
+                    ];
+                    return $response;
+                }
+
+                $prompt = self::$prompts[$params['name']];
+                $promptParams = $params['arguments'] ?? [];
+
+                foreach ($prompt['parameters'] as $paramName => $paramDetails) {
+                    if (!array_key_exists($paramName, $promptParams)) {
+                        $response['error'] = [
+                            'code' => -32602,
+                            'message' => "Missing required parameter: $paramName"
+                        ];
+                        return $response;
+                    }
+
+                    $expectedType = $paramDetails['type'];
+                    $actualValue = $promptParams[$paramName];
+
+                    if ($expectedType === 'boolean') {
+                        $convertedValue = self::validateAndConvertBoolean($actualValue);
+                        $promptParams[$paramName] = $convertedValue;
+                    } elseif (($expectedType === 'string' && !is_string($actualValue)) ||
+                             ($expectedType === 'integer' && !is_int($actualValue))) {
+                        $response['error'] = [
+                            'code' => -32602,
+                            'message' => "Invalid type for parameter: $paramName (expected $expectedType)"
+                        ];
+                        return $response;
+                    }
+                }
+
+                try {
+                    $callback = $prompt['callback'];
+                    $response['result'] = call_user_func($callback, $promptParams);
+                } catch (Exception $e) {
+                    $response['error'] = [
+                        'code' => -32001,
+                        'message' => $e->getMessage()
+                    ];
+                }
+                return $response;
+
+            default:
                 $response['error'] = [
-                    'code' => -32602,
-                    'message' => "Missing required parameter: $paramName"
+                    'code' => -32601,
+                    'message' => 'Method not found'
                 ];
                 return $response;
-            }
-
-            $expectedType = $paramDetails['type'];
-            $actualValue = $params[$paramName];
-            if (($expectedType === 'string' && !is_string($actualValue)) ||
-                ($expectedType === 'integer' && !is_int($actualValue)) ||
-                ($expectedType === 'boolean' && !is_bool($actualValue))) {
-                $response['error'] = [
-                    'code' => -32602,
-                    'message' => "Invalid type for parameter: $paramName (expected $expectedType)"
-                ];
-                return $response;
-            }
         }
-
-        try {
-            $callback = $tool['callback'];
-            $result = call_user_func($callback, $params);
-            $response['result'] = $result;
-        } catch (Exception $e) {
-            $response['error'] = [
-                'code' => -32001,
-                'message' => $e->getMessage()
-            ];
-        }
-
-        return $response;
     }
 
     /**
-     * Retrieves all registered tools (for internal use or debugging).
+     * Retrieves all registered tools, resources, and prompts (for internal use or debugging).
      * 
-     * @return array Array of all tools stored in the static $tools variable (including callbacks).
+     * @return array Array of all registered entities.
      */
-    public static function getTools() {
-        return self::$tools;
+    public static function getAll() {
+        return [
+            'tools' => self::$tools,
+            'resources' => self::$resources,
+            'prompts' => self::$prompts
+        ];
     }
 }
 ?>
