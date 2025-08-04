@@ -61,12 +61,10 @@ class MCP {
      * @return bool Returns converted boolean
      */
     private static function validateAndConvertBoolean($value) {
-        if (is_bool($value)) {
-            return $value;
-        }
         if ($value === null || $value === '') {
             return false;
         }
+
         if (is_string($value)) {
             $normalized = strtolower(trim($value));
             if ($normalized === 'true') {
@@ -75,7 +73,14 @@ class MCP {
             if ($normalized === 'false') {
                 return false;
             }
+            if ($normalized === '1') {
+                return true;
+            }
+            if ($normalized === '0') {
+                return false;
+            }
         }
+
         if (is_int($value)) {
             if ($value === 1) {
                 return true;
@@ -83,6 +88,10 @@ class MCP {
             if ($value === 0) {
                 return false;
             }
+        }
+
+        if (is_bool($value)) {
+            return $value;
         }
         return false; // Default to false for any other invalid value
     }
