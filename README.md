@@ -42,16 +42,25 @@ This approach provides a convenient way to work with dotApp throughout your appl
 
 ## What's New ✨
 
-### Version 1.7 Released
+### Version 1.7.2 Released (NEW – 2025-12-25)
 
-- **NEW: Testing with Tester Class** (2025-06-22): Lightweight unit and integration testing for modules and core.
-- **NEW: FastSearch Library** (2025-06-13): Unified search interface for Elasticsearch, OpenSearch, Meilisearch, Algolia, and Typesense.
-- **NEW: Cache Library** (2025-06-13): Driver-agnostic caching with file-based and Redis support.
-- **NEW: Centralized Configuration with Config Facade** (2025-04-11): Unified configuration management.
-- **NEW: Session Drivers** (2025-04-11): Five built-in drivers (Default, File, File2, DB, Redis) for flexible session management.
-- **NEW: Router Facade** (2025-04-11): Alias for $dotApp->router.
-- **NEW: DB Facade** (2025-04-11): Alias for $dotApp->db.
-- **NEW: Request Facade** (2025-04-11): Alias for $dotApp->request.
+- **Dependency Injection helpers**: `DI` wrapper resolves method arguments via the DotApp resolver, and `Injector` facade adds easy `singleton()` / `bind()` registration.
+- **Rate Limiter**: Multi-window request limiting with pluggable storage (session by default, custom getter/setter supported) for routes and Bridge endpoints.
+- **OTP & QR utilities**: `TOTP` generates Base32 secrets, TOTP codes, and otpauth URIs; `QR` builds PNG/base64 QR codes with styling options.
+- **Localization**: Global `translator()` helper with JSON/locale files, runtime locale switching, and placeholder replacement.
+- **Email stack**: `Emailer` (SMTP + IMAP/POP3) with attachments, saving to folders, protocol switching, and `Email` facade shortcuts.
+- **SMS providers**: `Sms` facade and `SmsProvider` interface to validate numbers, send/receive messages, check status, and set provider-specific config.
+
+### Highlights from 1.7
+
+- Testing with Tester Class: Lightweight unit and integration testing for modules and core.
+- FastSearch Library: Unified search interface for Elasticsearch, OpenSearch, Meilisearch, Algolia, and Typesense.
+- Cache Library: Driver-agnostic caching with file-based and Redis support.
+- Centralized Configuration with Config Facade: Unified configuration management.
+- Session Drivers: Five built-in drivers (Default, File, File2, DB, Redis) for flexible session management.
+- Router Facade: Alias for $dotApp->router.
+- DB Facade: Alias for $dotApp->db.
+- Request Facade: Alias for $dotApp->request.
 
 ## 👥 Installation
 
@@ -183,7 +192,7 @@ Options:
 
 ## 🧪 Version Note
 
-This is the **version 1.7 release** of dotApp.  
+This is the **version 1.7.2 release** of dotApp.  
 
 Older versions may have duplicate function names (lowercase and PascalCase) due to the transition to **PascalCase** for naming, maintaining **backward compatibility**. This has minimal impact on performance.
 
