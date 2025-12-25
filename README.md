@@ -112,12 +112,12 @@ Simple "Hello World" example using dotApp:
 define('__ROOTDIR__', "/path/to/your/dotapp");
 require_once __ROOTDIR__ . '/app/config.php';
 
-$dotApp->router->get('/', function($request) {
-    return 'Hello World';
-});
+Router::get('/', fn($request) => 'Hello World');
 
-$dotApp->run();
+DotApp::DotApp()->run();
 ```
+
+> Route callbacks receive a **locked Request object**; you can return a string (it becomes the response body) or work with `$request->response` if you need full control.
 
 ## ⚙️ Configuration
 
