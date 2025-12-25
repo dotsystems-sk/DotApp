@@ -987,12 +987,9 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
     }
 
     public function formatIndex(array $columns, $unique, $name, $comment = null) {
+        $indexType = $unique ? 'UNIQUE INDEX' : 'INDEX';
         $columnList = '[' . implode('],[', $columns) . ']';
-        if ($unique) {
-            return "CONSTRAINT [$name] UNIQUE ($columnList)";
-        } else {
-            return "INDEX [$name] ($columnList)";
-        }
+        return "$indexType [$name] ON ($columnList)";
     }
 
     public function formatForeignKey($column, $references, $on, $onDelete, $onUpdate, $name, $comment = null) {
@@ -1142,10 +1139,10 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
                 return (string)$value;
             case 'date':
             case 'datetime2':
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value) && $value !== 'CURRENT_TIMESTAMP') {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value)) {
+                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
                 }
-                return $value === 'CURRENT_TIMESTAMP' ? 'CURRENT_TIMESTAMP' : "'$value'";
+                return "'$value'";
             default:
                 return (string)$value;
         }
@@ -1178,50 +1175,21 @@ class SchemaBuilder {
         }
 
         if ($this->databaser) {
-            // Get all databases and the selected database
-            $allDatabasesInOne = [];
-            $allDatabases = $databaser->getDatabases();
-            foreach ($allDatabases as $dbData) {
-                $allDatabasesInOne = array_merge($allDatabasesInOne, $dbData);
-            }
-            $allDatabases = $allDatabasesInOne;
-            unset($allDatabasesInOne);
-            $usedDatabase = $this->databaser->getSelectedDatabase();
-            if ($usedDatabase !== null) {
-                $typeInfo = strtolower($allDatabases[$usedDatabase]['type'] ?? 'mysql');
-                if (in_array($typeInfo, ['mysql', 'pgsql', 'sqlite', 'oci', 'sqlsrv'])) {
-                    $this->dbType = $typeInfo;
-                } else {
-                    throw new \Exception("Unsupported database type: $typeInfo");
-                }
+            if (isset($this->databaser->database_drivers['driver'])) {
+                $driver = $this->databaser->database_drivers['driver'];
+                $name = key($this->databaser->databases[$driver] ?? []);
+                $this->dbType = strtolower($this->databaser->databases[$driver][$name]['type'] ?? 'mysql');
             } else {
                 $this->dbType = 'mysql';
             }
         } elseif (is_string($databaser) && in_array(strtolower($databaser), ['mysql', 'pgsql', 'sqlite', 'oci', 'sqlsrv'])) {
-            // If $databaser is a string and contains a supported database type
             $this->dbType = strtolower($databaser);
         } else {
-            // Default value
             $this->dbType = 'mysql';
         }
 
         $this->setDefaultCharsetAndCollation();
         $this->initializeAdapter();
-    }
-
-    private function quoteIdentifier($name) {
-        switch ($this->dbType) {
-            case 'mysql':
-            case 'sqlite':
-                return "`$name`";
-            case 'pgsql':
-            case 'oci':
-                return "\"$name\"";
-            case 'sqlsrv':
-                return "[$name]";
-            default:
-                return $name;
-        }
     }
 
     private function setDefaultCharsetAndCollation() {
@@ -1419,9 +1387,9 @@ class SchemaBuilder {
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $columnList = $this->formatColumnList($columns);
-        $name = $constraintName ? $this->sanitizeName($constraintName) : 'pk_' . implode('_', $columns)."_".substr(md5(microtime()),0,8);
+        $name = $constraintName ? $this->sanitizeName($constraintName) : 'pk_' . implode('_', $columns);
         $constraint = new ConstraintDefinition($this, 'PRIMARY_KEY', $name);
-        $this->constraints[] = ['definition' => "CONSTRAINT " . $this->quoteIdentifier($name) . " PRIMARY KEY ($columnList)", 'constraint' => $constraint];
+        $this->constraints[] = ['definition' => "CONSTRAINT `$name` PRIMARY KEY ($columnList)", 'constraint' => $constraint];
         return $constraint;
     }
 
@@ -1798,12 +1766,12 @@ class SchemaBuilder {
         $valueList = implode(',', $sanitizedValues);
         switch ($this->dbType) {
             case 'mysql':
-                return $this->quoteIdentifier($name) . " ENUM($valueList)";
+                return "`$name` ENUM($valueList)";
             case 'pgsql':
                 $typeName = $name . '_enum';
-                return "CREATE TYPE " . $this->quoteIdentifier($typeName) . " AS ENUM ($valueList)";
+                return "CREATE TYPE \"$typeName\" AS ENUM ($valueList)";
             default:
-                return "CHECK (" . $this->quoteIdentifier($name) . " IN ($valueList))";
+                return "CHECK (`$name` IN ($valueList))";
         }
     }
 
@@ -1812,7 +1780,7 @@ class SchemaBuilder {
             return "'" . str_replace("'", "''", $value) . "'";
         }, $values);
         $valueList = implode(',', $sanitizedValues);
-        return $this->quoteIdentifier($name) . " SET($valueList)";
+        return "`$name` SET($valueList)";
     }
 
     public function engine($engine) {

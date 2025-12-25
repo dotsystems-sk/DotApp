@@ -20,15 +20,15 @@ class Middleware {
         return new self($name);
     }
 
-    public static function define($name,$callback=null, ...$args) {
+    public static function define(string $name,$callback=null, ...$args) {
         return self::set($name,$callback, ...$args);
     }
 
-    public static function register($name,$callback=null, ...$args) {
+    public static function register(string $name,$callback=null, ...$args) {
         return self::set($name,$callback, ...$args);
     }
 
-    public static function set($name,$callback=null, ...$args) {
+    public static function set(string $name,$callback=null, ...$args) {
         return new self($name,$callback, ...$args);
     }
 
@@ -42,8 +42,10 @@ class Middleware {
         $this->dispatchConstruct($this->name,$callback, ...$args);
     }
 
-    public function setStorage(&$storage) {
-        $this->storage = &$storage;
+    public function setStorage(&$storage,$setter) {
+        if ($setter instanceof \Dotsystems\App\DotApp) {
+			$this->storage = &$storage;
+		}		
     }
 
     private function middlewareExists($midName) {
@@ -126,8 +128,7 @@ class MiddlewareChain {
     // Zavolaj middleware s argumentami...
     public function call(...$args) {
         $callFn = $this->middleware->middleware();
-        call_user_func($callFn,$this->middleware->dotApp->request, ...$args);
-        return $this;
+        return call_user_func($callFn,$this->middleware->dotApp->request, ...$args);
     }
 
     public function get($callback) {
@@ -156,7 +157,7 @@ class MiddlewareChain {
     public function when($callback) {
         if (!is_callable($callback)) $callback = $this->middleware->dotApp->stringToCallable($callback);
         if (is_callable($callback)) {
-            $middlwareReturn = $this->call($$this->middleware->dotApp->request);
+            $middlwareReturn = $this->call($this->middleware->dotApp->request);
             call_user_func($callback,$middlwareReturn);
             return $this;
         } else {
@@ -167,7 +168,7 @@ class MiddlewareChain {
     public function true($callback) {
         if (!is_callable($callback)) $callback = $this->middleware->dotApp->stringToCallable($callback);
         if (is_callable($callback)) {
-            $middlwareReturn = $this->call($$this->middleware->dotApp->request);
+            $middlwareReturn = $this->call($this->middleware->dotApp->request);
             if (! ($middlwareReturn === false || $middlwareReturn === true)) throw new \Exception("Middleware msut return TRUE or FALSe only!");
             if ($middlwareReturn === true) call_user_func($callback,$middlwareReturn);
             return $this;
@@ -179,7 +180,7 @@ class MiddlewareChain {
     public function false($callback) {
         if (!is_callable($callback)) $callback = $this->middleware->dotApp->stringToCallable($callback);
         if (is_callable($callback)) {
-            $middlwareReturn = $this->call($$this->middleware->dotApp->request);
+            $middlwareReturn = $this->call($this->middleware->dotApp->request);
             if (! ($middlwareReturn === false || $middlwareReturn === true)) throw new \Exception("Middleware msut return TRUE or FALSe only!");
             if ($middlwareReturn === false) call_user_func($callback,$middlwareReturn);
             return $this;

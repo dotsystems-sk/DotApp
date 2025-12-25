@@ -34,8 +34,7 @@ class Request extends Facade {
         'formSignatureCheck',
         'form',
         'lock',
-        'firewall',
-        'getJson'
+        'firewall'
     ];
 
     public static function middleware(string $name, $callback=null, ...$args) {

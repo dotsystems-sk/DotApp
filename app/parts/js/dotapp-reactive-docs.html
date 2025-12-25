@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DotApp Reactive Module - Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        nav {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        nav a:hover {
+            background: #f0f0f0;
+        }
+
+        section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .attribute-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .attribute-table th,
+        .attribute-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .attribute-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .attribute-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .badge-required {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge-optional {
+            background: #6c757d;
+            color: white;
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example-box h4 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .method-signature {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DotApp Reactive Module</h1>
+            <p>Comprehensive Documentation v1.0</p>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#getting-started">Getting Started</a></li>
+                <li><a href="#html-attributes">HTML Attributes</a></li>
+                <li><a href="#javascript-api">JavaScript API</a></li>
+                <li><a href="#hooks">Hooks System</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#error-handling">Error Handling</a></li>
+                <li><a href="#security">Security</a></li>
+                <li><a href="#advanced">Advanced Usage</a></li>
+                <li><a href="#api-reference">API Reference</a></li>
+            </ul>
+        </nav>
+
+        <section id="introduction">
+            <h2>Introduction</h2>
+            <p>
+                <strong>DotApp Reactive</strong> is a robust reactive data binding library for the DotApp framework. 
+                It provides automatic data fetching from API endpoints with secure communication (CRC, CSRF), 
+                reactive updates via DotAppVariable, and seamless integration with the DotApp template engine.
+            </p>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>Automatic Data Fetching</strong> - Fetch data from API endpoints automatically</li>
+                <li><strong>Reactive Updates</strong> - Integrate with DotAppVariable for reactive data binding</li>
+                <li><strong>Event-Driven</strong> - Trigger updates on DOM events or variable changes</li>
+                <li><strong>Polling Support</strong> - Automatic periodic updates with configurable intervals</li>
+                <li><strong>Template Integration</strong> - Render fetched data using DotApp template engine</li>
+                <li><strong>Security</strong> - Built-in CSRF and CRC protection via DotApp's load() method</li>
+                <li><strong>Error Handling</strong> - Automatic retry logic with exponential backoff</li>
+                <li><strong>Lifecycle Hooks</strong> - before, after, onError, and onResponseCode hooks</li>
+            </ul>
+
+            <h3>Requirements</h3>
+            <ul>
+                <li>DotApp framework (dotapp.js) must be loaded first</li>
+                <li>Modern browser with ES6+ support (private class fields)</li>
+                <li>Optional: DotApp Template module for template rendering</li>
+            </ul>
+        </section>
+
+        <section id="getting-started">
+            <h2>Getting Started</h2>
+            
+            <h3>Installation</h3>
+            <p>Include the DotApp Reactive module after the main DotApp framework:</p>
+            <pre><code>&lt;script src="dotapp.js"&gt;&lt;/script&gt;
+&lt;script src="dotapp.reactive.js"&gt;&lt;/script&gt;
+&lt;!-- Optional: Template engine --&gt;
+&lt;script src="dotapp.template.js"&gt;&lt;/script&gt;</code></pre>
+
+            <h3>Basic Usage - HTML Attributes</h3>
+            <p>The simplest way to use DotApp Reactive is through HTML attributes:</p>
+            <pre><code>&lt;div reactive-api="/api/data"&gt;
+    Loading...
+&lt;/div&gt;</code></pre>
+            <p>This will automatically fetch data from <code>/api/data</code> and display it in the div element.</p>
+
+            <h3>Basic Usage - JavaScript API</h3>
+            <p>You can also create reactive endpoints programmatically:</p>
+            <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('myElement')
+});
+
+endpoint.after((data) => {
+    console.log('Data received:', data);
+});</code></pre>
+
+            <div class="info">
+                <strong>Note:</strong> The reactive module automatically initializes when the DOM is ready. 
+                You can also listen for the <code>dotapp-reactive-ready</code> event to know when the module is fully loaded.
+            </div>
+        </section>
+
+        <section id="html-attributes">
+            <h2>HTML Attributes API</h2>
+            <p>
+                DotApp Reactive supports declarative configuration through HTML attributes. 
+                All attributes are automatically removed from the DOM after initialization for security.
+            </p>
+
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Attribute</th>
+                        <th>Type</th>
+                        <th>Required</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>reactive-api</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-required">Required</span></td>
+                        <td>The API endpoint URL to fetch data from</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-method</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>HTTP method (GET or POST). Default: GET</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-trigger</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>Event that triggers the fetch. Can be a DOM event (click, change, etc.) or "variable" for DotAppVariable changes. Multiple triggers can be comma-separated.</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-variable</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>Name of a DotAppVariable to bind the fetched data to. The variable will be updated automatically when data is fetched.</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-interval</code></td>
+                        <td>number</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>Polling interval in milliseconds. If set, the endpoint will automatically fetch data at the specified interval.</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-template</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>Path to a DotApp template file (relative to /app/views/). The fetched data will be rendered using this template.</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-key</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>Encryption key for decrypting reactive-data attribute (for secure data transmission).</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-id</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>Custom ID for the reactive endpoint. Useful for programmatic access via the engine.</td>
+                    </tr>
+                    <tr>
+                        <td><code>reactive-data</code></td>
+                        <td>string</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                        <td>Encrypted data payload (used with reactive-key for secure data transmission).</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Attribute Examples</h3>
+
+            <div class="example-box">
+                <h4>Example 1: Simple Data Fetch</h4>
+                <pre><code>&lt;div reactive-api="/api/users"&gt;
+    Loading users...
+&lt;/div&gt;</code></pre>
+                <p>Fetches data immediately when the page loads and displays it in the div.</p>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 2: Click to Fetch</h4>
+                <pre><code>&lt;button reactive-api="/api/refresh" 
+        reactive-trigger="click"&gt;
+    Refresh Data
+&lt;/button&gt;</code></pre>
+                <p>Fetches data only when the button is clicked.</p>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 3: Polling (Auto-refresh)</h4>
+                <pre><code>&lt;div reactive-api="/api/status" 
+     reactive-interval="5000"&gt;
+    Checking status...
+&lt;/div&gt;</code></pre>
+                <p>Fetches data every 5 seconds (5000 milliseconds).</p>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 4: With DotAppVariable</h4>
+                <pre><code>&lt;div reactive-api="/api/user-profile" 
+     reactive-variable="userProfile"&gt;
+    Loading profile...
+&lt;/div&gt;
+
+&lt;script&gt;
+    // The userProfile variable will be automatically updated
+    $dotapp().variable('userProfile', null).onChange((oldVal, newVal) => {
+        console.log('Profile updated:', newVal);
+    });
+&lt;/script&gt;</code></pre>
+                <p>Fetched data is automatically bound to the <code>userProfile</code> DotAppVariable.</p>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 5: With Template</h4>
+                <pre><code>&lt;div reactive-api="/api/products" 
+     reactive-template="products/list"&gt;
+    Loading products...
+&lt;/div&gt;</code></pre>
+                <p>Fetches data and renders it using the template at <code>/app/views/products/list.view.js</code>.</p>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 6: Multiple Triggers</h4>
+                <pre><code>&lt;div reactive-api="/api/data" 
+     reactive-trigger="click,change"&gt;
+    Click or change to update
+&lt;/div&gt;</code></pre>
+                <p>Fetches data on both click and change events.</p>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 7: Variable Change Trigger</h4>
+                <pre><code>&lt;div reactive-api="/api/search" 
+     reactive-trigger="variable" 
+     reactive-variable="searchQuery"&gt;
+    Search results...
+&lt;/div&gt;
+
+&lt;script&gt;
+    // When searchQuery changes, the endpoint will automatically fetch
+    $dotapp().variable('searchQuery', '').value = 'new query';
+&lt;/script&gt;</code></pre>
+                <p>Fetches data whenever the <code>searchQuery</code> variable changes.</p>
+            </div>
+        </section>
+
+        <section id="javascript-api">
+            <h2>JavaScript API</h2>
+            <p>
+                For more control and programmatic usage, you can create reactive endpoints using the JavaScript API.
+            </p>
+
+            <h3>Main Method</h3>
+            <div class="method-signature">
+                $dotapp().reactive(url, config)
+            </div>
+
+            <h4>Parameters</h4>
+            <ul>
+                <li><code>url</code> (string, required) - The API endpoint URL</li>
+                <li><code>config</code> (object, optional) - Configuration object with the following properties:
+                    <ul>
+                        <li><code>method</code> (string) - HTTP method: 'GET' or 'POST'. Default: 'GET'</li>
+                        <li><code>element</code> (HTMLElement) - DOM element to update with the response</li>
+                        <li><code>trigger</code> (string|array) - Event trigger(s) or 'variable' for variable changes</li>
+                        <li><code>variable</code> (string|DotAppVariable) - DotAppVariable name or instance to bind data to</li>
+                        <li><code>interval</code> (number) - Polling interval in milliseconds</li>
+                        <li><code>template</code> (string) - Template path for rendering</li>
+                        <li><code>key</code> (string) - Encryption key for secure data</li>
+                        <li><code>id</code> (string) - Custom endpoint ID</li>
+                        <li><code>data</code> (string) - Encrypted data payload</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h4>Returns</h4>
+            <p>Returns an endpoint instance with the following methods:</p>
+            <ul>
+                <li><code>before(fn)</code> - Add a before hook</li>
+                <li><code>after(fn)</code> - Add an after hook</li>
+                <li><code>onError(fn)</code> - Add an error handler</li>
+                <li><code>onResponseCode(code, fn)</code> - Add a response code handler</li>
+                <li><code>refresh()</code> - Manually trigger a fetch</li>
+                <li><code>destroy()</code> - Destroy the endpoint and clean up resources</li>
+            </ul>
+
+            <h3>JavaScript API Examples</h3>
+
+            <div class="example-box">
+                <h4>Example 1: Basic Programmatic Endpoint</h4>
+                <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+});
+
+endpoint.after((data) => {
+    console.log('Data loaded:', data);
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 2: With Polling</h4>
+                <pre><code>const statusEndpoint = $dotapp().reactive('/api/status', {
+    element: document.getElementById('status'),
+    interval: 3000  // Poll every 3 seconds
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 3: With Variable Binding</h4>
+                <pre><code>const userVar = $dotapp().variable('user', null);
+
+const endpoint = $dotapp().reactive('/api/user', {
+    variable: userVar
+});
+
+// Data will automatically update userVar.value
+userVar.onChange((oldVal, newVal) => {
+    console.log('User data changed:', newVal);
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 4: With Template</h4>
+                <pre><code>const endpoint = $dotapp().reactive('/api/products', {
+    element: document.getElementById('products'),
+    template: 'products/list'
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 5: Event Trigger</h4>
+                <pre><code>const button = document.getElementById('refreshBtn');
+
+const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content'),
+    trigger: 'click'
+});
+
+// Attach to button
+$dotapp(button).on('click', () => {
+    endpoint.refresh();
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 6: Chaining Hooks</h4>
+                <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+})
+.before((lastData, element) => {
+    element.classList.add('loading');
+})
+.after((data, element) => {
+    element.classList.remove('loading');
+    console.log('Data received:', data);
+})
+.onError((error, element) => {
+    element.innerHTML = 'Error: ' + error.message;
+});</code></pre>
+            </div>
+        </section>
+
+        <section id="hooks">
+            <h2>Hooks System</h2>
+            <p>
+                DotApp Reactive provides a comprehensive hooks system that allows you to intercept and customize 
+                the data fetching lifecycle at various points.
+            </p>
+
+            <h3>Available Hooks</h3>
+
+            <h4>before(fn)</h4>
+            <p>Executed before each fetch operation. Useful for showing loading indicators or preparing data.</p>
+            <div class="method-signature">
+                endpoint.before((lastData, element) => { ... })
+            </div>
+            <ul>
+                <li><code>lastData</code> - The data from the previous fetch (null on first fetch)</li>
+                <li><code>element</code> - The DOM element associated with the endpoint</li>
+            </ul>
+            <pre><code>endpoint.before((lastData, element) => {
+    element.classList.add('loading');
+    console.log('Fetching data...');
+});</code></pre>
+
+            <h4>after(fn)</h4>
+            <p>Executed after a successful fetch. Receives the fetched data.</p>
+            <div class="method-signature">
+                endpoint.after((data, element) => { ... })
+            </div>
+            <ul>
+                <li><code>data</code> - The fetched and parsed data</li>
+                <li><code>element</code> - The DOM element associated with the endpoint</li>
+            </ul>
+            <pre><code>endpoint.after((data, element) => {
+    element.classList.remove('loading');
+    console.log('Data received:', data);
+    
+    // Custom processing
+    if (data.items && data.items.length > 0) {
+        updateUI(data.items);
+    }
+});</code></pre>
+
+            <h4>onError(fn)</h4>
+            <p>Executed when an error occurs after all retry attempts have been exhausted.</p>
+            <div class="method-signature">
+                endpoint.onError((error, element) => { ... })
+            </div>
+            <ul>
+                <li><code>error</code> - The error object</li>
+                <li><code>element</code> - The DOM element associated with the endpoint</li>
+            </ul>
+            <pre><code>endpoint.onError((error, element) => {
+    element.innerHTML = '&lt;div class="error"&gt;Failed to load data: ' + 
+                       error.message + '&lt;/div&gt;';
+    console.error('Fetch error:', error);
+});</code></pre>
+
+            <h4>onResponseCode(code, fn)</h4>
+            <p>Executed when a specific HTTP response code is received. Useful for handling different error scenarios.</p>
+            <div class="method-signature">
+                endpoint.onResponseCode(statusCode, (code, errorText, element) => { ... })
+            </div>
+            <ul>
+                <li><code>code</code> - The HTTP status code</li>
+                <li><code>errorText</code> - The error response text</li>
+                <li><code>element</code> - The DOM element associated with the endpoint</li>
+            </ul>
+            <pre><code>// Handle 404 errors
+endpoint.onResponseCode(404, (code, errorText, element) => {
+    element.innerHTML = '&lt;div class="not-found"&gt;Resource not found&lt;/div&gt;';
+});
+
+// Handle 403 errors (unauthorized)
+endpoint.onResponseCode(403, (code, errorText, element) => {
+    element.innerHTML = '&lt;div class="unauthorized"&gt;Access denied&lt;/div&gt;';
+    // Redirect to login
+    window.location.href = '/login';
+});
+
+// Handle 429 errors (rate limit)
+endpoint.onResponseCode(429, (code, errorText, element) => {
+    element.innerHTML = '&lt;div class="rate-limit"&gt;Too many requests. Please wait.&lt;/div&gt;';
+});</code></pre>
+
+            <h3>Hook Chaining</h3>
+            <p>All hook methods return the endpoint instance, allowing method chaining:</p>
+            <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+})
+.before((lastData, element) => {
+    element.classList.add('loading');
+})
+.after((data, element) => {
+    element.classList.remove('loading');
+})
+.onError((error, element) => {
+    element.innerHTML = 'Error: ' + error.message;
+})
+.onResponseCode(404, (code, errorText, element) => {
+    element.innerHTML = 'Not found';
+});</code></pre>
+        </section>
+
+        <section id="examples">
+            <h2>Integration Examples</h2>
+
+            <h3>Example 1: Real-time Dashboard</h3>
+            <p>Create a dashboard that automatically updates every 5 seconds:</p>
+            <pre><code>&lt;div id="dashboard" 
+     reactive-api="/api/dashboard" 
+     reactive-interval="5000"&gt;
+    Loading dashboard...
+&lt;/div&gt;</code></pre>
+
+            <h3>Example 2: Search with Variable Trigger</h3>
+            <p>Implement a search that updates results as the user types:</p>
+            <pre><code>&lt;input type="text" id="searchInput" placeholder="Search..."&gt;
+&lt;div id="results" 
+     reactive-api="/api/search" 
+     reactive-trigger="variable" 
+     reactive-variable="searchQuery"&gt;
+    Enter search term...
+&lt;/div&gt;
+
+&lt;script&gt;
+    const searchVar = $dotapp().variable('searchQuery', '');
+    
+    // Bind input to variable
+    searchVar.bindToElement(document.getElementById('searchInput'), {
+        live: true  // Update on every keystroke
+    });
+    
+    // Results will automatically update when searchQuery changes
+&lt;/script&gt;</code></pre>
+
+            <h3>Example 3: User Profile with Template</h3>
+            <p>Load and render user profile using a template:</p>
+            <pre><code>&lt;div id="profile" 
+     reactive-api="/api/user/profile" 
+     reactive-template="user/profile"&gt;
+    Loading profile...
+&lt;/div&gt;</code></pre>
+            <p>Template file at <code>/app/views/user/profile.view.js</code>:</p>
+            <pre><code>&lt;div class="profile"&gt;
+    &lt;h2&gt;{{ var: $name }}&lt;/h2&gt;
+    &lt;p&gt;Email: {{ var: $email }}&lt;/p&gt;
+    &lt;p&gt;Role: {{ var: $role }}&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+
+            <h3>Example 4: Form Submission with Reactive Update</h3>
+            <p>Submit a form and update a reactive endpoint:</p>
+            <pre><code>&lt;form id="commentForm"&gt;
+    &lt;textarea name="comment"&gt;&lt;/textarea&gt;
+    &lt;button type="submit"&gt;Post Comment&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;div id="comments" 
+     reactive-api="/api/comments" 
+     reactive-template="comments/list"&gt;
+    Loading comments...
+&lt;/div&gt;
+
+&lt;script&gt;
+    $dotapp('#commentForm').on('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        await $dotapp().load('/api/comments', 'POST', formData);
+        
+        // Refresh comments
+        const endpoint = $dotapp().reactive('/api/comments', {
+            element: document.getElementById('comments'),
+            template: 'comments/list'
+        });
+        endpoint.refresh();
+    });
+&lt;/script&gt;</code></pre>
+
+            <h3>Example 5: Conditional Loading with Hooks</h3>
+            <p>Show different states based on data availability:</p>
+            <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+})
+.before((lastData, element) => {
+    element.innerHTML = '&lt;div class="spinner"&gt;Loading...&lt;/div&gt;';
+})
+.after((data, element) => {
+    if (data && data.items && data.items.length > 0) {
+        // Render items
+        renderItems(data.items, element);
+    } else {
+        element.innerHTML = '&lt;div class="empty"&gt;No items found&lt;/div&gt;';
+    }
+})
+.onError((error, element) => {
+    element.innerHTML = '&lt;div class="error"&gt;Error loading data&lt;/div&gt;';
+});</code></pre>
+        </section>
+
+        <section id="error-handling">
+            <h2>Error Handling</h2>
+            <p>
+                DotApp Reactive includes robust error handling with automatic retry logic and customizable error hooks.
+            </p>
+
+            <h3>Automatic Retry Logic</h3>
+            <p>
+                By default, the reactive module will automatically retry failed requests up to 3 times with exponential backoff:
+            </p>
+            <ul>
+                <li><strong>Max Retries:</strong> 3 attempts</li>
+                <li><strong>Initial Delay:</strong> 1000ms (1 second)</li>
+                <li><strong>Backoff Strategy:</strong> Exponential (delay * 2^(retryCount - 1))</li>
+            </ul>
+
+            <p>Retry delays:</p>
+            <ul>
+                <li>1st retry: 1000ms</li>
+                <li>2nd retry: 2000ms</li>
+                <li>3rd retry: 4000ms</li>
+            </ul>
+
+            <div class="info">
+                <strong>Note:</strong> The retry logic only applies to network errors and failed HTTP requests. 
+                It does not retry on successful HTTP responses with error status codes (4xx, 5xx) - 
+                those are handled by the <code>onResponseCode</code> hooks.
+            </div>
+
+            <h3>Error Hook Example</h3>
+            <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+})
+.onError((error, element) => {
+    // This is called after all retries are exhausted
+    console.error('Failed to fetch data after retries:', error);
+    
+    element.innerHTML = `
+        &lt;div class="error"&gt;
+            &lt;h3&gt;Connection Error&lt;/h3&gt;
+            &lt;p&gt;Unable to load data. Please check your connection.&lt;/p&gt;
+            &lt;button onclick="location.reload()"&gt;Retry&lt;/button&gt;
+        &lt;/div&gt;
+    `;
+});</code></pre>
+
+            <h3>Response Code Handling</h3>
+            <p>Handle specific HTTP status codes:</p>
+            <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+})
+.onResponseCode(404, (code, errorText, element) => {
+    element.innerHTML = '&lt;div class="not-found"&gt;Resource not found&lt;/div&gt;';
+})
+.onResponseCode(403, (code, errorText, element) => {
+    element.innerHTML = '&lt;div class="forbidden"&gt;Access denied&lt;/div&gt;';
+    // Redirect to login
+    setTimeout(() => {
+        window.location.href = '/login';
+    }, 2000);
+})
+.onResponseCode(500, (code, errorText, element) => {
+    element.innerHTML = '&lt;div class="server-error"&gt;Server error. Please try again later.&lt;/div&gt;';
+});</code></pre>
+
+            <h3>Loading State Management</h3>
+            <p>Use hooks to manage loading states:</p>
+            <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+})
+.before((lastData, element) => {
+    // Show loading indicator
+    element.classList.add('loading');
+    element.setAttribute('aria-busy', 'true');
+})
+.after((data, element) => {
+    // Hide loading indicator
+    element.classList.remove('loading');
+    element.setAttribute('aria-busy', 'false');
+})
+.onError((error, element) => {
+    // Hide loading indicator on error
+    element.classList.remove('loading');
+    element.setAttribute('aria-busy', 'false');
+});</code></pre>
+        </section>
+
+        <section id="security">
+            <h2>Security</h2>
+            <p>
+                DotApp Reactive leverages DotApp's built-in security features for secure API communication.
+            </p>
+
+            <h3>CSRF Protection</h3>
+            <p>
+                When using the <code>load()</code> method (which DotApp Reactive uses internally), 
+                CSRF tokens are automatically included in POST requests. The framework handles token 
+                exchange and validation transparently.
+            </p>
+
+            <h3>CRC (Cyclic Redundancy Check)</h3>
+            <p>
+                All POST requests include a CRC (Cyclic Redundancy Check) value to ensure data integrity. 
+                This prevents tampering with request data during transmission.
+            </p>
+
+            <h3>Secure Data Transmission</h3>
+            <p>
+                For sensitive data, you can use the <code>reactive-key</code> and <code>reactive-data</code> 
+                attributes to encrypt API URLs and payloads:
+            </p>
+            <pre><code>&lt;div reactive-api="/api/secure-endpoint" 
+     reactive-key="your-encryption-key" 
+     reactive-data="encrypted-data-payload"&gt;
+    Loading secure data...
+&lt;/div&gt;</code></pre>
+
+            <div class="warning">
+                <strong>Security Best Practices:</strong>
+                <ul>
+                    <li>Always use HTTPS in production</li>
+                    <li>Never expose sensitive API keys in client-side code</li>
+                    <li>Use server-side validation for all API endpoints</li>
+                    <li>Implement proper authentication and authorization</li>
+                    <li>Consider using encrypted data attributes for sensitive endpoints</li>
+                </ul>
+            </div>
+
+            <h3>Attribute Removal</h3>
+            <p>
+                For security reasons, all reactive attributes are automatically removed from the DOM after initialization. 
+                This prevents inspection of API endpoints and configuration through browser DevTools.
+            </p>
+            <pre><code>// Before initialization
+&lt;div reactive-api="/api/users" reactive-variable="users"&gt;...&lt;/div&gt;
+
+// After initialization (attributes removed)
+&lt;div&gt;...&lt;/div&gt;
+
+// Configuration is stored internally in element._reactiveData</code></pre>
+        </section>
+
+        <section id="advanced">
+            <h2>Advanced Usage</h2>
+
+            <h3>Multiple Endpoints Management</h3>
+            <p>Create and manage multiple reactive endpoints:</p>
+            <pre><code>// Create multiple endpoints
+const userEndpoint = $dotapp().reactive('/api/user', {
+    id: 'user-endpoint',
+    element: document.getElementById('user')
+});
+
+const postsEndpoint = $dotapp().reactive('/api/posts', {
+    id: 'posts-endpoint',
+    element: document.getElementById('posts'),
+    interval: 10000
+});
+
+// Later, refresh specific endpoint
+userEndpoint.refresh();
+
+// Or destroy when no longer needed
+postsEndpoint.destroy();</code></pre>
+
+            <h3>Conditional Fetching</h3>
+            <p>Use hooks to conditionally fetch data:</p>
+            <pre><code>const endpoint = $dotapp().reactive('/api/data', {
+    element: document.getElementById('content')
+})
+.before((lastData, element) => {
+    // Check if we need to fetch
+    const shouldFetch = checkSomeCondition();
+    if (!shouldFetch) {
+        // Cancel fetch by throwing an error (will be caught)
+        throw new Error('Fetch cancelled');
+    }
+});</code></pre>
+
+            <h3>Data Transformation</h3>
+            <p>Transform data in the after hook:</p>
+            <pre><code>const endpoint = $dotapp().reactive('/api/raw-data', {
+    element: document.getElementById('content')
+})
+.after((data, element) => {
+    // Transform data before using it
+    const transformed = {
+        items: data.items.map(item => ({
+            id: item.id,
+            name: item.name.toUpperCase(),
+            formattedDate: new Date(item.date).toLocaleDateString()
+        }))
+    };
+    
+    // Use transformed data
+    renderItems(transformed.items, element);
+});</code></pre>
+
+            <h3>Dependent Endpoints</h3>
+            <p>Create endpoints that depend on each other:</p>
+            <pre><code>// First endpoint
+const userEndpoint = $dotapp().reactive('/api/user', {
+    variable: 'currentUser'
+});
+
+// Second endpoint depends on first
+const userPostsEndpoint = $dotapp().reactive('/api/posts', {
+    element: document.getElementById('posts'),
+    trigger: 'variable',
+    variable: 'currentUser'
+})
+.after((data, element) => {
+    console.log('Posts loaded for user:', $dotapp().variable('currentUser').value);
+});</code></pre>
+
+            <h3>Dynamic Endpoint Creation</h3>
+            <p>Create endpoints dynamically based on user interaction:</p>
+            <pre><code>function loadUserProfile(userId) {
+    const endpoint = $dotapp().reactive(`/api/users/${userId}`, {
+        element: document.getElementById('profile'),
+        template: 'user/profile',
+        id: `user-profile-${userId}`
+    });
+    
+    return endpoint;
+}
+
+// Use it
+document.getElementById('loadProfileBtn').addEventListener('click', () => {
+    const userId = document.getElementById('userIdInput').value;
+    loadUserProfile(userId);
+});</code></pre>
+
+            <h3>Integration with Other DotApp Features</h3>
+            <p>Combine reactive endpoints with other DotApp features:</p>
+            <pre><code>// Use with DotApp routes
+$dotapp().route('#dashboard', () => {
+    const endpoint = $dotapp().reactive('/api/dashboard', {
+        element: document.getElementById('dashboard'),
+        template: 'dashboard/main'
+    });
+});
+
+// Use with DotApp forms
+$dotapp('#myForm').on('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    await $dotapp().load('/api/submit', 'POST', formData);
+    
+    // Refresh reactive endpoint
+    const endpoint = $dotapp().reactive('/api/data', {
+        element: document.getElementById('data')
+    });
+    endpoint.refresh();
+});</code></pre>
+        </section>
+
+        <section id="api-reference">
+            <h2>API Reference</h2>
+
+            <h3>Main API</h3>
+
+            <h4>$dotapp().reactive(url, config)</h4>
+            <p>Creates a new reactive endpoint.</p>
+            <div class="method-signature">
+                $dotapp().reactive(url: string, config?: object): ReactiveEndpointInstance
+            </div>
+            <p><strong>Parameters:</strong></p>
+            <ul>
+                <li><code>url</code> (string, required) - API endpoint URL</li>
+                <li><code>config</code> (object, optional) - Configuration object</li>
+            </ul>
+            <p><strong>Returns:</strong> ReactiveEndpointInstance</p>
+
+            <h3>ReactiveEndpointInstance Methods</h3>
+
+            <h4>before(fn)</h4>
+            <div class="method-signature">
+                before(fn: (lastData: any, element: HTMLElement) => void | Promise&lt;void&gt;): ReactiveEndpointInstance
+            </div>
+            <p>Adds a hook that runs before each fetch. Can be async.</p>
+
+            <h4>after(fn)</h4>
+            <div class="method-signature">
+                after(fn: (data: any, element: HTMLElement) => void | Promise&lt;void&gt;): ReactiveEndpointInstance
+            </div>
+            <p>Adds a hook that runs after a successful fetch. Can be async.</p>
+
+            <h4>onError(fn)</h4>
+            <div class="method-signature">
+                onError(fn: (error: Error, element: HTMLElement) => void): ReactiveEndpointInstance
+            </div>
+            <p>Adds an error handler that runs after all retries are exhausted.</p>
+
+            <h4>onResponseCode(code, fn)</h4>
+            <div class="method-signature">
+                onResponseCode(code: number, fn: (code: number, errorText: string, element: HTMLElement) => void | Promise&lt;void&gt;): ReactiveEndpointInstance
+            </div>
+            <p>Adds a handler for a specific HTTP response code.</p>
+
+            <h4>refresh()</h4>
+            <div class="method-signature">
+                refresh(): ReactiveEndpointInstance
+            </div>
+            <p>Manually triggers a fetch operation.</p>
+
+            <h4>destroy()</h4>
+            <div class="method-signature">
+                destroy(): void
+            </div>
+            <p>Destroys the endpoint, stops polling, and cleans up resources.</p>
+
+            <h3>Configuration Options</h3>
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Option</th>
+                        <th>Type</th>
+                        <th>Default</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>method</code></td>
+                        <td>string</td>
+                        <td>'GET'</td>
+                        <td>HTTP method ('GET' or 'POST')</td>
+                    </tr>
+                    <tr>
+                        <td><code>element</code></td>
+                        <td>HTMLElement</td>
+                        <td>null</td>
+                        <td>DOM element to update with response</td>
+                    </tr>
+                    <tr>
+                        <td><code>trigger</code></td>
+                        <td>string|array</td>
+                        <td>null</td>
+                        <td>Event trigger(s) or 'variable'</td>
+                    </tr>
+                    <tr>
+                        <td><code>variable</code></td>
+                        <td>string|DotAppVariable</td>
+                        <td>null</td>
+                        <td>DotAppVariable to bind data to</td>
+                    </tr>
+                    <tr>
+                        <td><code>interval</code></td>
+                        <td>number</td>
+                        <td>null</td>
+                        <td>Polling interval in milliseconds</td>
+                    </tr>
+                    <tr>
+                        <td><code>template</code></td>
+                        <td>string</td>
+                        <td>null</td>
+                        <td>Template path for rendering</td>
+                    </tr>
+                    <tr>
+                        <td><code>key</code></td>
+                        <td>string</td>
+                        <td>''</td>
+                        <td>Encryption key for secure data</td>
+                    </tr>
+                    <tr>
+                        <td><code>id</code></td>
+                        <td>string</td>
+                        <td>auto-generated</td>
+                        <td>Custom endpoint ID</td>
+                    </tr>
+                    <tr>
+                        <td><code>data</code></td>
+                        <td>string</td>
+                        <td>''</td>
+                        <td>Encrypted data payload</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Events</h3>
+            <p>DotApp Reactive dispatches the following global events:</p>
+            <ul>
+                <li><code>dotapp-reactive-ready</code> - Fired when the reactive module is fully initialized</li>
+            </ul>
+            <pre><code>window.addEventListener('dotapp-reactive-ready', () => {
+    console.log('DotApp Reactive is ready!');
+});</code></pre>
+        </section>
+
+        <div class="footer">
+            <p>DotApp Reactive Module v1.0 | <a href="https://dotapp.dev/">dotapp.dev</a></p>
+            <p>Author: Štefan Miščík | License: MIT</p>
+        </div>
+    </div>
+</body>
+</html>
+

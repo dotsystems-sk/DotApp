@@ -330,74 +330,61 @@ class RequestObj {
         if ($this->data !== null && $orig === false) return $this->data;
         if ($this->data !== null && $orig === true) return $this->origData;
         
-        $method = $this->getMethod();
+        $method = $this->getMethod(); // Use existing getMethod() to get the HTTP method
         $data = [];
-
+    
         switch ($method) {
             case 'get':
                 $data = $_GET ?? [];
                 break;
-
+    
             case 'post':
-                // Check Content-Type for JSON
-                $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-                if (stripos($contentType, 'application/json') !== false) {
-                    $input = file_get_contents('php://input');
-                    if (!empty($input)) {
-                        $jsonData = json_decode($input, true);
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            $data = $jsonData;
-                            DotApp::DotApp()->protect($data);
-                        } else {
-                            // Log JSON decode error if in debug mode
-                            if ($this->dotApp->isDebugMode()) {
-                                DotApp::DotApp()->Logger->warning("JSON decode error in POST request", [
-                                    'error' => json_last_error_msg(),
-                                    'input' => $input
-                                ]);
-                            }
-                        }
-                    }
-                } else {
-                    $data = $_POST ?? [];
-                }
+                $data = $_POST ?? [];
                 break;
-
+    
             case 'put':
             case 'patch':
+                // Parse raw input (e.g., JSON or form data)
                 $input = file_get_contents('php://input');
                 if (!empty($input)) {
+                    // Try parsing as JSON first
                     $jsonData = json_decode($input, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         $data = $jsonData;
                         DotApp::DotApp()->protect($data);
                     } else {
+                        // If not JSON, parse as form data
                         parse_str($input, $data);
                         DotApp::DotApp()->protect($data);
                     }
                 }
                 break;
-
+    
             case 'delete':
+                // DELETE requests may include data in the body
                 $input = file_get_contents('php://input');
                 if (!empty($input)) {
+                    // Try parsing as JSON
                     $jsonData = json_decode($input, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         $data = $jsonData;
                         DotApp::DotApp()->protect($data);
                     } else {
+                        // Parse as form data
                         parse_str($input, $data);
                         DotApp::DotApp()->protect($data);
                     }
                 }
+                // Note: $_DELETE is not natively supported in PHP, but check if it's manually populated
                 if (!empty($_DELETE)) {
                     $data = array_merge($data, $_DELETE);
                 }
                 break;
-
+    
             case 'head':
             case 'options':
             default:
+                // These methods typically don't carry data
                 $data = [];
                 break;
         }
@@ -410,10 +397,6 @@ class RequestObj {
         }
 
         return [];
-    }
-
-    public function getJson($orig = true) {
-        return json_encode($this->data($orig));
     }
 
     public function lock() {

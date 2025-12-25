@@ -34,7 +34,8 @@ class Router extends Facade {
         'hasRoute',
         'match_url',
         'before',
-        'after'
+        'after',
+		'onPath'
     ];
 
     protected static $methodAliases = [
@@ -42,7 +43,7 @@ class Router extends Facade {
         'actualPath' => 'actual_path'
     ];
 
-    public static function middleware(string $name, $callback=null, ...$args) {
+    public static function middleware($name, $callback=null, ...$args) {
         return DotApp::dotApp()->middleware($name,$callback, ...$args);
     }
 	

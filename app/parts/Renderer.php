@@ -1540,12 +1540,12 @@ class PrivateBlock {
     
     function __construct($block) {
 		$this->block = $block;
-        $this->$variables = array();
+        $this->variables = array();
         $this->id = "pb".md5($block).md5(rand(100000,200000).rand(100000,200000).rand(100000,200000));
     }
 
     public function get($name) {
-        if (isSet($this->$variables[$name])) return($this->$variables[$name]); else return null;
+        if (isSet($this->variables[$name])) return($this->variables[$name]); else return null;
     }
 
     public function set($name,$value) {
@@ -1581,7 +1581,7 @@ class PrivateBlock {
             return true;
         };
         if ($recursively_noncallable_check($value) && $recursively_noncallable_check($name)) {
-            $this->$variables[$name] = $value;
+            $this->variables[$name] = $value;
         }	
         return $this;
     }
@@ -1592,7 +1592,7 @@ class PrivateBlock {
             return($this);
         } else {
             $html = "";
-            foreach ($this->$variables as $name => $value) {
+            foreach ($this->variables as $name => $value) {
                 if (is_array($value)) {
                     $html .= '<?php $'.$this->id.$name.' = json_decode(base64_decode("'.base64_encode($value).'"),true);?>';
                 } elseif (is_object($value)) {

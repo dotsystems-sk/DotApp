@@ -20,19 +20,26 @@ class Routes {
 	}
 	
 	private function assets() {
-		// nahradene triedou Assets
-        // Ale zvysok nechavame tu. Cize ak subor neexistuje, ak ho trieda assets nenasla v assetoch modulu, tak potom este moze uzivatel si ho nastavit v routeri.
 		$this->dotApp->router->get('/assets/{modul}/{cesta*}', function($request) {
 			$matchdata = $request->matchData();
-            if ($this->dotApp->moduleExist($matchdata['modul'])) {
-                $matchdata['cesta'] = str_replace("../","",$matchdata['cesta']);
-                $matchdata['cesta'] = str_replace("./","",$matchdata['cesta']);
-                $cesta = __ROOTDIR__ . "/app/modules/" . $matchdata['modul'] . "/assets/" . $matchdata['cesta'];
-                
-                // Zavolame
-                return $this->dotApp->module($matchdata['modul'])->assets($request,$cesta);
+			
+			if ($this->dotApp->moduleExist($matchdata['modul'])) {
+				$basePath = __ROOTDIR__ . "/app/modules/" . $matchdata['modul'] . "/assets/";
+				
+				$realBase = realpath($basePath);
+				$requestedPath = realpath($basePath . $matchdata['cesta']);
 
-            }
+				if ($requestedPath && $realBase && strpos($requestedPath, $realBase) === 0) {
+					
+					if (pathinfo($requestedPath, PATHINFO_EXTENSION) === 'php') {
+						return $request->response->code(403)->body("Access denied to source files.");
+					}
+
+					return $this->dotApp->module($matchdata['modul'])->assets($request, $requestedPath);
+				}
+				
+				return $request->response->code(404)->body("Asset not found.");
+			}
 		});
 		
 		$this->dotApp->router->reserved[] = "/assets/{modulename}/{cesta*}";

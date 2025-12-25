@@ -1386,6 +1386,22 @@ class RouterObj {
         }
         return false;
     }
+	
+	/* Aby sme nemuseli ifovat tak vieme pouzit 
+		Router::onPath('/admin*', function() {
+		
+		Middleware::use('is_admin')->group(function() {
+			Router::get('/admin/users', 'UserController@list');
+			Router::post('/admin/users/delete', 'UserController@delete');
+		});
+		
+	});*/
+	public function onPath($pattern, $callback) {
+		if ($this->match_url($pattern)) {
+			return call_user_func($callback, $this->request);
+		}
+		return $this;
+	}
 
 }
 

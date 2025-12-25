@@ -407,36 +407,10 @@ abstract class Module {
 	}
 
     public function assets($request, $file) {
-        if ($this->assetsLoaded === false) {
-            if (is_dir($file)) {
-                $request->response->status = 403;
-                return null;
-            }
-
-            if (!is_file($file) || !is_readable($file)) {
-                $request->response->status = 404;
-                return null;
-            }
-
-            /* Ideme poslat subor ak je najdeny */ 
-            $mimeType = mime_content_type($file);
-            if ($mimeType === false) {
-                $mimeType = 'application/octet-stream'; // Fallback pre neznáme typy
-            }
-
-            $request->response->headers['Content-Type'] = $mimeType;
-            $request->response->headers['Cache-Control'] = 'public, max-age=31536000';
-            $request->response->headers['Last-Modified'] = gmdate('D, d M Y H:i:s', filemtime($file));
-
-            foreach ($request->response->headers as $name => $value) {
-                header("$name: $value");
-            }
-            
-            readfile($file);
-            $this->assetsLoaded = true;
-            exit();
-        }
-        // V tejto funkcii si definujeme co chceme robit so subormi assets, ci ich chceme vkladat ci nie...
+        $request->response->status = 404;
+		return null;
+		
+		// V tejto funkcii si definujeme co chceme robit so subormi assets, ci ich chceme vkladat ci nie...
         // Automaticky definovana funkcia to vyriesi za nas, ale ak chce uzivatel mat kontrolu tak si moze funkciu prepisat.
     }
 

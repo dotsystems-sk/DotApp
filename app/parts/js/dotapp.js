@@ -18,7 +18,7 @@
 
     class DotAppHalt {
         constructor() {
-            // Nic :) Sluzi len na halt funkcii...
+            // Nothing :) Serves only for halt function...
         }
     }
 
@@ -48,7 +48,7 @@
             if (newValue !== this.#variable) {
                 const oldValue = this.#variable;
                 this.#variable = newValue;
-                // Aktualizácia viazaných elementov
+                // Update bound elements
                 this.#boundElements.forEach(element => {
                     if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
                         element.value = newValue;
@@ -56,11 +56,11 @@
                         element.innerHTML = newValue;
                     }
                 });
-                // Spustenie callbackov
+                // Trigger callbacks
                 if (this.#callbacks.length > 0) {
                     this.#callbacks.forEach(fn => fn(oldValue, newValue));
                 }
-                // Automatické ukladanie
+                // Auto-save
                 if (this.#autosaveConfig) {
                     this.#handleAutosave(newValue);
                 }
@@ -106,24 +106,62 @@
             return this.hasChange();
         }
     
-        bindToElement(element) {
-            if (!(element instanceof HTMLElement)) {
-                throw new Error('bindToElement vyžaduje HTMLElement');
-            }
-            this.#boundElements.push(element);
-            // Inicializácia hodnoty z elementu
-            this.#variable = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT'
-                ? element.value
-                : element.innerHTML;
-            this.#initialValue = this.#variable;
-            // Sledovanie zmien v elemente
-            element.addEventListener('bodychange', () => {
-                const newValue = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT'
-                    ? element.value
-                    : element.innerHTML;
-                this.value = newValue;
-            });
-        }
+        bindToElement(element, options = {}) {
+			let elements = [];
+			
+			if (element instanceof DotApp) {
+				elements = element.all();
+			} else if (element instanceof HTMLElement) {
+				elements = [element];
+			} else {
+				throw new Error('bindToElement requires HTMLElement or DotApp selector');
+			}
+			
+			if (elements.length === 0) return;
+
+			elements.forEach(el => this.#boundElements.push(el));
+
+			const firstElement = elements[0];
+			const isInput = firstElement.tagName === 'INPUT' || 
+							firstElement.tagName === 'TEXTAREA' || 
+							firstElement.tagName === 'SELECT';
+
+			// Initialize value
+			this.#variable = isInput ? firstElement.value : firstElement.innerHTML;
+			this.#initialValue = this.#variable;
+
+			// Default options
+			const config = {
+				live: false,           // false = only change/blur, true = realtime (input/keyup)
+				events: isInput ? ['change'] : ['bodychange'],
+				...options
+			};
+
+			// If you want live update
+			if (config.live && isInput) {
+				config.events.push('input'); // realtime while typing
+				// Optionally also keyup for better control
+				// config.events.push('keyup');
+			}
+
+			// Register listeners
+			elements.forEach(el => {
+				config.events.forEach(event => {
+					if (event === 'bodychange') {
+						// Use existing setup for non-input
+						el.addEventListener('bodychange', () => {
+							const newValue = isInput ? el.value : el.innerHTML;
+							this.value = newValue;
+						});
+					} else {
+						// Direct DOM events (input, change, keyup...)
+						el.addEventListener(event, () => {
+							this.value = el.value;
+						});
+					}
+				});
+			});
+		}
     
         autosave(config) {
             if (!config.url) {
@@ -248,10 +286,10 @@
         isUsername(text, minLength = 3, maxLength = 20, allowDash = false, allowDot = false) {
             if (typeof text !== 'string') return false;
 
-            // Základný regex: písmená, čísla, podčiarknik
+            // Basic regex: letters, numbers, underscore
             let usernameRegex = /^[a-zA-Z0-9_]+$/;
 
-            // Ak sú povolené pomlčky alebo bodky, uprav regex
+            // If dashes or dots are allowed, adjust regex
             if (allowDash && allowDot) {
                 usernameRegex = /^[a-zA-Z0-9_.-]+$/;
             } else if (allowDash) {
@@ -260,12 +298,12 @@
                 usernameRegex = /^[a-zA-Z0-9_.]+$/;
             }
 
-            // Kontrola dĺžky a regexu
+            // Check length and regex
             return (
                 text.length >= minLength &&
                 text.length <= maxLength &&
                 usernameRegex.test(text) &&
-                // Voliteľná kontrola: žiadne podčiarkniky, pomlčky ani bodky na začiatku/konci
+                // Optional check: no underscores, dashes or dots at start/end
                 !/^[_.-]/.test(text) &&
                 !/[_.-]$/.test(text)
             );
@@ -346,6 +384,8 @@
         static #functions = new WeakMap();
         #bridges = {};
         #routes = {};
+        #currentHash = window.location.hash || '#default'; // Previous hash value for route tracking
+        #hashChangeListenerAdded = false; // Flag to prevent duplicate hashchange listeners
         #hooks = {};
         #variables = {};
         #elements = [];
@@ -354,6 +394,7 @@
         #liveHandlers = new Map();
         #liveObserver = null;
         #documentHandlers = new Map();
+        #computedTracking = null; // Currently running computed (for dependency tracking)
 
         #forms = new Map(); // New private property to store forms and their hooks
 
@@ -363,7 +404,7 @@
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                hour12: false // Pre 24-hodinový formát
+                hour12: false // For 24-hour format
             });
 
             this.#elements = [];
@@ -446,7 +487,7 @@
             });
         }
 		
-		#exchange() {}
+		#exchange(){return "A";}
 
         #exchangeCSRF(postData) {
             postData['dotapp-security-data-csrf-token-tab'] = '###dotapp-security-data-csrf-token-tab';            
@@ -467,19 +508,19 @@
 
         #initializeElements() {
             this.#elements.forEach(element => {
-                // Uložíme počiatočný obsah
+                // Save initial content
                 element._initialHTML = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT'
                     ? element.value
                     : element.innerHTML;
-                // Uložíme počiatočné atribúty
+                // Save initial attributes
                 element._initialAttributes = {};
                 for (let attr of element.attributes) {
                     element._initialAttributes[attr.name] = attr.value;
                 }
-                // Uložíme počiatočnú veľkosť a pozíciu
+                // Save initial size and position
                 element._lastSize = { width: element.offsetWidth, height: element.offsetHeight };
                 element._lastPosition = { top: element.offsetTop, left: element.offsetLeft };
-                // Uložíme počiatočnú viditeľnosť
+                // Save initial visibility
                 element._lastVisibility = this.#isElementVisible(element);
             });
         }
@@ -489,8 +530,45 @@
             boundElements.forEach(element => {
                 const varName = element.getAttribute('dotbind');
                 if (varName) {
-                    const variable = this.variable(varName, '');
-                    variable.bindToElement(element);
+                    let variable = this.getVariable(varName);
+                    
+                    // If it doesn't exist as a variable, try as computed (if you have a global register)
+                    // Or better – allow direct binding of computed object
+                    if (!variable && window.computedVars && window.computedVars[varName]) {
+                        variable = window.computedVars[varName];
+                    }
+
+                    if (variable) {
+                        // Support for objects with .value (computed)
+                        if (typeof variable.value !== 'undefined') {
+                            // Initialize
+                            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
+                                element.value = variable.value;
+                            } else {
+                                element.innerHTML = variable.value;
+                            }
+                            // Change listener
+                            if (typeof variable.onChange === 'function') {
+                                variable.onChange(() => {
+                                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
+                                        element.value = variable.value;
+                                    } else {
+                                        element.innerHTML = variable.value;
+                                    }
+                                });
+                            }
+                        } else {
+                            // Normal DotAppVariable
+                            variable.bindToElement(element);
+                        }
+                    } else {
+                        // Create new variable if it doesn't exist
+                        this.variable(varName, '');
+                        variable = this.getVariable(varName);
+                        if (variable) {
+                            variable.bindToElement(element);
+                        }
+                    }
                 }
             });
         }
@@ -557,7 +635,7 @@
         #initializeBridgeElements() {
             const bridgeElements = document.querySelectorAll('[dotbridge-function]');
             bridgeElements.forEach(element => {
-                // Uložíme atribúty do objektu elementu
+                // Save attributes to element object
                 element._dotbridgeData = {
                     key: element.getAttribute('dotbridge-key'),
                     data: element.getAttribute('dotbridge-data'),
@@ -573,7 +651,7 @@
 
                 this.bridge(element._dotbridgeData.functionName, element._dotbridgeData.event);
 
-                // Odstránime atribúty z DOM-u
+                // Remove attributes from DOM
                 element.removeAttribute('dotbridge-key');
                 element.removeAttribute('dotbridge-data');
                 element.removeAttribute('dotbridge-id');
@@ -594,10 +672,24 @@
                     });
                 });
             });
-            this.#liveObserver.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
+            if (document.body) {
+                this.#liveObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            } else {
+                // Wait for DOM to be ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        if (document.body) {
+                            this.#liveObserver.observe(document.body, {
+                                childList: true,
+                                subtree: true
+                            });
+                        }
+                    });
+                }
+            }
         }
 
         #setupSpecialEvent(element, event, handler, attrName = null) {
@@ -886,7 +978,7 @@
                                         data[dotbridgeinput] = elementobj.checked ? elementobj.value : 'Unchecked';
                                     } else {
                                         if (bridgeObj.isSet(elementobj.getAttribute('dotbridge-result')) && elementobj.getAttribute('dotbridge-result') == 0) {
-                                            // Ak je problem s premennymi tak zavolame handler on Value error. Ak nie je definovany, tak pokracujeme...
+                                            // If there's a problem with variables, call the onValueError handler. If not defined, continue...
                                             if (instance.hooks['onValueError']) {
                                                 instance.hooks['onValueError'].forEach(fn => fn(dotbridgeinput,elementobj,e));
                                             }
@@ -914,10 +1006,10 @@
                                     instance.hooks['onValueError'].forEach(fn => fn("validation", element, e));
                                 }
                                 element._eventenable[event] = true;
-                                return; // Zastaviť spracovanie
+                                return; // Stop processing
                             }
                             if (typeof result === 'object' && result !== null) {
-                                postData['data'] = result; // Aktualizovať údaje
+                                postData['data'] = result; // Update data
                             }
                         }
                     }
@@ -925,7 +1017,7 @@
                     postData['data'] = this.#exchangeCSRF(postData['data']);
                     postData['crc'] = this.#crcCalculate(postData['data'],data['dotbridge-id']);
                     
-                    // Fallback ak uzivatel nedal URL tak vezmem aktualnu a POST metodu
+                    // Fallback if user didn't provide URL, use current URL and POST method
                     const dotbridgeUrl = element._dotbridgeData.url && typeof element._dotbridgeData.url === 'string'
                         ? element._dotbridgeData.url.replace(/^\/?/, '/')
                         : window.location.pathname;
@@ -1012,28 +1104,28 @@
         }
 
         removeNull(input) {
-            // Ak vstup je null, vrátime undefined
+            // If input is null, return undefined
             if (input === null) {
                 return undefined;
             }
 
-            // Ak vstup nie je pole ani objekt, vrátime ho nezmenený
+            // If input is not an array or object, return it unchanged
             if (typeof input !== 'object') {
                 return input;
             }
 
-            // Spracovanie poľa
+            // Process array
             if (Array.isArray(input)) {
                 let result = input
-                    .filter(item => item !== null) // Odstránime null hodnoty
-                    .map(item => this.removeNull(item)) // Rekurzívne spracujeme každý prvok
-                    .filter(item => item !== undefined); // Odstránime undefined (prázdne polia/objekty)
+                    .filter(item => item !== null) // Remove null values
+                    .map(item => this.removeNull(item)) // Recursively process each element
+                    .filter(item => item !== undefined); // Remove undefined (empty arrays/objects)
 
-                // Ak je výsledné pole prázdne, vrátime undefined
+                // If resulting array is empty, return undefined
                 return result.length === 0 ? undefined : result;
             }
 
-            // Spracovanie objektu
+            // Process object
             const processed = {};
             for (const key in input) {
                 if (Object.prototype.hasOwnProperty.call(input, key)) {
@@ -1044,12 +1136,12 @@
                 }
             }
 
-            // Ak je výsledný objekt prázdny, vrátime undefined
+            // If resulting object is empty, return undefined
             return Object.keys(processed).length === 0 ? undefined : processed;
         }
 
 
-        // Spúšťa event a posiela ľubovoľný počet argumentov
+        // Triggers event and sends any number of arguments
         trigger(eventname, ...variables) {
             if (this.#hooks[eventname]) {
                 this.#hooks[eventname].forEach(handler => {
@@ -1064,17 +1156,34 @@
 
         hashRouter(route, handler) {
             this.#routes[route] = handler;
-            this.checkHash();
-            window.addEventListener('hashchange', this.checkHash.bind(this));
+            this.checkHash(); // Call once during registration
+            // Add hashchange listener only once (check if already added)
+            if (!this.#hashChangeListenerAdded) {
+                window.addEventListener('hashchange', () => this.checkHash());
+                this.#hashChangeListenerAdded = true;
+            }
         }
     
         checkHash() {
-            const currentHash = window.location.hash || '#default';
-            this.trigger("route.onchange", currentHash, oldHash);
-            if (this.#routes[currentHash]) {
-                this.trigger("route." + currentHash + ".before");
-                var navrat = this.#routes[currentHash]();
-                this.trigger("route." + currentHash + ".after",navrat);
+            const newHash = window.location.hash || '#default';
+            
+            // Guard against duplicate calls - if hash hasn't changed, do nothing
+            if (newHash === this.#currentHash) {
+                return;
+            }
+            
+            const oldHash = this.#currentHash; // Previous value
+            
+            // Update current hash
+            this.#currentHash = newHash;
+            
+            // Trigger onchange event with old and new hash
+            this.trigger("route.onchange", newHash, oldHash);
+            
+            if (this.#routes[newHash]) {
+                this.trigger("route." + newHash + ".before");
+                const navrat = this.#routes[newHash]();
+                this.trigger("route." + newHash + ".after", navrat);
             } else if (this.#routes['#default']) {
                 this.#routes['#default']();
             }
@@ -1092,6 +1201,102 @@
 
         getVariable(name) {
             return this.#variables[name];
+        }
+
+        /**
+         * Checks if an object is an instance of DotAppVariable
+         * @param {*} obj - Object to check
+         * @returns {boolean} True if object is an instance of DotAppVariable
+         */
+        isInstanceOfDotAppVariable(obj) {
+            return obj instanceof DotAppVariable;
+        }
+
+        /**
+         * Checks if an object is an instance of DotAppHalt
+         * @param {*} obj - Object to check
+         * @returns {boolean} True if object is an instance of DotAppHalt
+         */
+        isInstanceOfDotAppHalt(obj) {
+            return obj instanceof DotAppHalt;
+        }
+
+        // ================================================================
+        // COMPUTED VARIABLES – modern, fast and automatic reactivity
+        // ================================================================
+
+        /**
+         * Creates a computed (derived) variable
+         * Automatically tracks dependencies and memoizes the value
+         * @param {Function} fn - computation function
+         * @returns {Object} computed object with .value and .onChange
+         */
+        computed(fn) {
+            if (typeof fn !== 'function') {
+                throw new Error('computed requires a function as parameter');
+            }
+
+            const computedVar = {
+                // Private variables (closure)
+                _value: undefined,
+                _dirty: true,
+                _deps: new Set(),        // Dependent computed (for invalidation propagation)
+                _callbacks: [],
+                _fn: fn,
+                _dotAppInstance: this,   // Reference to DotApp instance
+
+                get value() {
+                    // Protection against recursion - detect circular dependency
+                    if (this._dotAppInstance.#computedTracking === this && this._dirty) {
+                        console.warn('Circular dependency in computed detected');
+                        return this._value;
+                    }
+
+                    // Track dependencies – if we're in another computed, add ourselves as a dependency
+                    if (this._dotAppInstance.#computedTracking) {
+                        this._dotAppInstance.#computedTracking._deps.add(this);
+                    }
+
+                    // Lazy computation with memoization
+                    if (this._dirty) {
+                        const prevTracking = this._dotAppInstance.#computedTracking;
+                        this._dotAppInstance.#computedTracking = this;
+
+                        try {
+                            this._value = this._fn();
+                        } catch (e) {
+                            console.error('Error in computed computation:', e);
+                            this._value = undefined;
+                        }
+
+                        this._dotAppInstance.#computedTracking = prevTracking;
+                        this._dirty = false;
+                    }
+
+                    return this._value;
+                },
+
+                // Manual invalidation (optional – usually not needed)
+                invalidate() {
+                    this._dirty = true;
+                    this._callbacks.forEach(cb => cb(this._value));
+                    // Propagate invalidation to dependent computed
+                    this._deps.forEach(dep => dep.invalidate());
+                },
+
+                // onChange support (like a normal variable)
+                onChange(callback) {
+                    if (typeof callback !== 'function') return { off: () => {} };
+                    this._callbacks.push(callback);
+                    return {
+                        off: () => {
+                            this._callbacks = this._callbacks.filter(cb => cb !== callback);
+                        }
+                    };
+                }
+            };
+
+            return computedVar;
         }
     
         isSet(value) {
@@ -1159,14 +1364,14 @@
         text(value) {
             if (!this.#elements.length) {
                 this.#lastResult = null;
-                return null; // Vraciame null namiesto hádzania chyby
+                return null; // Return null instead of throwing error
             }
 
             // Getter
             if (typeof value === 'undefined') {
                 const result = this.#elements[0] ? this.#elements[0].textContent : null;
                 this.#lastResult = result;
-                return result; // Vraciame hodnotu namiesto this
+                return result; // Return value instead of this
             }
 
             // Setter
@@ -1174,13 +1379,13 @@
                 element.textContent = value;
             });
 
-            return this; // Setter vracia this pre reťazenie
+            return this; // Setter returns this for chaining
         }
 
         optionText(value) {
             if (!this.#elements.length) {
                 this.#lastResult = null;
-                return null; // Vraciame null namiesto hádzania chyby
+                return null; // Return null instead of throwing error
             }
 
             // Getter
@@ -1190,31 +1395,31 @@
 
                 if (firstElement.tagName === 'SELECT') {
                     if (firstElement.multiple) {
-                        // Pre multiselect vrátime pole textov vybraných možností
+                        // For multiselect return array of selected option texts
                         result = Array.from(firstElement.selectedOptions).map(option => option.textContent || null);
                     } else {
-                        // Pre single select vrátime text vybranej možnosti
+                        // For single select return text of selected option
                         result = firstElement.selectedOptions[0]?.textContent || null;
                     }
                 } else {
-                    // Pre nepodporované elementy vrátime null
+                    // For unsupported elements return null
                     result = null;
                 }
 
                 this.#lastResult = result;
-                return result; // Vraciame hodnotu namiesto this
+                return result; // Return value instead of this
             }
 
             // Setter
             this.#elements.forEach(element => {
                 if (element.tagName === 'SELECT') {
                     if (element.multiple && Array.isArray(value)) {
-                        // Pre multiselect vyberieme možnosti podľa poľa textov
+                        // For multiselect select options by array of texts
                         Array.from(element.options).forEach(option => {
                             option.selected = value.includes(option.textContent);
                         });
                     } else {
-                        // Pre single select vyberieme prvú možnosť so zadaným textom
+                        // For single select select first option with given text
                         const textToSet = Array.isArray(value) ? value[0] : value;
                         Array.from(element.options).forEach(option => {
                             option.selected = option.textContent === textToSet;
@@ -1223,7 +1428,7 @@
                 }
             });
 
-            return this; // Setter vracia this pre reťazenie
+            return this; // Setter returns this for chaining
         }
 
         removeAttr(name) {
@@ -1261,7 +1466,7 @@
         val(value) {
             if (!this.#elements.length) {
                 this.#lastResult = null;
-                return null; // Vraciame null namiesto hádzania chyby, aby bolo odolnejšie
+                return null; // Return null instead of throwing error for resilience
             }
 
             // Getter
@@ -1270,48 +1475,48 @@
                 let result;
 
                 if (element.tagName === 'SELECT' && element.multiple) {
-                    // Pre <select multiple> vrátime pole vybraných hodnôt
+                    // For <select multiple> return array of selected values
                     result = Array.from(element.selectedOptions).map(option => option.value);
                 } else if (element.tagName === 'SELECT') {
-                    // Pre <select> vrátime hodnotu vybranej možnosti
+                    // For <select> return value of selected option
                     result = element.value || null;
                 } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                    // Pre <input> a <textarea> vrátime hodnotu
+                    // For <input> and <textarea> return value
                     result = element.value || null;
                 } else {
-                    // Pre ostatné elementy vrátime null
+                    // For other elements return null
                     result = null;
                 }
 
                 this.#lastResult = result;
-                return result; // Vraciame hodnotu namiesto this
+                return result; // Return value instead of this
             }
 
             // Setter
             this.#elements.forEach(element => {
                 if (element.tagName === 'SELECT') {
                     if (element.multiple && Array.isArray(value)) {
-                        // Pre <select multiple> nastavíme vybrané možnosti podľa poľa hodnôt
+                        // For <select multiple> set selected options by array of values
                         Array.from(element.options).forEach(option => {
                             option.selected = value.includes(option.value);
                         });
                     } else {
-                        // Pre <select> nastavíme hodnotu
+                        // For <select> set value
                         element.value = value;
                     }
                 } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                    // Pre <input> a <textarea> nastavíme hodnotu
+                    // For <input> and <textarea> set value
                     element.value = value;
                 }
             });
 
-            return this; // Setter vracia this pre reťazenie
+            return this; // Setter returns this for chaining
         }
 
         check(value) {
             if (!this.#elements.length) {
                 this.#lastResult = null;
-                return null; // Vraciame null namiesto hádzania chyby pre odolnosť
+                return null; // Return null instead of throwing error for resilience
             }
 
             // Getter
@@ -1361,7 +1566,7 @@
                 }
             });
 
-            return this; // Setter vracia this pre reťazenie
+            return this; // Setter returns this for chaining
         }
 
         // Next handy function
@@ -1372,66 +1577,66 @@
                 return typeof value === 'undefined' ? null : this; // Getter: null, Setter: this
             }
 
-            // Getter: vracia hodnotu CSS vlastnosti prvého elementu
+            // Getter: returns CSS property value of first element
             if (typeof property === 'string' && typeof value === 'undefined') {
                 const result = this.#elements[0] ? getComputedStyle(this.#elements[0])[property] : null;
                 this.#lastResult = result;
-                return result; // Vracia hodnotu, nie this
+                return result; // Returns value, not this
             }
 
-            // Setter: nastavuje jednu vlastnosť alebo viacero cez objekt
+            // Setter: sets one property or multiple via object
             this.#elements.forEach(element => {
                 if (typeof property === 'string') {
-                    // Jedna vlastnosť
+                    // Single property
                     element.style[property] = value;
                 } else if (typeof property === 'object' && property !== null) {
-                    // Objekt s viacerými vlastnosťami
+                    // Object with multiple properties
                     Object.entries(property).forEach(([key, val]) => {
                         element.style[key] = val;
                     });
                 }
             });
 
-            return this; // Setter vracia this pre reťazenie
+            return this; // Setter returns this for chaining
         }
 
         toggleClass(className) {
             if (!this.#elements.length) {
-                return this; // Reťazenie aj pri prázdnej kolekcii
+                return this; // Chaining even with empty collection
             }
 
             this.#elements.forEach(element => {
                 element.classList.toggle(className);
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         hasClass(className) {
             if (!this.#elements.length) {
                 this.#lastResult = false;
-                return false; // Prázdna kolekcia vracia false
+                return false; // Empty collection returns false
             }
 
             const result = this.#elements.some(element => element.classList.contains(className));
             this.#lastResult = result;
-            return result; // Vracia boolean hodnotu
+            return result; // Returns boolean value
         }
 
         parent() {
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             const parentElement = this.#elements[0].parentElement || null;
-            return new DotApp(parentElement); // Vracia novú inštanciu
+            return new DotApp(parentElement); // Returns new instance
         }
 
         children(selector) {
             let children = [];
 
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             this.#elements.forEach(element => {
@@ -1441,14 +1646,14 @@
                 children = [...children, ...childNodes];
             });
 
-            return new DotApp(children); // Vracia novú inštanciu
+            return new DotApp(children); // Returns new instance
         }
 
         find(selector) {
             let foundElements = [];
 
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             this.#elements.forEach(element => {
@@ -1456,70 +1661,70 @@
                 foundElements = [...foundElements, ...matches];
             });
 
-            return new DotApp(foundElements); // Vracia novú inštanciu
+            return new DotApp(foundElements); // Returns new instance
         }
 
         append(content) {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
                 if (typeof content === 'string') {
-                    // HTML reťazec
+                    // HTML string
                     element.insertAdjacentHTML('beforeend', content);
                 } else if (content instanceof HTMLElement) {
                     // DOM element
                     element.appendChild(content);
                 } else if (content instanceof DotApp) {
-                    // Inštancia DotApp
+                    // DotApp instance
                     content.#elements.forEach(child => {
                         element.appendChild(child);
                     });
                 }
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         prepend(content) {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
                 if (typeof content === 'string') {
-                    // HTML reťazec
+                    // HTML string
                     element.insertAdjacentHTML('afterbegin', content);
                 } else if (content instanceof HTMLElement) {
                     // DOM element
                     element.insertBefore(content, element.firstChild);
                 } else if (content instanceof DotApp) {
-                    // Inštancia DotApp
+                    // DotApp instance
                     content.#elements.forEach(child => {
                         element.insertBefore(child, element.firstChild);
                     });
                 }
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         remove() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
                 element.parentNode?.removeChild(element);
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         empty() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
@@ -1528,7 +1733,7 @@
                 }
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         data(key, value) {
@@ -1537,19 +1742,19 @@
                 return typeof value === 'undefined' ? null : this; // Getter: null, Setter: this
             }
 
-            // Getter: vracia hodnotu data atribútu prvého elementu
+            // Getter: returns data attribute value of first element
             if (typeof key === 'string' && typeof value === 'undefined') {
                 const result = this.#elements[0] ? this.#elements[0].dataset[key] || null : null;
                 this.#lastResult = result;
-                return result; // Vracia hodnotu
+                return result; // Returns value
             }
 
-            // Setter: nastavuje data atribút pre všetky elementy
+            // Setter: sets data attribute for all elements
             this.#elements.forEach(element => {
                 element.dataset[key] = value;
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         prop(name, value) {
@@ -1558,48 +1763,48 @@
                 return typeof value === 'undefined' ? null : this; // Getter: null, Setter: this
             }
 
-            // Getter: vracia hodnotu vlastnosti prvého elementu
+            // Getter: returns property value of first element
             if (typeof name === 'string' && typeof value === 'undefined') {
                 const result = this.#elements[0] ? this.#elements[0][name] : null;
                 this.#lastResult = result;
-                return result; // Vracia hodnotu
+                return result; // Returns value
             }
 
-            // Setter: nastavuje vlastnosť pre všetky elementy
+            // Setter: sets property for all elements
             this.#elements.forEach(element => {
                 element[name] = value;
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         show() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
-                element.style.display = ''; // Odstráni inline display, použije predvolenú/zdedenú hodnotu
+                element.style.display = ''; // Remove inline display, use default/inherited value
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         hide() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
                 element.style.display = 'none';
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         toggle() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
@@ -1607,32 +1812,32 @@
                 element.style.display = currentDisplay === 'none' ? '' : 'none';
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         next() {
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             const nextElement = this.#elements[0].nextElementSibling || null;
-            return new DotApp(nextElement); // Vracia novú inštanciu
+            return new DotApp(nextElement); // Returns new instance
         }
 
         prev() {
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             const prevElement = this.#elements[0].previousElementSibling || null;
-            return new DotApp(prevElement); // Vracia novú inštanciu
+            return new DotApp(prevElement); // Returns new instance
         }
 
         siblings(selector) {
             let siblings = [];
 
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             this.#elements.forEach(element => {
@@ -1648,12 +1853,12 @@
                 }
             });
 
-            return new DotApp(siblings); // Vracia novú inštanciu
+            return new DotApp(siblings); // Returns new instance
         }
 
         focus() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             const focusableElement = this.#elements.find(element => 
@@ -1668,12 +1873,12 @@
                 focusableElement.focus();
             }
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         blur() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             const focusableElement = this.#elements.find(element =>
@@ -1688,32 +1893,32 @@
                 focusableElement.blur();
             }
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         is(selector) {
             if (!this.#elements.length) {
                 this.#lastResult = false;
-                return false; // Prázdna kolekcia vracia false
+                return false; // Empty collection returns false
             }
 
             const result = this.#elements.some(element => element.matches(selector));
             this.#lastResult = result;
-            return result; // Vracia boolean hodnotu
+            return result; // Returns boolean value
         }
 
         closest(selector) {
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             const closestElement = this.#elements[0].closest(selector) || null;
-            return new DotApp(closestElement); // Vracia novú inštanciu
+            return new DotApp(closestElement); // Returns new instance
         }
 
         replaceWith(content) {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
@@ -1721,30 +1926,30 @@
                 if (!parent) return;
 
                 if (typeof content === 'string') {
-                    // HTML reťazec
+                    // HTML string
                     element.insertAdjacentHTML('beforebegin', content);
                     parent.removeChild(element);
                 } else if (content instanceof HTMLElement) {
                     // DOM element
                     parent.replaceChild(content, element);
                 } else if (content instanceof DotApp) {
-                    // Inštancia DotApp
+                    // DotApp instance
                     const fragment = document.createDocumentFragment();
                     content.#elements.forEach(child => fragment.appendChild(child));
                     parent.replaceChild(fragment, element);
                 }
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         clone() {
             if (!this.#elements.length) {
-                return new DotApp(null); // Vráti prázdnu inštanciu
+                return new DotApp(null); // Returns empty instance
             }
 
             const clones = this.#elements.map(element => element.cloneNode(true));
-            return new DotApp(clones); // Vracia novú inštanciu
+            return new DotApp(clones); // Returns new instance
         }
 
         width(value) {
@@ -1753,19 +1958,19 @@
                 return typeof value === 'undefined' ? null : this; // Getter: null, Setter: this
             }
 
-            // Getter: vracia šírku prvého elementu
+            // Getter: returns width of first element
             if (typeof value === 'undefined') {
                 const result = this.#elements[0] ? this.#elements[0].getBoundingClientRect().width : null;
                 this.#lastResult = result;
-                return result; // Vracia hodnotu
+                return result; // Returns value
             }
 
-            // Setter: nastavuje šírku pre všetky elementy
+            // Setter: sets width for all elements
             this.#elements.forEach(element => {
                 element.style.width = typeof value === 'number' ? `${value}px` : value;
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         height(value) {
@@ -1774,64 +1979,64 @@
                 return typeof value === 'undefined' ? null : this; // Getter: null, Setter: this
             }
 
-            // Getter: vracia výšku prvého elementu
+            // Getter: returns height of first element
             if (typeof value === 'undefined') {
                 const result = this.#elements[0] ? this.#elements[0].getBoundingClientRect().height : null;
                 this.#lastResult = result;
-                return result; // Vracia hodnotu
+                return result; // Returns value
             }
 
-            // Setter: nastavuje výšku pre všetky elementy
+            // Setter: sets height for all elements
             this.#elements.forEach(element => {
                 element.style.height = typeof value === 'number' ? `${value}px` : value;
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         fadeIn(duration = 400) {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
-                // Zabezpečí, že element je viditeľný a má počiatočnú nepriehľadnosť 0
+                // Ensure element is visible and has initial opacity 0
                 if (getComputedStyle(element).display === 'none') {
                     element.style.display = '';
                 }
                 element.style.opacity = '0';
                 element.style.transition = `opacity ${duration}ms`;
 
-                // Spustí animáciu
+                // Start animation
                 requestAnimationFrame(() => {
                     element.style.opacity = '1';
                 });
 
-                // Vyčistí transition po skončení
+                // Clear transition after completion
                 setTimeout(() => {
                     element.style.transition = '';
                 }, duration);
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         fadeOut(duration = 400) {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
-                // Nastaví počiatočnú nepriehľadnosť a transition
+                // Set initial opacity and transition
                 element.style.opacity = '1';
                 element.style.transition = `opacity ${duration}ms`;
 
-                // Spustí animáciu
+                // Start animation
                 requestAnimationFrame(() => {
                     element.style.opacity = '0';
                 });
 
-                // Skryje element a vyčistí transition po skončení
+                // Hide element and clear transition after completion
                 setTimeout(() => {
                     element.style.display = 'none';
                     element.style.transition = '';
@@ -1839,16 +2044,16 @@
                 }, duration);
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         slideDown(duration = 400) {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
-                // Zabezpečí, že element je viditeľný a zmeria jeho prirodzenú výšku
+                // Ensure element is visible and measure its natural height
                 if (getComputedStyle(element).display === 'none') {
                     element.style.display = '';
                 }
@@ -1856,15 +2061,15 @@
                 element.style.height = '0';
                 element.style.transition = `height ${duration}ms`;
 
-                // Zmeria prirodzenú výšku
+                // Measure natural height
                 const naturalHeight = element.scrollHeight;
 
-                // Spustí animáciu
+                // Start animation
                 requestAnimationFrame(() => {
                     element.style.height = `${naturalHeight}px`;
                 });
 
-                // Vyčistí štýly po skončení
+                // Clear styles after completion
                 setTimeout(() => {
                     element.style.height = '';
                     element.style.overflow = '';
@@ -1872,29 +2077,29 @@
                 }, duration);
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         slideUp(duration = 400) {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
-                // Zabezpečí, že element je viditeľný a zmeria jeho aktuálnu výšku
+                // Ensure element is visible and measure its current height
                 if (getComputedStyle(element).display === 'none') {
-                    return; // Preskočí už skryté elementy
+                    return; // Skip already hidden elements
                 }
                 element.style.overflow = 'hidden';
                 element.style.height = `${element.scrollHeight}px`;
                 element.style.transition = `height ${duration}ms`;
 
-                // Spustí animáciu
+                // Start animation
                 requestAnimationFrame(() => {
                     element.style.height = '0';
                 });
 
-                // Skryje element a vyčistí štýly po skončení
+                // Hide element and clear styles after completion
                 setTimeout(() => {
                     element.style.display = 'none';
                     element.style.height = '';
@@ -1903,13 +2108,13 @@
                 }, duration);
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         serialize() {
             if (!this.#elements.length) {
                 this.#lastResult = '';
-                return ''; // Prázdna kolekcia vracia prázdny reťazec
+                return ''; // Empty collection returns empty string
             }
 
             const params = new URLSearchParams();
@@ -1932,12 +2137,12 @@
 
             const result = params.toString();
             this.#lastResult = result;
-            return result; // Vracia serializovaný reťazec
+            return result; // Returns serialized string
         }
 
         enable() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
@@ -1946,12 +2151,12 @@
                 }
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         disable() {
             if (!this.#elements.length) {
-                return this; // Reťazenie pri prázdnej kolekcii
+                return this; // Chaining with empty collection
             }
 
             this.#elements.forEach(element => {
@@ -1960,25 +2165,25 @@
                 }
             });
 
-            return this; // Reťazenie
+            return this; // Chaining
         }
 
         index() {
             if (!this.#elements.length) {
                 this.#lastResult = -1;
-                return -1; // Prázdna kolekcia vracia -1
+                return -1; // Empty collection returns -1
             }
 
             const element = this.#elements[0];
             const parent = element.parentNode;
             if (!parent) {
                 this.#lastResult = -1;
-                return -1; // Bez rodiča vracia -1
+                return -1; // Without parent returns -1
             }
 
             const result = Array.from(parent.children).indexOf(element);
             this.#lastResult = result;
-            return result; // Vracia index
+            return result; // Returns index
         }
       
         on(event, selector, handler) {
@@ -2010,9 +2215,9 @@
 
                 return () => this.off(event, handler);
             } else {
-                // Pripojenie na aktuálne elementy vybrané cez selektor
+                // Connection to current elements selected via selector
                 if (!selector || typeof handler !== 'function') {
-                    throw new Error('on s delegovaním vyžaduje platný selektor a handler funkciu');
+                    throw new Error('on with delegation requires valid selector and handler function');
                 }
 
                 const elements = document.querySelectorAll(selector);
@@ -2031,7 +2236,7 @@
                 selector = null;
             }
 
-            // Wrapper pre jednorazové spustenie handlera
+            // Wrapper for one-time handler execution
             const wrappedHandler = (...args) => {
                 handler(...args);
                 this.off(event, wrappedHandler, selector);
@@ -2060,9 +2265,9 @@
 
                 return () => this.off(event, wrappedHandler);
             } else {
-                // Pripojenie na aktuálne elementy vybrané cez selektor
+                // Connection to current elements selected via selector
                 if (!selector || typeof handler !== 'function') {
-                    throw new Error('one s delegovaním vyžaduje platný selektor a handler funkciu');
+                    throw new Error('one with delegation requires valid selector and handler function');
                 }
 
                 const elements = document.querySelectorAll(selector);
@@ -2205,11 +2410,14 @@
         }
         
         databind(variableName, options = {}) {
-            const variable = this.variable(variableName, options.initialValue || '');
-            this.#elements.forEach(element => {
-                element.setAttribute('dotbind', variableName);
-                variable.bindToElement(element);
-            });
+            this.variable(variableName, options.initialValue || '');
+            const variable = this.getVariable(variableName);
+            if (variable) {
+                this.#elements.forEach(element => {
+                    element.setAttribute('dotbind', variableName);
+                    variable.bindToElement(element);
+                });
+            }
             return this;
         }
         
@@ -2350,7 +2558,6 @@
                         }
                         instance.hooks.before.push(fn);
                         return instance.chain;
-                        this.#forms = this.#forms;
                     },
                     after: (fn) => {
                         if (typeof fn !== 'function') {
@@ -2358,7 +2565,6 @@
                         }
                         instance.hooks.after.push(fn);
                         return instance.chain;
-                        this.#forms = this.#forms;
                     },
                     onError: (fn) => {
                         if (typeof fn !== 'function') {
@@ -2366,7 +2572,6 @@
                         }
                         instance.hooks.onError.push(fn);
                         return instance.chain;
-                        this.#forms = this.#forms;
                     }
                 }
             };
@@ -2435,7 +2640,7 @@
         #handleFormSubmission(form, method = 'POST', action = window.location.href) {
             let result = null;
 
-            // Spracovanie dát formulára
+            // Process form data
             const formData = new FormData();
             const inputs = form.querySelectorAll('input, select, textarea');
 
@@ -2516,30 +2721,30 @@
                         progressBar.value = percent;
                     });
 
-                    // Manuálne spusti upload
+                    // Manually trigger upload
                     uploader.upload();
                 },
-                true // Paralelný upload (alebo false pre sekvenčný)
+                true // Parallel upload (or false for sequential)
             );
         */
 
         dragAndDropFile(divElement, fileInput, callback, parallel = true) {
-            // Ak je divElement selektor, získaj element
+            // If divElement is a selector, get the element
             const dropZone = typeof divElement === 'string' 
                 ? document.querySelector(divElement) 
                 : divElement;
         
-            // Over, či sú vstupy platné
+            // Verify if inputs are valid
             if (!(dropZone instanceof HTMLElement)) {
-                console.error('Neplatný div element alebo selektor');
+                console.error('Invalid div element or selector');
                 return;
             }
             if (!(fileInput instanceof HTMLInputElement) || fileInput.type !== 'file') {
-                console.error('Neplatný file input element');
+                console.error('Invalid file input element');
                 return;
             }
         
-            // Pridaj event listenery pre drag-and-drop
+            // Add event listeners for drag-and-drop
             dropZone.addEventListener('dragover', (event) => {
                 event.preventDefault();
                 dropZone.classList.add('dragover');
@@ -2562,13 +2767,13 @@
                 let files = event.dataTransfer.files;
                 if (files.length === 0) return;
         
-                // Ak input nepodporuje multiple, obmedz na prvý súbor
+                // If input doesn't support multiple, limit to first file
                 if (!fileInput.multiple && files.length > 1) {
-                    console.warn('Input nepodporuje viac súborov, použije sa iba prvý súbor');
+                    console.warn("Input doesn't support multiple files, only first file will be used");
                     files = [files[0]];
                 }
         
-                // Vytvor DataTransfer objekt na aktualizáciu file inputu
+                // Create DataTransfer object to update file input
                 const dataTransfer = new DataTransfer();
                 Array.from(files).forEach(file => {
                     dataTransfer.items.add(file);
@@ -2577,7 +2782,7 @@
                 // Aktualizuj file input
                 fileInput.files = dataTransfer.files;
         
-                // Vytvor uploadFn
+                    // Create uploadFn
                 const uploadFn = (progressCallback) => {
                     return {
                         upload: async () => {
@@ -2585,21 +2790,21 @@
                             const uploadUrl = form ? form.action : '/upload';
         
                             if (parallel) {
-                                // Paralelný upload
+                                // Parallel upload
                                 const promises = Array.from(files).map(file =>
                                     this.uploadFile(file, uploadUrl, progressCallback)
-                                        .then(() => console.log(`Súbor ${file.name} úspešne odoslaný`))
-                                        .catch(error => console.error(`Chyba pri odosielaní ${file.name}:`, error))
+                                        .then(() => console.log(`File ${file.name} successfully sent`))
+                                        .catch(error => console.error(`Error sending ${file.name}:`, error))
                                 );
                                 await Promise.allSettled(promises);
                             } else {
-                                // Sekvenčný upload
+                                // Sequential upload
                                 for (const file of files) {
                                     try {
                                         await this.uploadFile(file, uploadUrl, progressCallback);
-                                        console.log(`Súbor ${file.name} úspešne odoslaný`);
+                                        console.log(`File ${file.name} successfully sent`);
                                     } catch (error) {
-                                        console.error(`Chyba pri odosielaní ${file.name}:`, error);
+                                        console.error(`Error sending ${file.name}:`, error);
                                     }
                                 }
                             }
@@ -2607,7 +2812,7 @@
                     };
                 };
         
-                // Zavolaj callback, ak je definovaný
+                // Call callback if defined
                 if (typeof callback === 'function') {
                     const filenames = Array.from(files).map(file => file.name);
                     callback(dropZone, filenames, uploadFn);
@@ -2620,16 +2825,16 @@
                 const formData = new FormData();
                 formData.append('user_files', file);
         
-                // Vytvor ReadableStream pre sledovanie priebehu
+                // Create ReadableStream for progress tracking
                 const stream = new ReadableStream({
                     start(controller) {
-                        // Pre jednoduchosť použijeme celý súbor ako jeden chunk
+                        // For simplicity use entire file as one chunk
                         controller.enqueue(file);
                         controller.close();
                     }
                 });
         
-                // Wrapper pre sledovanie priebehu
+                // Wrapper for progress tracking
                 let loaded = 0;
                 const total = file.size;
                 const body = new ReadableStream({
@@ -2651,14 +2856,14 @@
         
                 fetch(url, {
                     method: 'POST',
-                    body: formData, // Použijeme FormData priamo, stream je pre ilustráciu
+                    body: formData, // Use FormData directly, stream is for illustration
                     headers: {
                         'dotapp': 'load'
                     }
                 })
                     .then(response => {
                         if (!response.ok) {
-                            throw new Error(`Chyba pri odosielaní ${file.name}: ${response.status}`);
+                            throw new Error(`Error sending ${file.name}: ${response.status}`);
                         }
                         return response.text();
                     })
@@ -2772,9 +2977,9 @@
             });
         }
 
-        // Praca s 2FA vstupmi...
+        // Work with 2FA inputs...
         twoFactor(elementOrCallback, callback, settings) {
-            // Defaultné nastavenia
+            // Default settings
             const defaults = {
                 allowLetters: false,
                 length: 6,
@@ -2784,7 +2989,7 @@
                 pattern: null
             };
 
-            // Getter: ak nie sú zadané žiadne argumenty
+            // Getter: if no arguments are provided
             if (arguments.length === 0) {
                 const inputs = this.#elements;
                 if (!inputs.length) {
@@ -2792,7 +2997,7 @@
                     return false;
                 }
 
-                // Overenie, či sú všetky inputy vyplnené a platné
+                // Verify if all inputs are filled and valid
                 const pattern = defaults.pattern || (defaults.allowLetters ? /^[A-Za-z0-9]$/ : /^[0-9]$/);
                 const isComplete = inputs.every(input => input.value && pattern.test(input.value));
                 if (!isComplete) {
@@ -2800,13 +3005,13 @@
                     return false;
                 }
 
-                // Vrátenie spojeného kódu
+                // Return joined code
                 const code = inputs.map(input => input.value).join('');
                 this.#lastResult = code;
                 return code;
             }
 
-            // Setter: spracovanie argumentov
+            // Setter: process arguments
             let element = null;
             let actualCallback = callback;
             let actualSettings = settings;
@@ -2821,33 +3026,33 @@
 
             const config = { ...defaults, ...actualSettings };
 
-            // Získanie inputov
+            // Get inputs
             const inputs = element ? this.find(element).#elements : this.#elements;
 
-            // Overenie, či existujú inputy
+            // Verify if inputs exist
             if (!inputs.length) {
                 console.warn('No inputs found for the given selector or instance:', element);
                 return this;
             }
 
-            // Dynamická dĺžka podľa počtu inputov, ak nie je zadaná
+            // Dynamic length based on number of inputs, if not specified
             const codeLength = config.length || inputs.length;
 
-            // Overenie počtu inputov
+            // Verify number of inputs
             if (inputs.length !== codeLength) {
                 console.warn(`Expected ${codeLength} inputs, but found ${inputs.length}`);
                 return this;
             }
 
-            // Nastavenie regulárneho výrazu
+            // Set regular expression
             const pattern = config.pattern || (config.allowLetters ? /^[A-Za-z0-9]$/ : /^[0-9]$/);
 
-            // Funkcia na získanie aktuálneho kódu
+            // Function to get current code
             const getCode = () => {
                 return inputs.map(input => input.value).join('');
             };
 
-            // Funkcia na validáciu a spracovanie vstupu
+            // Function to validate and process input
             const validateInput = (input, value) => {
                 if (config.uppercase) {
                     value = value.toUpperCase();
@@ -2855,7 +3060,7 @@
                 return pattern.test(value) ? value : null;
             };
 
-            // Funkcia na posun fokusu
+            // Function to move focus
             const focusNext = (currentIndex) => {
                 if (currentIndex < inputs.length - 1) {
                     inputs[currentIndex + 1].focus();
@@ -2868,37 +3073,37 @@
                 }
             };
 
-            // Funkcia na overenie, či sú všetky inputy vyplnené
+            // Function to verify if all inputs are filled
             const isComplete = () => {
                 return inputs.every(input => input.value && pattern.test(input.value));
             };
 
-            // Hlavná inicializácia inputov
+            // Main input initialization
             inputs.forEach((input, index) => {
-                // Odstránenie predchádzajúcich event listenerov
+                // Remove previous event listeners
                 const newInput = input.cloneNode(true);
                 input.parentNode.replaceChild(newInput, input);
                 inputs[index] = newInput;
 
-                // Event listener pre keydown
+                // Event listener for keydown
                 newInput.addEventListener('keydown', (e) => {
                     const currentValue = e.target.value;
 
-                    // Backspace: zmazať a presunúť dozadu
+                    // Backspace: delete and move back
                     if (e.key === 'Backspace' && !currentValue && index > 0) {
                         e.preventDefault();
                         inputs[index - 1].value = '';
                         focusPrev(index);
                     }
 
-                    // Delete: zmazať aktuálne pole
+                    // Delete: delete current field
                     if (e.key === 'Delete') {
                         e.preventDefault();
                         e.target.value = '';
                         this.find(element || '.two-fa-inputs input').removeClass(config.invalidClass);
                     }
 
-                    // Šípka vľavo
+                    // Left arrow
                     if (e.key === 'ArrowLeft' && index > 0) {
                         if (inputs[index - 1].value) {
                             e.preventDefault();
@@ -2906,7 +3111,7 @@
                         }
                     }
 
-                    // Šípka vpravo
+                    // Right arrow
                     if (e.key === 'ArrowRight' && index < inputs.length - 1) {
                         if (inputs[index + 1].value) {
                             e.preventDefault();
@@ -2915,23 +3120,23 @@
                     }
                 });
 
-                // Event listener pre input
+                // Event listener for input
                 newInput.addEventListener('input', (e) => {
                     let value = e.target.value;
                     if (!value) return;
 
-                    // Validácia vstupu
+                    // Input validation
                     const validValue = validateInput(e.target, value);
                     if (validValue) {
                         e.target.value = validValue;
                         this.find(element || '.two-fa-inputs input').removeClass(config.invalidClass);
 
-                        // Presun na ďalší input
+                        // Move to next input
                         if (index < inputs.length - 1) {
                             focusNext(index);
                         }
 
-                        // Spustenie callbacku, ak je vyplnené
+                        // Trigger callback if filled
                         if (isComplete() && config.autoSubmit && typeof actualCallback === 'function') {
                             actualCallback(getCode());
                         }
@@ -2941,7 +3146,7 @@
                     }
                 });
 
-                // Event listener pre paste
+                // Event listener for paste
                 newInput.addEventListener('paste', (e) => {
                     e.preventDefault();
                     const pastedData = e.clipboardData.getData('text').trim();
@@ -2958,11 +3163,11 @@
                         }
                         this.find(element || '.two-fa-inputs input').removeClass(config.invalidClass);
 
-                        // Presun fokusu na posledný vyplnený input
+                        // Move focus to last filled input
                         const lastFilledIndex = Math.min(pastedData.length - 1, inputs.length - 1);
                         inputs[lastFilledIndex].focus();
 
-                        // Spustenie callbacku, ak je vyplnené
+                        // Trigger callback if filled
                         if (isComplete() && config.autoSubmit && typeof actualCallback === 'function') {
                             actualCallback(getCode());
                         }
@@ -2970,7 +3175,7 @@
                 });
             });
 
-            return this; // Reťazenie pre setter
+            return this; // Chaining for setter
         }
 
         submit(pushElements) {
@@ -2982,12 +3187,12 @@
 
                 if (firstElement.tagName === 'FORM') {
                     if (!firstElement.hasAttribute('data-dotapp-nojs')) {
-                        // Preberáme kontrolu cez handleFormSubmission
+                        // Take control via handleFormSubmission
                         const method = firstElement.getAttribute('method') || 'POST';
                         const action = firstElement.getAttribute('action') || window.location.href;
                         result = this.#handleFormSubmission(firstElement, method, action);
                     } else {
-                        // Natívne odoslanie
+                        // Native submission
                         firstElement.submit();
                         result = true;
                     }
@@ -3010,7 +3215,7 @@
     // Instantiate the DotApp class globally
     const mainDotApp = new DotApp();
 
-    // Definujeme $dotapp ako funkciu, ktorá vracia buď novú inštanciu, alebo globálnu inštanciu
+    // Define $dotapp as a function that returns either a new instance or the global instance
     const $dotAppDispatcher = (selector) => {
         if (typeof selector === 'undefined') {
             return mainDotApp;
@@ -3020,9 +3225,15 @@
     new DotApp("form").removeClass("dotapp-pending");
     // Assign to the global object
     global.$dotapp = $dotAppDispatcher;
-    // Registrujeme funkcie
+    
+    // Register computed function
+    mainDotApp.fn('computed', function(fn) {
+        return this.computed(fn);
+    });
+    
+    // Register functions
     window.dispatchEvent(new Event('dotapp-register'));
-    // Spustame ostatne funckie zavisle od dotapp kniznice
+    // Start other functions dependent on dotapp library
     window.dispatchEvent(new Event('dotapp'));
 
 })(window);

@@ -81,6 +81,7 @@ class Config {
         ], 
         'db' => [
             'prefix' => 'dotapp_', // Predpona v databaze
+            'driver' => 'pdo', // Nazov default drivera zvoleneho uzivatelom
             'maindb' => 'main', // Nazov hlavnej databazy ak si ju uzivatel pomenoval inak nez main, moduly si to nacitaju
             'cache' => false, // Allow cache for queries?
         ],
@@ -152,7 +153,7 @@ class Config {
             'folder' => 'default', // Subfolder for file driver
             'max_files' => 7, // Max log files before rotation (file driver)
             'max_size' => 10485760, // Max file size in bytes (10MB, file driver)
-            'core_log_enabled' => true, // Enable core logging, if false -> logging is available only via hook dotapp.log
+            'core_log_enabled' => false, // Enable core logging, if false -> logging is available only via hook dotapp.log
         ],
     ];
 

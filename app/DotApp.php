@@ -100,7 +100,7 @@ class DotApp {
     }
 
     public function middlewareStorage($object) {
-        $object->setStorage($this->middlewareStorage);
+        $object->setStorage($this->middlewareStorage,$this);
     }
 
     // Nastavime alebo ziskame globalny dotapp. Ak niekde inde potrebujeme instanciu dotapp ziskame ju kludne cez DotApp::dotApp();
@@ -158,6 +158,7 @@ class DotApp {
 		$this->unprotected['get'] = $_GET;
         $this->db = new DI(new Databaser($this),$this);
         $this->DB = $this->db;
+        $this->db->diSet();
 		$this->dsm = new DSM("dotapp");
         $this->DSM = $this->dsm; // Pascalcase
 		$this->dsm->load();
@@ -649,7 +650,7 @@ class DotApp {
                 Auth::autoLogin();             
             }
         }
-        $request = $request ?? $this->router->resolve();
+        $request = $request ?? $request = $this->router->resolve();
         $this->runRequest($request);
     }
 
@@ -771,12 +772,12 @@ class DotApp {
             $this->middlewareStorage['middleware'] = array();
             $this->middlewareStorage['chains'] = array();
         }
+		$originalName = $name;
         if (is_string($name)) $name = array($name);
         $name = json_encode($name);
-        if (isset($this->$middlewareStorage['middleware'][$name])) {
-            $this->$middlewareStorage['chains'][$name];
-        } else throw new \Exception("Undefined middleware");
-        return new Middleware($name,$callback,...$args);
+        if (isset($this->middlewareStorage['middleware'][$name])) {
+            return new Middleware($originalName,$callback,...$args);
+        } else throw new \Exception("Undefined middleware");        
     }
      
     public function middleware2(string $name,$callback=false, ...$args): \Closure {
@@ -831,12 +832,12 @@ class DotApp {
         if ($callback instanceof Middleware) {
             $chain = $callback->chain();
             $fn = function() use ($chain) {
-                $navratF = $chain->callAllMiddlewares();
+                $navratFn = $chain->callAllMiddlewares();
                 if ($navratFn instanceof Response) {
                     $this->runRequest($this->request);
                     exit();
                 }
-                return $navratF;
+                return $navratFn;
             };
             return $fn;
         }
@@ -844,12 +845,12 @@ class DotApp {
         if ($callback instanceof MiddlewareChain) {
             $chain = $callback;
             $fn = function() use ($chain) {                
-                $navratF = $chain->callAllMiddlewares();
+                $navratFn = $chain->callAllMiddlewares();
                 if ($navratFn instanceof Response) {
                     $this->runRequest($this->request);
                     exit();
                 }
-                return $navratF;
+                return $navratFn;
             };
             return $fn;
         }
@@ -1031,7 +1032,7 @@ class DotApp {
                 
                 // Routa nesedi, nepridame 
                 if ($this->router->match_url($route, $this->router->request->getPath()) === false) {
-                    return $false;
+                    return false;
                 }
                 
                 if (is_callable($callback)) {
