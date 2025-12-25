@@ -26,10 +26,20 @@ We’re actively developing **Connector**, a powerful JS and PHP library integra
 
 ## Getting Started
 
-The dotApp instance is globally accessible, and you can work with it through facades for brevity. A minimal example using the Router facade:
+The dotApp instance is globally accessible, and you can work with it through facades for brevity. A few quick routing examples (single path, array of paths, controller strings, static routes):
 
 ```php
+// Single route
 Router::get('/', fn($request) => 'Hello World');
+
+// Multiple paths share the same handler
+Router::get(['/', '/home'], fn($request) => 'Welcome!');
+
+// Controller syntax (module:Controller@method)
+Router::get('/users/{id}', 'Users:Profile@show');
+
+// Static route (no pattern matching) example
+Router::post('/login', 'Users:Login@loginPost', Router::STATIC_ROUTE);
 ```
 
 This keeps routes concise while still letting you access other services via facades or `DotApp::DotApp()` when needed.
