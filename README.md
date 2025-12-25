@@ -26,19 +26,13 @@ We’re actively developing **Connector**, a powerful JS and PHP library integra
 
 ## Getting Started
 
-The dotApp instance is globally accessible, allowing you to interact with the framework's core components easily. To access the dotApp object, use the DotApp class as follows:
+The dotApp instance is globally accessible, and you can work with it through facades for brevity. A minimal example using the Router facade:
 
 ```php
-use \Dotsystems\App\DotApp;
-
-// Get the dotApp instance
-$dotApp = DotApp::DotApp();
-
-// Use the instance to call framework methods
-$dotApp->router->get('/', fn($request) => 'Hello World');
+Router::get('/', fn($request) => 'Hello World');
 ```
 
-This approach provides a convenient way to work with dotApp throughout your application, enabling you to call methods like $dotApp->router->get(), $dotApp->db->q(), and more.
+This keeps routes concise while still letting you access other services via facades or `DotApp::DotApp()` when needed.
 
 ## What's New ✨
 
