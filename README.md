@@ -4,7 +4,7 @@ Full documentation is available at:
 
 [https://dotapp.dev/](https://dotapp.dev/)
 
-dotApp is a lightweight, powerful, and scalable PHP framework for modern web applications. It provides fast solutions for routing, templating, and a PHP-JavaScript bridge.  
+dotApp is an ultra-fast, powerful, and scalable PHP framework for modern web applications. It stays lean yet handles very large apps, with clean structure that’s easy for humans, vibe coders, and AI assistants like Cursor to read, learn, and build on. It ships with a built-in Bridge for seamless PHP↔JS calls and an ultra-light reactive frontend library, alongside fast routing and templating.  
 
 **Proudly made in Slovakia** 🇸🇰
 
@@ -48,12 +48,12 @@ This keeps routes concise while still letting you access other services via faca
 
 ### Version 1.7.2 Released (NEW – 2025-12-25)
 
-- **Dependency Injection helpers**: `DI` wrapper resolves method arguments via the DotApp resolver, and `Injector` facade adds easy `singleton()` / `bind()` registration.
-- **Rate Limiter**: Multi-window request limiting with pluggable storage (session by default, custom getter/setter supported) for routes and Bridge endpoints.
+- **Middleware chaining**: Define multiple middlewares at once (arrays), run them as a **group()**, and react conditionally with **when()**, **true()**, **false()** callbacks.
+- **Router + facades polish**: Static route flag, array routes, and controller strings (`Module:Controller@method`) with DI-backed resolution.
 - **OTP & QR utilities**: `TOTP` generates Base32 secrets, TOTP codes, and otpauth URIs; `QR` builds PNG/base64 QR codes with styling options.
-- **Localization**: Global `translator()` helper with JSON/locale files, runtime locale switching, and placeholder replacement.
-- **Email stack**: `Emailer` (SMTP + IMAP/POP3) with attachments, saving to folders, protocol switching, and `Email` facade shortcuts.
-- **SMS providers**: `Sms` facade and `SmsProvider` interface to validate numbers, send/receive messages, check status, and set provider-specific config.
+- **Email/SMS stack**: `Emailer` (SMTP + IMAP/POP3) with `Email` facade helpers; `Sms` facade + `SmsProvider` interface for send/validate/status.
+- **MCP server support**: Model Context Protocol server layer with tool/resource/prompt registration and JSON-RPC `initialize`, `tools/list`, `resources/list`, `prompts/list`, and execution handling.
+- **Bug fixes & stability**: routing/middleware pipeline tweaks, limiter handling, and DI/resolver robustness.
 
 ### Highlights from 1.7
 
