@@ -161,11 +161,17 @@ php dotapper.php --install
 # Update dotApp core
 php dotapper.php --update
 
+# Install a module from Git or registry
+php dotapper.php --install-module=https://github.com/vendor/module.git
+
 # Create a new module
 php dotapper.php --create-module=Blog
 
 # List all routes
 php dotapper.php --list-routes
+
+# Regenerate .htaccess
+php dotapper.php --create-htaccess
 
 # Run tests
 php dotapper.php --test # All tests (core)
@@ -183,10 +189,13 @@ Options:
   --update                          Update dotApp core to the latest version
   --create-module=<name>            Create a new module
   --modules                         List all modules
+  --install-module=<url|name[:ver]> Install a module (Git URL or name, optional version)
+  --prepare-database[=<prefix>]     Prepare database structure (optional table prefix)
   --module=<module_name> --create-controller=<ControllerName>  Create a new controller
   --module=<module_name> --create-middleware=<MiddlewareName>  Create a new middleware
   --module=<module_name> --create-model=<ModelName>            Create a new model
   --list-routes                     List all defined routes
+  --list-route=<route>              List callbacks for a specific route (e.g., /)
   --create-htaccess                 Create or recreate a new .htaccess file
   --optimize-modules                Optimize module loading
   --test                            Run all core tests
