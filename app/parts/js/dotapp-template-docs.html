@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DotApp Template Module - Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        nav {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        nav a:hover {
+            background: #f0f0f0;
+        }
+
+        section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .attribute-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .attribute-table th,
+        .attribute-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .attribute-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .attribute-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .badge-required {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge-optional {
+            background: #6c757d;
+            color: white;
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example-box h4 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .method-signature {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DotApp Template Module</h1>
+            <p>Comprehensive Documentation v1.2</p>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#getting-started">Getting Started</a></li>
+                <li><a href="#template-syntax">Template Syntax</a></li>
+                <li><a href="#javascript-api">JavaScript API</a></li>
+                <li><a href="#configuration">Configuration</a></li>
+                <li><a href="#reactive-integration">Reactive Integration</a></li>
+                <li><a href="#xss-protection">XSS Protection</a></li>
+                <li><a href="#advanced-usage">Advanced Usage</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#api-reference">API Reference</a></li>
+            </ul>
+        </nav>
+
+        <section id="introduction">
+            <h2>Introduction</h2>
+            <p>
+                <strong>DotApp Template</strong> is a lightweight client-side template engine for the DotApp framework. 
+                It provides lazy loading of templates from <code>/app/views/</code>, reactive rendering via DotAppVariable, 
+                automatic XSS protection, and extensible renderers/blocks. The template engine is fully symmetric 
+                with the server-side PHP Renderer, allowing you to use the same templates on both client and server.
+            </p>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>Lazy Loading</strong> - Templates are loaded on-demand with automatic caching</li>
+                <li><strong>Reactive Rendering</strong> - Automatic re-rendering when DotAppVariable changes</li>
+                <li><strong>XSS Protection</strong> - Automatic HTML escaping for all variable output</li>
+                <li><strong>Nested Properties</strong> - Access nested object properties like <code>$user.profile.name</code></li>
+                <li><strong>Extensible</strong> - Register custom renderers and blocks</li>
+                <li><strong>Template Includes</strong> - Reuse templates with include/partial support</li>
+                <li><strong>Async Support</strong> - Full async/await support for async renderers</li>
+                <li><strong>Server-Side Compatible</strong> - Same syntax as PHP server-side renderer</li>
+            </ul>
+
+            <h3>Requirements</h3>
+            <ul>
+                <li>DotApp framework (dotapp.js) must be loaded first</li>
+                <li>Modern browser with ES6+ support (async/await, Map, private class fields)</li>
+                <li>Templates must be accessible via HTTP (typically in <code>/app/views/</code> directory)</li>
+            </ul>
+        </section>
+
+        <section id="getting-started">
+            <h2>Getting Started</h2>
+            
+            <h3>Installation</h3>
+            <p>Include the DotApp Template module after the main DotApp framework:</p>
+            <pre><code>&lt;script src="dotapp.js"&gt;&lt;/script&gt;
+&lt;script src="dotapp.template.js"&gt;&lt;/script&gt;</code></pre>
+
+            <h3>Template File Structure</h3>
+            <p>
+                Templates are stored as <code>.view.js</code> files in the <code>/app/views/</code> directory 
+                (or your configured base path). The file extension is automatically appended if not provided.
+            </p>
+            <pre><code>/app/views/
+  ├── index.view.js
+  ├── user/
+  │   ├── profile.view.js
+  │   └── list.view.js
+  └── partials/
+      └── header.view.js</code></pre>
+
+            <h3>Basic Usage</h3>
+            <p>The simplest way to render a template:</p>
+            <pre><code>&lt;div id="content"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+    // Render template with data
+    $dotapp('#content').template('user/profile', {
+        name: 'John Doe',
+        email: 'john@example.com'
+    });
+&lt;/script&gt;</code></pre>
+
+            <p>Template file <code>/app/views/user/profile.view.js</code>:</p>
+            <pre><code>&lt;div class="profile"&gt;
+    &lt;h2&gt;{{ var: $name }}&lt;/h2&gt;
+    &lt;p&gt;Email: {{ var: $email }}&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+
+            <div class="info">
+                <strong>Note:</strong> The template module automatically initializes when the DOM is ready. 
+                You can also listen for the <code>dotapp-template-ready</code> event to know when the module is fully loaded.
+            </div>
+        </section>
+
+        <section id="template-syntax">
+            <h2>Template Syntax</h2>
+            <p>
+                DotApp Template uses a simple, intuitive syntax that mirrors the server-side PHP renderer. 
+                All template directives are enclosed in double curly braces <code>{{ }}</code>.
+            </p>
+
+            <h3>Variable Output: {{ var: $variable }}</h3>
+            <p>
+                Outputs a variable value with automatic XSS protection. Supports nested properties using dot notation.
+            </p>
+            <div class="method-signature">
+                {{ var: $variableName }}<br>
+                {{ var: $object.property }}<br>
+                {{ var: $user.profile.name }}
+            </div>
+
+            <div class="example-box">
+                <h4>Example 1: Simple Variable</h4>
+                <pre><code>&lt;h1&gt;{{ var: $title }}&lt;/h1&gt;
+&lt;p&gt;Welcome, {{ var: $username }}!&lt;/p&gt;</code></pre>
+                <p><strong>Data:</strong></p>
+                <pre><code>{
+    title: 'Dashboard',
+    username: 'john_doe'
+}</code></pre>
+                <p><strong>Output:</strong></p>
+                <pre><code>&lt;h1&gt;Dashboard&lt;/h1&gt;
+&lt;p&gt;Welcome, john_doe!&lt;/p&gt;</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 2: Nested Properties</h4>
+                <pre><code>&lt;div&gt;
+    &lt;p&gt;Name: {{ var: $user.name }}&lt;/p&gt;
+    &lt;p&gt;Email: {{ var: $user.email }}&lt;/p&gt;
+    &lt;p&gt;Role: {{ var: $user.profile.role }}&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+                <p><strong>Data:</strong></p>
+                <pre><code>{
+    user: {
+        name: 'John Doe',
+        email: 'john@example.com',
+        profile: {
+            role: 'Administrator'
+        }
+    }
+}</code></pre>
+            </div>
+
+            <div class="warning">
+                <strong>Important:</strong> All variables are automatically escaped to prevent XSS attacks. 
+                If a variable is <code>null</code> or <code>undefined</code>, it will output an empty string.
+            </div>
+
+            <h3>Foreach Loop: {{ foreach }} ... {{ /foreach }}</h3>
+            <p>
+                Iterates over an array and renders the inner content for each item. The loop variable 
+                is available within the loop scope.
+            </p>
+            <div class="method-signature">
+                {{ foreach $arrayName as $itemName }}<br>
+                &nbsp;&nbsp;... content ...<br>
+                {{ /foreach }}
+            </div>
+
+            <div class="example-box">
+                <h4>Example: List Items</h4>
+                <pre><code>&lt;ul&gt;
+    {{ foreach $items as $item }}
+        &lt;li&gt;{{ var: $item.name }} - {{ var: $item.price }}&lt;/li&gt;
+    {{ /foreach }}
+&lt;/ul&gt;</code></pre>
+                <p><strong>Data:</strong></p>
+                <pre><code>{
+    items: [
+        { name: 'Product 1', price: '$10' },
+        { name: 'Product 2', price: '$20' },
+        { name: 'Product 3', price: '$30' }
+    ]
+}</code></pre>
+                <p><strong>Output:</strong></p>
+                <pre><code>&lt;ul&gt;
+    &lt;li&gt;Product 1 - $10&lt;/li&gt;
+    &lt;li&gt;Product 2 - $20&lt;/li&gt;
+    &lt;li&gt;Product 3 - $30&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example: Nested Loops</h4>
+                <pre><code>{{ foreach $categories as $category }}
+    &lt;h3&gt;{{ var: $category.name }}&lt;/h3&gt;
+    &lt;ul&gt;
+        {{ foreach $category.products as $product }}
+            &lt;li&gt;{{ var: $product.name }}&lt;/li&gt;
+        {{ /foreach }}
+    &lt;/ul&gt;
+{{ /foreach }}</code></pre>
+            </div>
+
+            <div class="info">
+                <strong>Note:</strong> If the array is not an array or is null/undefined, the foreach block 
+                will be removed from the output. The loop variable is available within the loop scope 
+                and can access nested properties.
+            </div>
+
+            <h3>Conditional Rendering: {{ if }} ... {{ /if }}</h3>
+            <p>
+                Conditionally renders content based on a condition. Supports <code>if</code>, <code>elseif</code>, 
+                and <code>else</code> clauses.
+            </p>
+            <div class="method-signature">
+                {{ if $condition }}<br>
+                &nbsp;&nbsp;... content ...<br>
+                {{ elseif $otherCondition }}<br>
+                &nbsp;&nbsp;... content ...<br>
+                {{ else }}<br>
+                &nbsp;&nbsp;... content ...<br>
+                {{ /if }}
+            </div>
+
+            <div class="example-box">
+                <h4>Example 1: Simple If</h4>
+                <pre><code>{{ if $isLoggedIn }}
+    &lt;p&gt;Welcome back!&lt;/p&gt;
+{{ /if }}</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 2: If-Else</h4>
+                <pre><code>{{ if $user.role === 'admin' }}
+    &lt;button&gt;Admin Panel&lt;/button&gt;
+{{ else }}
+    &lt;p&gt;Regular User&lt;/p&gt;
+{{ /if }}</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 3: If-Elseif-Else</h4>
+                <pre><code>{{ if $status === 'active' }}
+    &lt;span class="badge success"&gt;Active&lt;/span&gt;
+{{ elseif $status === 'pending' }}
+    &lt;span class="badge warning"&gt;Pending&lt;/span&gt;
+{{ else }}
+    &lt;span class="badge error"&gt;Inactive&lt;/span&gt;
+{{ /if }}</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 4: Nested Properties in Conditions</h4>
+                <pre><code>{{ if $task.status === 'completed' }}
+    &lt;div class="completed"&gt;
+        &lt;p&gt;Task: {{ var: $task.title }}&lt;/p&gt;
+        &lt;p&gt;Completed by: {{ var: $task.user.name }}&lt;/p&gt;
+    &lt;/div&gt;
+{{ /if }}</code></pre>
+            </div>
+
+            <div class="info">
+                <strong>Condition Syntax:</strong> Conditions support JavaScript-like expressions including:
+                <ul>
+                    <li>Equality: <code>$var === 'value'</code>, <code>$var !== 'value'</code></li>
+                    <li>Comparisons: <code>$var > 10</code>, <code>$var <= 100</code></li>
+                    <li>Logical: <code>$var1 && $var2</code>, <code>$var1 || $var2</code></li>
+                    <li>Negation: <code>!$var</code></li>
+                    <li>Nested properties: <code>$user.profile.role === 'admin'</code></li>
+                </ul>
+            </div>
+
+            <h3>Blocks: {{ block:name }} ... {{ /block:name }}</h3>
+            <p>
+                Defines a named block that can be customized by registered block handlers. 
+                If no handler is registered, the block content is rendered as-is.
+            </p>
+            <div class="method-signature">
+                {{ block:blockName }}<br>
+                &nbsp;&nbsp;... default content ...<br>
+                {{ /block:blockName }}
+            </div>
+
+            <div class="example-box">
+                <h4>Example: Custom Block</h4>
+                <pre><code>&lt;div class="card"&gt;
+    {{ block:header }}
+        &lt;h2&gt;Default Header&lt;/h2&gt;
+    {{ /block:header }}
+    
+    &lt;div class="body"&gt;
+        {{ var: $content }}
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+                <p>Register a custom block handler:</p>
+                <pre><code>$dotapp().template().addBlock('header', (content, blockVars, data) => {
+    return `&lt;h2 class="custom-header"&gt;${data.title}&lt;/h2&gt;`;
+});</code></pre>
+            </div>
+
+            <h3>Includes: {{ include 'path' }}</h3>
+            <p>
+                Includes another template file. The included template receives the same data context. 
+                Supports quotes (single or double) or no quotes.
+            </p>
+            <div class="method-signature">
+                {{ include 'partials/header' }}<br>
+                {{ include "partials/header" }}<br>
+                {{ include partials/header }}
+            </div>
+
+            <div class="example-box">
+                <h4>Example: Template Layout</h4>
+                <p><strong>Main template:</strong> <code>layout.view.js</code></p>
+                <pre><code>&lt;div class="page"&gt;
+    {{ include 'partials/header' }}
+    
+    &lt;main&gt;
+        {{ var: $content }}
+    &lt;/main&gt;
+    
+    {{ include 'partials/footer' }}
+&lt;/div&gt;</code></pre>
+                <p><strong>Partial:</strong> <code>partials/header.view.js</code></p>
+                <pre><code>&lt;header&gt;
+    &lt;h1&gt;{{ var: $siteTitle }}&lt;/h1&gt;
+    &lt;nav&gt;...&lt;/nav&gt;
+&lt;/header&gt;</code></pre>
+            </div>
+
+            <div class="info">
+                <strong>Include Paths:</strong> Include paths are relative to the base path (<code>/app/views/</code> by default). 
+                The <code>.view.js</code> extension is automatically appended. If an include fails, a comment 
+                will be inserted indicating the failure.
+            </div>
+
+            <h3>Combining Directives</h3>
+            <p>You can combine all directives for complex templates:</p>
+            <div class="example-box">
+                <h4>Example: Complex Template</h4>
+                <pre><code>&lt;div class="dashboard"&gt;
+    {{ include 'partials/header' }}
+    
+    {{ if $user.isAdmin }}
+        &lt;div class="admin-panel"&gt;
+            {{ foreach $adminTasks as $task }}
+                {{ if $task.priority === 'high' }}
+                    &lt;div class="task high-priority"&gt;
+                        &lt;h3&gt;{{ var: $task.title }}&lt;/h3&gt;
+                        &lt;p&gt;Assigned to: {{ var: $task.assignee.name }}&lt;/p&gt;
+                    &lt;/div&gt;
+                {{ else }}
+                    &lt;div class="task"&gt;
+                        &lt;h3&gt;{{ var: $task.title }}&lt;/h3&gt;
+                    &lt;/div&gt;
+                {{ /if }}
+            {{ /foreach }}
+        &lt;/div&gt;
+    {{ else }}
+        &lt;p&gt;Regular user view&lt;/p&gt;
+    {{ /if }}
+    
+    {{ include 'partials/footer' }}
+&lt;/div&gt;</code></pre>
+            </div>
+        </section>
+
+        <section id="javascript-api">
+            <h2>JavaScript API</h2>
+            <p>
+                The template engine is accessed through the <code>$dotapp().template()</code> method, 
+                which can be used to render templates and configure the engine.
+            </p>
+
+            <h3>Main Method</h3>
+            <div class="method-signature">
+                $dotapp(selector).template(path, data)
+            </div>
+
+            <h4>Parameters</h4>
+            <ul>
+                <li><code>path</code> (string, required) - Template path relative to base path (e.g., <code>'user/profile'</code>)</li>
+                <li><code>data</code> (object|DotAppVariable|string, optional) - Data to render, or DotAppVariable name/instance</li>
+            </ul>
+
+            <h4>Returns</h4>
+            <p>
+                Returns an object with configuration methods for chaining:
+            </p>
+            <ul>
+                <li><code>addRenderer(name, fn)</code> - Add a custom renderer</li>
+                <li><code>addBlock(name, fn)</code> - Register a custom block</li>
+                <li><code>setBasePath(path)</code> - Set the base path for templates</li>
+                <li><code>getBasePath()</code> - Get the current base path</li>
+            </ul>
+
+            <h3>Basic Usage Examples</h3>
+
+            <div class="example-box">
+                <h4>Example 1: Render with Object Data</h4>
+                <pre><code>$dotapp('#content').template('user/profile', {
+    name: 'John Doe',
+    email: 'john@example.com',
+    role: 'Administrator'
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 2: Render with DotAppVariable</h4>
+                <pre><code>// Create a variable
+const userVar = $dotapp().variable('user', {
+    name: 'John Doe',
+    email: 'john@example.com'
+});
+
+// Render template - automatically updates when variable changes
+$dotapp('#content').template('user/profile', userVar);
+
+// Update variable - template will re-render automatically
+userVar.value = {
+    name: 'Jane Doe',
+    email: 'jane@example.com'
+};</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 3: Render with Variable Name</h4>
+                <pre><code>// Create variable
+$dotapp().variable('userData', {
+    name: 'John Doe',
+    email: 'john@example.com'
+});
+
+// Render using variable name
+$dotapp('#content').template('user/profile', 'userData');</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 4: Multiple Elements</h4>
+                <pre><code>// Render same template into multiple elements
+$dotapp('.user-card').template('user/card', {
+    name: 'John Doe',
+    email: 'john@example.com'
+});</code></pre>
+            </div>
+
+            <h3>Configuration Methods</h3>
+
+            <h4>setBasePath(path)</h4>
+            <p>Sets the base path for loading templates. Default is <code>/app/views/</code>.</p>
+            <pre><code>$dotapp().template().setBasePath('/custom/templates/');</code></pre>
+
+            <h4>getBasePath()</h4>
+            <p>Gets the current base path.</p>
+            <pre><code>const basePath = $dotapp().template().getBasePath();
+console.log(basePath); // '/app/views/'</code></pre>
+
+            <h4>addRenderer(name, fn)</h4>
+            <p>Adds a custom renderer function. Renderers process the template code before final rendering.</p>
+            <div class="method-signature">
+                addRenderer(name: string, fn: (code: string, data: object) => string | Promise&lt;string&gt;)
+            </div>
+            <pre><code>$dotapp().template().addRenderer('custom.date', (code, data) => {
+    // Replace {{ date: $timestamp }} with formatted date
+    return code.replace(/\{\{\s*date:\s*\$([\w.]+)\s*\}\}/g, (match, key) => {
+        const timestamp = data[key];
+        return new Date(timestamp).toLocaleDateString();
+    });
+});</code></pre>
+
+            <h4>addBlock(name, fn)</h4>
+            <p>Registers a custom block handler. Blocks can transform or replace block content.</p>
+            <div class="method-signature">
+                addBlock(name: string, fn: (content: string, blockVars: array, data: object) => string)
+            </div>
+            <pre><code>$dotapp().template().addBlock('sidebar', (content, blockVars, data) => {
+    if (data.showSidebar) {
+        return `&lt;aside class="sidebar"&gt;${content}&lt;/aside&gt;`;
+    }
+    return '';
+});</code></pre>
+        </section>
+
+        <section id="configuration">
+            <h2>Configuration</h2>
+
+            <h3>Base Path</h3>
+            <p>
+                The base path determines where templates are loaded from. By default, templates are loaded 
+                from <code>/app/views/</code>. You can change this using <code>setBasePath()</code>.
+            </p>
+            <pre><code>// Set custom base path
+$dotapp().template().setBasePath('/templates/');
+
+// Now templates will load from /templates/
+$dotapp('#content').template('user/profile', data);
+// Loads: /templates/user/profile.view.js</code></pre>
+
+            <h3>Template File Naming</h3>
+            <p>
+                Template files must have the <code>.view.js</code> extension. The extension is automatically 
+                appended if you don't include it in the path.
+            </p>
+            <pre><code>// These are equivalent:
+$dotapp('#content').template('user/profile', data);
+$dotapp('#content').template('user/profile.view.js', data);
+// Both load: /app/views/user/profile.view.js</code></pre>
+
+            <h3>Template Caching</h3>
+            <p>
+                Templates are automatically cached after first load. This means subsequent renders of the same 
+                template will use the cached version, improving performance. The cache persists for the lifetime 
+                of the page.
+            </p>
+
+            <div class="info">
+                <strong>Performance Tip:</strong> Template caching means you only pay the HTTP request cost once 
+                per template per page load. Multiple elements using the same template will share the cached version.
+            </div>
+
+            <h3>Lazy Loading</h3>
+            <p>
+                Templates are loaded on-demand (lazy loading). A template is only fetched when it's first 
+                rendered. If multiple elements try to render the same template simultaneously, the engine 
+                deduplicates the requests and shares the promise.
+            </p>
+        </section>
+
+        <section id="reactive-integration">
+            <h2>Reactive Integration</h2>
+            <p>
+                One of the most powerful features of DotApp Template is its integration with DotAppVariable. 
+                When you pass a DotAppVariable to a template, the template will automatically re-render 
+                whenever the variable's value changes.
+            </p>
+
+            <h3>Basic Reactive Rendering</h3>
+            <div class="example-box">
+                <h4>Example: Reactive User Profile</h4>
+                <pre><code>// Create a reactive variable
+const userVar = $dotapp().variable('user', {
+    name: 'John Doe',
+    email: 'john@example.com',
+    role: 'User'
+});
+
+// Render template with variable
+$dotapp('#profile').template('user/profile', userVar);
+
+// Later, update the variable
+userVar.value = {
+    name: 'Jane Doe',
+    email: 'jane@example.com',
+    role: 'Administrator'
+};
+// Template automatically re-renders with new data!</code></pre>
+            </div>
+
+            <h3>Reactive Lists</h3>
+            <div class="example-box">
+                <h4>Example: Reactive Task List</h4>
+                <pre><code>// Create variable with array
+const tasksVar = $dotapp().variable('tasks', [
+    { id: 1, title: 'Task 1', completed: false },
+    { id: 2, title: 'Task 2', completed: false }
+]);
+
+// Render template
+$dotapp('#task-list').template('tasks/list', tasksVar);
+
+// Add a new task
+tasksVar.value = [...tasksVar.value, {
+    id: 3,
+    title: 'Task 3',
+    completed: false
+}];
+// Template automatically updates!</code></pre>
+            </div>
+
+            <h3>Integration with Reactive Module</h3>
+            <p>
+                The template engine works seamlessly with the DotApp Reactive module. When a reactive endpoint 
+                fetches data and binds it to a variable, templates using that variable will automatically update.
+            </p>
+            <div class="example-box">
+                <h4>Example: Reactive Endpoint + Template</h4>
+                <pre><code>// Create reactive endpoint that updates a variable
+const endpoint = $dotapp().reactive('/api/user', {
+    variable: 'currentUser'
+});
+
+// Render template with the variable
+$dotapp('#profile').template('user/profile', 'currentUser');
+
+// When the endpoint fetches new data, the template automatically updates!</code></pre>
+            </div>
+        </section>
+
+        <section id="xss-protection">
+            <h2>XSS Protection</h2>
+            <p>
+                DotApp Template automatically escapes all variable output to prevent XSS (Cross-Site Scripting) attacks. 
+                This is done by HTML-encoding special characters.
+            </p>
+
+            <h3>Automatic Escaping</h3>
+            <p>The following characters are automatically escaped:</p>
+            <ul>
+                <li><code>&amp;</code> → <code>&amp;amp;</code></li>
+                <li><code>&lt;</code> → <code>&amp;lt;</code></li>
+                <li><code>&gt;</code> → <code>&amp;gt;</code></li>
+                <li><code>"</code> → <code>&amp;quot;</code></li>
+                <li><code>'</code> → <code>&amp;#039;</code></li>
+                <li><code>$</code> → <code>&amp;#36;</code></li>
+            </ul>
+
+            <div class="example-box">
+                <h4>Example: XSS Protection</h4>
+                <pre><code>// Template
+&lt;p&gt;{{ var: $userInput }}&lt;/p&gt;
+
+// Data with malicious script
+{
+    userInput: '&lt;script&gt;alert("XSS")&lt;/script&gt;'
+}
+
+// Output (safe)
+&lt;p&gt;&amp;lt;script&amp;gt;alert(&amp;quot;XSS&amp;quot;)&amp;lt;/script&amp;gt;&lt;/p&gt;</code></pre>
+            </div>
+
+            <div class="warning">
+                <strong>Important:</strong> All variable output is automatically escaped. If you need to output 
+                raw HTML (which is generally not recommended), you would need to create a custom renderer. 
+                However, be extremely careful with raw HTML output as it can introduce security vulnerabilities.
+            </div>
+
+            <h3>Null/Undefined Handling</h3>
+            <p>
+                If a variable is <code>null</code> or <code>undefined</code>, it will output an empty string. 
+                This prevents errors and provides graceful degradation.
+            </p>
+            <pre><code>// Template
+&lt;p&gt;Name: {{ var: $name }}&lt;/p&gt;
+
+// Data with missing property
+{}
+
+// Output
+&lt;p&gt;Name: &lt;/p&gt;</code></pre>
+        </section>
+
+        <section id="advanced-usage">
+            <h2>Advanced Usage</h2>
+
+            <h3>Custom Renderers</h3>
+            <p>
+                Custom renderers allow you to extend the template syntax with your own directives. 
+                Renderers receive the template code and data, and return the processed code.
+            </p>
+
+            <div class="example-box">
+                <h4>Example: Date Formatter Renderer</h4>
+                <pre><code>$dotapp().template().addRenderer('custom.date', (code, data) => {
+    return code.replace(/\{\{\s*date:\s*\$([\w.]+)\s*\}\}/g, (match, keyPath) => {
+        const keys = keyPath.split('.');
+        let value = data;
+        for (const key of keys) {
+            value = value?.[key];
+        }
+        if (value) {
+            return new Date(value).toLocaleDateString();
+        }
+        return '';
+    });
+});
+
+// Usage in template
+&lt;p&gt;Created: {{ date: $post.createdAt }}&lt;/p&gt;</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example: Async Renderer</h4>
+                <pre><code>$dotapp().template().addRenderer('custom.async', async (code, data) => {
+    // Async operations are supported
+    const pattern = /\{\{\s*async:\s*\$([\w.]+)\s*\}\}/g;
+    const matches = [...code.matchAll(pattern)];
+    let result = code;
+    
+    for (const match of matches) {
+        const key = match[1];
+        const value = await fetchAsyncData(data[key]);
+        result = result.replace(match[0], value);
+    }
+    
+    return result;
+});</code></pre>
+            </div>
+
+            <h3>Custom Blocks</h3>
+            <p>
+                Custom blocks allow you to transform or conditionally render block content based on data.
+            </p>
+
+            <div class="example-box">
+                <h4>Example: Conditional Sidebar Block</h4>
+                <pre><code>$dotapp().template().addBlock('sidebar', (content, blockVars, data) => {
+    if (data.showSidebar) {
+        return `&lt;aside class="sidebar"&gt;${content}&lt;/aside&gt;`;
+    }
+    return '';
+});
+
+// Template
+{{ block:sidebar }}
+    &lt;nav&gt;...&lt;/nav&gt;
+{{ /block:sidebar }}
+
+// If showSidebar is true, renders the sidebar
+// If showSidebar is false, renders nothing</code></pre>
+            </div>
+
+            <h3>Nested Property Access</h3>
+            <p>
+                You can access deeply nested object properties using dot notation. The template engine 
+                safely handles null/undefined intermediate values.
+            </p>
+
+            <div class="example-box">
+                <h4>Example: Deep Nesting</h4>
+                <pre><code>// Template
+&lt;div&gt;
+    &lt;p&gt;User: {{ var: $user.profile.name }}&lt;/p&gt;
+    &lt;p&gt;Company: {{ var: $user.company.details.name }}&lt;/p&gt;
+    &lt;p&gt;Address: {{ var: $user.address.street.number }}&lt;/p&gt;
+&lt;/div&gt;
+
+// Data
+{
+    user: {
+        profile: {
+            name: 'John Doe'
+        },
+        company: {
+            details: {
+                name: 'Acme Corp'
+            }
+        },
+        address: {
+            street: {
+                number: '123'
+            }
+        }
+    }
+}</code></pre>
+            </div>
+
+            <h3>Template Composition</h3>
+            <p>
+                You can compose complex templates by combining includes, blocks, and conditionals.
+            </p>
+
+            <div class="example-box">
+                <h4>Example: Layout Template</h4>
+                <pre><code>// layout.view.js
+&lt;div class="page"&gt;
+    {{ include 'partials/header' }}
+    
+    {{ block:content }}
+        Default content
+    {{ /block:content }}
+    
+    {{ if $showFooter }}
+        {{ include 'partials/footer' }}
+    {{ /if }}
+&lt;/div&gt;
+
+// page.view.js
+{{ include 'layout' }}
+
+{{ block:content }}
+    &lt;main&gt;
+        &lt;h1&gt;{{ var: $title }}&lt;/h1&gt;
+        &lt;p&gt;{{ var: $content }}&lt;/p&gt;
+    &lt;/main&gt;
+{{ /block:content }}</code></pre>
+            </div>
+        </section>
+
+        <section id="examples">
+            <h2>Real-World Examples</h2>
+
+            <h3>Example 1: User Profile Card</h3>
+            <pre><code>// Template: user/card.view.js
+&lt;div class="user-card"&gt;
+    &lt;img src="{{ var: $avatar }}" alt="{{ var: $name }}"&gt;
+    &lt;h3&gt;{{ var: $name }}&lt;/h3&gt;
+    &lt;p&gt;{{ var: $email }}&lt;/p&gt;
+    {{ if $role === 'admin' }}
+        &lt;span class="badge admin"&gt;Admin&lt;/span&gt;
+    {{ /if }}
+&lt;/div&gt;
+
+// Usage
+$dotapp('#user-card').template('user/card', {
+    avatar: '/images/user.jpg',
+    name: 'John Doe',
+    email: 'john@example.com',
+    role: 'admin'
+});</code></pre>
+
+            <h3>Example 2: Product List</h3>
+            <pre><code>// Template: products/list.view.js
+&lt;div class="products"&gt;
+    {{ foreach $products as $product }}
+        &lt;div class="product-card"&gt;
+            &lt;h3&gt;{{ var: $product.name }}&lt;/h3&gt;
+            &lt;p&gt;{{ var: $product.description }}&lt;/p&gt;
+            &lt;span class="price"&gt;{{ var: $product.price }}&lt;/span&gt;
+            {{ if $product.inStock }}
+                &lt;button&gt;Add to Cart&lt;/button&gt;
+            {{ else }}
+                &lt;span class="out-of-stock"&gt;Out of Stock&lt;/span&gt;
+            {{ /if }}
+        &lt;/div&gt;
+    {{ /foreach }}
+&lt;/div&gt;
+
+// Usage
+$dotapp('#products').template('products/list', {
+    products: [
+        { name: 'Product 1', description: '...', price: '$10', inStock: true },
+        { name: 'Product 2', description: '...', price: '$20', inStock: false }
+    ]
+});</code></pre>
+
+            <h3>Example 3: Dashboard with Reactive Data</h3>
+            <pre><code>// Template: dashboard/main.view.js
+&lt;div class="dashboard"&gt;
+    {{ include 'partials/header' }}
+    
+    &lt;div class="stats"&gt;
+        &lt;div class="stat"&gt;
+            &lt;h4&gt;Total Users&lt;/h4&gt;
+            &lt;p&gt;{{ var: $stats.totalUsers }}&lt;/p&gt;
+        &lt;/div&gt;
+        &lt;div class="stat"&gt;
+            &lt;h4&gt;Active Today&lt;/h4&gt;
+            &lt;p&gt;{{ var: $stats.activeToday }}&lt;/p&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;div class="recent-activity"&gt;
+        &lt;h3&gt;Recent Activity&lt;/h3&gt;
+        {{ foreach $activities as $activity }}
+            &lt;div class="activity-item"&gt;
+                &lt;span&gt;{{ var: $activity.user.name }}&lt;/span&gt;
+                &lt;span&gt;{{ var: $activity.action }}&lt;/span&gt;
+                &lt;span&gt;{{ var: $activity.timestamp }}&lt;/span&gt;
+            &lt;/div&gt;
+        {{ /foreach }}
+    &lt;/div&gt;
+&lt;/div&gt;
+
+// Usage with reactive variable
+const dashboardVar = $dotapp().variable('dashboard', {
+    stats: { totalUsers: 0, activeToday: 0 },
+    activities: []
+});
+
+$dotapp('#dashboard').template('dashboard/main', dashboardVar);
+
+// Update from API
+fetch('/api/dashboard').then(r => r.json()).then(data => {
+    dashboardVar.value = data; // Template automatically updates!
+});</code></pre>
+
+            <h3>Example 4: Form with Validation Messages</h3>
+            <pre><code>// Template: forms/login.view.js
+&lt;form id="login-form"&gt;
+    &lt;div class="field"&gt;
+        &lt;label&gt;Email&lt;/label&gt;
+        &lt;input type="email" name="email" value="{{ var: $formData.email }}"&gt;
+        {{ if $errors.email }}
+            &lt;span class="error"&gt;{{ var: $errors.email }}&lt;/span&gt;
+        {{ /if }}
+    &lt;/div&gt;
+    
+    &lt;div class="field"&gt;
+        &lt;label&gt;Password&lt;/label&gt;
+        &lt;input type="password" name="password"&gt;
+        {{ if $errors.password }}
+            &lt;span class="error"&gt;{{ var: $errors.password }}&lt;/span&gt;
+        {{ /if }}
+    &lt;/div&gt;
+    
+    {{ if $errors.general }}
+        &lt;div class="error general"&gt;{{ var: $errors.general }}&lt;/div&gt;
+    {{ /if }}
+    
+    &lt;button type="submit"&gt;Login&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+        </section>
+
+        <section id="api-reference">
+            <h2>API Reference</h2>
+
+            <h3>Main API</h3>
+
+            <h4>$dotapp(selector).template(path, data)</h4>
+            <p>Renders a template into the selected element(s).</p>
+            <div class="method-signature">
+                template(path: string, data?: object | DotAppVariable | string): TemplateConfig
+            </div>
+            <p><strong>Parameters:</strong></p>
+            <ul>
+                <li><code>path</code> (string, required) - Template path relative to base path</li>
+                <li><code>data</code> (object | DotAppVariable | string, optional) - Data object, DotAppVariable instance, or variable name</li>
+            </ul>
+            <p><strong>Returns:</strong> TemplateConfig object with configuration methods</p>
+
+            <h3>TemplateConfig Methods</h3>
+
+            <h4>setBasePath(path)</h4>
+            <div class="method-signature">
+                setBasePath(path: string): DotApp
+            </div>
+            <p>Sets the base path for loading templates. Returns DotApp instance for chaining.</p>
+
+            <h4>getBasePath()</h4>
+            <div class="method-signature">
+                getBasePath(): string
+            </div>
+            <p>Gets the current base path for templates.</p>
+
+            <h4>addRenderer(name, fn)</h4>
+            <div class="method-signature">
+                addRenderer(name: string, fn: (code: string, data: object) => string | Promise&lt;string&gt;): DotApp
+            </div>
+            <p>Adds a custom renderer. Returns DotApp instance for chaining.</p>
+
+            <h4>addBlock(name, fn)</h4>
+            <div class="method-signature">
+                addBlock(name: string, fn: (content: string, blockVars: array, data: object) => string): DotApp
+            </div>
+            <p>Registers a custom block handler. Returns DotApp instance for chaining.</p>
+
+            <h3>Template Syntax Reference</h3>
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Directive</th>
+                        <th>Syntax</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>var</code></td>
+                        <td><code>{{ var: $variable }}</code></td>
+                        <td>Outputs a variable with XSS protection. Supports nested properties.</td>
+                    </tr>
+                    <tr>
+                        <td><code>foreach</code></td>
+                        <td><code>{{ foreach $array as $item }} ... {{ /foreach }}</code></td>
+                        <td>Iterates over an array and renders content for each item.</td>
+                    </tr>
+                    <tr>
+                        <td><code>if</code></td>
+                        <td><code>{{ if $condition }} ... {{ /if }}</code></td>
+                        <td>Conditionally renders content based on a condition.</td>
+                    </tr>
+                    <tr>
+                        <td><code>elseif</code></td>
+                        <td><code>{{ elseif $condition }}</code></td>
+                        <td>Alternative condition in an if block.</td>
+                    </tr>
+                    <tr>
+                        <td><code>else</code></td>
+                        <td><code>{{ else }}</code></td>
+                        <td>Default content in an if block.</td>
+                    </tr>
+                    <tr>
+                        <td><code>block</code></td>
+                        <td><code>{{ block:name }} ... {{ /block:name }}</code></td>
+                        <td>Defines a named block that can be customized.</td>
+                    </tr>
+                    <tr>
+                        <td><code>include</code></td>
+                        <td><code>{{ include 'path' }}</code></td>
+                        <td>Includes another template file.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Events</h3>
+            <p>DotApp Template dispatches the following global events:</p>
+            <ul>
+                <li><code>dotapp-template-ready</code> - Fired when the template module is fully initialized</li>
+            </ul>
+            <pre><code>window.addEventListener('dotapp-template-ready', () => {
+    console.log('DotApp Template is ready!');
+});</code></pre>
+
+            <h3>Default Configuration</h3>
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Setting</th>
+                        <th>Default Value</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>basePath</code></td>
+                        <td><code>/app/views/</code></td>
+                        <td>Base path for loading templates</td>
+                    </tr>
+                    <tr>
+                        <td><code>fileExtension</code></td>
+                        <td><code>.view.js</code></td>
+                        <td>Template file extension (automatically appended)</td>
+                    </tr>
+                    <tr>
+                        <td><code>caching</code></td>
+                        <td><code>enabled</code></td>
+                        <td>Templates are cached after first load</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="footer">
+            <p>DotApp Template Module v1.2 | <a href="https://dotapp.dev/">dotapp.dev</a></p>
+            <p>Author: Štefan Miščík | License: MIT</p>
+        </div>
+    </div>
+</body>
+</html>
+

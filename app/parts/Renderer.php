@@ -37,6 +37,7 @@ use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\Input;
 
 class Renderer {
+	private static $instancie=array();
 	/*
 		*
 		* @dotapp - Vybrany layout
@@ -135,13 +136,14 @@ class Renderer {
 	*/
 	private $dirw;
 	
-	function __construct ($dotapp=null) {
+	function __construct ($dotapp=null,$name=false) {
 		$this->dotapp = DotApp::dotApp();
 		$this->module("");
 		$this->dotapp = $dotapp;
         $this->dotApp = $dotapp;
         $this->DotApp = $dotapp;
 		$this->blocks_renderer(1);
+		if (is_string($name) && !isSet(self::$instancie[$name])) self::$instancie[$name] = $this;		
     }
 	
 	public function __debugInfo() {
@@ -150,8 +152,15 @@ class Renderer {
         ];
     }
 
-    public static function new() {
-        return new self();
+    public static function new($name=false) {
+		if ($name === false) return new self();
+        if (is_string($name)) {
+			if (isSet(self::$instancie[$name])) {
+				return self::$instancie[$name];
+			}
+			return new self(null,$name);
+		}
+		return new self();
     }
 
     public static function add($name,$renderer) {
@@ -182,6 +191,15 @@ class Renderer {
         return $this->renderWith($name,$code);
     }
 
+	/**
+     * Registers custom logic for a standard block tag.
+     * Acts as a "user-friendly" version of custom renderers.
+     * * Example Usage:
+     * HTML: {{ block:alert(danger) }} Warning message! {{ /block:alert }}
+     * PHP:  $dotapp->renderer->addBlock("alert", function($content, $params) {
+     * return "<div class='alert-{$params[0]}'>{$content}</div>";
+     * });
+     */
     public function addBlock($name,$blockFn) {
         $this->dotApp->customRenderer->addBlock($name,$blockFn);
 	}
@@ -234,6 +252,15 @@ class Renderer {
     }
     
     public function blocks_renderer($activate=0) {
+		/*
+            Activates system-wide block processing via regex.
+            Searches for: {{ block:name(args) }} content {{ /block:name }}
+            
+            Example:
+            {{ block:gallery(vacation, 3) }} My summer photos {{ /block:gallery }}
+            This will call the function registered for "gallery" and pass 
+            "My summer photos" as content and ['vacation', '3'] as parameters.
+        */
 		/*
 			Block syntax:
 			{{ block:block_name(var1,var2) }}Inner Content{{ /block:block_name }}
@@ -870,6 +897,14 @@ class Renderer {
 			Takze nam staci ak si vyrobime modul schopny rendrovat nejaku galeriu a samotny modul si zaregistruje vlastny renderer.
 			Cim sa automaticky prida funkcia galerie aj pre iny modul naprikald DOT CMS.
 		*/
+		/**
+         * Core Engine for Superblocks (privateblock).
+         * Extracts code fragments to be used as objects in PHP.
+         * * Example in View:
+         * {{ privateblock:item }} <li>{{ var: $name }}</li> {{ /privateblock }}
+         * * Logic: This function "cuts" the block out of HTML and stores it in $block['item'].
+         * Usage in same file: foreach($data as $d) echo $block['item']->set("name", $d)->html();
+         */
         $render_private_block = function($code) {
 			$pattern = '/\{\{\s*privateblock:(.*?)\s*\}\}(.*?)\{\{\s*\/privateblock\s*\}\}/si';
 			if (preg_match_all($pattern, $code, $matches, PREG_SET_ORDER)) {
@@ -1533,6 +1568,15 @@ class RenderingIsolator {
 	
 }
 
+/**
+ * Object representation of an HTML fragment (Superblock).
+ * Uses unique IDs ($this->id) for variable sandboxing.
+ * * Example:
+ * echo $block['user_card']
+ * ->set("name", "John")
+ * ->set("role", "Admin")
+ * ->html();
+ */
 class PrivateBlock {
     private $block;
     private $variables;

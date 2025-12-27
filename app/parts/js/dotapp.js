@@ -487,7 +487,7 @@
             });
         }
 		
-		#exchange(){return "A";}
+		#exchange(){return"A2c9981ddd475413acb6bfbcd9054fb3fcb1690d3"}
 
         #exchangeCSRF(postData) {
             postData['dotapp-security-data-csrf-token-tab'] = '###dotapp-security-data-csrf-token-tab';            
