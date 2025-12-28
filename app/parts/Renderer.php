@@ -360,6 +360,12 @@ class Renderer {
 	private function getLayout($layout) {
         $dir = $this->dirl ?: __ROOTDIR__ . "/app/parts/views/layouts/";
 
+        if (strpos($layout, ':') !== false) {
+            list($module, $layoutPath) = explode(':', $layout, 2);
+            $dir = __ROOTDIR__ . "/app/modules/" . $module . "/views/layouts/";
+            $layout = $layoutPath;
+        }
+
         // Load layout if it exists
         if ($layout !== "" && file_exists($dir . $layout . ".layout.php")) {
             return file_get_contents($dir . $layout . ".layout.php");
@@ -376,7 +382,13 @@ class Renderer {
         // Try fallback layout if defined
         if (isset($this->layoutFallbacks[$layout]) && $this->layoutFallbacks[$layout] !== null) {
             $fallbackLayout = $this->layoutFallbacks[$layout];
-            $fallbackDir = $this->dirl ?: __ROOTDIR__ . "/app/parts/views/layouts/";
+            $fallbackDir = $dir; 
+
+            if (strpos($fallbackLayout, ':') !== false) {
+                list($fModule, $fPath) = explode(':', $fallbackLayout, 2);
+                $fallbackDir = __ROOTDIR__ . "/app/modules/" . $fModule . "/views/layouts/";
+                $fallbackLayout = $fPath;
+            }
 
             if (file_exists($fallbackDir . $fallbackLayout . ".layout.php")) {
                 return file_get_contents($fallbackDir . $fallbackLayout . ".layout.php");
