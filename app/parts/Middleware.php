@@ -96,6 +96,10 @@ class Middleware {
         } else throw new \Exception("Undefined middleware");
     }
 
+    public static function instanceOfMiddlewareChain($obj) {
+        return ($obj instanceof MiddlewareChain);
+    }
+
 }
 
 class MiddlewareChain {

@@ -106,7 +106,7 @@ class Limiter {
      */
     public function isAllowed($route) {
         if (empty($this->limits)) {
-            throw new Exception('No limits defined !');
+            throw new \Exception('No limits defined !');
         }
 
         $key = $this->generateKey($route);

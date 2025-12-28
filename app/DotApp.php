@@ -128,7 +128,9 @@ class DotApp {
     }
 
     public function isDebugMode() {
-        if (defined("DEBUG_MODE")) return DEBUG_MODE;
+        if (defined("DEBUG_MODE")) {
+			return DEBUG_MODE;
+		}
         return false;
     }
 	
@@ -604,6 +606,10 @@ class DotApp {
 	 * @param object $class The instance of the custom class to register.
 	 * @return $this The current instance for method chaining.
 	 */
+	/**
+     * @deprecated Legacy method. Use Dependency Injection or Facades instead.
+     * Memory inefficient due to eager loading.
+     */
 	function register_custom_class($classname, $class) {
 		$this->thendata = $class;
 		$this->custom_classes[$classname] = $class;
@@ -624,6 +630,9 @@ class DotApp {
 	 * @param string $classname The name of the custom class to retrieve.
 	 * @return object The instance of the specified custom class.
 	 */
+	/**
+     * @deprecated Legacy access. Use DI injection in controller method signature instead.
+     */
 	function cclass($classname) {
 		return($this->custom_classes[$classname]);
 	}
@@ -707,6 +716,7 @@ class DotApp {
 	 * @return $this The current instance for method chaining.
 	 */
 	public function then($callback = "") {
+		// DEPRECATED !!!! DO NOT USE !!!!
 		if (is_callable($callback)) {
 			$this->thendata = $callback($this->thendata);
 		}
@@ -740,12 +750,12 @@ class DotApp {
          * @return $this The current instance for method chaining.
          * @throws InvalidArgumentException If the provided callback is not callable or the number of arguments is invalid.
      */
-    public function bind(string $key, callable $resolver): void {
-        $this->bindings[$key] = ['resolver' => $resolver, 'shared' => false];
+    public function bind(string $key, $resolver): void {
+        $this->bindings[$key] = ['resolver' => $this->stringToCallable($resolver), 'shared' => false];
     }
 
-    public function singleton(string $key, callable $resolver): void {
-        $this->bindings[$key] = ['resolver' => $resolver, 'shared' => true];
+    public function singleton(string $key, $resolver): void {
+        $this->bindings[$key] = ['resolver' => $this->stringToCallable($resolver), 'shared' => true];
     }
 
     public function resolve(string $key) {
@@ -781,6 +791,7 @@ class DotApp {
     }
      
     public function middleware2(string $name,$callback=false, ...$args): \Closure {
+		if ($callback !== false) $callback = $this->stringToCallable($callback,...$args);
         return $this->uniware("middleware", $name, $callback, ...$args);
     }
 
@@ -794,7 +805,7 @@ class DotApp {
         if ($callback === false) {
             if (is_callable($this->middleware[$type][$name])) {
                 // Ak boli predane argumenty tak zavolame funkciu
-                if (!empty($args)) return function() use (&$name,$args) {
+                if (!empty($args)) return function() use (&$name,$args,&$type) {
                     return call_user_func($this->middleware[$type][$name],...$args);
                 };
                 return $this->middleware[$type][$name];
@@ -827,7 +838,7 @@ class DotApp {
         return preg_match($pattern, $input) === 1;
     }
 
-    public function stringToCallable($callback, ...$argsSend): \Closure {
+    public function stringToCallable($callback, ...$argsSend) {
 
         // Bez DI kontajnera ak pouzijeme noDI wrapper.
         if ($callback instanceof \Dotsystems\App\Parts\NoDI) {
@@ -850,7 +861,7 @@ class DotApp {
             return $fn;
         }
 
-        if ($callback instanceof MiddlewareChain) {
+        if (Middleware::instanceOfMiddlewareChain($callback)) {
             $chain = $callback;
             $fn = function() use ($chain) {                
                 $navratFn = $chain->callAllMiddlewares();
@@ -1043,6 +1054,7 @@ class DotApp {
                 $eventname = strtolower($eventname); // Nech je case insensitivny
                 $eventname = $aliasy[$eventname] ?? $eventname;
                 $callback = $args[1];
+				$callback = $this->stringToCallable($callback);
                 if (is_callable($callback)) {
                     $listenerid = (isset($this->listeners['listenersids'][$eventname]) && is_array($this->listeners['listenersids'][$eventname])) ? count($this->listeners['listenersids'][$eventname]) : 0;
                     $listenerid = $eventname . $listenerid . rand(100000, 200000) . md5(rand(100000, 200000));
@@ -1060,6 +1072,7 @@ class DotApp {
                 $eventname = strtolower($eventname);
                 $eventname = $aliasy[$eventname] ?? $eventname;
                 $callback = $args[2];
+				$callback = $this->stringToCallable($callback);
                 
                 // Routa nesedi, nepridame 
                 if ($this->router->match_url($route, $this->router->request->getPath()) === false) {
@@ -1084,6 +1097,7 @@ class DotApp {
                     $eventname = strtolower($eventname);
                     $eventname = $aliasy[$eventname] ?? $eventname;
                     $callback = $args[3];
+					$callback = $this->stringToCallable($callback);
                     
                     // Metoda nesedi, nepridame 
                     if ($this->router->request->getMethod() !== $method) {
@@ -1404,7 +1418,7 @@ class DotApp {
 	 */
 	function load_modules() {
         if ($this->hasListener("dotapp.load_modules.override")) {
-            $dotapp->trigger("dotapp.load_modules.override",$this,__ROOTDIR__."/app/modules/");
+            $this->trigger("dotapp.load_modules.override",$this,__ROOTDIR__."/app/modules/");
         } else {
             // Optimalizovanie nacitavanie, vhodne pri velkom mnosztve modulov...
             if (file_exists(__ROOTDIR__."/app/modules/modulesAutoLoader.php") && !defined("__DOTAPPER_RUN__")) {
@@ -1808,7 +1822,7 @@ class DotApp {
             }
             $decoded = base64_decode($base64Str, true);
             return $decoded !== false ? $decoded : false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return false;
         }
     }

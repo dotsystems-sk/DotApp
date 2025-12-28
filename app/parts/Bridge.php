@@ -246,12 +246,13 @@ class Bridge {
             }
         });
 
-        $this->dotapp->router->put("/assets/dotapp/dotapp.js", function($request) {
+        $this->dotapp->router->put(["/assets/dotapp/dotapp.js","/assets/dotapp/dotapp.min.js"], function($request) {
             $this->keyExchange['exchanged'] = true;
             echo "1";
         });
 
         $this->dotApp->router->reserved[] = "/assets/dotapp/dotapp.js";
+        $this->dotApp->router->reserved[] = "/assets/dotapp/dotapp.min.js";
     }
 
     
@@ -685,7 +686,7 @@ class Bridge {
             if (is_array($array) && (count($array) > $this->max_keys)) {
                 $array = array_slice($array, -$this->max_keys, $this->max_keys);
             }          
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $i=0;
         }        
     }
@@ -890,7 +891,7 @@ class Bridge {
                 $this->objects['limitersLimits'][$internalID] = $limiters;
             } else $this->objects['limitersLimits'][$internalID] = array();
 
-        } catch(Exception $e) {
+        } catch(\Exception $e) {
 
         }
     }
@@ -1055,6 +1056,7 @@ class Bridge {
 	}
 
     private function executeBridge() {
+        $return_data = [];
         header('X-Answered-By: dotbridge');
         $postdata = $_POST['data'];
         $bridge_key = $this->dotapp->dsm->get('_bridge.key');
@@ -1221,6 +1223,8 @@ class Bridge {
             private $parentObj;
 			private $fnName;
             private $empty;
+            private $limiter;
+            private $metoda;
     
             public function __construct($parent,$function_name,$empty) {
                 $this->parentObj = $parent;
@@ -1230,7 +1234,7 @@ class Bridge {
 			
 			public function before($callback) {
                 if ($this->empty === true) return $this;
-                if (!is_callable($callback)) $callback = $this->dotapp->stringToCallable($callback);
+                if (!is_callable($callback)) $callback =  DotApp::DotApp()->stringToCallable($callback);
                 // Drop da callback, nech nezabera miesto
 				if (isSet($this->fnName)) $this->parentObj->before($this->fnName,$callback);
 				return $this;
@@ -1238,13 +1242,13 @@ class Bridge {
 
             public function throttle($limity) {
                 if ($this->empty === true) return $this;
-                $this->limiter = new Limiter($limity,$this->metoda,$this->router->dotapp->limiter['getter'],$this->router->dotapp->limiter['setter']);
+                $this->limiter = new Limiter($limity,$this->metoda, DotApp::DotApp()->limiter['getter'], DotApp::DotApp()->limiter['setter']);
                 return $this;
             }
 			
 			public function after($callback) {
                 if ($this->empty === true) return $this;
-                if (!is_callable($callback)) $callback = $this->dotapp->stringToCallable($callback);
+                if (!is_callable($callback)) $callback = DotApp::DotApp()->stringToCallable($callback);
                 // Drop da callback, nech nezabera miesto
 				if (isSet($this->fnName)) $this->parentObj->after($this->fnName,$callback);
 				return $this;
