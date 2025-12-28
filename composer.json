@@ -6,7 +6,8 @@
     "homepage": "https://dotsystems.sk/",
     "config": {
         "vendor-dir": "app/vendor",
-        "secure-http": false
+        "secure-http": false,
+		"optimize-autoloader": true
     },
     "autoload": {
 		"psr-4": {
