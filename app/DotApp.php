@@ -828,6 +828,14 @@ class DotApp {
     }
 
     public function stringToCallable($callback, ...$argsSend): \Closure {
+
+        // Bez DI kontajnera ak pouzijeme noDI wrapper.
+        if ($callback instanceof \Dotsystems\App\Parts\NoDI) {
+            return function(...$args) use ($callback) {
+                return $callback->call(...$args);
+            };
+        }
+        
         // Ak je pole middleware, alebo middleware Chain
         if ($callback instanceof Middleware) {
             $chain = $callback->chain();
@@ -857,22 +865,22 @@ class DotApp {
 
         // Ak je pole ako vstup
         if (is_array($callback)) {
-            // Je pole asociatívne? (obsahuje kľúče 'module', 'class', 'function')
+            // Je pole asociativne? (obsahuje kluce 'module', 'class', 'function') ?
             if (isset($callback['module']) || isset($callback['class']) || isset($callback['function'])) {
-                // Asociatívne pole
+                // Asociativne pole
                 $module = $callback['module'] ?? null;
                 $class = $callback['class'] ?? null;
                 $function = $callback['function'] ?? null;
             } else {
-                // Indexované pole
+                // Indexovane pole
                 $count = count($callback);
                 if ($count === 3) {
-                    // Formát: ['module', 'class', 'function']
+                    // Format: ['module', 'class', 'function']
                     $module = $callback[0] ?? null;
                     $class = $callback[1] ?? null;
                     $function = $callback[2] ?? null;
                 } elseif ($count === 2) {
-                    // Formát: ['class', 'function']
+                    // Format: ['class', 'function']
                     $module = null;
                     $class = $callback[0] ?? null;
                     $function = $callback[1] ?? null;
@@ -891,30 +899,53 @@ class DotApp {
             }
         }
     
-        if ($this->validateFnName($callback)) {
-            $callbackA = explode("@", $callback);
-            $funkcia = $callbackA[1];
-    
-            if (strpos($callbackA[0], ":") !== false) {
-                // Module handling
-                $callback1A = explode(":", $callbackA[0]);
-                if (strpos($callback1A[1], "\\") !== false) {
-                    $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\\' .$callback1A[1];
-                } else {
-                    $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Controllers\\' .$callback1A[1];
-                }
-            } else {                
-                $trieda = $callbackA[0];
+        if (is_string($callback)) {
+            // Ak je na konci vykrincnik, tak DI uplne vynechame (ultra rychly call)
+            $useDI = true;
+            if (substr($callback, -1) === '!') {
+                $useDI = false;
+                $callback = rtrim($callback, '!');
             }
-     
-            return function(...$args) use ($trieda, $funkcia, $argsSend) {
-                $trieda = str_replace("\\\\","\\",$trieda);
-                $trieda = str_replace("\\\\","\\",$trieda);
-    
-                return $this->di($trieda, $funkcia, $argsSend, ...$args);
+
+            if ($this->validateFnName($callback)) {
+                $callbackA = explode("@", $callback);
+                $funkcia = $callbackA[1];
+        
+                if (strpos($callbackA[0], ":") !== false) {
+                    // Module handling
+                    $callback1A = explode(":", $callbackA[0]);
+                    if (strpos($callback1A[1], "\\") !== false) {
+                        $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\\' .$callback1A[1];
+                    } else {
+                        $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Controllers\\' .$callback1A[1];
+                    }
+                } else {                
+                    $trieda = $callbackA[0];
+                }
+         
+                return function(...$args) use ($trieda, $funkcia, $argsSend, $useDI) {
+                    $trieda = str_replace("\\\\","\\",$trieda);
+                    $trieda = str_replace("\\\\","\\",$trieda);
+        
+                    // Ak mame priznak !, tak robime len cisty call bez reflexie a DI
+                    if ($useDI === false) {
+                        if (!class_exists($trieda)) throw new \Exception("Class $trieda not found!");
+                        $instance = new $trieda($this);
+                        return call_user_func_array([$instance, $funkcia], array_merge($argsSend, $args));
+                    }
+
+                    return $this->di($trieda, $funkcia, $argsSend, ...$args);
+                };
+            } else {
+                throw new \InvalidArgumentException("Incorrect controller name! Syntax: module:controller@function or array ['module','class','function']");
+            }
+        }
+
+        // Ak pride closure, posleme ju standardne cez di
+        if ($callback instanceof \Closure) {
+            return function(...$args) use ($callback, $argsSend) {
+                return $this->di(null, $callback, $argsSend, ...$args);
             };
-        } else {
-            throw new \InvalidArgumentException("Incorrect controller name! Syntax: module:controller@function or array ['module','class','function']");
         }
     }
 
