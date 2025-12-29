@@ -41,6 +41,7 @@
 namespace Dotsystems\App\Parts;
 use \Dotsystems\App\DotApp;
 use Dotsystems\App\Parts\Config;
+use Dotsystems\App\Parts\Input;
 
 class RequestObj {
 
@@ -830,6 +831,58 @@ class RequestObj {
             static::$firewallFn = $firewallFunction;
         }
         return static::$firewallFn;
+    }
+
+    /**
+     * Robust validation of input group from request data.
+     * Rehydrates the Input object from encrypted state in request.
+     *
+     * @param string $groupName Expected group name (e.g. 'login')
+     * @return bool|array Returns TRUE if valid, or Error Array if invalid.
+     */
+    public function validateInput(string $groupName) {
+        // Len alias...
+        return self::validateInputs($groupName);
+    }
+    public function validateInputs(string $groupName) {
+        $data = $this->data();
+        
+        // 1. Load Form from Request State
+        $form = Input::loadFromRequest($data);
+
+        // 2. Security Check: Form Integrity
+        if (!$form) {
+            // Return structured error
+            return [
+                'status' => 0,
+                'error_code' => 403,
+                'status_txt' => 'Security Error: Invalid form state signature.',
+                'errors' => ['_security' => 'Invalid form data']
+            ];
+        }
+
+        // 3. Security Check: Group Mismatch
+        if ($form->getGroupName() !== $groupName) {
+             return [
+                'status' => 0,
+                'error_code' => 403,
+                'status_txt' => 'Security Error: Form group mismatch.',
+                'errors' => ['_security' => 'Form group mismatch']
+            ];
+        }
+
+        // 4. Validation
+        if ($form->validate()) {
+            return true;
+        } else {
+            // Return validation errors in a standard format
+            return [
+                'status' => 0,
+                'error_code' => 403,
+                'status_txt' => 'Validation Failed',
+                'errors' => $form->getErrors()
+            ];
+        }
     }
 }
 ?>

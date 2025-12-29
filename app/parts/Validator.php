@@ -9,57 +9,57 @@ class Validator {
      * Rules are provided as strings separated by pipes (|), and each rule can have parameters
      * separated by colons (:) and commas (,) for multiple parameters.
      * If a field fails any rule, an error message is added to the result array.
-     * The method uses existing validation functions in this class to perform checks.
      *
-     * Supported rules include: required, set, email, number, integer, positive_number, in_range:min,max,
-     * min_length:min, max_length:max, url, alpha, alphanumeric, strong_password:special,
-     * phone, date, one_of:val1,val2,..., json, username:minLength,maxLength,allowDash,allowDot,
-     * boolean, credit_card, hex_color, ip, uuid, not_empty_array, valid_file_name,
-     * regex:pattern, unique:key.
+     * Supported rules (Laravel-style standardized):
+     * - required, present (old: set), email, numeric (old: number), integer, positive_number
+     * - between:min,max (old: in_range), min:val (old: min_length), max:val (old: max_length)
+     * - url, alpha, alpha_num (old: alphanumeric), strong_password:special
+     * - phone, date, in:val1,val2... (old: one_of), json, username:min,max,dash,dot
+     * - boolean, credit_card, hex_color, ip, uuid, not_empty_array, valid_file_name
+     * - regex:pattern, unique:key
      *
      * @param array $input Associative array of input data to validate, e.g., ['email' => 'info@dotsystems.sk'].
      * @param array $rules Associative array of validation rules, e.g., ['email' => 'required|email'].
-     * @return array Associative array of errors, keyed by field name with arrays of error messages. Empty array if no errors.
+     * @return bool|array Returns TRUE if validation passes, otherwise returns an associative array of errors.
      * @throws \InvalidArgumentException If an unknown rule is used or if rule parameters are invalid.
      *
      * @example
      * // Example 1: Simple email and password validation
      * $input = [
-     *     'email' => 'info@dotsystems.sk',
-     *     'password' => 'StrongPass1',
+     * 'email' => 'info@dotsystems.sk',
+     * 'password' => 'StrongPass1',
      * ];
      * $rules = [
-     *     'email' => 'required|email',
-     *     'password' => 'required|min_length:8|strong_password',
+     * 'email' => 'required|email',
+     * 'password' => 'required|min:8|strong_password',
      * ];
-     * $errors = Validator::validate($input, $rules);
-     * // $errors will be empty if validation passes
+     * $result = Validator::validate($input, $rules);
+     * if ($result === true) {
+     * // Validation passed
+     * } else {
+     * // $result contains errors
+     * }
      *
      * @example
      * // Example 2: Validation with range and unique array
      * $input = [
-     *     'age' => 25,
-     *     'colors' => ['red', 'blue', 'green'],
+     * 'age' => 25,
+     * 'colors' => ['red', 'blue', 'green'],
      * ];
      * $rules = [
-     *     'age' => 'integer|in_range:18,100|positive_number',
-     *     'colors' => 'not_empty_array|unique',
+     * 'age' => 'integer|between:18,100|positive_number',
+     * 'colors' => 'not_empty_array|unique',
      * ];
-     * $errors = Validator::validate($input, $rules);
-     * // $errors will be empty if validation passes
+     * $result = Validator::validate($input, $rules);
      *
      * @example
-     * // Example 3: Handling invalid input and exceptions
-     * try {
-     *     $input = ['email' => 'invalid'];
-     *     $rules = ['email' => 'required|email'];
-     *     $errors = Validator::validate($input, $rules);
-     *     // $errors['email'] will contain error messages
-     * } catch (\InvalidArgumentException $e) {
-     *     echo $e->getMessage();
-     * }
-    */
-    public static function validate(array $input, array $rules): array {
+     * // Example 3: Handling invalid input
+     * $input = ['email' => 'invalid'];
+     * $rules = ['email' => 'required|email'];
+     * $result = Validator::validate($input, $rules);
+     * // $result is now: ['email' => ['The email must be a valid email address.']]
+     */
+    public static function validate(array $input, array $rules) {
         $errors = [];
 
         foreach ($rules as $field => $ruleString) {
@@ -72,6 +72,7 @@ class Validator {
                 $params = isset($parts[1]) ? array_map('trim', explode(',', $parts[1])) : [];
 
                 $isValid = false;
+                $message = null;
 
                 switch ($ruleName) {
                     case 'required':
@@ -79,9 +80,10 @@ class Validator {
                         $message = "The {$field} field is required.";
                         break;
 
-                    case 'set':
+                    case 'present': // Laravel style
+                    case 'set':     // Keep for backward compatibility
                         $isValid = self::isSet($value);
-                        $message = "The {$field} field must be set.";
+                        $message = "The {$field} field must be present.";
                         break;
 
                     case 'email':
@@ -89,7 +91,8 @@ class Validator {
                         $message = "The {$field} must be a valid email address.";
                         break;
 
-                    case 'number':
+                    case 'numeric': // Laravel style
+                    case 'number':  // Keep for backward compatibility
                         $isValid = self::isNumber($value);
                         $message = "The {$field} must be a number.";
                         break;
@@ -104,9 +107,10 @@ class Validator {
                         $message = "The {$field} must be a positive number.";
                         break;
 
-                    case 'in_range':
+                    case 'between':  // Laravel style
+                    case 'in_range': // Keep for backward compatibility
                         if (count($params) !== 2 || !is_numeric($params[0]) || !is_numeric($params[1])) {
-                            throw new \InvalidArgumentException("in_range rule for {$field} requires exactly two numeric parameters: min,max.");
+                            throw new \InvalidArgumentException("between/in_range rule for {$field} requires exactly two numeric parameters: min,max.");
                         }
                         $min = (float)$params[0];
                         $max = (float)$params[1];
@@ -114,18 +118,20 @@ class Validator {
                         $message = "The {$field} must be between {$min} and {$max}.";
                         break;
 
-                    case 'min_length':
+                    case 'min':        // Laravel style
+                    case 'min_length': // Keep for backward compatibility
                         if (count($params) !== 1 || !is_numeric($params[0])) {
-                            throw new \InvalidArgumentException("min_length rule for {$field} requires one integer parameter: min.");
+                            throw new \InvalidArgumentException("min rule for {$field} requires one integer parameter.");
                         }
                         $min = (int)$params[0];
                         $isValid = self::isMinLength($value, $min);
                         $message = "The {$field} must be at least {$min} characters long.";
                         break;
 
-                    case 'max_length':
+                    case 'max':        // Laravel style
+                    case 'max_length': // Keep for backward compatibility
                         if (count($params) !== 1 || !is_numeric($params[0])) {
-                            throw new \InvalidArgumentException("max_length rule for {$field} requires one integer parameter: max.");
+                            throw new \InvalidArgumentException("max rule for {$field} requires one integer parameter.");
                         }
                         $max = (int)$params[0];
                         $isValid = self::isMaxLength($value, $max);
@@ -142,7 +148,8 @@ class Validator {
                         $message = "The {$field} must contain only alphabetic characters.";
                         break;
 
-                    case 'alphanumeric':
+                    case 'alpha_num':   // Laravel style
+                    case 'alphanumeric': // Keep for backward compatibility
                         $isValid = self::isAlphanumeric($value);
                         $message = "The {$field} must contain only alphanumeric characters.";
                         break;
@@ -163,9 +170,10 @@ class Validator {
                         $message = "The {$field} must be a valid date.";
                         break;
 
-                    case 'one_of':
+                    case 'in':     // Laravel style
+                    case 'one_of': // Keep for backward compatibility
                         if (count($params) < 1) {
-                            throw new \InvalidArgumentException("one_of rule for {$field} requires at least one parameter: val1,val2,...");
+                            throw new \InvalidArgumentException("in/one_of rule for {$field} requires at least one parameter.");
                         }
                         $isValid = self::isOneOf($value, $params);
                         $message = "The {$field} must be one of: " . implode(', ', $params) . ".";
@@ -248,7 +256,7 @@ class Validator {
             }
         }
 
-        return $errors;
+        return empty($errors) ? true : $errors;
     }
 
     /**
@@ -374,7 +382,7 @@ class Validator {
             return false;
         }
         $basePattern = '/^(?=.*[A-Z])(?=.*\d).{8,}$/';
-        $specialPattern = '/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/';        
+        $specialPattern = '/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/';
         return preg_match($special ? $specialPattern : $basePattern, $text) === 1;
     }
 
@@ -401,9 +409,9 @@ class Validator {
             return false;
         }
         try {
-            new DateTime($text);
+            new \DateTime($text);
             return true;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return false;
         }
     }
@@ -624,3 +632,5 @@ class Validator {
         return $value !== "" && $value !== null && isset($value);
     }
 }
+
+?>

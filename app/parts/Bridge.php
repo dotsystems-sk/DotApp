@@ -1189,6 +1189,7 @@ class Bridge {
 		return $this;
 	}
 
+
     /**
      * Defines a callable function in the bridge.
      *
@@ -1205,7 +1206,7 @@ class Bridge {
         // Ak sedi routa, povolime zaregistrovat len funkciu na ktoru routa odkazuje cim setrime zdroje
         if ($this->register_function !== $function_name && $this->register_function !== true) return $this->chainMe(null); // Hodime prazdnu retaz aby sme nerozbili chaining
 
-        if (!is_callable($callback)) $callback = $this->dotapp->stringToCallable($callback);
+        if (!is_callable($callback)) $callback = DotApp::DotApp()->stringToCallable($callback);
 
         if (is_callable($callback)) {
             $this->bridge['fn'][$function_name] = $callback;

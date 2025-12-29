@@ -1103,6 +1103,130 @@
             return instance.chain;
         }
 
+        sendInput(groupName, url = window.location.href) {
+            // 1. Collect Elements
+            const groupSelector = `[groupName="${groupName}"]`;
+            const inputs = document.querySelectorAll(`input${groupSelector}, select${groupSelector}, textarea${groupSelector}`);
+            
+            // 2. Prepare Data Holders
+            let payload = {};
+            let hasFiles = false;
+            
+            // 3. First Pass: Collect standard data and check for files
+            inputs.forEach(el => {
+                const name = el.getAttribute('name');
+                if (!name) return;
+
+                if (el.type === 'file') {
+                    if (el.files.length > 0) {
+                        hasFiles = true;
+                    }
+                } else if (el.type === 'checkbox' || el.type === 'radio') {
+                    if (el.checked) {
+                        payload[name] = el.value;
+                    }
+                } else {
+                    payload[name] = el.value;
+                }
+            });
+
+            // 4. Security Keys
+            const keyEl = document.querySelector(`input[name="DotAppInputGroupKey"][groupName="${groupName}"]`);
+            const dataEl = document.querySelector(`input[name="DotAppInputGroupData"][groupName="${groupName}"]`);
+
+            if (keyEl && dataEl) {
+                payload['DotAppInputGroupKey'] = keyEl.value;
+                payload['DotAppInputGroupData'] = dataEl.value;
+            } else {
+                console.warn(`DotApp: Security keys for group '${groupName}' missing. Validation may fail.`);
+            }
+
+            // 5. Construct Final Data (FormData if files exist, otherwise plain Object)
+            let dataToSend;
+
+            if (hasFiles) {
+                dataToSend = new FormData();
+                // Append all text/logic data
+                for (const key in payload) {
+                    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+                        dataToSend.append(key, payload[key]);
+                    }
+                }
+                // Append files specifically
+                inputs.forEach(el => {
+                    if (el.type === 'file' && el.files.length > 0) {
+                        Array.from(el.files).forEach(file => {
+                            dataToSend.append(el.name, file);
+                        });
+                    }
+                });
+            } else {
+                dataToSend = payload;
+            }
+
+            // 6. Hook System (Bridge-Style)
+            const instance = {
+                hooks: {
+                    before: [],
+                    after: [],
+                    onError: [],
+                    onResponseCode: {}
+                },
+                chain: {
+                    before: (fn) => { instance.hooks.before.push(fn); return instance.chain; },
+                    after: (fn) => { instance.hooks.after.push(fn); return instance.chain; },
+                    onError: (fn) => { instance.hooks.onError.push(fn); return instance.chain; },
+                    onResponseCode: (code, fn) => {
+                        if (!instance.hooks.onResponseCode[code]) instance.hooks.onResponseCode[code] = [];
+                        instance.hooks.onResponseCode[code].push(fn);
+                        return instance.chain;
+                    }
+                }
+            };
+
+            // 7. Execution (Async)
+            (async () => {
+                // --- Hook: BEFORE ---
+                for (const fn of instance.hooks.before) {
+                    // Pass data by reference-like object so it can be modified if needed
+                    const context = { data: dataToSend, elements: inputs };
+                    const res = await fn(context.data, context.elements);
+                    if (res === false) return; // Allow cancelling
+                }
+
+                // --- NETWORK: Using built-in this.load() ---
+                // Note: this.load handles the wrapping of 'data' and 'crc' automatically
+                await this.load(url, 'POST', dataToSend, 
+                    (response) => {
+                        // Success Callback
+                        const parsedData = this.parseReply(response);
+                        
+                        // --- Hook: AFTER ---
+                        instance.hooks.after.forEach(fn => fn(parsedData, inputs));
+                    },
+                    (status, errorText) => {
+                        // Error Callback (Handles HTTP 4xx, 5xx)
+                        
+                        // --- Hook: ON RESPONSE CODE ---
+                        if (instance.hooks.onResponseCode[status]) {
+                            instance.hooks.onResponseCode[status].forEach(fn => fn(status, errorText, inputs));
+                            return; 
+                        }
+
+                        // --- Hook: ON ERROR ---
+                        const errorObj = { status: status, message: errorText };
+                        instance.hooks.onError.forEach(fn => fn(errorObj, inputs));
+                    }
+                ).catch(err => {
+                    // Network/System Error
+                    instance.hooks.onError.forEach(fn => fn({ status: 0, message: err.message }, inputs));
+                });
+
+            })();
+
+            return instance.chain;
+        }
+
         removeNull(input) {
             // If input is null, return undefined
             if (input === null) {
