@@ -59,7 +59,30 @@ class Validator {
      * $result = Validator::validate($input, $rules);
      * // $result is now: ['email' => ['The email must be a valid email address.']]
      */
-    public static function validate(array $input, array $rules) {
+
+    /**
+     * Validates input data against rules. 
+     * * Mode 1 (Bulk): Validator::validate(['name' => 'John'], ['name' => 'required|min:3'])
+     * Mode 2 (Single): Validator::validate("John", "required|min:3")
+     *
+     * @param mixed $input Associative array OR a single scalar value.
+     * @param mixed $rules Associative array of rules OR a single rule string.
+     * @return bool|array Returns TRUE if valid, otherwise an array of errors.
+     * @throws \InvalidArgumentException If parameters are mismatched.
+     */
+    public static function validate($input,$rules) {
+        if (!is_array($input) && is_string($rules)) {
+            $input = ['data' => $input];
+            $rules = ['data' => $rules];
+        } 
+        elseif (is_array($input) && is_array($rules)) {
+            // V poriadku, pokračujeme
+        } 
+        else {
+            throw new \InvalidArgumentException(
+                "Validator mismatch: Use either (array, array) for bulk validation or (scalar, string) for single validation."
+            );
+        }
         $errors = [];
 
         foreach ($rules as $field => $ruleString) {
