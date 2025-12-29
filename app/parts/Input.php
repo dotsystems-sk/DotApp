@@ -1,1123 +1,614 @@
 <?php
-/**
- * CLASS Input
- *
- * This class provides a fluent API for generating secure HTML form elements
- * within the DotApp framework. It supports various input types and automatic
- * escaping, optimized for modern JavaScript-driven applications.
- *
- * Key Features:
- * - Fluent interface for creating form elements (select, input, textarea, checkbox, radio, etc.).
- * - Specialized builder classes (InputSelect, InputTextarea, etc.) for context-specific method chaining.
- * - Automatic escaping of values to prevent XSS attacks.
- * - Optional encryption of sensitive values using DotApp's global encrypt method.
- * - Customizable attributes and validation rules.
- * - Render individual elements (`render()`) or all elements (`renderAll()`) from main class or subclasses.
- * - Seamless chaining between input types using magic `__call()` to eliminate need for `end()`.
- * - Automatic frontend-backend form processing linkage using `fnName` and hidden fields.
- * - Optimized for modern JavaScript-driven applications (no CSRF tokens, no fallback for disabled JS).
- *
- * @package   DotApp Framework
- * @author    Štefan Miščík <info@dotsystems.sk>
- * @company   Dotsystems s.r.o.
- * @version   1.7
- * @license   MIT License
- * @date      2014-2025
- * @compatibility Tested on PHP 7.4
- *
- * License Notice:
- * You are permitted to use, modify, and distribute this code under the
- * following condition: You **must** retain this header in all copies or
- * substantial portions of the code, including the author and company information.
- */
 
 namespace Dotsystems\App\Parts;
 
-use \Dotsystems\App\DotApp;
+use Dotsystems\App\DotApp;
+use Dotsystems\App\Parts\Validator;
+
+/**
+ * Class Input
+ *
+ * Secure Form Builder & Validator with Template Injection support.
+ *
+ * =============================================================================
+ * POUŽITIE (MANUÁL)
+ * =============================================================================
+ *
+ * 1. PHP - Definícia formulára (Builder):
+ * ---------------------------------------
+ * $form = Input::group('register_form');
+ * $form->text('username', ['class' => 'input'], 'required|alpha_num|min:3');
+ * $form->password('pass', [], 'required|strong_password');
+ * $securityKeys = $form->export(); // Vráti hidden inputy (ak nepoužívate Template)
+ *
+ *
+ * 2. HTML Šablóna (Template Syntax):
+ * ----------------------------------
+ * <form method="POST">
+ * {{ InputKeys('register_form') }}
+ * <label>Login:</label>
+ * {{ input:text name="username" rules="required|alpha_num" group="register_form" }}
+ * <button type="submit">Odoslať</button>
+ * </form>
+ *
+ *
+ * 3. Spracovanie Requestu (Backend cez RequestObj):
+ * ----------------------------------
+ * V rámci DotApp frameworku neriešite $_POST manuálne. Použite Request objekt:
+ *
+ * // V Controlleri:
+ * $result = $this->request->validateInputs('register_form');
+ *
+ * if ($result === true) {
+ * // Validácia úspešná
+ * $data = $this->request->data(); // Obsahuje čisté dáta
+ * // ... registrácia užívateľa ...
+ * } else {
+ * // Validácia zlyhala
+ * // $result obsahuje pole ['status' => 0, 'errors' => [...]]
+ * // Môžete ho rovno vrátiť ako JSON odpoveď pre DotApp JS
+ * return $this->response->json($result);
+ * }
+ *
+ *
+ * 4. Dostupné Pravidlá:
+ * ---------------------------------------
+ * - required, email, numeric, integer, between:min,max
+ * - min:x, max:x, alpha, alpha_num, strong_password
+ * - match:field, in:a,b,c, unique:table.col (ak implementované)
+ */
 
 class Input {
-    public $dotapp;
-    public $dotApp;
-    public $DotApp;
-    private $elements = []; // Array of form elements
-    private $currentElement = null; // Current element being built
-    private $escape = true; // Auto-escape values by default
-    private $validationRules = []; // Validation rules for inputs
+    
+    /** @var Input[] Multiton instances */
+    private static $instances = [];
 
-    /**
-     * Constructor
-     *
-     * @param DotApp $dotapp Framework instance
-     */
-    public function __construct()
-    {
-        $this->dotapp = DotApp::dotApp();
-        $this->dotApp = $this->dotapp;
-        $this->DotApp = $this->dotapp;
+    /** @var array<string, callable> Global custom validation filters */
+    private static $customFilters = [];
+    
+    /** @var string */
+    private $groupName;
+    
+    /** @var array Field definitions */
+    private $fields = [];
+    
+    /** @var array Data values (current state) */
+    private $data = [];
+
+    /** @var array Validation errors */
+    private $errors = [];
+    
+    /** @var DotApp */
+    private $dotApp;
+
+    private function __construct($groupName) {
+        $this->groupName = $groupName;
+        $this->dotApp = DotApp::dotApp();
     }
 
     /**
-     * Disable automatic escaping (use with caution)
-     *
-     * @return $this
+     * Získa alebo vytvorí inštanciu skupiny.
      */
-    public function disableEscape()
-    {
-        $this->escape = false;
+    public static function group($groupName) {
+        if (!isset(self::$instances[$groupName])) {
+            self::$instances[$groupName] = new self($groupName);
+        }
+        return self::$instances[$groupName];
+    }
+
+    public static function addGlobalFilter($name, callable $callback) {
+        self::$customFilters[$name] = $callback;
+    }
+
+    // =========================================================================
+    // BUILDER METÓDY
+    // =========================================================================
+
+    private function add($type, $name, $attrs = [], $rules = '') {
+        $this->fields[$name] = [
+            'type' => $type,
+            'name' => $name,
+            'attributes' => $attrs,
+            'rules' => $rules,
+            'options' => $attrs['options'] ?? []
+        ];
         return $this;
     }
 
-    /**
-     * Enable automatic escaping
-     *
-     * @return $this
-     */
-    public function enableEscape()
-    {
-        $this->escape = true;
+    public function text($name, $attrs = [], $rules = '') { return $this->add('text', $name, $attrs, $rules); }
+    public function password($name, $attrs = [], $rules = '') { return $this->add('password', $name, $attrs, $rules); }
+    public function email($name, $attrs = [], $rules = '') { return $this->add('email', $name, $attrs, $rules); }
+    public function number($name, $attrs = [], $rules = '') { return $this->add('number', $name, $attrs, $rules); }
+    public function file($name, $attrs = [], $rules = '') { return $this->add('file', $name, $attrs, $rules); }
+    
+    public function hidden($name, $value, $attrs = []) { 
+        $this->data[$name] = $value;
+        return $this->add('hidden', $name, $attrs, ''); 
+    }
+    
+    public function textarea($name, $attrs = [], $rules = '') { return $this->add('textarea', $name, $attrs, $rules); }
+
+    public function select($name, array $options, $attrs = [], $rules = '') {
+        $attrs['options'] = $options;
+        return $this->add('select', $name, $attrs, $rules);
+    }
+
+    public function checkbox($name, $value = 1, $attrs = [], $rules = '') {
+        $attrs['value'] = $value;
+        return $this->add('checkbox', $name, $attrs, $rules);
+    }
+
+    public function radio($name, $value, $attrs = [], $rules = '') {
+        $attrs['value'] = $value;
+        $uniqueKey = $name . '_' . $value;
+        $this->fields[$uniqueKey] = [
+            'type' => 'radio',
+            'name' => $name,
+            'attributes' => $attrs,
+            'rules' => $rules
+        ];
         return $this;
     }
 
-    /**
-     * Add a select element
-     *
-     * @param string $name Input name
-     * @param array $attributes Additional HTML attributes
-     * @return InputSelect
-     */
-    public function select($name, array $attributes = [])
-    {
-        $this->addElement('select', $name, $attributes);
-        return new InputSelect($this, $this->currentElement);
-    }
+    // =========================================================================
+    // STATE MANAGEMENT
+    // =========================================================================
 
-    /**
-     * Add a text input element
-     *
-     * @param string $name Input name
-     * @param string|null $value Default value
-     * @param array $attributes Additional HTML attributes
-     * @param bool $encrypt Whether to encrypt the value
-     * @return InputText
-     */
-    public function text($name, $value = null, array $attributes = [], $encrypt = false)
-    {
-        $value = $this->encryptValue($value, $encrypt);
-        $value = $value !== null && $this->escape ? htmlspecialchars($value, ENT_QUOTES, 'UTF-8') : $value;
-        $attributes['value'] = $value;
-        $this->addElement('text', $name, $attributes);
-        return new InputText($this, $this->currentElement);
-    }
-
-    /**
-     * Add a textarea element
-     *
-     * @param string $name Input name
-     * @param string|null $value Default value
-     * @param array $attributes Additional HTML attributes
-     * @return InputTextarea
-     */
-    public function textarea($name, $value = null, array $attributes = [])
-    {
-        $value = $value !== null && $this->escape ? htmlspecialchars($value, ENT_QUOTES, 'UTF-8') : $value;
-        $this->addElement('textarea', $name, $attributes, $value);
-        return new InputTextarea($this, $this->currentElement);
-    }
-
-    /**
-     * Add a checkbox element
-     *
-     * @param string $name Input name
-     * @param string $value Checkbox value
-     * @param bool $checked Whether the checkbox is checked
-     * @param array $attributes Additional HTML attributes
-     * @param bool $encrypt Whether to encrypt the value
-     * @return InputCheckbox
-     */
-    public function checkbox($name, $value, $checked = false, array $attributes = [], $encrypt = false)
-    {
-        $value = $this->encryptValue($value, $encrypt);
-        $value = $this->escape ? htmlspecialchars($value, ENT_QUOTES, 'UTF-8') : $value;
-        if ($checked) {
-            $attributes['checked'] = 'checked';
-        }
-        $attributes['value'] = $value;
-        $this->addElement('checkbox', $name, $attributes);
-        return new InputCheckbox($this, $this->currentElement);
-    }
-
-    /**
-     * Add a radio button element
-     *
-     * @param string $name Input name
-     * @param string $value Radio value
-     * @param bool $checked Whether the radio is checked
-     * @param array $attributes Additional HTML attributes
-     * @param bool $encrypt Whether to encrypt the value
-     * @return InputRadio
-     */
-    public function radio($name, $value, $checked = false, array $attributes = [], $encrypt = false)
-    {
-        $value = $this->encryptValue($value, $encrypt);
-        $value = $this->escape ? htmlspecialchars($value, ENT_QUOTES, 'UTF-8') : $value;
-        if ($checked) {
-            $attributes['checked'] = 'checked';
-        }
-        $attributes['value'] = $value;
-        $this->addElement('radio', $name, $attributes);
-        return new InputRadio($this, $this->currentElement);
-    }
-
-    /**
-     * Add a hidden input element
-     *
-     * @param string $name Input name
-     * @param string $value Hidden value
-     * @param array $attributes Additional HTML attributes
-     * @param bool $encrypt Whether to encrypt the value
-     * @return InputHidden
-     */
-    public function hidden($name, $value, array $attributes = [], $encrypt = false)
-    {
-        $value = $this->encryptValue($value, $encrypt);
-        $value = $this->escape ? htmlspecialchars($value, ENT_QUOTES, 'UTF-8') : $value;
-        $attributes['value'] = $value;
-        $this->addElement('hidden', $name, $attributes);
-        return new InputHidden($this, $this->currentElement);
-    }
-
-    /**
-     * Add a submit button to the form
-     *
-     * Creates an input element with type="submit" and the specified text/value.
-     * The button can be customized with additional HTML attributes.
-     *
-     * @param string $name The button text/value to be displayed
-     * @param array $attributes Additional HTML attributes for the submit button (e.g., ['class' => 'btn btn-primary'])
-     * @return InputSubmit Returns an InputSubmit instance for method chaining
-     */
-    public function submit($name, array $attributes = [])
-    {
-        $value = $this->escape ? htmlspecialchars($name, ENT_QUOTES, 'UTF-8') : $name;
-        $attributes['value'] = $value;
-        $this->addElement('submit', null, $attributes);
-        return new InputSubmit($this, $this->currentElement);
-    }
-
-    /**
-     * Add validation rules for the current element
-     *
-     * Assigns validation rules to the current form element identified by its name.
-     * These rules can be used for client-side and server-side validation.
-     *
-     * @param array $rules An array of validation rules (e.g., ['required', 'email', 'min:5'])
-     *                     Each rule can be a simple string or a string with parameters (rule:param)
-     * @return $this Returns the current instance for method chaining
-     * @throws \Exception If called when no current element exists or the element has no name
-     */
-    public function validate(array $rules)
-    {
-        if ($this->currentElement && $this->currentElement['name']) {
-            $this->validationRules[$this->currentElement['name']] = $rules;
-        }
+    public function setValues(array $data) {
+        $this->data = array_merge($this->data, $data);
         return $this;
     }
 
-    /**
-     * Generate secure hidden fields for automatic form processing
-     *
-     * Creates encrypted hidden fields that securely link a form to a backend function.
-     * This method generates random encryption keys and encrypts the function name,
-     * action URL, and HTTP method to prevent tampering.
-     *
-     * @param string $action The form action URL to be encrypted
-     * @param string $method The HTTP method (GET, POST, PUT, DELETE, etc.) to be used
-     * @param string $functionName The backend function name to be called when form is submitted
-     * @param object $caller The object instance that called this method (used to determine output format)
-     * @return string|void Returns HTML for hidden fields if called externally, or void if called internally
-     * @throws \Exception If an invalid HTTP method is provided
-     */
-    public function formFunction($action,$method,$functionName,$caller) {
-        $method = strtoupper($method);
-        if (!in_array(strtoupper($method), ['GET', 'POST']) && $functionName == '') {
-            throw new \Exception('Invalid form method. Use GET or POST.');
-        } else if ($functionName != '') {
-            if (!in_array(strtoupper($method), ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'])) {
-                throw new \Exception('Invalid automatic form method !');
+    public function getValue($name) {
+        return isset($this->data[$name]) ? $this->data[$name] : null;
+    }
+
+    // =========================================================================
+    // RENDERER
+    // =========================================================================
+
+    public function render($fieldKey) {
+        if (!isset($this->fields[$fieldKey])) return "";
+
+        $field = $this->fields[$fieldKey];
+        $type = $field['type'];
+        $name = $field['name'];
+        $value = $this->getValue($name);
+        
+        $attrs = $field['attributes'];
+        unset($attrs['options']);
+
+        if (!isset($attrs['id'])) $attrs['id'] = $name;
+        $attrs['groupName'] = $this->groupName;
+
+        if (isset($this->errors[$name])) {
+            $attrs['class'] = isset($attrs['class']) ? $attrs['class'] . ' is-invalid' : 'is-invalid';
+        }
+
+        if (strpos($field['rules'], 'required') !== false) {
+            $attrs['required'] = 'required';
+        }
+
+        $htmlAttrs = $this->buildAttrs($attrs);
+
+        switch ($type) {
+            case 'textarea':
+                return "<textarea name=\"$name\" $htmlAttrs>" . htmlspecialchars((string)$value) . "</textarea>";
+            case 'select':
+                $html = "<select name=\"$name\" $htmlAttrs>";
+                $options = $field['options'] ?? [];
+                if (isset($attrs['placeholder'])) {
+                    $html .= '<option value="">' . htmlspecialchars($attrs['placeholder']) . '</option>';
+                }
+                foreach ($options as $val => $text) {
+                    $selected = ((string)$val === (string)$value) ? 'selected' : '';
+                    $html .= "<option value=\"" . htmlspecialchars($val) . "\" $selected>" . htmlspecialchars($text) . "</option>";
+                }
+                $html .= "</select>";
+                return $html;
+            case 'checkbox':
+                $checkVal = $attrs['value'] ?? 1;
+                $checked = ((string)$value === (string)$checkVal) ? 'checked' : '';
+                return "<input type=\"checkbox\" name=\"$name\" value=\"" . htmlspecialchars($checkVal) . "\" $htmlAttrs $checked>";
+            case 'radio':
+                $radioVal = $attrs['value'];
+                $checked = ((string)$value === (string)$radioVal) ? 'checked' : '';
+                return "<input type=\"radio\" name=\"$name\" value=\"" . htmlspecialchars($radioVal) . "\" $htmlAttrs $checked>";
+            default:
+                $valAttr = ($type !== 'password' && $type !== 'file') ? 'value="' . htmlspecialchars((string)$value) . '"' : '';
+                return "<input type=\"$type\" name=\"$name\" $valAttr $htmlAttrs>";
+        }
+    }
+
+    private function buildAttrs($attrs) {
+        $html = [];
+        foreach ($attrs as $k => $v) {
+            if ($v === true) $html[] = $k;
+            else $html[] = $k . '="' . htmlspecialchars($v) . '"';
+        }
+        return implode(' ', $html);
+    }
+
+    // =========================================================================
+    // SECURITY CORE
+    // =========================================================================
+
+    public function export() {
+        $schema = [];
+        foreach ($this->fields as $key => $f) {
+            $name = $f['name'];
+            if (!isset($schema[$name])) {
+                $schema[$name] = $f['rules'];
             }
-            $overWriteMethod = $method;
-            $method = "POST";
         }
-        // Generate encryption key
-        $randomEncKeyPerForm = base64_encode(random_bytes(32));
-        $randomEncKeyPerFormPublic = $this->dotApp->encrypt($randomEncKeyPerForm);
-        $encryptedFnName = $this->dotApp->encrypt($functionName, $randomEncKeyPerForm);
-        $encryptedAction = $this->dotApp->encrypt($action, $randomEncKeyPerForm);
-        $encryptedMethod = !empty($overWriteMethod) ? $this->dotApp->encrypt($overWriteMethod, $randomEncKeyPerForm) : '';
 
-        if ($caller === $this) {
-            // Hidden fields
-            $this->hidden('dotapp-secure-auto-fnname', $encryptedFnName, [], false);
-            $this->hidden('dotapp-secure-auto-fnname-action', $encryptedAction, [], false);
-            $this->hidden('dotapp-secure-auto-fnname-method', $encryptedMethod, [], false);
-            $this->hidden('dotapp-secure-auto-fnname-public', $randomEncKeyPerFormPublic, [], false);
-        } else {
-            return '
-                <input type="hidden" name="dotapp-secure-auto-fnname" value="'.$encryptedFnName.'">
-                <input type="hidden" name="dotapp-secure-auto-fnname-action" value="'.$encryptedAction.'">
-                <input type="hidden" name="dotapp-secure-auto-fnname-method" value="'.$encryptedMethod.'">
-                <input type="hidden" name="dotapp-secure-auto-fnname-public" value="'.$randomEncKeyPerFormPublic.'">
-            ';
-        }
+        $payload = [
+            'group' => $this->groupName,
+            'schema' => $schema,
+            'ts' => time()
+        ];
+        
+        $json = json_encode($payload);
+        $randomSalt = bin2hex(random_bytes(64));
+        $keyPayload = $randomSalt . ':' . $this->groupName;
+
+        $derivedKey = $this->dotApp->encrypt($keyPayload, "InputKey");
+        $encryptedData = $this->dotApp->encrypt($json, $derivedKey);
+        
+        return '
+        <input type="hidden" name="DotAppInputGroupKey" groupName="'.$this->groupName.'" value="' . $derivedKey . '">
+        <input type="hidden" name="DotAppInputGroupData" groupName="'.$this->groupName.'" value="' . $encryptedData . '">
+        ';
     }
 
-    /**
-     * Start a form with automatic hidden fields for secure backend processing
-     *
-     * Creates a form with the specified action, method, attributes, and optional fnName
-     * for linking to backend processing. Automatically adds encrypted hidden fields
-     * for secure form validation and processing.
-     *
-     * @param string $action Form action URL
-     * @param string $method Form method (POST, GET, PUT, DELETE, PATCH, OPTIONS, HEAD)
-     * @param array|string $attributes Additional HTML attributes or fnName (if string)
-     * @param string $fnName Function name for backend processing (optional)
-     * @return $this
-     * @throws \Exception If parameters are invalid
-     */
-    public function form($action, $method = 'POST', $attributes = [], $fnName = '') {
-        $method = strtoupper($method);
+    public function handleRequest($requestData) {
+        $this->data = $requestData;
 
-        // Handle attributes and fnName based on third parameter type
-        $formAttributes = [];
-        $functionName = '';
-        if (is_string($attributes) && empty($fnName)) {
-            // Third parameter is fnName, no attributes
-            $functionName = $attributes;
-        } elseif (is_array($attributes)) {
-            // Third parameter is attributes, fourth is fnName
-            $formAttributes = $attributes;
-            $functionName = $fnName;
+        if (!isset($requestData['DotAppInputGroupKey']) || !isset($requestData['DotAppInputGroupData'])) {
+            return $this; 
+        }
+
+        $derivedKey = $requestData['DotAppInputGroupKey'];
+        $encryptedData = $requestData['DotAppInputGroupData'];
+
+        $decryptedKeyPayload = $this->dotApp->decrypt($derivedKey, "InputKey");
+        if (!$decryptedKeyPayload) throw new \Exception("Security Error: Invalid Form Key Structure.");
+
+        $parts = explode(':', $decryptedKeyPayload);
+        if (count($parts) < 2) throw new \Exception("Security Error: Malformed Key Payload.");
+        
+        array_shift($parts);
+        $keyGroupName = implode(':', $parts);
+
+        if ($keyGroupName !== $this->groupName) {
+            throw new \Exception("Security Error: Form Group Mismatch.");
+        }
+
+        $json = $this->dotApp->decrypt($encryptedData, $derivedKey);
+        if (!$json) throw new \Exception("Security Error: Data Decryption Failed.");
+
+        $payload = json_decode($json, true);
+
+        if ($payload && isset($payload['schema'])) {
+            foreach ($payload['schema'] as $name => $rules) {
+                if (isset($this->fields[$name])) {
+                    $this->fields[$name]['rules'] = $rules;
+                }
+            }
         } else {
-            throw new \Exception('Third parameter must be an array of attributes or a string fnName.');
+            throw new \Exception("Security Error: Invalid Payload Structure.");
         }
-
-        // Set form attributes
-        $formAttributes['action'] = htmlspecialchars($action, ENT_QUOTES, 'UTF-8');
-        $formAttributes['method'] = $method;
-        if (isset($formAttributes['data-ajax']) && $formAttributes['data-ajax']) {
-            $formAttributes['class'] = isset($formAttributes['class']) ? $formAttributes['class'] . ' ajax-form' : 'ajax-form';
-        }
-
-        // Add form element
-        $this->elements[] = [
-            'type' => 'form',
-            'name' => null,
-            'attributes' => $formAttributes,
-            'options' => [],
-            'value' => null
-        ];
-
-        // Add hidden fields if fnName is specified
-        if (!empty($functionName)) {
-            $this->formFunction($action,$method,$functionName,$this);
-        }
-
+        
         return $this;
     }
 
-    /**
-     * Close the form
-     *
-     * @return $this
-     */
-    public function endForm()
-    {
-        $this->elements[] = [
-            'type' => 'form_end',
-            'name' => null,
-            'attributes' => [],
-            'options' => [],
-            'value' => null
-        ];
-        return $this;
+    // =========================================================================
+    // VALIDATION ENGINE (Delegating to Validator Class)
+    // =========================================================================
+
+    public function validate() {
+        $this->errors = [];
+        $data = $this->data;
+        $uniqueFields = [];
+        // Zabezpečenie, aby sme radio buttony nekontrolovali viackrát pre to isté meno
+        foreach ($this->fields as $f) {
+            $uniqueFields[$f['name']] = $f['rules'];
+        }
+
+        foreach ($uniqueFields as $name => $rulesString) {
+            $rules = explode('|', $rulesString);
+            $value = isset($data[$name]) ? trim($data[$name]) : null;
+
+            foreach ($rules as $ruleItem) {
+                if (empty($ruleItem)) continue;
+                $parts = explode(':', $ruleItem, 2);
+                $rule = trim($parts[0]);
+                $paramString = $parts[1] ?? null;
+
+                // Skip ak je prázdny a nie je required/present
+                if (!in_array($rule, ['required', 'present', 'set']) && ($value === null || $value === '')) {
+                    continue;
+                }
+
+                if (!$this->checkRule($rule, $value, $paramString, $data)) {
+                    $this->addError($name, $rule, $paramString);
+                    break; // Prvá chyba pre dané pole stačí
+                }
+            }
+        }
+        return empty($this->errors);
     }
 
     /**
-     * Render the current element as HTML
-     *
-     * @return string
+     * Kontrola pravidiel.
+     * Väčšinu deleguje na statické metódy triedy Validator.
      */
-    public function render()
-    {
-        if (!$this->currentElement) {
-            return '';
+    private function checkRule($rule, $value, $paramString, $allData) {
+        
+        // 1. Pravidlá špecifické pre Input (vyžadujú kontext iných polí)
+        if ($rule === 'match') {
+            return isset($allData[$paramString]) && $value === $allData[$paramString];
         }
-        return $this->renderElement($this->currentElement);
+
+        // 2. Parsovanie parametrov pre Validator
+        $params = $paramString ? array_map('trim', explode(',', $paramString)) : [];
+
+        // 3. Delegovanie na Validator triedu
+        switch ($rule) {
+            case 'required':        return Validator::isRequired($value);
+            case 'present':          
+            case 'set':             return Validator::isSet($value);
+            case 'email':           return Validator::isEmail($value);
+            case 'numeric':          
+            case 'number':          return Validator::isNumber($value);
+            case 'integer':         return Validator::isInteger($value);
+            case 'positive_number': return Validator::isPositiveNumber($value);
+            
+            case 'between': // Očakáva 2 parametre: min,max
+                if (count($params) < 2) return false;
+                return Validator::isInRange($value, (float)$params[0], (float)$params[1]);
+            
+            case 'min': // V novej Validator triede je min/max chápané ako dĺžka reťazca
+                if (count($params) < 1) return false;
+                return Validator::isMinLength($value, (int)$params[0]);
+            
+            case 'max':
+                if (count($params) < 1) return false;
+                return Validator::isMaxLength($value, (int)$params[0]);
+
+            case 'alpha':           return Validator::isAlpha($value);
+            case 'alpha_num':
+            case 'alphanumeric':    return Validator::isAlphanumeric($value);
+            case 'url':             return Validator::isUrl($value);
+            case 'ip':              return Validator::isIpAddress($value);
+            case 'json':            return Validator::isJson($value);
+            case 'boolean':         return Validator::isBoolean($value);
+            case 'uuid':            return Validator::isUuid($value);
+            case 'date':            return Validator::isDate($value);
+            case 'hex_color':       return Validator::isHexColor($value);
+            case 'credit_card':     return Validator::isCreditCard($value);
+            case 'valid_file_name': return Validator::isValidFileName($value);
+            
+            case 'strong_password':
+                $special = isset($params[0]) ? filter_var($params[0], FILTER_VALIDATE_BOOLEAN) : false;
+                return Validator::isStrongPassword($value, $special);
+
+            case 'in':
+            case 'one_of':
+                return Validator::isOneOf($value, $params);
+
+            case 'regex':
+                return Validator::isMatchingRegex($value, $paramString); // Regex sa nesmie explodovať čiarkou
+
+            case 'username':
+                 // username:min,max,dash,dot
+                 $min = isset($params[0]) ? (int)$params[0] : 3;
+                 $max = isset($params[1]) ? (int)$params[1] : 20;
+                 $dash = isset($params[2]) ? filter_var($params[2], FILTER_VALIDATE_BOOLEAN) : false;
+                 $dot = isset($params[3]) ? filter_var($params[3], FILTER_VALIDATE_BOOLEAN) : false;
+                 return Validator::isUsername($value, $min, $max, $dash, $dot);
+
+            default:
+                // Custom filtre definované globálne
+                if (isset(self::$customFilters[$rule])) {
+                    return call_user_func(self::$customFilters[$rule], $value, $paramString, $allData);
+                }
+                return true; // Neznáme pravidlá ignorujeme
+        }
     }
 
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        $html = '';
-        foreach ($this->elements as $element) {
-            $html .= $this->renderElement($element) . "\n";
+    private function addError($name, $rule, $param) {
+        // Tieto hlášky by mali byť v ideálnom svete v prekladovom súbore
+        // Tu používame jednoduché mapovanie pre rýchlu odozvu
+        $msg = "Validation error ($rule).";
+
+        switch ($rule) {
+            case 'required':        $msg = 'This field is required.'; break;
+            case 'present':         $msg = 'This field must be present.'; break;
+            case 'email':           $msg = 'Please enter a valid email address.'; break;
+            case 'numeric':         $msg = 'Please enter a valid number.'; break;
+            case 'integer':         $msg = 'Must be an integer.'; break;
+            case 'positive_number': $msg = 'Must be a positive number.'; break;
+            case 'between':         $msg = "Must be between $param."; break;
+            case 'min':             $msg = "Must be at least $param characters long."; break;
+            case 'max':             $msg = "Must be no more than $param characters."; break;
+            case 'alpha':           $msg = 'Only alphabetic characters allowed.'; break;
+            case 'alpha_num':       $msg = 'Only alphanumeric characters allowed.'; break;
+            case 'match':           $msg = "Fields do not match."; break;
+            case 'url':             $msg = "Invalid URL format."; break;
+            case 'ip':              $msg = "Invalid IP address."; break;
+            case 'date':            $msg = "Invalid date format."; break;
+            case 'strong_password': $msg = "Password is not strong enough."; break;
+            case 'in':              $msg = "Value is not allowed."; break;
         }
+
+        $this->errors[$name] = $msg;
+    }
+
+    public function getErrors() {
+        return $this->errors;
+    }
+
+    public function getGroupName() {
+        return $this->groupName;
+    }
+
+    public static function loadFromRequest($requestData) {
+        if (!isset($requestData['DotAppInputGroupKey'])) return null;
+        $derivedKey = $requestData['DotAppInputGroupKey'];
+        $dotApp = DotApp::dotApp();
+        $decryptedKeyPayload = $dotApp->decrypt($derivedKey, "InputKey");
+        if (!$decryptedKeyPayload) return null;
+        
+        $parts = explode(':', $decryptedKeyPayload);
+        if (count($parts) < 2) return null;
+        
+        array_shift($parts);
+        $groupName = implode(':', $parts);
+        
+        $instance = self::group($groupName);
+        try {
+            $instance->handleRequest($requestData);
+        } catch (\Exception $e) {
+            return null;
+        }
+        return $instance;
+    }
+
+    // =========================================================================
+    // TEMPLATE RENDERER
+    // =========================================================================
+
+    public static function registerRenderer($targetGroups = null) {
+        $dotApp = DotApp::dotApp();
+        if ($dotApp->router && $dotApp->router->renderer) {
+            $suffix = is_array($targetGroups) ? implode('_', $targetGroups) : ($targetGroups ?? 'all');
+            $dotApp->router->renderer->addRenderer('input_form_' . $suffix, function($html) use ($targetGroups) {
+                return self::parseTemplate($html, $targetGroups);
+            });
+        }
+    }
+
+    public static function parseTemplate($html, $targetGroups = null) {
+        $groupMap = null;
+        if ($targetGroups !== null) {
+            if (is_array($targetGroups)) {
+                $groupMap = array_flip($targetGroups);
+            } else {
+                $groupMap = [$targetGroups => true];
+            }
+        }
+
+        $html = preg_replace_callback('/\{\{\s*input:(\w+)\s*(.*?)\s*\}\}/is', function($matches) use ($groupMap) {
+            $type = strtolower($matches[1]);
+            $paramsString = $matches[2];
+            
+            $attrs = self::parseAttributesString($paramsString);
+            $group = $attrs['group'] ?? 'default';
+            
+            if ($groupMap !== null && !isset($groupMap[$group])) {
+                return $matches[0];
+            }
+
+            // Získame inštanciu formulára
+            $inputObj = self::group($group);
+            
+            $name  = $attrs['name'] ?? uniqid('input_');
+            
+            $existingField = $inputObj->fields[$name] ?? null;
+
+            // 1. PRAVIDLÁ (RULES):
+            // Ak sú v HTML, majú prednosť. Ak nie, použijeme tie z PHP. Ak nie sú nikde, tak prázdny string.
+            if (isset($attrs['rules'])) {
+                $rules = $attrs['rules'];
+            } elseif ($existingField && isset($existingField['rules'])) {
+                $rules = $existingField['rules'];
+            } else {
+                $rules = '';
+            }
+
+            // Odstránime technické atribúty z poľa atribútov pre HTML
+            unset($attrs['group'], $attrs['rules'], $attrs['name']);
+            
+            // Ak existujú atribúty definované v PHP (napr. class), môžeme ich tu mergnúť, 
+            // ale pre jednoduchosť necháme HTML atribúty vyhrať nad PHP atribútmi.
+
+            // 2. SPRACOVANIE PODĽA TYPU
+            if ($type === 'select') {
+                $options = [];
+                
+                // Priorita 1: Options definované priamo v HTML (string)
+                if (isset($attrs['options'])) {
+                    $options = self::parseOptionsString($attrs['options']);
+                    unset($attrs['options']);
+                } 
+                // Priorita 2: Options definované v PHP (pole)
+                elseif ($existingField && isset($existingField['options'])) {
+                    $options = $existingField['options'];
+                }
+
+                $inputObj->select($name, $options, $attrs, $rules);
+            } 
+            elseif ($type === 'checkbox') {
+                $val = $attrs['value'] ?? ($existingField['attributes']['value'] ?? 1);
+                $inputObj->checkbox($name, $val, $attrs, $rules);
+            }
+            elseif ($type === 'radio') {
+                $val = $attrs['value'] ?? ($existingField['attributes']['value'] ?? 1);
+                $inputObj->radio($name, $val, $attrs, $rules);
+            }
+            elseif ($type === 'textarea') {
+                $inputObj->textarea($name, $attrs, $rules);
+            }
+            else {
+                // Text, password, email, atď.
+                if (method_exists($inputObj, $type)) {
+                    $inputObj->$type($name, $attrs, $rules);
+                } else {
+                    $inputObj->add($type, $name, $attrs, $rules);
+                }
+            }
+
+            return $inputObj->render($name);
+
+        }, $html);
+
+        $html = preg_replace_callback('/\{\{\s*InputKeys\(([\'"]?)(\w+)\1\)\s*\}\}/i', function($matches) use ($groupMap) {
+            $group = $matches[2];
+            if ($groupMap !== null && !isset($groupMap[$group])) {
+                return $matches[0];
+            }
+            return self::group($group)->export();
+        }, $html);
+
         return $html;
     }
 
-    /**
-     * Get validation rules
-     *
-     * @return array
-     */
-    public function getValidationRules()
-    {
-        return $this->validationRules;
-    }
-
-    /**
-     * Add a generic element
-     *
-     * @param string $type Element type
-     * @param string|null $name Element name
-     * @param array $attributes HTML attributes
-     * @param string|null $value Element value
-     */
-    private function addElement($type, $name, array $attributes = [], $value = null)
-    {
-        $this->currentElement = [
-            'type' => $type,
-            'name' => $name,
-            'attributes' => $attributes,
-            'options' => [],
-            'value' => $value
-        ];
-        $this->elements[] = $this->currentElement;
-    }
-
-    /**
-     * Render a single element
-     *
-     * @param array $element Element data
-     * @return string
-     */
-    private function renderElement(array $element)
-    {
-        switch ($element['type']) {
-            case 'form':
-                return '<form ' . $this->renderAttributes($element['attributes']) . '>';
-            case 'form_end':
-                return '</form>';
-            case 'select':
-                $html = '<select name="' . htmlspecialchars($element['name'], ENT_QUOTES, 'UTF-8') . '" ' . $this->renderAttributes($element['attributes']) . '>';
-                foreach ($element['options'] as $option) {
-                    $html .= '<option value="' . htmlspecialchars($option['value'], ENT_QUOTES, 'UTF-8') . '" ' . $this->renderAttributes($option['attributes']) . '>' . $option['text'] . '</option>';
-                }
-                $html .= '</select>';
-                return $html;
-            case 'text':
-            case 'hidden':
-            case 'submit':
-                $type = $element['type'] === 'text' ? 'text' : $element['type'];
-                return '<input type="' . $type . '" name="' . htmlspecialchars($element['name'] ?? '', ENT_QUOTES, 'UTF-8') . '" ' . $this->renderAttributes($element['attributes']) . '>';
-            case 'checkbox':
-            case 'radio':
-                return '<input type="' . $element['type'] . '" name="' . htmlspecialchars($element['name'], ENT_QUOTES, 'UTF-8') . '" ' . $this->renderAttributes($element['attributes']) . '>';
-            case 'textarea':
-                return '<textarea name="' . htmlspecialchars($element['name'], ENT_QUOTES, 'UTF-8') . '" ' . $this->renderAttributes($element['attributes']) . '>' . ($element['value'] ?? '') . '</textarea>';
-            default:
-                return '';
+    private static function parseAttributesString($string) {
+        $attributes = [];
+        preg_match_all('/(\w+)(?:=(?:"([^"]*)"|\'([^\']*)\'|(\S+)))?/', $string, $matches, PREG_SET_ORDER);
+        foreach ($matches as $match) {
+            $key = $match[1];
+            if (isset($match[2]) && $match[2] !== '') $val = $match[2];
+            elseif (isset($match[3]) && $match[3] !== '') $val = $match[3];
+            elseif (isset($match[4]) && $match[4] !== '') $val = $match[4];
+            else $val = true;
+            $attributes[$key] = $val;
         }
+        return $attributes;
     }
 
-    /**
-     * Render HTML attributes
-     *
-     * @param array $attributes Attributes array
-     * @return string
-     */
-    private function renderAttributes(array $attributes)
-    {
-        $attrs = [];
-        foreach ($attributes as $key => $value) {
-            if ($value === null || $value === false) {
-                continue;
-            }
-            if ($value === true) {
-                $attrs[] = htmlspecialchars($key, ENT_QUOTES, 'UTF-8');
-            } else {
-                $attrs[] = htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"';
-            }
-        }
-        return implode(' ', $attrs);
-    }
-
-    /**
-     * Encrypt a value using DotApp's encrypt method
-     *
-     * @param mixed $value Value to encrypt
-     * @param bool $encrypt Whether to encrypt
-     * @return mixed
-     */
-    public function encryptValue($value, $encrypt)
-    {
-        if (!$encrypt || $value === null) {
-            return $value;
-        }
-
-        if ($this->dotapp && method_exists($this->dotapp, 'encrypt')) {
-            return $this->dotapp->encrypt($value);
-        }
-
-        throw new \Exception('DotApp::encrypt method is not available.');
-    }
-
-    /**
-     * Debug info
-     *
-     * @return array
-     */
-    public function __debugInfo()
-    {
-        return [
-            'publicData' => 'Input for DotApp Framework'
-        ];
-    }
-}
-
-/**
- * CLASS InputSelect
- *
- * Builder class for select elements within Input.
- *
- * @method InputSelect select(string $name, array $attributes = [])
- * @method InputText text(string $name, ?string $value = null, array $attributes = [], bool $encrypt = false)
- * @method InputTextarea textarea(string $name, ?string $value = null, array $attributes = [])
- * @method InputCheckbox checkbox(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputRadio radio(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputHidden hidden(string $name, string $value, array $attributes = [], bool $encrypt = true)
- * @method InputSubmit submit(string $value, array $attributes = [])
- * @method Input form(string $action, string $method = 'POST', array|string $attributes = [], string $fnName = '')
- * @method Input endForm()
- * @method Input validate(array $rules)
- * @method Input disableEscape()
- * @method Input enableEscape()
- */
-class InputSelect
-{
-    private $input;
-    private $selectElement;
-
-    /**
-     * Constructor
-     *
-     * @param Input $input Parent Input instance
-     * @param array $selectElement The select element being built
-     */
-    public function __construct(Input $input, array &$selectElement)
-    {
-        $this->input = $input;
-        $this->selectElement = &$selectElement;
-    }
-
-    /**
-     * Add options to the select element from a data array
-     *
-     * @param array $data Array of items
-     * @param array $fields Fields to use for value and text [value_field, text_field]
-     * @param bool $encrypt Whether to encrypt option values
-     * @param array $attributes Additional HTML attributes for options
-     * @return $this
-     */
-    public function add(array $data, array $fields, array $attributes = [], $encrypt = false)
-    {
-        if (count($fields) !== 2) {
-            throw new \Exception('Fields array must contain exactly two elements: [value_field, text_field].');
-        }
-
-        $valueField = $fields[0];
-        $textField = $fields[1];
+    private static function parseOptionsString($string) {
         $options = [];
-
-        foreach ($data as $item) {
-            $value = is_object($item) ? ($item->{$valueField} ?? null) : ($item[$valueField] ?? null);
-            $text = is_object($item) ? ($item->{$textField} ?? null) : ($item[$textField] ?? null);
-            if ($value !== null && $text !== null) {
-                $options[] = [
-                    'value' => $this->input->encryptValue($value, $encrypt),
-                    'text' => $this->input->escape ? htmlspecialchars($text, ENT_QUOTES, 'UTF-8') : $text,
-                    'attributes' => $attributes
-                ];
+        foreach (explode(',', $string) as $pair) {
+            $parts = explode(':', $pair, 2);
+            if (count($parts) == 2) {
+                $options[trim($parts[0])] = trim($parts[1]);
+            } else {
+                $options[trim($pair)] = trim($pair);
             }
         }
-
-        $this->selectElement['options'] = array_merge($this->selectElement['options'], $options);
-        return $this;
-    }
-
-    /**
-     * Add an option to the select element
-     *
-     * @param string $value Option value
-     * @param string $text Display text
-     * @param array $attributes Additional HTML attributes
-     * @param bool $encrypt Whether to encrypt the value
-     * @return $this
-     */
-    public function option($value, $text, array $attributes = [], $encrypt = false)
-    {
-        $value = $this->input->encryptValue($value, $encrypt);
-        $text = $this->input->escape ? htmlspecialchars($text, ENT_QUOTES, 'UTF-8') : $text;
-        $this->selectElement['options'][] = [
-            'value' => $value,
-            'text' => $text,
-            'attributes' => $attributes
-        ];
-        return $this;
-    }
-
-    /**
-     * Return to the parent Input (optional)
-     *
-     * @return Input
-     */
-    public function end()
-    {
-        return $this->input;
-    }
-
-    /**
-     * Render the current select element as HTML
-     *
-     * @return string
-     */
-    public function render()
-    {
-        return $this->input->renderElement($this->selectElement);
-    }
-
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        return $this->input->renderAll();
-    }
-
-    /**
-     * Magic method to handle undefined methods by delegating to the parent Input
-     *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
-     * @return mixed
-     * @throws \Exception If the method does not exist in Input
-     */
-    public function __call($name, $arguments)
-    {
-        if (method_exists($this->input, $name)) {
-            return call_user_func_array([$this->input, $name], $arguments);
-        }
-        throw new \Exception("Method '$name' does not exist in " . get_class($this) . " or Input.");
+        return $options;
     }
 }
-
-/**
- * CLASS InputText
- *
- * Builder class for text input elements within Input.
- *
- * @method InputSelect select(string $name, array $attributes = [])
- * @method InputText text(string $name, ?string $value = null, array $attributes = [], bool $encrypt = false)
- * @method InputTextarea textarea(string $name, ?string $value = null, array $attributes = [])
- * @method InputCheckbox checkbox(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputRadio radio(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputHidden hidden(string $name, string $value, array $attributes = [], bool $encrypt = true)
- * @method InputSubmit submit(string $value, array $attributes = [])
- * @method Input form(string $action, string $method = 'POST', array|string $attributes = [], string $fnName = '')
- * @method Input endForm()
- * @method Input validate(array $rules)
- * @method Input disableEscape()
- * @method Input enableEscape()
- */
-class InputText
-{
-    private $input;
-    private $element;
-
-    /**
-     * Constructor
-     *
-     * @param Input $input Parent Input instance
-     * @param array $element The text element being built
-     */
-    public function __construct(Input $input, array &$element)
-    {
-        $this->input = $input;
-        $this->element = &$element;
-    }
-
-    /**
-     * Return to the parent Input (optional)
-     *
-     * @return Input
-     */
-    public function end()
-    {
-        return $this->input;
-    }
-
-    /**
-     * Render the current text input element as HTML
-     *
-     * @return string
-     */
-    public function render()
-    {
-        return $this->input->renderElement($this->element);
-    }
-
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        return $this->input->renderAll();
-    }
-
-    /**
-     * Magic method to handle undefined methods by delegating to the parent Input
-     *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
-     * @return mixed
-     * @throws \Exception If the method does not exist in Input
-     */
-    public function __call($name, $arguments)
-    {
-        if (method_exists($this->input, $name)) {
-            return call_user_func_array([$this->input, $name], $arguments);
-        }
-        throw new \Exception("Method '$name' does not exist in " . get_class($this) . " or Input.");
-    }
-}
-
-/**
- * CLASS InputTextarea
- *
- * Builder class for textarea elements within Input.
- *
- * @method InputSelect select(string $name, array $attributes = [])
- * @method InputText text(string $name, ?string $value = null, array $attributes = [], bool $encrypt = false)
- * @method InputTextarea textarea(string $name, ?string $value = null, array $attributes = [])
- * @method InputCheckbox checkbox(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputRadio radio(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputHidden hidden(string $name, string $value, array $attributes = [], bool $encrypt = true)
- * @method InputSubmit submit(string $value, array $attributes = [])
- * @method Input form(string $action, string $method = 'POST', array|string $attributes = [], string $fnName = '')
- * @method Input endForm()
- * @method Input validate(array $rules)
- * @method Input disableEscape()
- * @method Input enableEscape()
- */
-class InputTextarea
-{
-    private $input;
-    private $element;
-
-    /**
-     * Constructor
-     *
-     * @param Input $input Parent Input instance
-     * @param array $element The textarea element being built
-     */
-    public function __construct(Input $input, array &$element)
-    {
-        $this->input = $input;
-        $this->element = &$element;
-    }
-
-    /**
-     * Return to the parent Input (optional)
-     *
-     * @return Input
-     */
-    public function end()
-    {
-        return $this->input;
-    }
-
-    /**
-     * Render the current textarea element as HTML
-     *
-     * @return string
-     */
-    public function render()
-    {
-        return $this->input->renderElement($this->element);
-    }
-
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        return $this->input->renderAll();
-    }
-
-    /**
-     * Magic method to handle undefined methods by delegating to the parent Input
-     *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
-     * @return mixed
-     * @throws \Exception If the method does not exist in Input
-     */
-    public function __call($name, $arguments)
-    {
-        if (method_exists($this->input, $name)) {
-            return call_user_func_array([$this->input, $name], $arguments);
-        }
-        throw new \Exception("Method '$name' does not exist in " . get_class($this) . " or Input.");
-    }
-}
-
-/**
- * CLASS InputCheckbox
- *
- * Builder class for checkbox elements within Input.
- *
- * @method InputSelect select(string $name, array $attributes = [])
- * @method InputText text(string $name, ?string $value = null, array $attributes = [], bool $encrypt = false)
- * @method InputTextarea textarea(string $name, ?string $value = null, array $attributes = [])
- * @method InputCheckbox checkbox(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputRadio radio(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputHidden hidden(string $name, string $value, array $attributes = [], bool $encrypt = true)
- * @method InputSubmit submit(string $value, array $attributes = [])
- * @method Input form(string $action, string $method = 'POST', array|string $attributes = [], string $fnName = '')
- * @method Input endForm()
- * @method Input validate(array $rules)
- * @method Input disableEscape()
- * @method Input enableEscape()
- */
-class InputCheckbox
-{
-    private $input;
-    private $element;
-
-    /**
-     * Constructor
-     *
-     * @param Input $input Parent Input instance
-     * @param array $element The checkbox element being built
-     */
-    public function __construct(Input $input, array &$element)
-    {
-        $this->input = $input;
-        $this->element = &$element;
-    }
-
-    /**
-     * Return to the parent Input (optional)
-     *
-     * @return Input
-     */
-    public function end()
-    {
-        return $this->input;
-    }
-
-    /**
-     * Render the current checkbox element as HTML
-     *
-     * @return string
-     */
-    public function render()
-    {
-        return $this->input->renderElement($this->element);
-    }
-
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        return $this->input->renderAll();
-    }
-
-    /**
-     * Magic method to handle undefined methods by delegating to the parent Input
-     *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
-     * @return mixed
-     * @throws \Exception If the method does not exist in Input
-     */
-    public function __call($name, $arguments)
-    {
-        if (method_exists($this->input, $name)) {
-            return call_user_func_array([$this->input, $name], $arguments);
-        }
-        throw new \Exception("Method '$name' does not exist in " . get_class($this) . " or Input.");
-    }
-}
-
-/**
- * CLASS InputRadio
- *
- * Builder class for radio elements within Input.
- *
- * @method InputSelect select(string $name, array $attributes = [])
- * @method InputText text(string $name, ?string $value = null, array $attributes = [], bool $encrypt = false)
- * @method InputTextarea textarea(string $name, ?string $value = null, array $attributes = [])
- * @method InputCheckbox checkbox(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputRadio radio(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputHidden hidden(string $name, string $value, array $attributes = [], bool $encrypt = true)
- * @method InputSubmit submit(string $value, array $attributes = [])
- * @method Input form(string $action, string $method = 'POST', array|string $attributes = [], string $fnName = '')
- * @method Input endForm()
- * @method Input validate(array $rules)
- * @method Input disableEscape()
- * @method Input enableEscape()
- */
-class InputRadio
-{
-    private $input;
-    private $element;
-
-    /**
-     * Constructor
-     *
-     * @param Input $input Parent Input instance
-     * @param array $element The radio element being built
-     */
-    public function __construct(Input $input, array &$element)
-    {
-        $this->input = $input;
-        $this->element = &$element;
-    }
-
-    /**
-     * Return to the parent Input (optional)
-     *
-     * @return Input
-     */
-    public function end()
-    {
-        return $this->input;
-    }
-
-    /**
-     * Render the current radio element as HTML
-     *
-     * @return string
-     */
-    public function render()
-    {
-        return $this->input->renderElement($this->element);
-    }
-
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        return $this->input->renderAll();
-    }
-
-    /**
-     * Magic method to handle undefined methods by delegating to the parent Input
-     *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
-     * @return mixed
-     * @throws \Exception If the method does not exist in Input
-     */
-    public function __call($name, $arguments)
-    {
-        if (method_exists($this->input, $name)) {
-            return call_user_func_array([$this->input, $name], $arguments);
-        }
-        throw new \Exception("Method '$name' does not exist in " . get_class($this) . " or Input.");
-    }
-}
-
-/**
- * CLASS InputHidden
- *
- * Builder class for hidden input elements within Input.
- *
- * @method InputSelect select(string $name, array $attributes = [])
- * @method InputText text(string $name, ?string $value = null, array $attributes = [], bool $encrypt = false)
- * @method InputTextarea textarea(string $name, ?string $value = null, array $attributes = [])
- * @method InputCheckbox checkbox(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputRadio radio(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputHidden hidden(string $name, string $value, array $attributes = [], bool $encrypt = true)
- * @method InputSubmit submit(string $value, array $attributes = [])
- * @method Input form(string $action, string $method = 'POST', array|string $attributes = [], string $fnName = '')
- * @method Input endForm()
- * @method Input validate(array $rules)
- * @method Input disableEscape()
- * @method Input enableEscape()
- */
-class InputHidden
-{
-    private $input;
-    private $element;
-
-    /**
-     * Constructor
-     *
-     * @param Input $input Parent Input instance
-     * @param array $element The hidden element being built
-     */
-    public function __construct(Input $input, array &$element)
-    {
-        $this->input = $input;
-        $this->element = &$element;
-    }
-
-    /**
-     * Return to the parent Input (optional)
-     *
-     * @return Input
-     */
-    public function end()
-    {
-        return $this->input;
-    }
-
-    /**
-     * Render the current hidden input element as HTML
-     *
-     * @return string
-     */
-    public function render()
-    {
-        return $this->input->renderElement($this->element);
-    }
-
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        return $this->input->renderAll();
-    }
-
-    /**
-     * Magic method to handle undefined methods by delegating to the parent Input
-     *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
-     * @return mixed
-     * @throws \Exception If the method does not exist in Input
-     */
-    public function __call($name, $arguments)
-    {
-        if (method_exists($this->input, $name)) {
-            return call_user_func_array([$this->input, $name], $arguments);
-        }
-        throw new \Exception("Method '$name' does not exist in " . get_class($this) . " or Input.");
-    }
-}
-
-/**
- * CLASS InputSubmit
- *
- * Builder class for submit button elements within Input.
- *
- * @method InputSelect select(string $name, array $attributes = [])
- * @method InputText text(string $name, ?string $value = null, array $attributes = [], bool $encrypt = false)
- * @method InputTextarea textarea(string $name, ?string $value = null, array $attributes = [])
- * @method InputCheckbox checkbox(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputRadio radio(string $name, string $value, bool $checked = false, array $attributes = [], bool $encrypt = false)
- * @method InputHidden hidden(string $name, string $value, array $attributes = [], bool $encrypt = true)
- * @method InputSubmit submit(string $value, array $attributes = [])
- * @method Input form(string $action, string $method = 'POST', array|string $attributes = [], string $fnName = '')
- * @method Input endForm()
- * @method Input validate(array $rules)
- * @method Input disableEscape()
- * @method Input enableEscape()
- */
-class InputSubmit
-{
-    private $input;
-    private $element;
-
-    /**
-     * Constructor
-     *
-     * @param Input $input Parent Input instance
-     * @param array $element The submit element being built
-     */
-    public function __construct(Input $input, array &$element)
-    {
-        $this->input = $input;
-        $this->element = &$element;
-    }
-
-    /**
-     * Return to the parent Input (optional)
-     *
-     * @return Input
-     */
-    public function end()
-    {
-        return $this->input;
-    }
-
-    /**
-     * Render the current submit button element as HTML
-     *
-     * @return string
-     */
-    public function render()
-    {
-        return $this->input->renderElement($this->element);
-    }
-
-    /**
-     * Render all form elements as HTML
-     *
-     * @return string
-     */
-    public function renderAll()
-    {
-        return $this->input->renderAll();
-    }
-
-    /**
-     * Magic method to handle undefined methods by delegating to the parent Input
-     *
-     * @param string $name Method name
-     * @param array $arguments Method arguments
-     * @return mixed
-     * @throws \Exception If the method does not exist in Input
-     */
-    public function __call($name, $arguments)
-    {
-        if (method_exists($this->input, $name)) {
-            return call_user_func_array([$this->input, $name], $arguments);
-        }
-        throw new \Exception("Method '$name' does not exist in " . get_class($this) . " or Input.");
-    }
-}
-
 ?>
