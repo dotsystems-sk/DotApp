@@ -844,41 +844,64 @@ class RequestObj {
         // Len alias...
         return self::validateInputs($groupName);
     }
+    /**
+     * Validuje vstupy zo šifrovanej skupiny.
+     * Predpokladá, že bezpečnosť prenosu (CRC) si užívateľ vyriešil volaním $request->crcCheck()
+     * ak to považoval za nutné.
+     *
+     * @param string $groupName Názov skupiny (napr. 'moj_formular')
+     * @return bool|array TRUE pri úspechu, inak pole s chybami.
+     */
     public function validateInputs(string $groupName) {
-        $data = $this->data();
-        
-        // 1. Load Form from Request State
-        $form = Input::loadFromRequest($data);
+        $requestData = $this->data(true);
+        $payload = [];
 
-        // 2. Security Check: Form Integrity
+        // Detekcia zabalených dát (DotApp JS load() wrapper)
+        // Ak sú dáta v kľúči 'data', rozbalíme ich, aby Input videl kľúče priamo.
+        if (isset($requestData['data'])) {
+            if (is_array($requestData['data'])) {
+                $payload = $requestData['data'];
+            } elseif (is_string($requestData['data'])) {
+                $decoded = json_decode($requestData['data'], true);
+                if (is_array($decoded)) {
+                    $payload = $decoded;
+                }
+            }
+        } 
+        
+        // Ak dáta nie sú v 'data' (klasický HTML POST), berieme root requestData
+        if (empty($payload)) {
+             $payload = $requestData;
+        }
+
+        // Načítanie objektu Input (overuje podpis pravidiel DotAppInputGroupKey)
+        $form = Input::loadFromRequest($payload);
+
         if (!$form) {
-            // Return structured error
             return [
                 'status' => 0,
                 'error_code' => 403,
-                'status_txt' => 'Security Error: Invalid form state signature.',
-                'errors' => ['_security' => 'Invalid form data']
+                'status_txt' => 'Security Error: Invalid form state.',
+                'errors' => ['_security' => 'Invalid form signature.']
             ];
         }
 
-        // 3. Security Check: Group Mismatch
         if ($form->getGroupName() !== $groupName) {
              return [
                 'status' => 0,
                 'error_code' => 403,
-                'status_txt' => 'Security Error: Form group mismatch.',
-                'errors' => ['_security' => 'Form group mismatch']
+                'status_txt' => 'Security Error: Group mismatch.',
+                'errors' => ['_security' => 'Group mismatch.']
             ];
         }
 
-        // 4. Validation
+        // Samotná validácia hodnôt podľa pravidiel (min, max, email atď.)
         if ($form->validate()) {
             return true;
         } else {
-            // Return validation errors in a standard format
             return [
                 'status' => 0,
-                'error_code' => 403,
+                'error_code' => 422,
                 'status_txt' => 'Validation Failed',
                 'errors' => $form->getErrors()
             ];

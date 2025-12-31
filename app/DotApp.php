@@ -129,7 +129,7 @@ class DotApp {
 
     public function isDebugMode() {
         if (defined("DEBUG_MODE")) {
-			return DEBUG_MODE;
+			return constant("DEBUG_MODE");
 		}
         return false;
     }
@@ -669,6 +669,10 @@ class DotApp {
             echo $request;
             return;
         }
+
+		if ($request instanceof Response) {
+			$request = &$this->request;
+		}
     
         if (is_object($request) && isset($request->response)) {
 

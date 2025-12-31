@@ -1079,21 +1079,36 @@ class RouterObj {
             $this->request->route($hook['route']);
             $this->request->hookData($hook['data']);
             if (!defined('__DOTAPPER_RUN__')) {
-                $this->request->response->body = call_user_func($hook['fn'], $this->request->lock()) ?? $this->request->response->body;
+                //$this->request->response->body = call_user_func($hook['fn'], $this->request->lock()) ?? $this->request->response->body;
+                $result = call_user_func($hook['fn'], $this->request->lock());
+                if ($result instanceof \Dotsystems\App\Parts\Response) {
+                    return $result;
+                }
+                $this->request->response->body = $result ?? $this->request->response->body;
             }
 		}
 
         $this->request->route($path);
         $this->request->hookData($matchdata);
 		if (!defined('__DOTAPPER_RUN__')) {
-            $this->request->response->body = call_user_func($function, $this->request->lock()) ?? $this->request->response->body;
+            //$this->request->response->body = call_user_func($function, $this->request->lock()) ?? $this->request->response->body;
+            $result = call_user_func($function, $this->request->lock());
+            if ($result instanceof \Dotsystems\App\Parts\Response) {
+                return $result;
+            }
+            $this->request->response->body = $result ?? $this->request->response->body;
         }
 
 		foreach( $this->hooks['after'] as $key => $hook) {
             $this->request->route($hook['route']);
             $this->request->hookData($hook['data']);
             if (!defined('__DOTAPPER_RUN__')) {
-			    $this->request->response->body = call_user_func($hook['fn'], $this->request->lock()) ?? $this->request->response->body;
+			    //$this->request->response->body = call_user_func($hook['fn'], $this->request->lock()) ?? $this->request->response->body;
+                $result = call_user_func($hook['fn'], $this->request->lock());
+                if ($result instanceof \Dotsystems\App\Parts\Response) {
+                    return $result;
+                }
+                $this->request->response->body = $result ?? $this->request->response->body;
             }
 		}
 
