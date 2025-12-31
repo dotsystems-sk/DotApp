@@ -400,6 +400,15 @@ class RequestObj {
         return [];
     }
 
+    public function query($orig = false) {
+        $data = $_GET ?? [];
+        if ($orig === true) {
+            return $data;
+        }
+        $this->dotApp->protect($data);
+        return $data;
+    }
+
     public function lock() {
         $this->gsLocked = true;
         return $this;
