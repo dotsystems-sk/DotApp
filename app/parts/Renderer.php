@@ -1048,29 +1048,35 @@ class Renderer {
             $layoutcode = $this->getLayout($layout);
         }
 
-        $pattern = '/\{\{\s*layout\s*:\s*([^\}\s]+)\s*\}\}/';
-        if (preg_match_all($pattern, $layoutcode, $matches)) {
-            $found = $matches[1];
-            foreach ($found as $found_layout) {
+        // Original regex (commented for easy rollback if needed):
+        // $pattern = '/\{\{\s*layout\s*:\s*([^\}\s]+)\s*\}\}/';
+        // New regex supports both {{ layout:name }} and {{ layout: name }} (with or without space after colon)
+        $pattern = '/\{\{\s*layout\s*:\s*([^\}]+?)\s*\}\}/';
+        if (preg_match_all($pattern, $layoutcode, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $found_layout = trim($match[1]); // Remove spaces from layout name
                 $layoutcode = str_replace(
-                    '{{ layout:' . $found_layout . ' }}',
+                    $match[0], // Use original match (supports both with and without space)
                     $this->concatInnerLayouts($found_layout, "", $actual, $max),
                     $layoutcode
                 );
             }
         }
 
-        $pattern = '/\{\{\s*baselayout\s*:\s*([^\}\s]+)\s*\}\}/';
+        // Original regex (commented for easy rollback if needed):
+        // $pattern = '/\{\{\s*baselayout\s*:\s*([^\}\s]+)\s*\}\}/';
+        // New regex supports both {{ baselayout:name }} and {{ baselayout: name }} (with or without space after colon)
+        $pattern = '/\{\{\s*baselayout\s*:\s*([^\}]+?)\s*\}\}/';
         $remdirl = $this->dirl;
         $remdirw = $this->dirw;
         $this->dirl = __ROOTDIR__ . "/app/parts/views/layouts/";
         $this->dirw = __ROOTDIR__ . "/app/parts/views/";
 
-        if (preg_match_all($pattern, $layoutcode, $matches)) {
-            $found = $matches[1];
-            foreach ($found as $found_layout) {
+        if (preg_match_all($pattern, $layoutcode, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $found_layout = trim($match[1]); // Remove spaces from layout name
                 $layoutcode = str_replace(
-                    '{{ baselayout:' . $found_layout . ' }}',
+                    $match[0], // Use original match (supports both with and without space)
                     $this->concatInnerLayouts($found_layout, "", $actual, $max),
                     $layoutcode
                 );
