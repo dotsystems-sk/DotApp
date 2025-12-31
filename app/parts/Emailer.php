@@ -41,7 +41,7 @@ class Emailer {
             try {
                 $this->sender = new EmailerSmtp($smtpHost, $smtpPort, $smtpTimeout, $smtpSecure, $saveEmail);
             } catch (Exception $e) {
-                throw new InvalidArgumentException("Failed to initialize SMTP sender: " . $e->getMessage());
+                throw new \InvalidArgumentException("Failed to initialize SMTP sender: " . $e->getMessage());
             }
         }
 
@@ -61,7 +61,7 @@ class Emailer {
                     $this->sender->setImapClient($this->receiver);
                 }
             } catch (Exception $e) {
-                throw new InvalidArgumentException("Failed to initialize {$this->receiverProtocol} receiver: " . $e->getMessage());
+                throw new \InvalidArgumentException("Failed to initialize {$this->receiverProtocol} receiver: " . $e->getMessage());
             }
         }
     }
@@ -72,7 +72,7 @@ class Emailer {
     private function initSender(): void {
         if ($this->sender === null) {
             if (empty($this->smtpConfig)) {
-                throw new InvalidArgumentException("SMTP configuration is required to initialize sender.");
+                throw new \InvalidArgumentException("SMTP configuration is required to initialize sender.");
             }
 
             $smtpHost = $this->smtpConfig['host'] ?? 'localhost';
@@ -85,7 +85,7 @@ class Emailer {
                 $this->sender = new EmailerSmtp($smtpHost, $smtpPort, $smtpTimeout, $smtpSecure, $saveEmail);
                 $this->sender->setDebugLevel($this->debugLevel);
             } catch (Exception $e) {
-                throw new InvalidArgumentException("Failed to initialize SMTP sender: " . $e->getMessage());
+                throw new \InvalidArgumentException("Failed to initialize SMTP sender: " . $e->getMessage());
             }
         }
     }
@@ -96,7 +96,7 @@ class Emailer {
     private function initReceiver(): void {
         if ($this->receiver === null) {
             if (empty($this->receiverConfig)) {
-                throw new InvalidArgumentException("Receiver configuration is required to initialize receiver.");
+                throw new \InvalidArgumentException("Receiver configuration is required to initialize receiver.");
             }
 
             $receiverHost = $this->receiverConfig['host'] ?? 'localhost';
@@ -114,7 +114,7 @@ class Emailer {
                     $this->sender->setImapClient($this->receiver);
                 }
             } catch (Exception $e) {
-                throw new InvalidArgumentException("Failed to initialize {$this->receiverProtocol} receiver: " . $e->getMessage());
+                throw new \InvalidArgumentException("Failed to initialize {$this->receiverProtocol} receiver: " . $e->getMessage());
             }
         }
     }
@@ -164,7 +164,7 @@ class Emailer {
     public function switchReceiverProtocol(string $protocol): void {
         $protocol = strtolower($protocol);
         if (!in_array($protocol, ['imap', 'pop3'])) {
-            throw new InvalidArgumentException("Invalid protocol: $protocol. Use 'imap' or 'pop3'.");
+            throw new \InvalidArgumentException("Invalid protocol: $protocol. Use 'imap' or 'pop3'.");
         }
 
         if ($this->receiverProtocol !== $protocol) {
@@ -344,22 +344,22 @@ class Emailer {
      */
     private function validateConfig(array $config, string $type): void {
         if (isset($config['host']) && (!is_string($config['host']) || empty(trim($config['host'])))) {
-            throw new InvalidArgumentException("$type configuration: Invalid or empty host.");
+            throw new \InvalidArgumentException("$type configuration: Invalid or empty host.");
         }
         if (isset($config['port']) && (!is_int($config['port']) || $config['port'] <= 0)) {
-            throw new InvalidArgumentException("$type configuration: Invalid port number.");
+            throw new \InvalidArgumentException("$type configuration: Invalid port number.");
         }
         if (isset($config['timeout']) && (!is_int($config['timeout']) || $config['timeout'] <= 0)) {
-            throw new InvalidArgumentException("$type configuration: Invalid timeout value.");
+            throw new \InvalidArgumentException("$type configuration: Invalid timeout value.");
         }
         if (isset($config['secure']) && !in_array($config['secure'], ['', 'ssl', 'tls'])) {
-            throw new InvalidArgumentException("$type configuration: Invalid secure mode. Use 'ssl', 'tls', or empty string.");
+            throw new \InvalidArgumentException("$type configuration: Invalid secure mode. Use 'ssl', 'tls', or empty string.");
         }
         if ($type === 'Receiver' && isset($config['protocol']) && !in_array(strtolower($config['protocol']), ['imap', 'pop3'])) {
-            throw new InvalidArgumentException("Receiver configuration: Invalid protocol. Use 'imap' or 'pop3'.");
+            throw new \InvalidArgumentException("Receiver configuration: Invalid protocol. Use 'imap' or 'pop3'.");
         }
         if ($type === 'SMTP' && isset($config['saveEmail']) && !is_bool($config['saveEmail'])) {
-            throw new InvalidArgumentException("SMTP configuration: saveEmail must be a boolean.");
+            throw new \InvalidArgumentException("SMTP configuration: saveEmail must be a boolean.");
         }
     }
 

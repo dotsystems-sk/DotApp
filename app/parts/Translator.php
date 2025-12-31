@@ -58,6 +58,7 @@
 
 
 namespace Dotsystems\App\Parts;
+use \Dotsystems\App\DotApp;
 
 class Translator {
 	

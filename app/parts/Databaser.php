@@ -1035,7 +1035,7 @@ class Databaser {
 
     public function autobind_params($stmt, $placeholder, $values) {
         $bindarray = array_unshift($placeholder, $values);
-        $reflection = new ReflectionClass('mysqli_stmt');
+        $reflection = new \ReflectionClass('mysqli_stmt');
         $method = $reflection->getMethod('bind_param');
         $method->invokeArgs($stmt, $bindarray);
     }

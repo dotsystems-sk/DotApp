@@ -463,14 +463,14 @@ class QueryBuilder {
         if (is_array($columns)) {
             $sanitized = array_map(function ($column) {
                 if (!$this->isValidColumn($column)) {
-                    throw new InvalidArgumentException("Invalid column name or expression: $column");
+                    throw new \InvalidArgumentException("Invalid column name or expression: $column");
                 }
                 return $this->sanitizeColumn($column);
             }, $columns);
             return implode(', ', $sanitized);
         }
         if (!$this->isValidColumn($columns)) {
-            throw new InvalidArgumentException("Invalid column name or expression: $columns");
+            throw new \InvalidArgumentException("Invalid column name or expression: $columns");
         }
         return $this->sanitizeColumn($columns);
     }
@@ -487,7 +487,7 @@ class QueryBuilder {
             // Sanitácia názvu (povolené: a-z, A-Z, 0-9, _, medzery, špeciálne znaky)
             $part = trim($part);
             if (empty($part)) {
-                throw new InvalidArgumentException("Empty column or table name part");
+                throw new \InvalidArgumentException("Empty column or table name part");
             }
             return $part; // Zachovať pôvodné znaky, ohraničenie sa postará o bezpečnosť
         }, $parts);
@@ -539,7 +539,7 @@ class QueryBuilder {
             // Sanitácia každej časti (povolené: a-z, A-Z, 0-9, _)
             $part = preg_replace('/[^a-zA-Z0-9_]/', '', trim($part));
             if (empty($part)) {
-                throw new InvalidArgumentException("Empty table or schema name part");
+                throw new \InvalidArgumentException("Empty table or schema name part");
             }
             return $part;
         }, $parts);

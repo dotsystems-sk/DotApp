@@ -53,7 +53,7 @@ class ColumnDefinition {
 
     public function autoIncrement() {
         if (!in_array($this->type, ['INT', 'BIGINT', 'INTEGER'])) {
-            throw new InvalidArgumentException("Auto-increment is only supported for INTEGER or BIGINT types.");
+            throw new \InvalidArgumentException("Auto-increment is only supported for INTEGER or BIGINT types.");
         }
         $this->properties['autoIncrement'] = true;
         return $this;
@@ -61,7 +61,7 @@ class ColumnDefinition {
 
     public function unsigned() {
         if ($this->schemaBuilder->getDbType() !== 'mysql') {
-            throw new InvalidArgumentException("UNSIGNED is only supported in MySQL.");
+            throw new \InvalidArgumentException("UNSIGNED is only supported in MySQL.");
         }
         $this->properties['unsigned'] = true;
         return $this;
@@ -69,7 +69,7 @@ class ColumnDefinition {
 
     public function length($length) {
         if (!is_int($length) || $length <= 0) {
-            throw new InvalidArgumentException("Column length must be a positive integer.");
+            throw new \InvalidArgumentException("Column length must be a positive integer.");
         }
         $this->properties['length'] = $length;
         return $this;
@@ -77,7 +77,7 @@ class ColumnDefinition {
 
     public function precision($precision) {
         if (!is_int($precision) || $precision <= 0) {
-            throw new InvalidArgumentException("Precision must be a positive integer.");
+            throw new \InvalidArgumentException("Precision must be a positive integer.");
         }
         $this->properties['precision'] = $precision;
         return $this;
@@ -85,7 +85,7 @@ class ColumnDefinition {
 
     public function scale($scale) {
         if (!is_int($scale) || $scale < 0 || (isset($this->properties['precision']) && $scale > $this->properties['precision'])) {
-            throw new InvalidArgumentException("Invalid scale for DECIMAL.");
+            throw new \InvalidArgumentException("Invalid scale for DECIMAL.");
         }
         $this->properties['scale'] = $scale;
         return $this;
@@ -139,7 +139,7 @@ class ConstraintDefinition {
 
     public function comment($comment) {
         if ($this->dbType === 'sqlite' && $this->type !== 'CHECK') {
-            throw new InvalidArgumentException("SQLite only supports comments on CHECK constraints.");
+            throw new \InvalidArgumentException("SQLite only supports comments on CHECK constraints.");
         }
         $this->properties['comment'] = $comment;
         return $this;
@@ -147,10 +147,10 @@ class ConstraintDefinition {
 
     public function references($column) {
         if ($this->type !== 'FOREIGN_KEY') {
-            throw new InvalidArgumentException("The 'references' method is only valid for FOREIGN_KEY constraints.");
+            throw new \InvalidArgumentException("The 'references' method is only valid for FOREIGN_KEY constraints.");
         }
         if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
-            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+            throw new \InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
         }
         $this->foreignKeyData['references'] = $this->schemaBuilder->sanitizeName($column);
         return $this;
@@ -158,10 +158,10 @@ class ConstraintDefinition {
 
     public function on($table) {
         if ($this->type !== 'FOREIGN_KEY') {
-            throw new InvalidArgumentException("The 'on' method is only valid for FOREIGN_KEY constraints.");
+            throw new \InvalidArgumentException("The 'on' method is only valid for FOREIGN_KEY constraints.");
         }
         if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
-            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+            throw new \InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
         }
         $this->foreignKeyData['on'] = $this->schemaBuilder->sanitizeName($table);
         // Only update name if it wasn't manually set
@@ -173,14 +173,14 @@ class ConstraintDefinition {
 
     public function onDelete($action) {
         if ($this->type !== 'FOREIGN_KEY') {
-            throw new InvalidArgumentException("The 'onDelete' method is only valid for FOREIGN_KEY constraints.");
+            throw new \InvalidArgumentException("The 'onDelete' method is only valid for FOREIGN_KEY constraints.");
         }
         if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
-            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+            throw new \InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
         }
         $validActions = $this->getValidActions();
         if (!in_array(strtoupper($action), $validActions)) {
-            throw new InvalidArgumentException("Invalid ON DELETE action for {$this->dbType}: $action. Valid actions: " . implode(', ', $validActions));
+            throw new \InvalidArgumentException("Invalid ON DELETE action for {$this->dbType}: $action. Valid actions: " . implode(', ', $validActions));
         }
         $this->foreignKeyData['onDelete'] = strtoupper($action);
         return $this;
@@ -188,17 +188,17 @@ class ConstraintDefinition {
 
     public function onUpdate($action) {
         if ($this->type !== 'FOREIGN_KEY') {
-            throw new InvalidArgumentException("The 'onUpdate' method is only valid for FOREIGN_KEY constraints.");
+            throw new \InvalidArgumentException("The 'onUpdate' method is only valid for FOREIGN_KEY constraints.");
         }
         if ($this->dbType === 'sqlite' && !$this->isForeignKeySupported()) {
-            throw new InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
+            throw new \InvalidArgumentException("SQLite has limited support for FOREIGN KEY constraints; ensure they are enabled.");
         }
         if ($this->dbType === 'oci' && strtoupper($action) !== 'NO ACTION') {
-            throw new InvalidArgumentException("Oracle only supports 'NO ACTION' for ON UPDATE in FOREIGN KEY constraints.");
+            throw new \InvalidArgumentException("Oracle only supports 'NO ACTION' for ON UPDATE in FOREIGN KEY constraints.");
         }
         $validActions = $this->getValidActions();
         if (!in_array(strtoupper($action), $validActions)) {
-            throw new InvalidArgumentException("Invalid ON UPDATE action for {$this->dbType}: $action. Valid actions: " . implode(', ', $validActions));
+            throw new \InvalidArgumentException("Invalid ON UPDATE action for {$this->dbType}: $action. Valid actions: " . implode(', ', $validActions));
         }
         $this->foreignKeyData['onUpdate'] = strtoupper($action);
         return $this;
@@ -323,7 +323,7 @@ class MySqlSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -345,7 +345,7 @@ class MySqlSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -368,7 +368,7 @@ class MySqlSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -405,14 +405,14 @@ class MySqlSchemaAdapter implements SchemaAdapter {
             case 'decimal':
             case 'float':
                 if (!is_numeric($value)) {
-                    throw new InvalidArgumentException("Default value must be numeric for type $type.");
+                    throw new \InvalidArgumentException("Default value must be numeric for type $type.");
                 }
                 return (string)$value;
             case 'date':
             case 'datetime':
             case 'timestamp':
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value) && $value !== 'CURRENT_TIMESTAMP') {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
+                    throw new \InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
                 }
                 return $value === 'CURRENT_TIMESTAMP' ? 'CURRENT_TIMESTAMP' : "'$value'";
             default:
@@ -490,7 +490,7 @@ class PgSqlSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -513,7 +513,7 @@ class PgSqlSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -537,7 +537,7 @@ class PgSqlSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -596,13 +596,13 @@ class PgSqlSchemaAdapter implements SchemaAdapter {
             case 'numeric':
             case 'real':
                 if (!is_numeric($value)) {
-                    throw new InvalidArgumentException("Default value must be numeric for type $type.");
+                    throw new \InvalidArgumentException("Default value must be numeric for type $type.");
                 }
                 return (string)$value;
             case 'date':
             case 'timestamp':
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value) && $value !== 'CURRENT_TIMESTAMP') {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
+                    throw new \InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
                 }
                 return $value === 'CURRENT_TIMESTAMP' ? 'CURRENT_TIMESTAMP' : "'$value'";
             default:
@@ -670,7 +670,7 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -693,7 +693,7 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -721,7 +721,7 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
                     $result = false;
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -729,12 +729,12 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
     }
 
     public function formatAlterAction($action) {
-        throw new InvalidArgumentException("SQLite does not support direct ALTER TABLE operations like DROP COLUMN or DROP CONSTRAINT.");
+        throw new \InvalidArgumentException("SQLite does not support direct ALTER TABLE operations like DROP COLUMN or DROP CONSTRAINT.");
     }
 
     public function getAutoIncrementClause($type) {
         if ($type !== 'INTEGER') {
-            throw new InvalidArgumentException("SQLite only supports AUTOINCREMENT on INTEGER type.");
+            throw new \InvalidArgumentException("SQLite only supports AUTOINCREMENT on INTEGER type.");
         }
         return ' AUTOINCREMENT';
     }
@@ -774,12 +774,12 @@ class SQLiteSchemaAdapter implements SchemaAdapter {
             case 'integer':
             case 'real':
                 if (!is_numeric($value)) {
-                    throw new InvalidArgumentException("Default value must be numeric for type $type.");
+                    throw new \InvalidArgumentException("Default value must be numeric for type $type.");
                 }
                 return (string)$value;
             case 'datetime':
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value)) {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
+                    throw new \InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
                 }
                 return "'$value'";
             default:
@@ -856,7 +856,7 @@ class OracleSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -877,7 +877,7 @@ class OracleSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -899,7 +899,7 @@ class OracleSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -953,13 +953,13 @@ class OracleSchemaAdapter implements SchemaAdapter {
             case 'number':
             case 'binary_float':
                 if (!is_numeric($value)) {
-                    throw new InvalidArgumentException("Default value must be numeric for type $type.");
+                    throw new \InvalidArgumentException("Default value must be numeric for type $type.");
                 }
                 return (string)$value;
             case 'date':
             case 'timestamp':
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value)) {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
+                    throw new \InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
                 }
                 return "'$value'";
             default:
@@ -1032,7 +1032,7 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking column existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -1054,7 +1054,7 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking index existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -1077,7 +1077,7 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
                     $result = !empty($rows);
                 },
                 function ($error, $db, $debug) {
-                    throw new InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
+                    throw new \InvalidArgumentException("Error checking foreign key existence: {$error['error']} (code: {$error['errno']})");
                 }
             );
 
@@ -1134,13 +1134,13 @@ class SqlSrvSchemaAdapter implements SchemaAdapter {
             case 'decimal':
             case 'float':
                 if (!is_numeric($value)) {
-                    throw new InvalidArgumentException("Default value must be numeric for type $type.");
+                    throw new \InvalidArgumentException("Default value must be numeric for type $type.");
                 }
                 return (string)$value;
             case 'date':
             case 'datetime2':
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value)) {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
+                    throw new \InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format.");
                 }
                 return "'$value'";
             default:
@@ -1232,7 +1232,7 @@ class SchemaBuilder {
                 $this->adapter = new SqlSrvSchemaAdapter();
                 break;
             default:
-                throw new InvalidArgumentException("Unsupported database type: {$this->dbType}");
+                throw new \InvalidArgumentException("Unsupported database type: {$this->dbType}");
         }
     }
 
@@ -1330,7 +1330,7 @@ class SchemaBuilder {
 
     public function json($name) {
         if (!in_array($this->dbType, ['mysql', 'pgsql', 'sqlite'])) {
-            throw new InvalidArgumentException("JSON type is not supported in {$this->dbType}.");
+            throw new \InvalidArgumentException("JSON type is not supported in {$this->dbType}.");
         }
         $column = new ColumnDefinition($this, $name, $this->dbType === 'pgsql' ? 'JSONB' : 'JSON');
         $this->columnDefinitions[] = $column;
@@ -1339,7 +1339,7 @@ class SchemaBuilder {
 
     public function enum($name, array $values) {
         if (empty($values)) {
-            throw new InvalidArgumentException("ENUM values cannot be empty.");
+            throw new \InvalidArgumentException("ENUM values cannot be empty.");
         }
         $column = new ColumnDefinition($this, $name, $this->dbType === 'mysql' ? 'ENUM' : 'TEXT');
         $this->constraints[] = $this->formatEnumConstraint($name, $values);
@@ -1349,10 +1349,10 @@ class SchemaBuilder {
 
     public function set($name, array $values) {
         if ($this->dbType !== 'mysql') {
-            throw new InvalidArgumentException("SET type is only supported in MySQL.");
+            throw new \InvalidArgumentException("SET type is only supported in MySQL.");
         }
         if (empty($values)) {
-            throw new InvalidArgumentException("SET values cannot be empty.");
+            throw new \InvalidArgumentException("SET values cannot be empty.");
         }
         $column = new ColumnDefinition($this, $name, 'SET');
         $this->constraints[] = $this->formatSetConstraint($name, $values);
@@ -1383,7 +1383,7 @@ class SchemaBuilder {
             $columns = [$columns];
         }
         if (!is_array($columns) || empty($columns)) {
-            throw new InvalidArgumentException("Primary key must have at least one column.");
+            throw new \InvalidArgumentException("Primary key must have at least one column.");
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $columnList = $this->formatColumnList($columns);
@@ -1395,7 +1395,7 @@ class SchemaBuilder {
 
     public function dropPrimaryKey() {
         if ($this->dbType === 'sqlite') {
-            throw new InvalidArgumentException("SQLite does not support DROP PRIMARY KEY directly.");
+            throw new \InvalidArgumentException("SQLite does not support DROP PRIMARY KEY directly.");
         }
         $action = $this->dbType === 'sqlsrv' ? "DROP CONSTRAINT PK" : "DROP PRIMARY KEY";
         $this->alterActions[] = $this->adapter->formatAlterAction($action);
@@ -1407,7 +1407,7 @@ class SchemaBuilder {
         $references = $this->sanitizeName('id');
         $on = $this->guessTableName($column);
         if (empty($on)) {
-            throw new InvalidArgumentException("Foreign key table name must be specified or inferred from column name.");
+            throw new \InvalidArgumentException("Foreign key table name must be specified or inferred from column name.");
         }
 
         // Set database-specific defaults
@@ -1448,7 +1448,7 @@ class SchemaBuilder {
 
     public function dropForeign($name) {
         if ($this->dbType === 'sqlite') {
-            throw new InvalidArgumentException("SQLite does not support DROP FOREIGN KEY directly.");
+            throw new \InvalidArgumentException("SQLite does not support DROP FOREIGN KEY directly.");
         }
         $name = $this->sanitizeName($name);
         $action = $this->dbType === 'mysql' ? "DROP FOREIGN KEY `$name`" : "DROP CONSTRAINT \"$name\"";
@@ -1461,7 +1461,7 @@ class SchemaBuilder {
             $columns = [$columns];
         }
         if (!is_array($columns) || empty($columns)) {
-            throw new InvalidArgumentException("Index must have at least one column.");
+            throw new \InvalidArgumentException("Index must have at least one column.");
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $name = $indexName ? $this->sanitizeName($indexName) : 'idx_' . implode('_', $columns);
@@ -1475,7 +1475,7 @@ class SchemaBuilder {
             $columns = [$columns];
         }
         if (!is_array($columns) || empty($columns)) {
-            throw new InvalidArgumentException("Unique index must have at least one column.");
+            throw new \InvalidArgumentException("Unique index must have at least one column.");
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $name = $indexName ? $this->sanitizeName($indexName) : 'uniq_' . implode('_', $columns);
@@ -1486,13 +1486,13 @@ class SchemaBuilder {
 
     public function fullTextIndex($columns, $indexName = null) {
         if (!in_array($this->dbType, ['mysql', 'pgsql'])) {
-            throw new InvalidArgumentException("FULLTEXT index is only supported in MySQL and PostgreSQL.");
+            throw new \InvalidArgumentException("FULLTEXT index is only supported in MySQL and PostgreSQL.");
         }
         if (is_string($columns)) {
             $columns = [$columns];
         }
         if (!is_array($columns) || empty($columns)) {
-            throw new InvalidArgumentException("FULLTEXT index must have at least one column.");
+            throw new \InvalidArgumentException("FULLTEXT index must have at least one column.");
         }
         $columns = array_map([$this, 'sanitizeName'], $columns);
         $name = $indexName ? $this->sanitizeName($indexName) : 'ft_idx_' . implode('_', $columns);
@@ -1507,7 +1507,7 @@ class SchemaBuilder {
 
     public function dropIndex($name) {
         if ($this->dbType === 'sqlite') {
-            throw new InvalidArgumentException("SQLite does not support DROP INDEX in ALTER TABLE.");
+            throw new \InvalidArgumentException("SQLite does not support DROP INDEX in ALTER TABLE.");
         }
         $name = $this->sanitizeName($name);
         $action = $this->dbType === 'mysql' ? "DROP INDEX `$name`" : "DROP INDEX \"$name\"";
@@ -1535,7 +1535,7 @@ class SchemaBuilder {
 
     public function dropColumn($name) {
         if ($this->dbType === 'sqlite') {
-            throw new InvalidArgumentException("SQLite does not support DROP COLUMN directly.");
+            throw new \InvalidArgumentException("SQLite does not support DROP COLUMN directly.");
         }
         $name = $this->sanitizeName($name);
         $action = $this->dbType === 'mysql' ? "DROP COLUMN `$name`" : "DROP COLUMN \"$name\"";
@@ -1545,7 +1545,7 @@ class SchemaBuilder {
 
     public function modifyColumn($name, $type, $length = null, $nullable = false, $default = null, $onUpdateCurrent = false, $comment = null) {
         if ($this->dbType === 'sqlite') {
-            throw new InvalidArgumentException("SQLite does not support MODIFY COLUMN directly.");
+            throw new \InvalidArgumentException("SQLite does not support MODIFY COLUMN directly.");
         }
         $column = new ColumnDefinition($this, $name, $type);
         if ($length !== null) {
@@ -1580,7 +1580,7 @@ class SchemaBuilder {
     public function addConstraint($name, $constraint) {
         $name = $this->sanitizeName($name);
         if ($this->dbType === 'sqlite' && strpos($constraint, 'CHECK') === false) {
-            throw new InvalidArgumentException("SQLite only supports CHECK constraints.");
+            throw new \InvalidArgumentException("SQLite only supports CHECK constraints.");
         }
         $this->constraints[] = ['definition' => "CONSTRAINT `$name` $constraint", 'constraint' => new ConstraintDefinition($this, 'CHECK', $name)];
         return $this;
@@ -1588,7 +1588,7 @@ class SchemaBuilder {
 
     public function dropConstraint($name) {
         if ($this->dbType === 'sqlite') {
-            throw new InvalidArgumentException("SQLite does not support DROP CONSTRAINT directly.");
+            throw new \InvalidArgumentException("SQLite does not support DROP CONSTRAINT directly.");
         }
         $name = $this->sanitizeName($name);
         $action = $this->dbType === 'mysql' ? "DROP CONSTRAINT `$name`" : "DROP CONSTRAINT \"$name\"";
@@ -1598,7 +1598,7 @@ class SchemaBuilder {
 
     public function tableExists($table) {
         if (!$this->databaser) {
-            throw new InvalidArgumentException("Databaser instance is required to check table existence.");
+            throw new \InvalidArgumentException("Databaser instance is required to check table existence.");
         }
         $originalReturnType = $this->databaser->returnType;
         $this->databaser->returnType = 'RAW';
@@ -1609,7 +1609,7 @@ class SchemaBuilder {
 
     public function columnExists($table, $column) {
         if (!$this->databaser) {
-            throw new InvalidArgumentException("Databaser instance is required to check column existence.");
+            throw new \InvalidArgumentException("Databaser instance is required to check column existence.");
         }
         $originalReturnType = $this->databaser->returnType;
         $this->databaser->returnType = 'RAW';
@@ -1620,7 +1620,7 @@ class SchemaBuilder {
 
     public function indexExists($table, $indexName) {
         if (!$this->databaser) {
-            throw new InvalidArgumentException("Databaser instance is required to check index existence.");
+            throw new \InvalidArgumentException("Databaser instance is required to check index existence.");
         }
         $originalReturnType = $this->databaser->returnType;
         $this->databaser->returnType = 'RAW';
@@ -1631,7 +1631,7 @@ class SchemaBuilder {
 
     public function foreignKeyExists($table, $constraintName) {
         if (!$this->databaser) {
-            throw new InvalidArgumentException("Databaser instance is required to check foreign key existence.");
+            throw new \InvalidArgumentException("Databaser instance is required to check foreign key existence.");
         }
         $originalReturnType = $this->databaser->returnType;
         $this->databaser->returnType = 'RAW';
@@ -1667,7 +1667,7 @@ class SchemaBuilder {
             $onUpdate = $fkData['onUpdate'] ?? ($this->dbType === 'oci' ? 'NO ACTION' : 'NO ACTION');
 
             if (empty($on)) {
-                throw new InvalidArgumentException("Foreign key table name must be specified or inferred for constraint {$constraint->getName()}.");
+                throw new \InvalidArgumentException("Foreign key table name must be specified or inferred for constraint {$constraint->getName()}.");
             }
 
             return $this->adapter->formatForeignKey(
@@ -1708,7 +1708,7 @@ class SchemaBuilder {
 
     public function sanitizeName($name) {
         if (empty($name) || !preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
-            throw new InvalidArgumentException("Column or table name must be a non-empty string with valid characters: $name");
+            throw new \InvalidArgumentException("Column or table name must be a non-empty string with valid characters: $name");
         }
         return $name;
     }
@@ -1730,14 +1730,14 @@ class SchemaBuilder {
             case 'decimal':
             case 'float':
                 if (!is_numeric($value)) {
-                    throw new InvalidArgumentException("Default value must be numeric for type $type.");
+                    throw new \InvalidArgumentException("Default value must be numeric for type $type.");
                 }
                 return (string)$value;
             case 'date':
             case 'datetime':
             case 'timestamp':
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $value) && $value !== 'CURRENT_TIMESTAMP') {
-                    throw new InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
+                    throw new \InvalidArgumentException("Default value for $type must be in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format, or CURRENT_TIMESTAMP.");
                 }
                 return $value === 'CURRENT_TIMESTAMP' ? 'CURRENT_TIMESTAMP' : "'$value'";
             default:
@@ -1786,7 +1786,7 @@ class SchemaBuilder {
     public function engine($engine) {
         if ($this->dbType === 'mysql') {
             if (!in_array(strtoupper($engine), ['INNODB', 'MYISAM'])) {
-                throw new InvalidArgumentException("Unsupported MySQL engine: $engine. Supported engines: InnoDB, MyISAM.");
+                throw new \InvalidArgumentException("Unsupported MySQL engine: $engine. Supported engines: InnoDB, MyISAM.");
             }
             $this->engine = strtoupper($engine);
         }
