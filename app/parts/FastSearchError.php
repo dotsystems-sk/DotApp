@@ -13,7 +13,7 @@ namespace Dotsystems\App\Parts;
  * @company   Dotsystems s.r.o.
  * @version   1.8 FREE
  * @license   MIT License
- * @date      2014 - 2025
+ * @date      2014 - 2026
  */
 class FastSearchError extends \Exception {
     // Define valid error codes

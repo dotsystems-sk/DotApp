@@ -12,7 +12,7 @@
  * @company    Dotsystems s.r.o.
  * @version    1.0
  * @license    MIT License
- * @date       2025
+ * @date      2014 - 2026
  */
 
 namespace Dotsystems\App\Parts;

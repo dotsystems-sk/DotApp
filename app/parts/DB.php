@@ -16,7 +16,7 @@ use \Dotsystems\App\Parts\Config;
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7 FREE
+ * @version   1.8 FREE
  * @license   MIT License
  */
 class DB extends Facade {

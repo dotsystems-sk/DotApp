@@ -1,7 +1,7 @@
 <?php 
 
 error_reporting(E_ALL & ~E_NOTICE);
-ini_set('display_errors', '0');
+ini_set('display_errors', '1');
 session_set_cookie_params(8640000,"/");
 date_default_timezone_set('Europe/Bratislava');
 ini_set('mysql.connect_timeout', 10);

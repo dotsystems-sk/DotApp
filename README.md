@@ -4,17 +4,19 @@ Full documentation is available at:
 
 [https://dotapp.dev/](https://dotapp.dev/)
 
-dotApp is an ultra-fast, powerful, and scalable PHP framework for modern web applications. It stays lean yet handles very large apps, with clean structure that’s easy for humans, vibe coders, and AI assistants like Cursor to read, learn, and build on. It ships with a built-in Bridge for seamless PHP↔JS calls and an ultra-light reactive frontend library, alongside fast routing and templating.  
+dotApp is an ultra-fast, powerful, and scalable PHP framework for modern web applications. It stays lean yet handles very large apps, with clean structure that's easy for humans, vibe coders, and AI assistants to read, learn, and build on. **Starting with version 1.8, dotApp includes comprehensive AI instructions** making it perfectly compatible with advanced AI models like Claude Opus 4.5 and GPT-4.5 Sonnet for flawless code generation. It ships with a built-in Bridge for seamless PHP↔JS calls and an ultra-light reactive frontend library, alongside fast routing and templating.  
 
 **Proudly made in Slovakia** 🇸🇰
 
-🔹 **Minimal and efficient**  
+🔹 **Minimal and efficient**
 
-🔹 **PSR-4 autoloading support**  
+🔹 **PSR-4 autoloading support**
 
-🔹 **Modular architecture**  
+🔹 **Modular architecture**
 
 🔹 **Flexible templating system**
+
+🔹 **AI-optimized codebase** - Perfect for Claude Opus 4.5 and GPT-4.5 Sonnet
 
 # Currently Working On 🛠️
 
@@ -46,7 +48,16 @@ This keeps routes concise while still letting you access other services via faca
 
 ## What's New ✨
 
-### Version 1.7.2 Released (NEW – 2025-12-25)
+### Version 1.8 Released (NEW – 2026-01-04)
+
+- **Separated Database Drivers**: MySQLi and PDO drivers are now in separate files (`DatabaserMysqliDriver.php`, `DatabaserPdoDriver.php`) for better maintainability
+- **Custom Database Driver Support**: Register your own database drivers using `Databaser::customDriver('name', 'DriverClass')` for MongoDB, Redis, or any custom database
+- **ORM & QueryBuilder Improvements**: Fixed bugs, improved stability, and enhanced performance in Object-Relational Mapping and SQL Query Builder
+- **Complete ORM & QueryBuilder Testing**: Comprehensive test suite covering all Entity, Collection, and QueryBuilder functionality
+- **Database Configuration Fixes**: Corrected driver naming conventions and configuration examples throughout documentation
+- **AI-Friendly Framework**: Added comprehensive AI instructions and guides (.cursorrules, ai_database_guide.md) making the framework highly compatible with advanced AI models like Claude Opus 4.5 and GPT-4.5 Sonnet for perfect code generation
+
+### Version 1.7.2 Released (2025-12-25)
 
 - **Middleware chaining**: Define multiple middlewares at once (arrays), run them as a **group()**, and react conditionally with **when()**, **true()**, **false()** callbacks.
 - **Router + facades polish**: Static route flag, array routes, and controller strings (`Module:Controller@method`) with DI-backed resolution.
@@ -54,6 +65,13 @@ This keeps routes concise while still letting you access other services via faca
 - **Email/SMS stack**: `Emailer` (SMTP + IMAP/POP3) with `Email` facade helpers; `Sms` facade + `SmsProvider` interface for send/validate/status.
 - **MCP server support**: Model Context Protocol server layer with tool/resource/prompt registration and JSON-RPC `initialize`, `tools/list`, `resources/list`, `prompts/list`, and execution handling.
 - **Bug fixes & stability**: routing/middleware pipeline tweaks, limiter handling, and DI/resolver robustness.
+
+### AI-Friendly Features (1.8+)
+
+- **Comprehensive AI Instructions**: Complete .cursorrules file and ai_database_guide.md for perfect AI model compatibility
+- **Claude Opus 4.5 & GPT-4.5 Sonnet Ready**: Framework designed to work flawlessly with advanced AI models
+- **Structured Code Generation**: AI can perfectly generate controllers, models, routes, and database operations
+- **Self-Documenting Architecture**: Clean, readable code structure that AI understands intuitively
 
 ### Highlights from 1.7
 
@@ -205,7 +223,7 @@ Options:
 
 ## 🧪 Version Note
 
-This is the **version 1.7.2 release** of dotApp.  
+This is the **version 1.8 release** of dotApp, featuring enhanced AI compatibility with comprehensive instructions for advanced AI models like Claude Opus 4.5 and GPT-4.5 Sonnet.
 
 Older versions may have duplicate function names (lowercase and PascalCase) due to the transition to **PascalCase** for naming, maintaining **backward compatibility**. This has minimal impact on performance.
 

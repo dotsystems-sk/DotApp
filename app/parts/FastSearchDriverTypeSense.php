@@ -15,9 +15,9 @@ use Dotsystems\App\Parts\FastSearchError;
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7 FREE
+ * @version   1.8 FREE
  * @license   MIT License
- * @date      2014 - 2025
+ * @date      2014 - 2026
  */
 class FastSearchDriverTypeSense {
     private $host;

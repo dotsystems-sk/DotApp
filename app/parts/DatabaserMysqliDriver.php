@@ -1,4 +1,24 @@
 <?php
+
+/**
+ * CLASS DatabaserMysqliDriver
+ *
+ * MySQLi database driver implementation for the DotApp framework.
+ * Provides MySQLi-specific database operations and ORM support.
+ *
+ * @package   DotApp Framework
+ * @author    Štefan Miščík <info@dotsystems.sk>
+ * @company   Dotsystems s.r.o.
+ * @version   1.8 FREE
+ * @license   MIT License
+ * @date      2014 - 2026
+ *
+ * License Notice:
+ * You are permitted to use, modify, and distribute this code under the
+ * following condition: You **must** retain this header in all copies or
+ * substantial portions of the code, including the author and company information.
+ */
+
 namespace Dotsystems\App\Parts;
 
 use Dotsystems\App\DotApp;
@@ -7,32 +27,37 @@ use Dotsystems\App\Parts\QueryBuilder;
 use Dotsystems\App\Parts\Entity;
 use Dotsystems\App\Parts\Collection;
 
-class DatabaserMysqliDriver {
-    public static function create() {
-        $databases = null;
-        $databaserSet = false;
-        $databaserInstance = new \stdClass();
+class DatabaserMysqliDriver
+{
+    public static function create(Databaser $databaser)
+    {
+        $activeconnection = &$databaser->getActiveConnection();
+        $connections = &$databaser->getConnections();
+        $databases = &$databaser->getDatabases();
+        $database_drivers = &$databaser->getDatabaseDrivers();
+        $statement = &$databaser->getStatement();
+        $qb = &$databaser->getQueryBuilder();
+        $returnType = &$databaser->getReturnType();
+        $di = &$databaser->getDI();
+        $cacheDriver = &$databaser->getCacheDriver();
+        $useCache = &$databaser->getUseCache();
 
-        $setDatabaser = function (Databaser $databaser) use (&$databases, &$databaserSet, &$databaserInstance) {
-            if ($databaserSet === false) {
-                $databaserInstance = $databaser;
-                $databases = $databaser->getDatabases();
-                $databases["mysqli"] = [];
-                $databaser->statement['execution_type'] = 0;
-                $databaserSet = true;
-            }
-        };
+        $databases["mysqli"] = [];
+        $statement['execution_type'] = 0;
 
+        // Pomocná funkcia na určenie typu väzby (špecifické pre MySQLi)
         $getBindingType = function ($value) {
             if (is_int($value)) return 'i';
             if (is_float($value)) return 'd';
             if (is_string($value)) return 's';
-            if (is_null($value)) return 's';
-            return 'b';
+            if (is_null($value)) return 's'; // NULL ako string v MySQLi
+            return 'b'; // Blob ako fallback
         };
 
-        $clear_statement = function () use (&$databaserInstance) {
-            $databaserInstance->statement = [
+        // Vyčistenie statementu
+        $clear_statement = function () use (&$statement) {
+            unset($statement);
+            $statement = [
                 'execution_type' => 0,
                 'query_parts' => [
                     'select' => '',
@@ -51,36 +76,35 @@ class DatabaserMysqliDriver {
                 'values_types' => [],
                 'execution_data' => [],
                 'transaction' => null,
-                'table' => 'unknown_table'
+                'table' => 'unknown_table' // Inicializujeme table
             ];
         };
 
-        Databaser::addDriver("mysqli", "select_db", function (Databaser $databaser, $name) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databases = $databaser->getDatabases();
-            if (!isset(Databaser::getConnections()['mysqli'][$name])) {
-                Databaser::$connections['mysqli'][$name] = mysqli_connect(
+        // Pripojenie k databáze
+        $databaser->addDriver("mysqli", "select_db", function ($name) use (&$connections, &$database_drivers, &$databases, &$activeconnection) {
+            if (!isset($connections[$database_drivers['driver']][$name])) {
+                $connections[$database_drivers['driver']][$name] = mysqli_connect(
                     $databases["mysqli"][$name]['server'],
                     $databases["mysqli"][$name]['username'],
                     $databases["mysqli"][$name]['password']
                 );
-                if (Databaser::$connections['mysqli'][$name]) {
-                    $databaser->activeconnection['mysqli'] = Databaser::$connections['mysqli'][$name];
+                if ($connections[$database_drivers['driver']][$name]) {
+                    $activeconnection['mysqli'] = $connections[$database_drivers['driver']][$name];
                     mysqli_report(MYSQLI_REPORT_OFF);
-                    mysqli_set_charset($databaser->activeconnection['mysqli'], $databases["mysqli"][$name]['collation']);
-                    mysqli_select_db($databaser->activeconnection['mysqli'], $databases["mysqli"][$name]['database']);
+                    mysqli_set_charset($activeconnection['mysqli'], $databases["mysqli"][$name]['collation']);
+                    mysqli_select_db($activeconnection['mysqli'], $databases["mysqli"][$name]['database']);
                 } else {
-                    $databaser->activeconnection['mysqli'] = null;
+                    $activeconnection['mysqli'] = null;
                     throw new \Exception("Nepodarilo sa pripojiť k databáze: " . mysqli_connect_error());
                 }
             } else {
-                $databaser->activeconnection['mysqli'] = Databaser::$connections['mysqli'][$name];
+                $activeconnection['mysqli'] = $connections[$database_drivers['driver']][$name];
                 mysqli_report(MYSQLI_REPORT_OFF);
             }
         });
 
-        Databaser::addDriver("mysqli", "q", function (Databaser $databaser, $querybuilder) use ($clear_statement, $setDatabaser) {
-            $setDatabaser($databaser);
+        // Query Builder podpora
+        $databaser->addDriver("mysqli", "q", function ($querybuilder) use ($databaser, $clear_statement) {
             $clear_statement();
             $newqb = new QueryBuilder($databaser);
             if (is_callable($querybuilder)) {
@@ -89,82 +113,76 @@ class DatabaserMysqliDriver {
             return $newqb;
         });
 
-        Databaser::addDriver("mysqli", "schema", function (Databaser $databaser, callable $callback, $success = null, $error = null) use ($clear_statement, $setDatabaser) {
-            $setDatabaser($databaser);
+        $databaser->addDriver("mysqli", "schema", function (callable $callback, $success = null, $error = null) use ($databaser, $clear_statement) {
             $clear_statement();
-            $databaser->setQB(new QueryBuilder($databaser));
+            $qb = new QueryBuilder($databaser);
             if (is_callable($callback)) {
-                $callback($databaser->getQB());
+                $callback($qb);
             }
-            $databaser->execute($success, $error);
+            $databaser->execute($success, $error); // Spustí query cez MySQLi
         });
 
-        Databaser::addDriver("mysqli", "return", function (Databaser $databaser, $type) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databaser->returnType = strtoupper($type);
+        // Nastavenie typu návratovej hodnoty
+        $databaser->addDriver("mysqli", "return", function ($type) use (&$returnType) {
+            $returnType = strtoupper($type);
         });
 
-        Databaser::addDriver("mysqli", "getQuery", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $queryData = $databaser->getQB()->getQuery();
+        // Získanie vygenerovaného dotazu
+        $databaser->addDriver("mysqli", "getQuery", function () use (&$qb) {
+            $queryData = $qb->getQuery();
             return [
                 'query' => $queryData['query'],
                 'bindings' => $queryData['bindings']
             ];
         });
 
-        Databaser::addDriver("mysqli", "inserted_id", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            if ($databaser->getActiveConnection()['mysqli']) {
-                return mysqli_insert_id($databaser->getActiveConnection()['mysqli']);
+        $databaser->addDriver("mysqli", "inserted_id", function () use (&$activeconnection) {
+            if ($activeconnection['mysqli']) {
+                return mysqli_insert_id($activeconnection['mysqli']);
             }
             return null;
         });
 
-        Databaser::addDriver("mysqli", "affected_rows", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            if ($databaser->getActiveConnection()['mysqli']) {
-                return mysqli_affected_rows($databaser->getActiveConnection()['mysqli']);
+        $databaser->addDriver("mysqli", "affected_rows", function () use (&$activeconnection) {
+            if ($activeconnection['mysqli']) {
+                return mysqli_affected_rows($activeconnection['mysqli']);
             }
             return null;
         });
 
-        Databaser::addDriver("mysqli", "fetchArray", function (Databaser $databaser, &$array) use ($setDatabaser) {
-            $setDatabaser($databaser);
+        // Načítanie výsledkov
+        $databaser->addDriver("mysqli", "fetchArray", function (&$array) {
             return mysqli_fetch_assoc($array);
         });
 
-        Databaser::addDriver("mysqli", "fetchFirst", function (Databaser $databaser, &$array) use ($setDatabaser) {
-            $setDatabaser($databaser);
+        $databaser->addDriver("mysqli", "fetchFirst", function (&$array) {
             return $array ? mysqli_fetch_assoc($array) : false;
         });
 
-        Databaser::addDriver("mysqli", "newEntity", function (Databaser $databaser, $row) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            return new Entity($row, $databaser->di);
+        $databaser->addDriver("mysqli", "newEntity", function ($row) use (&$di) {
+            return new Entity($row, $di);
         });
 
-        Databaser::addDriver("mysqli", "newCollection", function (Databaser $databaser, $queryOrItems) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            return new Collection($queryOrItems, $databaser->di);
+        $databaser->addDriver("mysqli", "newCollection", function ($queryOrItems) use (&$di) {
+            return new Collection($queryOrItems, $di);
         });
 
-        Databaser::addDriver("mysqli", "execute", function (Databaser $databaser, $success_callback = null, $error_callback = null) use ($getBindingType, $setDatabaser) {
-            $setDatabaser($databaser);
-            if (!$databaser->getActiveConnection()[Databaser::getDatabaseDrivers()['driver']]) {
+        // Execute
+        $databaser->addDriver("mysqli", "execute", function ($success_callback = null, $error_callback = null) use ($databaser, $getBindingType, &$activeconnection, &$database_drivers, &$qb, &$returnType, &$statement, &$di, &$cacheDriver) {
+            if (!$activeconnection[$database_drivers['driver']]) {
                 throw new \Exception("No active connection to database ! Use select_db() !");
             }
-            $queryData = $databaser->getQB()->getQuery();
-            if (strlen(trim($queryData["query"])) == 0 && isset($queryData['queryParts']['ifNotExistUsed']) && $queryData['queryParts']['ifNotExistUsed'] == true) {
+            $queryData = $qb->getQuery();
+            if ((strlen(trim($queryData["query"])) == 0) && isset($queryData['queryParts']['ifNotExistUsed']) && $queryData['queryParts']['ifNotExistUsed'] == true) {
                 return;
             }
             $query = $queryData['query'];
             $values = $queryData['bindings'];
             $types = $queryData['types'];
 
-            $table = $databaser->getStatement()['table'] ?? 'unknown_table';
+            $table = $statement['table'] ?? 'unknown_table';
             if (isset($queryData['queryParts']['table'])) {
-                $table = $queryData['queryParts']['table'];
+                $table = $queryData['queryParts']['table']; // Pre CREATE TABLE, ALTER TABLE
             } elseif (isset($queryData['queryParts']['from'])) {
                 $table = trim(str_replace('FROM', '', $queryData['queryParts']['from']));
             } elseif (isset($queryData['queryParts']['update'])) {
@@ -172,23 +190,23 @@ class DatabaserMysqliDriver {
             } elseif (isset($queryData['queryParts']['insert'])) {
                 $table = trim(preg_replace('/INSERT INTO (\w+).*/', '$1', $queryData['queryParts']['insert']));
             }
-            $databaser->statement['table'] = $table;
+            $statement['table'] = $table;
 
-            $cacheKey = "{$table}:{$databaser->returnType}:" . md5($query . serialize($values));
+            $cacheKey = "{$table}:{$returnType}:" . md5($query . serialize($values));
             $execution_data = [
                 'query' => $query,
                 'bindings' => $values
             ];
 
-            if ($databaser->cacheDriver && $cached = $databaser->cacheDriver->get($cacheKey)) {
+            if ($cacheDriver && $cached = $cacheDriver->get($cacheKey)) {
                 DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $cached, $execution_data);
                 if (is_callable($success_callback)) $success_callback($cached, $databaser, []);
                 return $cached;
             }
 
-            $stmt = $databaser->getActiveConnection()['mysqli']->prepare($query);
+            $stmt = $activeconnection['mysqli']->prepare($query);
             if ($stmt === false) {
-                $error = ['error' => $databaser->getActiveConnection()['mysqli']->error, 'errno' => $databaser->getActiveConnection()['mysqli']->errno];
+                $error = ['error' => $activeconnection['mysqli']->error, 'errno' => $activeconnection['mysqli']->errno];
                 if (is_callable($error_callback)) {
                     DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, $execution_data);
                     $error_callback($error, $databaser, $execution_data);
@@ -213,22 +231,22 @@ class DatabaserMysqliDriver {
                     'query' => $query,
                     'bindings' => $values
                 ];
-                $databaser->statement['execution_data'] = $execution_data;
+                $statement['execution_data'] = $execution_data;
 
-                if ($databaser->returnType === "ORM") {
+                if ($returnType === "ORM") {
                     if ($result && $result->num_rows > 0) {
                         $rows = [];
                         while ($row = $databaser->fetchArray($result)) {
-                            $entity = new Entity($row, $databaser->di);
+                            $entity = new Entity($row, $di);
                             $entity->loadRelations();
                             $rows[] = $entity;
                         }
-                        $returnValue = new Collection($rows, $databaser->di);
+                        $returnValue = new Collection($rows, $di);
                     } else {
                         $returnValue = null;
                     }
-                    if ($databaser->cacheDriver && $returnValue) {
-                        $databaser->cacheDriver->set($cacheKey, $returnValue, 3600);
+                    if ($cacheDriver && $returnValue) {
+                        $cacheDriver->set($cacheKey, $returnValue, 3600);
                     }
                     if (is_callable($success_callback)) {
                         DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $returnValue, $execution_data);
@@ -242,11 +260,12 @@ class DatabaserMysqliDriver {
                     while ($row = $databaser->fetchArray($result)) {
                         $rows[] = $row;
                     }
-                    if ($databaser->cacheDriver && $rows) {
-                        $databaser->cacheDriver->set($cacheKey, $rows, 3600);
+                    if ($cacheDriver && $rows) {
+                        $cacheDriver->set($cacheKey, $rows, 3600);
                     }
                     DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $rows, $execution_data);
                     if (is_callable($success_callback)) $success_callback($rows, $databaser, $execution_data);
+
                     $stmt->close();
                     $databaser->q(function ($qb) {});
                     return $result;
@@ -264,19 +283,19 @@ class DatabaserMysqliDriver {
             }
         });
 
-        Databaser::addDriver("mysqli", "first", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
+        // First
+        $databaser->addDriver("mysqli", "first", function () use (&$returnType, $databaser) {
             $result = $databaser->execute();
-            if ($databaser->returnType === 'ORM') {
+            if ($returnType === 'ORM') {
                 return $result->getItem(0);
             }
             return $result[0];
         });
 
-        Databaser::addDriver("mysqli", "all", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            if ($databaser->returnType === 'ORM') {
-                return new Collection(clone $databaser->di, $databaser->di);
+        // All
+        $databaser->addDriver("mysqli", "all", function () use (&$returnType, &$di, $databaser) {
+            if ($returnType === 'ORM') {
+                return new Collection(clone $di, $di);
             }
             $result = $databaser->execute();
             $rows = [];
@@ -286,28 +305,28 @@ class DatabaserMysqliDriver {
             return $rows;
         });
 
-        Databaser::addDriver("mysqli", "raw", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
+        // Raw
+        $databaser->addDriver("mysqli", "raw", function () use ($databaser) {
             return $databaser->execute();
         });
 
-        Databaser::addDriver("mysqli", "transaction", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databaser->getActiveConnection()['mysqli']->begin_transaction();
+        // Transakcie
+        $databaser->addDriver("mysqli", "transaction", function () use (&$activeconnection) {
+            $activeconnection['mysqli']->begin_transaction();
         });
 
-        Databaser::addDriver("mysqli", "transact", function (Databaser $databaser, $operations, $success_callback = null, $error_callback = null) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databaser->getActiveConnection()['mysqli']->begin_transaction();
-            $operations($databaser,
-                function ($result, $db, $execution_data) use ($databaser, $success_callback) {
-                    $databaser->getActiveConnection()['mysqli']->commit();
+        $databaser->addDriver("mysqli", "transact", function ($operations, $success_callback = null, $error_callback = null) use (&$activeconnection, $databaser) {
+            $activeconnection['mysqli']->begin_transaction();
+            $operations(
+                $databaser,
+                function ($result, $db, $execution_data) use ($success_callback, &$activeconnection, $databaser) {
+                    $activeconnection['mysqli']->commit();
                     if (is_callable($success_callback)) {
                         $success_callback($result, $databaser, $execution_data);
                     }
                 },
-                function ($error, $db, $execution_data) use ($databaser, $error_callback) {
-                    $databaser->getActiveConnection()['mysqli']->rollback();
+                function ($error, $db, $execution_data) use ($error_callback, &$activeconnection, $databaser) {
+                    $activeconnection['mysqli']->rollback();
                     if (is_callable($error_callback)) {
                         $error_callback($error, $databaser, $execution_data);
                     }
@@ -315,14 +334,12 @@ class DatabaserMysqliDriver {
             );
         });
 
-        Databaser::addDriver("mysqli", "commit", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databaser->getActiveConnection()['mysqli']->commit();
+        $databaser->addDriver("mysqli", "commit", function () use (&$activeconnection) {
+            $activeconnection['mysqli']->commit();
         });
 
-        Databaser::addDriver("mysqli", "rollback", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databaser->getActiveConnection()['mysqli']->rollback();
+        $databaser->addDriver("mysqli", "rollback", function () use (&$activeconnection) {
+            $activeconnection['mysqli']->rollback();
         });
     }
 }

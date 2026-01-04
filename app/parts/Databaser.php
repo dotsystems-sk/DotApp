@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CLASS Databaser
  *
@@ -19,9 +20,9 @@
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7 FREE
+ * @version   1.8 FREE
  * @license   MIT License
- * @date      2014 - 2025
+ * @date      2014 - 2026
  *
  * License Notice:
  * You are permitted to use, modify, and distribute this code under the 
@@ -30,6 +31,7 @@
  */
 
 namespace Dotsystems\App\Parts;
+
 use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\Config;
 use \Dotsystems\App\Parts\DI;
@@ -37,13 +39,14 @@ use \Dotsystems\App\Parts\QueryBuilder;
 use \Dotsystems\App\Parts\SchemaBuilder;
 use \Dotsystems\App\Parts\CacheDriverInterface;
 
-class Databaser {
+class Databaser
+{
     public $cacheDriver = null;
-    private $useCache=false;
+    private $useCache = false;
     private $databases;
     private $connections;
     private $activeconnection;
-    private $allDB=[];
+    private $allDB = [];
     public $statement;
     public $database_drivers; // Type of database we use...
     public $cloned;
@@ -51,16 +54,19 @@ class Databaser {
     public $returnType = 'RAW'; // Predvolené správanie pre typ návratovej hodnoty
     private $qb;
     public $di;
+    private static $customDrivers = [];
 
-    public function diSet() {
+    public function diSet()
+    {
         $this->di = DotApp::dotApp()->db;
     }
 
-    function __construct($dotapp=null) {
+    function __construct($dotapp = null)
+    {
         $this->databases = array();
         $this->database_drivers = array();
         $this->database_drivers['drivers'] = array();
-        $this->database_drivers['driver'] = array();
+        $this->database_drivers['driver'] = null;
         $this->database_drivers['created'] = array();
         $this->driver_helper = array();
         $this->cloned = false;
@@ -73,7 +79,8 @@ class Databaser {
         $this->loadDatabases();
     }
 
-    private function loadDatabases() {
+    private function loadDatabases()
+    {
         if (empty($this->allDB)) return;
         foreach ($this->allDB as $name => $db) {
             $this->driver(strtolower($db["driver"]));
@@ -84,684 +91,113 @@ class Databaser {
         $this->selectDb(Config::db("maindb"));
     }
 
-    private function setCacheDriver() {
+    private function setCacheDriver()
+    {
         // Kvoli spatnej kompatibilite pred refaktoringom sposobu akym fungovala cache urobime teraz anonymnu triedu
         // ktora zaruci spatnu kompatibilutu ale bude fungovat nad novymi drivermi
         $cacheObj = Cache::use("databaserCache");
-        $setMethod = function($key,$value,$lifetime) use ($cacheObj) {
-            $cacheObj->save($key,$value,$lifetime);
+        $setMethod = function ($key, $value, $lifetime) use ($cacheObj) {
+            $cacheObj->save($key, $value, $lifetime);
         };
-        $getMethod = function($key) use ($cacheObj) {
+        $getMethod = function ($key) use ($cacheObj) {
             $cacheObj->load($key);
         };
-        $this->cacheDriver = new class($setMethod,$getMethod) {
+        $this->cacheDriver = new class($setMethod, $getMethod) {
             private $methods = [];
 
-            function __construct($setMethod,$getMethod) {
+            function __construct($setMethod, $getMethod)
+            {
                 $methods['set'] = $setMethod;
                 $methods['get'] = $getMethod;
             }
 
-            public function set($key,$value,$lifetime) {
-                $this->methods['set']($key,$value,$lifetime);
+            public function set($key, $value, $lifetime)
+            {
+                $this->methods['set']($key, $value, $lifetime);
             }
-            
-            public function get($key) {
+
+            public function get($key)
+            {
                 return $this->methods['get']($key);
             }
         };
     }
 
-    public function __debugInfo() {
+    public function __debugInfo()
+    {
         return [
             'publicData' => 'This is just part of dotapp. Nothing to see !'
         ];
     }
 
-    private function create_mysqli_driver() {
-        $this->databases["mysqli"] = [];
-        $this->statement['execution_type'] = 0;
-    
-        // Pomocná funkcia na určenie typu väzby (špecifické pre MySQLi)
-        $getBindingType = function ($value) {
-            if (is_int($value)) return 'i';
-            if (is_float($value)) return 'd';
-            if (is_string($value)) return 's';
-            if (is_null($value)) return 's'; // NULL ako string v MySQLi
-            return 'b'; // Blob ako fallback
-        };
-    
-        // Vyčistenie statementu
-        $clear_statement = function () {
-            unset($this->statement);
-            $this->statement = [
-                'execution_type' => 0,
-                'query_parts' => [
-                    'select' => '',
-                    'from' => '',
-                    'joins' => [],
-                    'where' => [],
-                    'group_by' => '',
-                    'having' => '',
-                    'order_by' => '',
-                    'limit' => '',
-                    'offset' => ''
-                ],
-                'bindings' => [],
-                'binding_types' => '',
-                'values' => [],
-                'values_types' => [],
-                'execution_data' => [],
-                'transaction' => null,
-                'table' => 'unknown_table' // Inicializujeme table
-            ];
-        };
-   
-        // Pripojenie k databáze
-        $this->addDriver("mysqli", "select_db", function ($name) {
-            if (!isset($this->connections[$this->database_drivers['driver']][$name])) {
-                $this->connections[$this->database_drivers['driver']][$name] = mysqli_connect(
-                    $this->databases["mysqli"][$name]['server'],
-                    $this->databases["mysqli"][$name]['username'],
-                    $this->databases["mysqli"][$name]['password']
-                );
-                if ($this->connections[$this->database_drivers['driver']][$name]) {
-                    $this->activeconnection['mysqli'] = $this->connections[$this->database_drivers['driver']][$name];
-                    mysqli_report(MYSQLI_REPORT_OFF);
-                    mysqli_set_charset($this->activeconnection['mysqli'], $this->databases["mysqli"][$name]['collation']);
-                    mysqli_select_db($this->activeconnection['mysqli'], $this->databases["mysqli"][$name]['database']);
-                } else {
-                    $this->activeconnection['mysqli'] = null;
-                    throw new \Exception("Nepodarilo sa pripojiť k databáze: " . mysqli_connect_error());
-                }
-            } else {
-                $this->activeconnection['mysqli'] = $this->connections[$this->database_drivers['driver']][$name];
-                mysqli_report(MYSQLI_REPORT_OFF);
-            }
-        });
-    
-        // Query Builder podpora
-        $this->addDriver("mysqli", "q", function ($querybuilder) use ($clear_statement) {
-            $clear_statement();
-            $newqb = new QueryBuilder($this);
-            if (is_callable($querybuilder)) {
-                $querybuilder($newqb);
-            }
-            return $newqb;
-        });
-
-        $this->addDriver("mysqli", "schema", function (callable $callback, $success=null, $error=null) use ($clear_statement) {
-            $clear_statement();
-            $this->qb = new QueryBuilder($this);
-            if (is_callable($callback)) {
-                $callback($this->qb);
-            }
-            $this->execute($success,$error); // Spustí query cez MySQLi
-        });
-     
-        // Nastavenie typu návratovej hodnoty
-        $this->addDriver("mysqli", "return", function ($type) {
-            $this->returnType = strtoupper($type);
-        });
-    
-        // Získanie vygenerovaného dotazu
-        $this->addDriver("mysqli", "getQuery", function () {
-            $queryData = $this->qb->getQuery();
-            return [
-                'query' => $queryData['query'],
-                'bindings' => $queryData['bindings']
-            ];
-        });
-
-        $this->addDriver("mysqli", "inserted_id", function () {
-            if ($this->activeconnection['mysqli']) {
-                return mysqli_insert_id($this->activeconnection['mysqli']);
-            }
-            return null;
-        });
-        
-        $this->addDriver("mysqli", "affected_rows", function () {
-            if ($this->activeconnection['mysqli']) {
-                return mysqli_affected_rows($this->activeconnection['mysqli']);
-            }
-            return null;
-        });
-    
-        // Načítanie výsledkov
-        $this->addDriver("mysqli", "fetchArray", function (&$array) {
-            return mysqli_fetch_assoc($array);
-        });
-    
-        $this->addDriver("mysqli", "fetchFirst", function (&$array) {
-            return $array ? mysqli_fetch_assoc($array) : false;
-        });
-
-        $this->addDriver("mysqli", "newEntity", function ($row) {
-            return new Entity($row,$this->di);
-        });
-
-        $this->addDriver("mysqli", "newCollection", function ($queryOrItems) {
-            return new Collection($queryOrItems, $this->di);
-        });
-    
-        // Execute
-        $this->addDriver("mysqli", "execute", function ($success_callback = null, $error_callback = null) use ($getBindingType) {
-            if (!$this->activeconnection[$this->database_drivers['driver']]) {
-                throw new \Exception("No active connection to database ! Use select_db() !");
-            }
-            $queryData = $this->qb->getQuery();
-            if ( (strlen(trim($queryData["query"])) == 0) && isSet($queryData['queryParts']['ifNotExistUsed']) && $queryData['queryParts']['ifNotExistUsed'] == true) {
-                return;
-            }
-            $query = $queryData['query'];
-            $values = $queryData['bindings'];
-            $types = $queryData['types'];
-        
-            $table = $this->statement['table'] ?? 'unknown_table';
-            if (isset($queryData['queryParts']['table'])) {
-                $table = $queryData['queryParts']['table']; // Pre CREATE TABLE, ALTER TABLE
-            } elseif (isset($queryData['queryParts']['from'])) {
-                $table = trim(str_replace('FROM', '', $queryData['queryParts']['from']));
-            } elseif (isset($queryData['queryParts']['update'])) {
-                $table = trim(str_replace('UPDATE', '', $queryData['queryParts']['update']));
-            } elseif (isset($queryData['queryParts']['insert'])) {
-                $table = trim(preg_replace('/INSERT INTO (\w+).*/', '$1', $queryData['queryParts']['insert']));
-            }
-            $this->statement['table'] = $table;
-
-            $cacheKey = "{$table}:{$this->returnType}:" . md5($query . serialize($values));
-            $execution_data = [
-                'query' => $query,
-                'bindings' => $values
-            ];
-
-            if ($this->cacheDriver && $cached = $this->cacheDriver->get($cacheKey)) {
-                DotApp::dotApp()->trigger("dotapp.databaser.execute.success",$cached,$execution_data);
-                if (is_callable($success_callback)) $success_callback($cached, $this, []);
-                return $cached;
-            }            
-        
-            $stmt = $this->activeconnection['mysqli']->prepare($query);
-            if ($stmt === false) {
-                $error = ['error' => $this->activeconnection['mysqli']->error, 'errno' => $this->activeconnection['mysqli']->errno];
-                if (is_callable($error_callback)) {
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error",$error,$execution_data);
-                    $error_callback($error, $this, $execution_data);
-                } else {
-                    throw new \Exception("Error: " . $error['error'] . " (errcode: " . $error['errno'] . ")");
-                }
-                return false;
-            }
-        
-            if (!empty($values)) {
-                $stmt->bind_param($types, ...$values);
-            }
-            
-            DotApp::dotApp()->trigger("dotapp.databaser.execute",$execution_data);
-            if ($stmt->execute()) {
-                $result = $stmt->get_result();
-                $execution_data = [
-                    'affected_rows' => $stmt->affected_rows,
-                    'insert_id' => $stmt->insert_id,
-                    'num_rows' => $result ? $result->num_rows : 0,
-                    'result' => $result,
-                    'query' => $query,
-                    'bindings' => $values
-                ];
-                $this->statement['execution_data'] = $execution_data;
-        
-                if ($this->returnType === "ORM") {
-                    if ($result && $result->num_rows > 0) {
-                        $rows = [];
-                        while ($row = $this->fetchArray($result)) {
-                            $entity = new Entity($row, $this->di);
-                            $entity->loadRelations();
-                            $rows[] = $entity;
-                        }
-                        $returnValue = new Collection($rows, $this->di);
-                    } else {
-                        $returnValue = null;
-                    }
-                    if ($this->cacheDriver && $returnValue) {
-                        $this->cacheDriver->set($cacheKey, $returnValue, 3600);
-                    }
-                    if (is_callable($success_callback)) {
-                        DotApp::dotApp()->trigger("dotapp.databaser.execute.success",$returnValue,$execution_data);
-                        $success_callback($returnValue, $this, $execution_data);
-                    }
-                    $stmt->close();
-                    $this->q(function ($qb) {});
-                    return $returnValue;
-                } else {
-                    $rows = [];
-                    while ($row = $this->fetchArray($result)) {
-                        $rows[] = $row;
-                    }
-                    if ($this->cacheDriver && $rows) {
-                        $this->cacheDriver->set($cacheKey, $rows, 3600);
-                    }
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.success",$rows,$execution_data);
-                    if (is_callable($success_callback)) $success_callback($rows, $this, $execution_data);
-
-                    $stmt->close();
-                    $this->q(function ($qb) {});
-                    return $result;
-                }
-            } else {
-                $error = ['error' => $stmt->error, 'errno' => $stmt->errno];
-                if (is_callable($error_callback)) {
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error",$error,$execution_data);
-                    $error_callback($error, $this, $execution_data);
-                } else {
-                    throw new \Exception("Error: " . $error['error'] . " (errcode: " . $error['errno'] . ")");
-                }
-                $stmt->close();
-                return false;
-            }
-        });
-    
-        // First
-        $this->addDriver("mysqli", "first", function () {
-            $result = $this->execute();
-            if ($this->returnType === 'ORM') {
-                return $result->getItem(0);
-            }
-            return $result[0];
-        });
-    
-        // All
-        $this->addDriver("mysqli", "all", function () {
-            if ($this->returnType === 'ORM') {
-                return new Collection(clone $this->di, $this->di);
-            }
-            $result = $this->execute();
-            $rows = [];
-            while ($row = $this->fetchArray($result)) {
-                $rows[] = $row;
-            }
-            return $rows;
-        });
-    
-        // Raw
-        $this->addDriver("mysqli", "raw", function () {
-            return $this->execute();
-        });
-    
-        // Transakcie
-        $this->addDriver("mysqli", "transaction", function () {
-            $this->activeconnection['mysqli']->begin_transaction();
-        });
-
-        $this->addDriver("mysqli", "transact", function ($operations, $success_callback = null, $error_callback = null) {
-            $this->activeconnection['mysqli']->begin_transaction();
-            $operations($this,
-                function ($result, $db, $execution_data) use ($success_callback) {
-                    $this->activeconnection['mysqli']->commit();
-                    if (is_callable($success_callback)) {
-                        $success_callback($result, $this, $execution_data);
-                    }
-                },
-                function ($error, $db, $execution_data) use ($error_callback) {
-                    $this->activeconnection['mysqli']->rollback();
-                    if (is_callable($error_callback)) {
-                        $error_callback($error, $this, $execution_data);
-                    }
-                }
-            );
-        });
-    
-        $this->addDriver("mysqli", "commit", function () {
-            $this->activeconnection['mysqli']->commit();
-        });
-    
-        $this->addDriver("mysqli", "rollback", function () {
-            $this->activeconnection['mysqli']->rollback();
-        });
+    // Getters that return references for driver classes
+    public function &getActiveConnection()
+    {
+        return $this->activeconnection;
     }
 
-    private function create_pdo_driver() {
-        $this->databases["pdo"] = [];
-        $this->statement['execution_type'] = 0;
+    public function &getConnections()
+    {
+        return $this->connections;
+    }
 
-        // Pomocná funkcia na určenie typu väzby
-        $getBindingType = function ($value) {
-            if (is_int($value)) return \PDO::PARAM_INT;
-            if (is_float($value)) return \PDO::PARAM_STR; // PDO nemá explicitný float, použijeme string
-            if (is_string($value)) return \PDO::PARAM_STR;
-            if (is_null($value)) return \PDO::PARAM_NULL;
-            return \PDO::PARAM_LOB; // Blob ako fallback
-        };
+    public function &getDatabases()
+    {
+        return $this->databases;
+    }
 
-        // Vyčistenie statementu
-        $clear_statement = function () {
-            unset($this->statement);
-            $this->statement = [
-                'execution_type' => 0,
-                'query_parts' => [
-                    'select' => '',
-                    'from' => '',
-                    'joins' => [],
-                    'where' => [],
-                    'group_by' => '',
-                    'having' => '',
-                    'order_by' => '',
-                    'limit' => '',
-                    'offset' => ''
-                ],
-                'bindings' => [],
-                'binding_types' => '',
-                'values' => [],
-                'values_types' => [],
-                'execution_data' => [],
-                'transaction' => null,
-                'table' => 'unknown_table'
-            ];
-        };
+    public function &getDatabaseDrivers()
+    {
+        return $this->database_drivers;
+    }
 
-        // Pripojenie k databáze cez PDO s dynamickým DSN
-        $this->addDriver("pdo", "select_db", function ($name) {
-            if (!isset($this->connections[$this->database_drivers['driver']][$name])) {
-                $type = strtolower($this->databases['pdo'][$name]['type']);
-                $server = $this->databases['pdo'][$name]['server'];
-                $database = $this->databases['pdo'][$name]['database'];
-                $collation = $this->databases['pdo'][$name]['collation'];
+    public function &getStatement()
+    {
+        return $this->statement;
+    }
 
-                // Generovanie DSN na základe typu databázy
-                switch ($type) {
-                    case 'mysql':
-                        $dsn = "mysql:host={$server};dbname={$database};charset={$collation}";
-                        break;
-                    case 'pgsql':
-                        $dsn = "pgsql:host={$server};dbname={$database}";
-                        break;
-                    case 'sqlite':
-                        $dsn = "sqlite:{$database}";
-                        break;
-                    case 'sqlsrv':
-                        if (!extension_loaded('pdo_sqlsrv')) {
-                            throw new \Exception("PDO SQLSRV extension is not loaded. Please install the pdo_sqlsrv extension.");
-                        }
-                        $dsn = "sqlsrv:Server={$server};Database={$database}";
-                        break;
-                    case 'oci':
-                        if (!extension_loaded('pdo_oci')) {
-                            throw new \Exception("PDO OCI extension is not loaded. Please install the pdo_oci extension.");
-                        }
-                        // Predpokladáme, že $database obsahuje názov Oracle SID alebo Service Name
-                        $dsn = "oci:dbname=//{$server}/{$database}";
-                        if (!empty($collation)) {
-                            $dsn .= ";charset={$collation}";
-                        }
-                        break;
-                    default:
-                        throw new \Exception("Nepodporovaný typ databázy: {$type}");
-                }
+    public function &getQueryBuilder()
+    {
+        return $this->qb;
+    }
 
-                try {
-                    $this->connections[$this->database_drivers['driver']][$name] = new \PDO(
-                        $dsn,
-                        $this->databases['pdo'][$name]['username'],
-                        $this->databases['pdo'][$name]['password'],
-                        [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
-                    );
-                    $this->activeconnection['pdo'] = $this->connections[$this->database_drivers['driver']][$name];
-                } catch (\PDOException $e) {
-                    $this->activeconnection['pdo'] = null;
-                    throw new \Exception("Nepodarilo sa pripojiť k databáze: " . $e->getMessage());
-                }
-            } else {
-                $this->activeconnection['pdo'] = $this->connections[$this->database_drivers['driver']][$name];
-            }
-        });
-    
-        // Query Builder podpora
-        $this->addDriver("pdo", "q", function ($querybuilder) use ($clear_statement) {
-            $clear_statement();
-            $newqb = new QueryBuilder($this); // Vždy nový QueryBuilder
-            if (is_callable($querybuilder)) {
-                $querybuilder($newqb);
-            }
-            return $newqb;
-        });
+    public function &getReturnType()
+    {
+        return $this->returnType;
+    }
 
-        $this->addDriver("pdo", "inserted_id", function () {
-            if ($this->activeconnection['pdo']) {
-                return $this->activeconnection['pdo']->lastInsertId();
-            }
-            return null;
-        });
-        
-        $this->addDriver("pdo", "affected_rows", function () {
-            if ($this->activeconnection['pdo'] && isset($this->statement['execution_data']['result'])) {
-                return $this->statement['execution_data']['result']->rowCount();
-            }
-            return null;
-        });
+    public function &getDI()
+    {
+        return $this->di;
+    }
 
-        $this->addDriver("pdo", "schema", function (callable $callback, $success=null, $error=null) use ($clear_statement) {
-            $clear_statement();
-            $this->qb = new QueryBuilder($this);
-            if (is_callable($callback)) {
-                $callback($this->qb);
-            }
-            $this->execute($success,$error); // Spustí query cez PDO
-        });
-      
-        // Nastavenie typu návratovej hodnoty
-        $this->addDriver("pdo", "return", function ($type) {
-            $this->returnType = strtoupper($type);
-        });
-    
-        // Získanie vygenerovaného dotazu
-        $this->addDriver("pdo", "getQuery", function () {
-            $queryData = $this->qb->getQuery();
-            return [
-                'query' => $queryData['query'],
-                'bindings' => $queryData['bindings']
-            ];
-        });
-    
-        // Načítanie výsledkov
-        $this->addDriver("pdo", "fetchArray", function (&$stmt) {
-            return $stmt->fetch(\PDO::FETCH_ASSOC);
-        });
-    
-        $this->addDriver("pdo", "fetchFirst", function (&$stmt) {
-            return $stmt ? $stmt->fetch(\PDO::FETCH_ASSOC) : false;
-        });
+    public function &getCacheDriver()
+    {
+        return $this->cacheDriver;
+    }
 
-        $this->addDriver("pdo", "newEntity", function ($row) {
-            return new Entity($row,$this->di);
-        });
+    public function &getUseCache()
+    {
+        return $this->useCache;
+    }
 
-        $this->addDriver("pdo", "newCollection", function ($queryOrItems) {
-            return new Collection($queryOrItems, $this->di);
-        });
-    
-        // Execute
-        $this->addDriver("pdo", "execute", function ($success_callback = null, $error_callback = null) use ($getBindingType) {
-            if (!$this->activeconnection[$this->database_drivers['driver']]) {
-                throw new \Exception("No active connection to database ! Use select_db() !");
-            }
-            $queryData = $this->qb->getQuery();
-            if ( (strlen(trim($queryData["query"])) == 0) && isSet($queryData['queryParts']['ifNotExistUsed']) && $queryData['queryParts']['ifNotExistUsed'] == true) {
-                return;
-            }
-            $query = $queryData['query'];
-            $values = $queryData['bindings'];
-        
-            // Nový formát kľúča
-            $table = $this->statement['table'] ?? 'unknown_table';
-            if (isset($queryData['queryParts']['table'])) {
-                $table = $queryData['queryParts']['table']; // Pre CREATE TABLE, ALTER TABLE
-            } elseif (isset($queryData['queryParts']['from'])) {
-                $table = trim(str_replace('FROM', '', $queryData['queryParts']['from']));
-            } elseif (isset($queryData['queryParts']['update'])) {
-                $table = trim(str_replace('UPDATE', '', $queryData['queryParts']['update']));
-            } elseif (isset($queryData['queryParts']['insert'])) {
-                $table = trim(preg_replace('/INSERT INTO (\w+).*/', '$1', $queryData['queryParts']['insert']));
-            }
-            $this->statement['table'] = $table;
 
-            $cacheKey = "{$table}:{$this->returnType}:" . md5($query . serialize($values));
-            $execution_data = [
-                'query' => $query,
-                'bindings' => $values
-            ];
+    private function create_mysqli_driver()
+    {
+        DatabaserMysqliDriver::create($this);
+    }
 
-            if ($this->cacheDriver && $cached = $this->cacheDriver->get($cacheKey)) {
-                DotApp::dotApp()->trigger("dotapp.databaser.execute.success",$cached,$execution_data);
-                if (is_callable($success_callback)) $success_callback($cached, $this, []);
-                return $cached;
-            }
-        
-            try {
-                $stmt = $this->activeconnection['pdo']->prepare($query);
-                if ($stmt === false) {
-                    $error = ['error' => $this->activeconnection['pdo']->errorInfo()[2] ?? 'Failed to prepare statement', 'errno' => $this->activeconnection['pdo']->errorCode()];
-                    if (is_callable($error_callback)) {
-                        DotApp::dotApp()->trigger("dotapp.databaser.execute.error",$error,$execution_data);
-                        $error_callback($error, $this, $execution_data);
-                    } else {
-                        throw new \Exception("Error: " . $error['error'] . " (errcode: " . $error['errno'] . ")");
-                    }
-                    return false;
-                }
-        
-                foreach ($values as $index => $value) {
-                    $stmt->bindValue($index + 1, $value, $getBindingType($value));
-                }
-                
-                DotApp::dotApp()->trigger("dotapp.databaser.execute",$execution_data);
-                if ($stmt->execute()) {
-                    $execution_data = [
-                        'affected_rows' => $stmt->rowCount(),
-                        'insert_id' => $this->activeconnection['pdo']->lastInsertId(),
-                        'num_rows' => $stmt->rowCount(),
-                        'result' => $stmt,
-                        'query' => $query,
-                        'bindings' => $values
-                    ];
-                    $this->statement['execution_data'] = $execution_data;
-        
-                    if ($this->returnType === "ORM") {
-                        if ($stmt->rowCount() > 0) {
-                            $rows = [];
-                            while ($row = $this->fetchArray($stmt)) {
-                                $entity = new Entity($row, $this->di);
-                                $entity->loadRelations();
-                                $rows[] = $entity;
-                            }
-                            $returnValue = new Collection($rows, $this->di);
-                        } else {
-                            $returnValue = null;
-                        }
-                        if ($this->cacheDriver && $returnValue) {
-                            $this->cacheDriver->set($cacheKey, $returnValue, 3600);
-                        }
-                        DotApp::dotApp()->trigger("dotapp.databaser.execute.success",$returnValue,$execution_data);
-                        if (is_callable($success_callback)) $success_callback($returnValue, $this, $execution_data);
-                        $stmt->closeCursor();
-                        $this->q(function ($qb) {});
-                        return $returnValue;
-                    } else {
-                        // Toto bolo niekedy tu na to, aby vratilo rovno pole zo STMT. Ale neskor prerobene aby vratilo STMT result
-                        $rows = [];
-                        while ($row = $this->fetchArray($stmt)) {
-                            $rows[] = $row;
-                        }
-                        if ($this->cacheDriver && $rows) {
-                            $this->cacheDriver->set($cacheKey, $rows, 3600);
-                        }
-                        DotApp::dotApp()->trigger("dotapp.databaser.execute.success",$rows,$execution_data);
-                        if (is_callable($success_callback)) $success_callback($rows, $this, $execution_data);
-                        $stmt->closeCursor();
-                        $this->q(function ($qb) {});
-                        return $rows;
-                    }
-                } else {
-                    $error = ['error' => $stmt->errorInfo()[2] ?? 'Execution failed', 'errno' => $stmt->errorCode()];
-                    if (is_callable($error_callback)) {
-                        DotApp::dotApp()->trigger("dotapp.databaser.execute.error",$error,$execution_data);
-                        $error_callback($error, $this, $execution_data);
-                    } else {
-                        throw new \Exception("Error: " . $error['error'] . " (errcode: " . $error['errno'] . ")");
-                    }
-                    $stmt->closeCursor();
-                    return false;
-                }
-            } catch (\PDOException $e) {
-                $error = ['error' => $e->getMessage(), 'errno' => $e->getCode()];
-                if (is_callable($error_callback)) {
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error",$error,$execution_data);
-                    $error_callback($error, $this, $execution_data);
-                } else {
-                    throw new \Exception("Error: " . $e->getMessage() . " (errcode: " . $e->getCode() . ")");
-                }
-                return false;
-            }
-        });
-    
-        // First
-        $this->addDriver("pdo", "first", function () {
-            $result = $this->execute();
-            if ($this->returnType === 'ORM') {
-                return $result->getItem(0);
-            }
-            return $result[0];
-        });
-    
-        // All
-        $this->addDriver("pdo", "all", function () {
-            if ($this->returnType === 'ORM') {
-                return new Collection(clone $this->di, $this->di);
-            }
-            $rows = $this->execute();
-            return $rows;
-        });
-    
-        // Raw
-        $this->addDriver("pdo", "raw", function () {
-            return $this->execute();
-        });
-    
-        // Transakcie
-        $this->addDriver("pdo", "transaction", function () {
-            $this->activeconnection['pdo']->beginTransaction();
-        });
-
-        $this->addDriver("pdo", "transact", function ($operations, $success_callback = null, $error_callback = null) {
-            $this->activeconnection['pdo']->beginTransaction();
-            $operations($this,
-                function ($result, $db, $execution_data) use ($success_callback) {
-                    $this->activeconnection['pdo']->commit();
-                    if (is_callable($success_callback)) {
-                        $success_callback($result, $this, $execution_data);
-                    }
-                },
-                function ($error, $db, $execution_data) use ($error_callback) {
-                    $this->activeconnection['pdo']->rollback();
-                    if (is_callable($error_callback)) {
-                        $error_callback($error, $this, $execution_data);
-                    }
-                }
-            );
-        });
-    
-        $this->addDriver("pdo", "commit", function () {
-            $this->activeconnection['pdo']->commit();
-        });
-    
-        $this->addDriver("pdo", "rollback", function () {
-            $this->activeconnection['pdo']->rollback();
-        });
+    private function create_pdo_driver()
+    {
+        DatabaserPdoDriver::create($this);
     }
 
     /* Set actual driver */
-    public function driver($driver) {
+    public function driver($driver)
+    {
         // Ak by niekto mal vlastny driver, ale nechce zaberat pamat kym nie je potrebny
-        DotApp::DotApp()->trigger("dotapp.db.driver.set",$this,$driver);
-        
+        DotApp::DotApp()->trigger("dotapp.db.driver.set", $this, $driver);
+
         // Vytvorime vstavane drivery az ked su ptorebne...
         if (strtolower($driver) == "pdo" && !isset($this->database_drivers['created']['pdo'])) {
             $this->database_drivers['created']['pdo'] = true;
@@ -769,15 +205,30 @@ class Databaser {
         } else if (strtolower($driver) == "mysqli" && !isset($this->database_drivers['created']['mysqli'])) {
             $this->database_drivers['created']['mysqli'] = true;
             $this->create_mysqli_driver();
-        }        
-        
+        } else {
+            // Skusime ci nahodou nie je registrovany vlastny driver
+            if (isset(self::$customDrivers[strtolower($driver)])) {
+                $customDriverClass = self::$customDrivers[strtolower($driver)];
+                if (class_exists($customDriverClass) && method_exists($customDriverClass, 'create')) {
+                    $this->database_drivers['created'][strtolower($driver)] = true;
+                    $customDriverClass::create($this);
+                }
+            }
+        }
+
         if (isset($this->database_drivers['drivers'][$driver])) {
             $this->database_drivers['driver'] = $driver;
         }
         return $this;
     }
 
-    public function addDriver($drivername, $functionname, $driver) {
+    public static function customDriver($name, $classname)
+    {
+        self::$customDrivers = array_merge(self::$customDrivers, [strtolower($name) => $classname]);
+    }
+
+    public function addDriver($drivername, $functionname, $driver)
+    {
         if (is_callable($driver)) {
             if (!isset($this->database_drivers['drivers'][$drivername])) {
                 $this->database_drivers['drivers'][$drivername] = array();
@@ -787,7 +238,8 @@ class Databaser {
         return $this;
     }
 
-    public function add($name, $server, $username, $password, $database, $collation = "UTF8", $type="mysqli") {
+    public function add($name, $server, $username, $password, $database, $collation = "UTF8", $type = "mysqli")
+    {
         // Type - Ak je naprikald PDO, tak moze este specifikovat typ PDO naprikald MYSQL
         if (!isset($this->databases[$this->database_drivers['driver']][$name])) $this->databases[$this->database_drivers['driver']][$name] = [];
         $this->databases[$this->database_drivers['driver']][$name]['type'] = $type;
@@ -799,105 +251,123 @@ class Databaser {
         return ($this);
     }
 
-    public function select_db($name) {
+    public function select_db($name)
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['select_db']($name);
         return ($this);
     }
 
-    public function selectDb($name) {
+    public function selectDb($name)
+    {
         // select_db je tu od roku 2014 :D
         // Just alias before releasing to have camelCase
         return $this->select_db($name);
     }
 
     /* Statements preparation */
-    public function return($type) {
+    public function return($type)
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['return']($type);
         return $this;
     }
 
-    public function fetchArray(&$array) {
+    public function fetchArray(&$array)
+    {
         return $this->database_drivers['drivers'][$this->database_drivers['driver']]['fetchArray']($array);
     }
 
-    public function fetchFirst(&$array) {
+    public function fetchFirst(&$array)
+    {
         return $this->database_drivers['drivers'][$this->database_drivers['driver']]['fetchFirst']($array);
     }
 
-    public function cache($driver) {
-        if (!$driver instanceof CacheDriverInterface) {
-            throw new \InvalidArgumentException("Cache driver must implement CacheDriverInterface.");
-        }
+    public function cache($driver)
+    {
         $this->cacheDriver = $driver;
         return $this;
     }
 
-    public function execute($success = null, $onError = null) {
+    public function execute($success = null, $onError = null)
+    {
         return ($this->database_drivers['drivers'][$this->database_drivers['driver']]['execute']($success, $onError));
     }
 
-    public function first() {
+    public function first()
+    {
         return $this->database_drivers['drivers'][$this->database_drivers['driver']]['first']();
     }
 
-    public function all() {
+    public function all()
+    {
         return $this->database_drivers['drivers'][$this->database_drivers['driver']]['all']();
     }
 
-    public function raw() {
+    public function raw()
+    {
         return $this->database_drivers['drivers'][$this->database_drivers['driver']]['raw']();
     }
 
-    public function transaction() {
+    public function transaction()
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['transaction']();
         return ($this);
     }
 
-    public function newEntity($row = []) {
+    public function newEntity($row = [])
+    {
         return $this->database_drivers['drivers'][$this->database_drivers['driver']]['newEntity']($row);
     }
 
-    public function newCollection($entities = []) {
+    public function newCollection($entities = [])
+    {
         return $this->database_drivers['drivers'][$this->database_drivers['driver']]['newCollection']($entities);
     }
 
-    public function getQuery() {
+    public function getQuery()
+    {
         return $this->qb->getQuery();
     }
 
     // Len ulahcenie transakcii aby netrebalo manualne rollback a commit. Pri uspechu pride proste automaticky commit pri neuspechu rollback.
     // Pozor na pouzitie kedy ma prist commit az niekde ked sa vykonau viacere vnorene prikazy vtedy je nutne ist cez execute a commitovt manualne
-    public function transact(callable $operations, $success_callback = null, $error_callback = null) {
+    public function transact(callable $operations, $success_callback = null, $error_callback = null)
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['transact']($operations, $success_callback, $error_callback);
         return $this;
     }
 
-    public function commit() {
+    public function commit()
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['commit']();
         return ($this);
     }
 
-    public function rollback() {
+    public function rollback()
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['rollback']();
         return ($this);
     }
 
-    public function q(callable $queryBuilder) {
+    public function q(callable $queryBuilder)
+    {
         $qbObject = $this->database_drivers['drivers'][$this->database_drivers['driver']]['q']($queryBuilder);
-        return (new DI( new QueryObject($qbObject,$this)));
+        return (new DI(new QueryObject($qbObject, $this)));
     }
 
     // Alias na Q kedze predtym to mala byt skratka od Q - query, ale uz pouzivame querybuilder preto QB - takto su zachovane oba.
-    public function qb(callable $queryBuilder) {
+    public function qb(callable $queryBuilder)
+    {
         return $this->q($queryBuilder);
     }
 
-    public function schema(callable $callback, $success = null, $error = null) {
+    public function schema(callable $callback, $success = null, $error = null)
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['schema']($callback, $success, $error);
         return $this;
     }
-    
-    public function migrate($direction = 'up', $success = null, $error = null) {
+
+    public function migrate($direction = 'up', $success = null, $error = null)
+    {
         $this->database_drivers['drivers'][$this->database_drivers['driver']]['migrate']($direction, $success, $error);
         return $this;
     }
@@ -908,7 +378,8 @@ class Databaser {
 
     // Zaciatok funkcii spatnej kompatibility
 
-    public function query($query, $ignoreerrors = 0) {
+    public function query($query, $ignoreerrors = 0)
+    {
         $this->statement['execution_data'] = array();
         mysqli_report(MYSQLI_REPORT_OFF);
         if ($ignoreerrors == 1) {
@@ -920,7 +391,8 @@ class Databaser {
         }
     }
 
-    public function query_first($query) {
+    public function query_first($query)
+    {
         $this->statement['execution_data'] = array();
         if ($dbreturn = $this->query($query)) {
             $data = mysqli_fetch_array($dbreturn);
@@ -930,14 +402,16 @@ class Databaser {
         }
     }
 
-    public function insert($table, $data) {
+    public function insert($table, $data)
+    {
         $this->statement['execution_data'] = array();
         $pdata = $this->prepare_query_data($data);
         $query = "INSERT INTO `" . $table . "` (" . implode(",", $pdata['rows']) . ") VALUES (" . implode(",", $pdata['values2']) . ");";
         return (mysqli_query($this->activeconnection[Config::db('driver')], $query));
     }
 
-    public function updateManual($table, $data, $where) {
+    public function updateManual($table, $data, $where)
+    {
         $this->statement['execution_data'] = array();
         $pdata = $this->prepare_query_data($data);
         $set = array();
@@ -948,11 +422,22 @@ class Databaser {
         return (mysqli_query($this->activeconnection[Config::db('driver')], $query));
     }
 
-    public function getReturnType() {
-        return $this->returnType;
+
+    public function getDatabaseType()
+    {
+        if (isset($this->database_drivers['driver'])) {
+            $driver = $this->database_drivers['driver'];
+            $databases = $this->databases[$driver] ?? [];
+            if (!empty($databases)) {
+                $dbName = array_key_first($databases);
+                return strtolower($databases[$dbName]['type'] ?? 'mysql');
+            }
+        }
+        return 'mysql';
     }
 
-    public function prepare_query_data($data) {
+    public function prepare_query_data($data)
+    {
         $navrat = array();
         $rows = array();
         $values = array();
@@ -1033,14 +518,8 @@ class Databaser {
         return ($navrat);
     }
 
-    public function autobind_params($stmt, $placeholder, $values) {
-        $bindarray = array_unshift($placeholder, $values);
-        $reflection = new \ReflectionClass('mysqli_stmt');
-        $method = $reflection->getMethod('bind_param');
-        $method->invokeArgs($stmt, $bindarray);
-    }
-
-    public function insert_multi($table, $data) {
+    public function insert_multi($table, $data)
+    {
         $this->statement['execution_data'] = array();
         $rows = array_keys($data);
         $values = array_map(function ($value) {
@@ -1050,63 +529,265 @@ class Databaser {
         return mysqli_query($this->activeconnection['mysqli'], $query);
     }
 
-    public function inserted_id() {
+    public function inserted_id()
+    {
         if (isset($this->database_drivers['drivers'][$this->database_drivers['driver']]['inserted_id'])) {
             return $this->database_drivers['drivers'][$this->database_drivers['driver']]['inserted_id']();
         }
         return null;
     }
 
-    public function affected_rows() {
+    public function affected_rows()
+    {
         if (isset($this->database_drivers['drivers'][$this->database_drivers['driver']]['affected_rows'])) {
             return $this->database_drivers['drivers'][$this->database_drivers['driver']]['affected_rows']();
         }
         return null;
     }
 
+    // WHERE HAS - filtre podľa existencie relácie
+    public function whereHas($relation, callable $callback = null)
+    {
+        // Implementácia whereHas - zatiaľ základná verzia
+        $this->statement['where_has'][] = [
+            'relation' => $relation,
+            'callback' => $callback
+        ];
+        return $this;
+    }
+
+    // WHERE DOESNT HAVE - filtre podľa neexistencie relácie
+    public function whereDoesntHave($relation, callable $callback = null)
+    {
+        $this->statement['where_doesnt_have'][] = [
+            'relation' => $relation,
+            'callback' => $callback
+        ];
+        return $this;
+    }
+
+    // WITH COUNT - eager loading s počtom
+    public function withCount($relations)
+    {
+        $relations = is_array($relations) ? $relations : [$relations];
+        $this->statement['with_count'] = array_merge($this->statement['with_count'] ?? [], $relations);
+        return $this;
+    }
+
+    // LOAD MISSING - načítanie chýbajúcich relácií
+    public function loadMissing($relations)
+    {
+        if ($this->statement['return_type'] === 'ORM' && !empty($this->statement['data'])) {
+            $relations = is_array($relations) ? $relations : [$relations];
+            foreach ($this->statement['data'] as $entity) {
+                if ($entity instanceof \Dotsystems\App\Parts\Entity) {
+                    $entity->with($relations);
+                    $entity->loadRelations();
+                }
+            }
+        }
+        return $this;
+    }
+
+    // REFRESH - reload všetkých entít
+    public function refresh()
+    {
+        if ($this->statement['return_type'] === 'ORM' && !empty($this->statement['data'])) {
+            foreach ($this->statement['data'] as $entity) {
+                if ($entity instanceof \Dotsystems\App\Parts\Entity) {
+                    $fresh = $entity->fresh();
+                    if ($fresh) {
+                        $key = array_search($entity, $this->statement['data']);
+                        if ($key !== false) {
+                            $this->statement['data'][$key] = $fresh;
+                        }
+                    }
+                }
+            }
+        }
+        return $this;
+    }
+
+    // EXISTS - či existujú výsledky (optimalizované)
+    public function exists()
+    {
+        // Klonujeme query pre LIMIT 1 optimalizáciu
+        $originalQuery = clone $this->qb;
+
+        $result = false;
+        $this->qb->select('1')->limit(1); // SELECT 1 LIMIT 1 je najrýchlejšie
+
+        $this->execute(function ($data) use (&$result) {
+            $result = !empty($data);
+        }, null, false); // false = nespúšťať callback error handling
+
+        // Obnovíme pôvodný query
+        $this->qb = $originalQuery;
+
+        return $result;
+    }
+
+    // DOESNT EXIST - či neexistujú výsledky
+    public function doesntExist()
+    {
+        return !$this->exists();
+    }
+
+    // WITH - eager loading relácií
+    public function with($relations)
+    {
+        $relations = is_array($relations) ? $relations : [$relations];
+        $this->statement['with'] = array_merge($this->statement['with'] ?? [], $relations);
+        return $this;
+    }
+
     // Koniec spatnej kompatibility
 
     // Oprava bug pri vnorenych queries sa prepisovala instancia querybuildera.
-    public function setQB(QueryBuilder $queryBuilder) {
+    public function setQB(QueryBuilder $queryBuilder)
+    {
         $this->qb = $queryBuilder;
         return $this;
     }
 }
 
-class QueryObject {
+class QueryObject
+{
     private $querybuilder;
     private $databaser;
 
-    function __construct(QueryBuilder $qb, Databaser $databaser) {
+    function __construct(QueryBuilder $qb, Databaser $databaser)
+    {
         $this->querybuilder = $qb;
         $this->databaser = $databaser;
     }
 
-    public function execute($success = null, $onError = null) {
+    public function execute($success = null, $onError = null)
+    {
         $this->databaser->setQB($this->querybuilder);
         return $this->databaser->execute($success, $onError);
     }
 
-    public function getQuery() {
+    public function getQuery()
+    {
         $this->databaser->setQB($this->querybuilder);
         return $this->databaser->getQuery(); // Ak máš túto metódu v Databaser (z driverov), inak ju pridaj ako wrapper
     }
 
-    public function first() {
+    public function first()
+    {
         $this->databaser->setQB($this->querybuilder);
         return $this->databaser->first();
     }
 
-    public function all() {
+    public function all()
+    {
         $this->databaser->setQB($this->querybuilder);
         return $this->databaser->all();
     }
 
-    public function raw() {
+    public function paginate($perPage = 15, $currentPage = 1, $error_callback = null)
+    {
+        $offset = ($currentPage - 1) * $perPage;
+
+        // 1. Vytvoríme COUNT query bez limit/offset
+        $countQueryBuilder = clone $this->querybuilder;
+        $countQueryBuilder->select('COUNT(*) as total');
+        $countQueryBuilder->resetLimitOffset();
+
+        $this->databaser->setQB($countQueryBuilder);
+        // Pre count query použijeme RAW return type
+        $originalReturnType = $this->databaser->returnType;
+        $this->databaser->returnType = 'RAW';
+        $countResult = $this->databaser->execute(function ($result) {
+            return $result[0]['total'] ?? 0;
+        }, $error_callback);
+        $this->databaser->returnType = $originalReturnType;
+        $total = is_numeric($countResult) ? $countResult : 0;
+
+        // 2. Aplikujeme LIMIT/OFFSET na pôvodný query
+        $this->querybuilder->limit($perPage)->offset($offset);
+
+        // 3. Spustíme query pre stránku
+        $this->databaser->setQB($this->querybuilder);
+        $result = $this->databaser->execute(function ($result) {
+            return $result;
+        }, $error_callback);
+
+        // 4. Vrátime paginovaný výsledok
+        $data = is_array($result) ? $result : [];
+
+        return [
+            'data' => $data,
+            'current_page' => $currentPage,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => max(1, ceil($total / $perPage)),
+            'from' => $total > 0 ? $offset + 1 : null,
+            'to' => $total > 0 ? min($total, ($currentPage * $perPage)) : null,
+            'has_more_pages' => $currentPage < ceil($total / $perPage),
+            'prev_page' => $currentPage > 1 ? $currentPage - 1 : null,
+            'next_page' => $currentPage < ceil($total / $perPage) ? $currentPage + 1 : null,
+        ];
+    }
+
+    public function raw()
+    {
         $this->databaser->setQB($this->querybuilder);
         return $this->databaser->raw();
     }
 
-}
+    // WHERE HAS - filtre podľa existencie relácie
+    public function whereHas($relation, callable $callback = null)
+    {
+        $this->databaser->whereHas($relation, $callback);
+        return $this;
+    }
 
-?>
+    // WHERE DOESNT HAVE - filtre podľa neexistencie relácie
+    public function whereDoesntHave($relation, callable $callback = null)
+    {
+        $this->databaser->whereDoesntHave($relation, $callback);
+        return $this;
+    }
+
+    // WITH COUNT - eager loading s počtom
+    public function withCount($relations)
+    {
+        $this->databaser->withCount($relations);
+        return $this;
+    }
+
+    // LOAD MISSING - načítanie chýbajúcich relácií
+    public function loadMissing($relations)
+    {
+        $this->databaser->loadMissing($relations);
+        return $this;
+    }
+
+    // REFRESH - reload všetkých entít
+    public function refresh()
+    {
+        $this->databaser->refresh();
+        return $this;
+    }
+
+    // EXISTS - či existujú výsledky
+    public function exists()
+    {
+        return $this->databaser->exists();
+    }
+
+    // DOESNT EXIST - či neexistujú výsledky
+    public function doesntExist()
+    {
+        return $this->databaser->doesntExist();
+    }
+
+    // Missing methods for ORM compatibility
+    public function with($relations)
+    {
+        $this->databaser->with($relations);
+        return $this;
+    }
+}

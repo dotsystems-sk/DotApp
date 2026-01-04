@@ -12,7 +12,7 @@
  * @author    Štefan Miščík <stefan@dotsystems.sk>
  * @company   Dotsystems s.r.o.
  * @version   1.0
- * @date      2025
+ * @date      2014 - 2026
  * @license   MIT License
  * 
  * License Notice:

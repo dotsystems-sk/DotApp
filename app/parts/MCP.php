@@ -20,7 +20,7 @@
  * @company   Dotsystems s.r.o.
  * @version   1.8
  * @license   MIT License
- * @date      2025
+ * @date      2014 - 2026
  * 
  * License Notice:
  * You are permitted to use, modify, and distribute this code under the 

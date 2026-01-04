@@ -14,9 +14,9 @@
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7 FREE
+ * @version   1.8 FREE
  * @license   MIT License
- * @date      2014 - 2025
+ * @date      2014 - 2026
  * 
  * License Notice:
  * You are permitted to use, modify, and distribute this code under the 
@@ -139,9 +139,8 @@ class Renderer {
 	function __construct ($dotapp=null,$name=false) {
 		$this->dotapp = DotApp::dotApp();
 		$this->module("");
-		$this->dotapp = $dotapp;
-        $this->dotApp = $dotapp;
-        $this->DotApp = $dotapp;
+        $this->dotApp = DotApp::dotApp();
+        $this->DotApp = DotApp::dotApp();
 		$this->blocks_renderer(1);
 		if (is_string($name) && !isSet(self::$instancie[$name])) self::$instancie[$name] = $this;		
     }
@@ -168,23 +167,23 @@ class Renderer {
     }
 	
 	public function addRenderer($name,$renderer) {
-        return $this->dotApp->customRenderer->addRenderer($name,$renderer);
+        return DotApp::DotApp()->customRenderer->addRenderer($name,$renderer);
 	}
     
     public function add_renderer($name,$renderer) {
-        return $this->dotApp->customRenderer->addRenderer($name,$renderer);
+        return DotApp::DotApp()->customRenderer->addRenderer($name,$renderer);
 	}
 
     public function getRenderer($name) {
-        return $this->dotApp->customRenderer->getRenderer($name);
+        return DotApp::DotApp()->customRenderer->getRenderer($name);
 	}
     
     public function get_renderer($name) {
-        return $this->dotApp->customRenderer->getRenderer($name);
+        return DotApp::DotApp()->customRenderer->getRenderer($name);
 	}
 
     public function renderWith($name,$code) {
-        return $this->dotApp->customRenderer->renderWith($name,$code);
+        return DotApp::DotApp()->customRenderer->renderWith($name,$code);
     }
 
     public function render_with($name,$code) {
@@ -201,19 +200,19 @@ class Renderer {
      * });
      */
     public function addBlock($name,$blockFn) {
-        $this->dotApp->customRenderer->addBlock($name,$blockFn);
+        DotApp::DotApp()->customRenderer->addBlock($name,$blockFn);
 	}
 
     public function add_block($name,$blockFn) {
-        $this->dotApp->customRenderer->addBlock($name,$blockFn);
+        DotApp::DotApp()->customRenderer->addBlock($name,$blockFn);
 	}
 	
 	public function custom_renderers() {
-		return($this->dotApp->customRenderer->customRenderers());
+		return(DotApp::DotApp()->customRenderer->customRenderers());
 	}
 
     public function customRenderers() {
-		return($this->dotApp->customRenderer->customRenderers());
+		return(DotApp::DotApp()->customRenderer->customRenderers());
 	}
 
     public function escapePHP($code) {

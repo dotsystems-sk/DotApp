@@ -23,8 +23,9 @@ class QueryBuilder {
             // Ak je $databaser inštancia Databaser, použi existujúcu logiku
             if (isset($databaser->database_drivers['driver'])) {
                 $driver = $databaser->database_drivers['driver'];
-                $name = key($databaser->databases[$driver] ?? []);
-                $this->dbType = strtolower($databaser->databases[$driver][$name]['type'] ?? 'mysql');
+                $databazy = $databaser->getDatabases();
+                $name = key($databazy[$driver] ?? []);
+                $this->dbType = strtolower($databazy[$driver][$name]['type'] ?? 'mysql');
             } else {
                 $this->dbType = 'mysql';
             }
@@ -74,13 +75,23 @@ class QueryBuilder {
     }
 
     // WITH (CTE)
-    public function with($name, callable $queryCallback) {
+    public function with($name, $queryCallback) {
         if ($this->dbType === 'sqlite') {
             throw new \Exception("WITH (CTE) nie je podporované v SQLite.");
         }
-        $subQueryBuilder = new QueryBuilder($this->databaser);
-        $queryCallback($subQueryBuilder);
-        $subQuery = $subQueryBuilder->getQuery();
+
+        if ($queryCallback instanceof QueryBuilder) {
+            // Ak je už QueryBuilder objekt, použijeme ho priamo
+            $subQuery = $queryCallback->getQuery();
+        } elseif (is_callable($queryCallback)) {
+            // Ak je callable, zavoláme ho na novom QueryBuilder
+            $subQueryBuilder = new QueryBuilder($this->databaser);
+            $queryCallback($subQueryBuilder);
+            $subQuery = $subQueryBuilder->getQuery();
+        } else {
+            throw new \InvalidArgumentException("Parameter queryCallback must be callable or QueryBuilder instance");
+        }
+
         $this->queryParts['with'][] = $this->sanitizeTable($name) . " AS (" . $subQuery['query'] . ")";
         $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
         $this->types .= $subQuery['types'];
@@ -98,8 +109,8 @@ class QueryBuilder {
     }
 
     public function intersect(QueryBuilder $query) {
-        if ($this->dbType === 'mysql' || $this->dbType === 'sqlite') {
-            throw new \Exception("INTERSECT nie je podporované v $this->dbType.");
+        if (in_array($this->dbType, ['mysql', 'sqlite'])) {
+            throw new \Exception("INTERSECT nie je podporované v {$this->dbType}.");
         }
         $subQuery = $query->getQuery();
         $this->queryParts['union'][] = "INTERSECT (" . $subQuery['query'] . ")";
@@ -109,8 +120,8 @@ class QueryBuilder {
     }
 
     public function except(QueryBuilder $query) {
-        if ($this->dbType === 'mysql' || $this->dbType === 'sqlite') {
-            throw new \Exception("EXCEPT nie je podporované v $this->dbType.");
+        if (in_array($this->dbType, ['mysql', 'sqlite'])) {
+            throw new \Exception("EXCEPT nie je podporované v {$this->dbType}.");
         }
         $subQuery = $query->getQuery();
         $this->queryParts['union'][] = "EXCEPT (" . $subQuery['query'] . ")";
@@ -204,9 +215,16 @@ class QueryBuilder {
     public function where($column, $operator = null, $value = null, $boolean = 'AND') {
         if ($column instanceof \Closure) {
             $groupBuilder = new QueryBuilder($this->databaser);
+            $groupBuilder->queryParts['type'] = 'SELECT'; // Nastaviť default typ pre sub-query
             $column($groupBuilder);
             $groupQuery = $groupBuilder->getQuery();
-            $whereClause = implode(' ', $groupQuery['queryParts']['where']);
+
+            // Bezpečná kontrola existence 'where' poľa
+            $whereClause = '';
+            if (!empty($groupQuery['queryParts']['where'])) {
+                $whereClause = implode(' ', $groupQuery['queryParts']['where']);
+            }
+
             if ($whereClause) {
                 $whereClause = trim(preg_replace('/^(AND|OR)\s+/', '', $whereClause));
                 $this->queryParts['where'][] = "$boolean ($whereClause)";
@@ -215,6 +233,7 @@ class QueryBuilder {
             }
         } elseif ($value instanceof \Closure) {
             $subQueryBuilder = new QueryBuilder($this->databaser);
+            $subQueryBuilder->queryParts['type'] = 'SELECT'; // Nastaviť default typ pre sub-query
             $value($subQueryBuilder);
             $subQuery = $subQueryBuilder->getQuery();
             $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operator (" . $subQuery['query'] . ")";
@@ -237,15 +256,58 @@ class QueryBuilder {
         return $this->where($column, $operator, $value, 'OR');
     }
 
-    public function whereIn($column, array $values, $boolean = 'AND') {
-        $placeholders = implode(', ', array_fill(0, count($values), '?'));
-        $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IN ($placeholders)";
-        $this->addBindings($values);
+    public function whereIn($column, $values, $boolean = 'AND') {
+        if ($values instanceof \Closure) {
+            $subQueryBuilder = new QueryBuilder($this->databaser);
+            $subQueryBuilder->queryParts['type'] = 'SELECT';
+            $values($subQueryBuilder);
+            $subQuery = $subQueryBuilder->getQuery();
+            $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IN (" . $subQuery['query'] . ")";
+            $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
+            $this->types .= $subQuery['types'];
+        } elseif ($values instanceof QueryBuilder) {
+            $subQuery = $values->getQuery();
+            $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IN (" . $subQuery['query'] . ")";
+            $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
+            $this->types .= $subQuery['types'];
+        } else {
+            $placeholders = implode(', ', array_fill(0, count($values), '?'));
+            $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IN ($placeholders)";
+            $this->addBindings($values);
+        }
         return $this;
     }
 
-    public function orWhereIn($column, array $values) {
+    public function orWhereIn($column, $values) {
         return $this->whereIn($column, $values, 'OR');
+    }
+
+    public function whereBetween($column, array $values, $boolean = 'AND') {
+        $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " BETWEEN ? AND ?";
+        $this->addBindings([$values[0], $values[1]]);
+        return $this;
+    }
+
+    public function orWhereBetween($column, array $values) {
+        return $this->whereBetween($column, $values, 'OR');
+    }
+
+    public function whereNull($column, $boolean = 'AND') {
+        $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NULL";
+        return $this;
+    }
+
+    public function whereNotNull($column, $boolean = 'AND') {
+        $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NOT NULL";
+        return $this;
+    }
+
+    public function orWhereNull($column) {
+        return $this->whereNull($column, 'OR');
+    }
+
+    public function orWhereNotNull($column) {
+        return $this->whereNotNull($column, 'OR');
     }
 
     // JOIN
@@ -306,37 +368,62 @@ class QueryBuilder {
 
     // LIMIT a OFFSET
     public function limit($limit) {
-        if ($this->dbType === 'sqlsrv') {
-            if (!isset($this->queryParts['select'])) {
-                throw new \Exception("LIMIT (TOP) môže byť použité len s SELECT v SQL Server.");
-            }
-            $this->queryParts['select'] = preg_replace('/^SELECT/', "SELECT TOP ? ", $this->queryParts['select'], 1);
-            $this->addBindings([(int) $limit]);
-        } elseif ($this->dbType === 'oci') {
-            $this->queryParts['limit'] = "FETCH FIRST ? ROWS ONLY";
-            $this->addBindings([(int) $limit]);
-        } else {
-            $this->queryParts['limit'] = "LIMIT ?";
-            $this->addBindings([(int) $limit]);
+        $this->queryParts['limit_value'] = (int) $limit;
+
+        switch ($this->dbType) {
+            case 'sqlsrv':
+                if (!isset($this->queryParts['select'])) {
+                    throw new \Exception("LIMIT (TOP) môže byť použité len s SELECT v SQL Server.");
+                }
+                $this->queryParts['select'] = preg_replace('/^SELECT/', "SELECT TOP ? ", $this->queryParts['select'], 1);
+                $this->addBindings([$limit]);
+                break;
+            case 'oci':
+                $this->queryParts['limit'] = "FETCH FIRST ? ROWS ONLY";
+                $this->addBindings([$limit]);
+                break;
+            default:
+                $this->queryParts['limit'] = "LIMIT ?";
+                $this->addBindings([$limit]);
         }
         return $this;
     }
 
     public function offset($offset) {
-        if ($this->dbType === 'sqlsrv') {
-            $this->queryParts['offset'] = "OFFSET ? ROWS";
-            $this->addBindings([(int) $offset]);
-            if (!isset($this->queryParts['limit'])) {
-                $this->queryParts['fetch'] = "FETCH NEXT 18446744073709551615 ROWS ONLY";
-            } else {
-                $this->queryParts['fetch'] = "FETCH NEXT ? ROWS ONLY";
-            }
-        } elseif ($this->dbType === 'oci') {
-            $this->queryParts['offset'] = "OFFSET ? ROWS";
-            $this->addBindings([(int) $offset]);
-        } else {
-            $this->queryParts['offset'] = "OFFSET ?";
-            $this->addBindings([(int) $offset]);
+        $this->queryParts['offset_value'] = (int) $offset;
+
+        switch ($this->dbType) {
+            case 'sqlsrv':
+                $this->queryParts['offset'] = "OFFSET ? ROWS";
+                $this->addBindings([$offset]);
+                if (!isset($this->queryParts['limit_value'])) {
+                    $this->queryParts['fetch'] = "FETCH NEXT 18446744073709551615 ROWS ONLY";
+                } else {
+                    $this->queryParts['fetch'] = "FETCH NEXT ? ROWS ONLY";
+                    $this->addBindings([$this->queryParts['limit_value']]);
+                }
+                break;
+            case 'oci':
+                $this->queryParts['offset'] = "OFFSET ? ROWS";
+                $this->addBindings([$offset]);
+                break;
+            default:
+                $this->queryParts['offset'] = "OFFSET ?";
+                $this->addBindings([$offset]);
+        }
+        return $this;
+    }
+
+    public function resetLimitOffset() {
+        unset($this->queryParts['limit']);
+        unset($this->queryParts['limit_value']);
+        unset($this->queryParts['offset']);
+        unset($this->queryParts['offset_value']);
+        unset($this->queryParts['fetch']);
+        // Odstráň posledné 2 bindings (limit a offset)
+        if (count($this->bindings) >= 2) {
+            $this->bindings = array_slice($this->bindings, 0, -2);
+            $this->types = substr($this->types, 0, -2);
         }
         return $this;
     }
@@ -363,7 +450,9 @@ class QueryBuilder {
         } elseif ($this->queryParts['type'] === 'DROP_TABLE') {
             $query .= $this->queryParts['drop'];
         } elseif ($this->queryParts['type'] === 'SELECT') {
-            $query .= $this->queryParts['select'] . " " . $this->queryParts['from'];
+            $select = $this->queryParts['select'] ?? '';
+            $from = $this->queryParts['from'] ?? '';
+            $query .= $select . ($select && $from ? " " : "") . $from;
         } elseif ($this->queryParts['type'] === 'INSERT') {
             $query .= $this->queryParts['insert'];
         } elseif ($this->queryParts['type'] === 'UPDATE') {
@@ -509,7 +598,8 @@ class QueryBuilder {
         return $column === '*' ||
             preg_match('/^[A-Z]+\(\*\)$/i', $column) || // Napr. COUNT(*)
             preg_match('/^[A-Z]+\(.*\)$/i', $column) || // Napr. SUM(column)
-            strpos($column, ' AS ') !== false || // Napr. column AS alias
+            preg_match('/.*\s+(as|AS)\s+\w+/i', $column) || // column AS alias (case insensitive)
+            strpos($column, ' AS ') !== false || // Zachovať spätnú kompatibilitu
             is_numeric($column) || // Numerické literály, napr. 1, 42.5
             in_array(strtoupper($column), ['CURRENT_TIMESTAMP', 'NULL', 'TRUE', 'FALSE']); // SQL kľúčové slová
     }
@@ -533,8 +623,13 @@ class QueryBuilder {
     }
 
     private function sanitizeTable($table) {
-        // Rozdeliť názov na časti (napr. information_schema.tables -> [information_schema, tables])
-        $parts = explode('.', $table);
+        // Rozdeliť na názov tabuľky a alias (napr. "users u" -> ["users", "u"])
+        $parts = preg_split('/\s+/', trim($table), 2);
+        $tableName = $parts[0];
+        $alias = $parts[1] ?? null;
+
+        // Spracovať názov tabuľky (môže obsahovať schema.table)
+        $tableParts = explode('.', $tableName);
         $sanitizedParts = array_map(function ($part) {
             // Sanitácia každej časti (povolené: a-z, A-Z, 0-9, _)
             $part = preg_replace('/[^a-zA-Z0-9_]/', '', trim($part));
@@ -542,15 +637,24 @@ class QueryBuilder {
                 throw new \InvalidArgumentException("Empty table or schema name part");
             }
             return $part;
-        }, $parts);
+        }, $tableParts);
 
-        // Ohraničenie podľa typu databázy
+        // Ohraničenie názvu tabuľky podľa typu databázy
         if ($this->dbType === 'sqlsrv') {
-            return '[' . implode('].[', $sanitizedParts) . ']';
+            $sanitizedTable = '[' . implode('].[', $sanitizedParts) . ']';
         } elseif ($this->dbType === 'pgsql' || $this->dbType === 'oci') {
-            return '"' . implode('"."', $sanitizedParts) . '"';
+            $sanitizedTable = '"' . implode('"."', $sanitizedParts) . '"';
+        } else {
+            $sanitizedTable = '`' . implode('`.`', $sanitizedParts) . '`';
         }
-        return '`' . implode('`.`', $sanitizedParts) . '`';
+
+        // Pridať alias ak existuje (bez ohraničenia)
+        if ($alias) {
+            $sanitizedAlias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias);
+            $sanitizedTable .= " {$sanitizedAlias}";
+        }
+
+        return $sanitizedTable;
     }
 
     private function sanitizeValue($value) {

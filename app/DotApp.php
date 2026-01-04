@@ -1,23 +1,43 @@
 <?php
-
 /**
- * DotApp Framework
- * 
- * This is the main class for the DotApp framework, providing core functionality 
- * and serving as the entry point for initializing the framework's components.
- * 
+ * DOTAPP FRAMEWORK - Main Core Class
+ *
+ * This is the main DotApp class that serves as the central hub for the entire framework.
+ * It provides core functionality for routing, database management, session handling,
+ * encryption, authentication, and integrates all framework components.
+ *
+ * Key Features:
+ * - Ultra-fast routing with middleware support and dependency injection
+ * - Database abstraction with ORM and QueryBuilder (MySQLi, PDO, custom drivers)
+ * - Session management with multiple drivers (File, Redis, DB, etc.)
+ * - Built-in encryption/decryption with composite keys
+ * - Event-driven architecture with listeners and triggers
+ * - Bridge for seamless PHP↔JS communication
+ * - Reactive frontend framework integration
+ * - Comprehensive security features (CSRF, XSS protection, etc.)
+ * - AI-optimized architecture - Perfectly compatible with Claude Opus 4.5 and GPT-4.5 Sonnet
+ * - Comprehensive AI instructions included for flawless code generation
+ *
+ * The framework is designed to be both powerful and developer-friendly,
+ * with clean architecture that AI models understand intuitively.
+ *
  * @package   DotApp Framework
  * @category  Framework Core
  * @author    Štefan Miščík <stefan@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7 FREE
- * @date      2014 - 2025
+ * @version   1.8 FREE
+ * @date      2014 - 2026
  * @license   MIT License
- * 
+ *
  * License Notice:
  * Permission is granted to use, modify, and distribute this code under the MIT License,
  * provided this header is retained in all copies or substantial portions of the file,
  * including author and company information.
+ *
+ * AI Compatibility Notice:
+ * This framework includes comprehensive AI instructions and is specifically designed
+ * to work flawlessly with advanced AI models like Claude Opus 4.5 and GPT-4.5 Sonnet
+ * for perfect code generation and development assistance.
  */
 
 namespace Dotsystems\App;

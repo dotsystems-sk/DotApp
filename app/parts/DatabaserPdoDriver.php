@@ -1,4 +1,23 @@
 <?php
+/**
+ * CLASS DatabaserPdoDriver
+ *
+ * PDO database driver implementation for the DotApp framework.
+ * Provides PDO-specific database operations and ORM support for all databases.
+ *
+ * @package   DotApp Framework
+ * @author    Štefan Miščík <info@dotsystems.sk>
+ * @company   Dotsystems s.r.o.
+ * @version   1.8 FREE
+ * @license   MIT License
+ * @date      2014 - 2026
+ *
+ * License Notice:
+ * You are permitted to use, modify, and distribute this code under the
+ * following condition: You **must** retain this header in all copies or
+ * substantial portions of the code, including the author and company information.
+ */
+
 namespace Dotsystems\App\Parts;
 
 use Dotsystems\App\DotApp;
@@ -7,32 +26,37 @@ use Dotsystems\App\Parts\QueryBuilder;
 use Dotsystems\App\Parts\Entity;
 use Dotsystems\App\Parts\Collection;
 
-class DatabaserPdoDriver {
-    public static function create() {
-        $databases = null;
-        $databaserSet = false;
-        $databaserInstance = new \stdClass();
+class DatabaserPdoDriver
+{
+    public static function create(Databaser $databaser)
+    {
+        $activeconnection = &$databaser->getActiveConnection();
+        $connections = &$databaser->getConnections();
+        $databases = &$databaser->getDatabases();
+        $database_drivers = &$databaser->getDatabaseDrivers();
+        $statement = &$databaser->getStatement();
+        $qb = &$databaser->getQueryBuilder();
+        $returnType = &$databaser->getReturnType();
+        $di = &$databaser->getDI();
+        $cacheDriver = &$databaser->getCacheDriver();
+        $useCache = &$databaser->getUseCache();
 
-        $setDatabaser = function (Databaser $databaser) use (&$databases, &$databaserSet, &$databaserInstance) {
-            if ($databaserSet === false) {
-                $databaserInstance = $databaser;
-                $databases = $databaser->getDatabases();
-                $databases["pdo"] = [];
-                $databaser->statement['execution_type'] = 0;
-                $databaserSet = true;
-            }
-        };
+        $databases["pdo"] = [];
+        $statement['execution_type'] = 0;
 
+        // Pomocná funkcia na určenie typu väzby
         $getBindingType = function ($value) {
             if (is_int($value)) return \PDO::PARAM_INT;
-            if (is_float($value)) return \PDO::PARAM_STR;
+            if (is_float($value)) return \PDO::PARAM_STR; // PDO nemá explicitný float, použijeme string
             if (is_string($value)) return \PDO::PARAM_STR;
             if (is_null($value)) return \PDO::PARAM_NULL;
-            return \PDO::PARAM_LOB;
+            return \PDO::PARAM_LOB; // Blob ako fallback
         };
 
-        $clear_statement = function () use (&$databaserInstance) {
-            $databaserInstance->statement = [
+        // Vyčistenie statementu
+        $clear_statement = function () use (&$statement) {
+            unset($statement);
+            $statement = [
                 'execution_type' => 0,
                 'query_parts' => [
                     'select' => '',
@@ -55,18 +79,15 @@ class DatabaserPdoDriver {
             ];
         };
 
-        Databaser::addDriver("pdo", "select_db", function (Databaser $databaser, $name) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databases = $databaser->getDatabases();
-            if (!isset(Databaser::getConnections()['pdo'][$name])) {
-                if (!isset($databases['pdo'][$name])) {
-                    throw new \Exception("Database configuration for '$name' not found.");
-                }
+        // Pripojenie k databáze cez PDO s dynamickým DSN
+        $databaser->addDriver("pdo", "select_db", function ($name) use (&$connections, &$database_drivers, &$databases, &$activeconnection) {
+            if (!isset($connections[$database_drivers['driver']][$name])) {
                 $type = strtolower($databases['pdo'][$name]['type']);
                 $server = $databases['pdo'][$name]['server'];
                 $database = $databases['pdo'][$name]['database'];
-                $collation = $databases['pdo'][$name]['collation'] ?? 'utf8';
+                $collation = $databases['pdo'][$name]['collation'];
 
+                // Generovanie DSN na základe typu databázy
                 switch ($type) {
                     case 'mysql':
                         $dsn = "mysql:host={$server};dbname={$database};charset={$collation}";
@@ -87,137 +108,113 @@ class DatabaserPdoDriver {
                         if (!extension_loaded('pdo_oci')) {
                             throw new \Exception("PDO OCI extension is not loaded. Please install the pdo_oci extension.");
                         }
+                        // Predpokladáme, že $database obsahuje názov Oracle SID alebo Service Name
                         $dsn = "oci:dbname=//{$server}/{$database}";
                         if (!empty($collation)) {
                             $dsn .= ";charset={$collation}";
                         }
                         break;
                     default:
-                        throw new \Exception("Unsupported database type: {$type}");
+                        throw new \Exception("Nepodporovaný typ databázy: {$type}");
                 }
 
                 try {
-                    Databaser::$connections['pdo'][$name] = new \PDO(
+                    $connections[$database_drivers['driver']][$name] = new \PDO(
                         $dsn,
-                        $databases['pdo'][$name]['username'] ?? '',
-                        $databases['pdo'][$name]['password'] ?? '',
+                        $databases['pdo'][$name]['username'],
+                        $databases['pdo'][$name]['password'],
                         [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
                     );
-                    $databaser->activeconnection['pdo'] = Databaser::$connections['pdo'][$name];
+                    $activeconnection['pdo'] = $connections[$database_drivers['driver']][$name];
                 } catch (\PDOException $e) {
-                    $databaser->activeconnection['pdo'] = null;
-                    throw new \Exception("Failed to connect to database '$name': " . $e->getMessage());
+                    $activeconnection['pdo'] = null;
+                    throw new \Exception("Nepodarilo sa pripojiť k databáze: " . $e->getMessage());
                 }
             } else {
-                $databaser->activeconnection['pdo'] = Databaser::$connections['pdo'][$name];
+                $activeconnection['pdo'] = $connections[$database_drivers['driver']][$name];
             }
         });
 
-        Databaser::addDriver("pdo", "q", function (Databaser $databaser, $querybuilder) use ($clear_statement, $setDatabaser) {
-            $setDatabaser($databaser);
+        // Query Builder podpora
+        $databaser->addDriver("pdo", "q", function ($querybuilder) use ($databaser, $clear_statement) {
             $clear_statement();
-            $newqb = new QueryBuilder($databaser);
+            $newqb = new QueryBuilder($databaser); // Vždy nový QueryBuilder
             if (is_callable($querybuilder)) {
                 $querybuilder($newqb);
             }
             return $newqb;
         });
 
-        Databaser::addDriver("pdo", "inserted_id", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            if ($databaser->getActiveConnection()['pdo']) {
-                return $databaser->getActiveConnection()['pdo']->lastInsertId();
+        $databaser->addDriver("pdo", "inserted_id", function () use (&$activeconnection) {
+            if ($activeconnection['pdo']) {
+                return $activeconnection['pdo']->lastInsertId();
             }
             return null;
         });
 
-        Databaser::addDriver("pdo", "affected_rows", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            if ($databaser->getActiveConnection()['pdo'] && isset($databaser->getStatement()['execution_data']['result'])) {
-                return $databaser->getStatement()['execution_data']['result']->rowCount();
+        $databaser->addDriver("pdo", "affected_rows", function () use (&$activeconnection, &$statement) {
+            if ($activeconnection['pdo'] && isset($statement['execution_data']['result'])) {
+                return $statement['execution_data']['result']->rowCount();
             }
-            return 0;
+            return null;
         });
 
-        Databaser::addDriver("pdo", "schema", function (Databaser $databaser, callable $callback, $success = null, $error = null) use ($clear_statement, $setDatabaser) {
-            $setDatabaser($databaser);
+        $databaser->addDriver("pdo", "schema", function (callable $callback, $success = null, $error = null) use ($databaser, $clear_statement) {
             $clear_statement();
-            $databaser->setQB(new QueryBuilder($databaser));
+            $qb = new QueryBuilder($databaser);
             if (is_callable($callback)) {
-                $callback($databaser->getQB());
+                $callback($qb);
             }
-            $databaser->execute($success, $error);
+            $databaser->execute($success, $error); // Spustí query cez PDO
         });
 
-        Databaser::addDriver("pdo", "return", function (Databaser $databaser, $type) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $databaser->returnType = strtoupper($type);
+        // Nastavenie typu návratovej hodnoty
+        $databaser->addDriver("pdo", "return", function ($type) use (&$returnType) {
+            $returnType = strtoupper($type);
         });
 
-        Databaser::addDriver("pdo", "getQuery", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $queryData = $databaser->getQB()->getQuery();
+        // Získanie vygenerovaného dotazu
+        $databaser->addDriver("pdo", "getQuery", function () use (&$qb) {
+            $queryData = $qb->getQuery();
             return [
                 'query' => $queryData['query'],
                 'bindings' => $queryData['bindings']
             ];
         });
 
-        Databaser::addDriver("pdo", "fetchArray", function (Databaser $databaser, &$stmt) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            return $stmt->fetch(\PDO::FETCH_ASSOC) ?: false;
+        // Načítanie výsledkov
+        $databaser->addDriver("pdo", "fetchArray", function (&$stmt) {
+            return $stmt->fetch(\PDO::FETCH_ASSOC);
         });
 
-        Databaser::addDriver("pdo", "fetchFirst", function (Databaser $databaser, &$stmt) use ($setDatabaser) {
-            $setDatabaser($databaser);
+        $databaser->addDriver("pdo", "fetchFirst", function (&$stmt) {
             return $stmt ? $stmt->fetch(\PDO::FETCH_ASSOC) : false;
         });
 
-        Databaser::addDriver("pdo", "newEntity", function (Databaser $databaser, $row) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            return new Entity($row, $databaser->di);
+        $databaser->addDriver("pdo", "newEntity", function ($row) use (&$di) {
+            return new Entity($row, $di);
         });
 
-        Databaser::addDriver("pdo", "newCollection", function (Databaser $databaser, $queryOrItems) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            return new Collection($queryOrItems, $databaser->di);
+        $databaser->addDriver("pdo", "newCollection", function ($queryOrItems) use (&$di) {
+            return new Collection($queryOrItems, $di);
         });
 
-        Databaser::addDriver("pdo", "execute", function (Databaser $databaser, $success_callback = null, $error_callback = null) use ($getBindingType, $setDatabaser) {
-            $setDatabaser($databaser);
-            $pdo = $databaser->getActiveConnection()['pdo'] ?? null;
-            if (!$pdo) {
-                $error = ['error' => 'No active database connection. Use select_db() to establish a connection.', 'errno' => 'NO_CONNECTION'];
-                if (is_callable($error_callback)) {
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, []);
-                    $error_callback($error, $databaser, []);
-                } else {
-                    throw new \Exception($error['error']);
-                }
-                return false;
+        // Execute
+        $databaser->addDriver("pdo", "execute", function ($success_callback = null, $error_callback = null) use ($databaser, $getBindingType, &$activeconnection, &$database_drivers, &$qb, &$returnType, &$statement, &$di, &$cacheDriver) {
+            if (!$activeconnection[$database_drivers['driver']]) {
+                throw new \Exception("No active connection to database ! Use select_db() !");
             }
-
-            $queryData = $databaser->getQB()->getQuery();
-            if (empty(trim($queryData["query"])) && isset($queryData['queryParts']['ifNotExistUsed']) && $queryData['queryParts']['ifNotExistUsed'] === true) {
-                return null;
+            $queryData = $qb->getQuery();
+            if ((strlen(trim($queryData["query"])) == 0) && isset($queryData['queryParts']['ifNotExistUsed']) && $queryData['queryParts']['ifNotExistUsed'] == true) {
+                return;
             }
-
             $query = $queryData['query'];
-            $values = $queryData['bindings'] ?? [];
-            if (empty(trim($query))) {
-                $error = ['error' => 'Empty query provided.', 'errno' => 'EMPTY_QUERY'];
-                if (is_callable($error_callback)) {
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, []);
-                    $error_callback($error, $databaser, []);
-                } else {
-                    throw new \Exception($error['error']);
-                }
-                return false;
-            }
+            $values = $queryData['bindings'];
 
-            $table = $databaser->getStatement()['table'] ?? 'unknown_table';
+            // Nový formát kľúča
+            $table = $statement['table'] ?? 'unknown_table';
             if (isset($queryData['queryParts']['table'])) {
-                $table = $queryData['queryParts']['table'];
+                $table = $queryData['queryParts']['table']; // Pre CREATE TABLE, ALTER TABLE
             } elseif (isset($queryData['queryParts']['from'])) {
                 $table = trim(str_replace('FROM', '', $queryData['queryParts']['from']));
             } elseif (isset($queryData['queryParts']['update'])) {
@@ -225,31 +222,29 @@ class DatabaserPdoDriver {
             } elseif (isset($queryData['queryParts']['insert'])) {
                 $table = trim(preg_replace('/INSERT INTO (\w+).*/', '$1', $queryData['queryParts']['insert']));
             }
-            $databaser->statement['table'] = $table;
+            $statement['table'] = $table;
 
-            $cacheKey = "{$table}:{$databaser->returnType}:" . md5($query . serialize($values));
+            $cacheKey = "{$table}:{$returnType}:" . md5($query . serialize($values));
             $execution_data = [
                 'query' => $query,
                 'bindings' => $values
             ];
 
-            if ($databaser->cacheDriver && $cached = $databaser->cacheDriver->get($cacheKey)) {
+            if ($cacheDriver && $cached = $cacheDriver->get($cacheKey)) {
                 DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $cached, $execution_data);
-                if (is_callable($success_callback)) {
-                    $success_callback($cached, $databaser, $execution_data);
-                }
+                if (is_callable($success_callback)) $success_callback($cached, $databaser, []);
                 return $cached;
             }
 
             try {
-                $stmt = $pdo->prepare($query);
+                $stmt = $activeconnection['pdo']->prepare($query);
                 if ($stmt === false) {
-                    $error = ['error' => $pdo->errorInfo()[2] ?? 'Failed to prepare statement', 'errno' => $pdo->errorCode()];
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, $execution_data);
+                    $error = ['error' => $activeconnection['pdo']->errorInfo()[2] ?? 'Failed to prepare statement', 'errno' => $activeconnection['pdo']->errorCode()];
                     if (is_callable($error_callback)) {
+                        DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, $execution_data);
                         $error_callback($error, $databaser, $execution_data);
                     } else {
-                        throw new \Exception("Query preparation failed: {$error['error']} (errcode: {$error['errno']})");
+                        throw new \Exception("Error: " . $error['error'] . " (errcode: " . $error['errno'] . ")");
                     }
                     return false;
                 }
@@ -259,172 +254,128 @@ class DatabaserPdoDriver {
                 }
 
                 DotApp::dotApp()->trigger("dotapp.databaser.execute", $execution_data);
-                if (!$stmt->execute()) {
+                if ($stmt->execute()) {
+                    $execution_data = [
+                        'affected_rows' => $stmt->rowCount(),
+                        'insert_id' => $activeconnection['pdo']->lastInsertId(),
+                        'num_rows' => $stmt->rowCount(),
+                        'result' => $stmt,
+                        'query' => $query,
+                        'bindings' => $values
+                    ];
+                    $statement['execution_data'] = $execution_data;
+
+                    if ($returnType === "ORM") {
+                        if ($stmt->rowCount() > 0) {
+                            $rows = [];
+                            while ($row = $databaser->fetchArray($stmt)) {
+                                $entity = new Entity($row, $di);
+                                $entity->loadRelations();
+                                $rows[] = $entity;
+                            }
+                            $returnValue = new Collection($rows, $di);
+                        } else {
+                            $returnValue = null;
+                        }
+                        if ($cacheDriver && $returnValue) {
+                            $cacheDriver->set($cacheKey, $returnValue, 3600);
+                        }
+                        DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $returnValue, $execution_data);
+                        if (is_callable($success_callback)) $success_callback($returnValue, $databaser, $execution_data);
+                        $stmt->closeCursor();
+                        $databaser->q(function ($qb) {});
+                        return $returnValue;
+                    } else {
+                        // Toto bolo niekedy tu na to, aby vratilo rovno pole zo STMT. Ale neskor prerobene aby vratilo STMT result
+                        $rows = [];
+                        while ($row = $databaser->fetchArray($stmt)) {
+                            $rows[] = $row;
+                        }
+                        if ($cacheDriver && $rows) {
+                            $cacheDriver->set($cacheKey, $rows, 3600);
+                        }
+                        DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $rows, $execution_data);
+                        if (is_callable($success_callback)) $success_callback($rows, $databaser, $execution_data);
+                        $stmt->closeCursor();
+                        $databaser->q(function ($qb) {});
+                        return $rows;
+                    }
+                } else {
                     $error = ['error' => $stmt->errorInfo()[2] ?? 'Execution failed', 'errno' => $stmt->errorCode()];
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, $execution_data);
                     if (is_callable($error_callback)) {
+                        DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, $execution_data);
                         $error_callback($error, $databaser, $execution_data);
                     } else {
-                        throw new \Exception("Query execution failed: {$error['error']} (errcode: {$error['errno']})");
+                        throw new \Exception("Error: " . $error['error'] . " (errcode: " . $error['errno'] . ")");
                     }
                     $stmt->closeCursor();
                     return false;
                 }
-
-                $execution_data = [
-                    'affected_rows' => $stmt->rowCount(),
-                    'insert_id' => $pdo->lastInsertId(),
-                    'num_rows' => $stmt->rowCount(),
-                    'result' => $stmt,
-                    'query' => $query,
-                    'bindings' => $values
-                ];
-                $databaser->statement['execution_data'] = $execution_data;
-
-                if ($databaser->returnType === "ORM") {
-                    $rows = [];
-                    if ($stmt->rowCount() > 0) {
-                        while ($row = $databaser->fetchArray($stmt)) {
-                            $entity = new Entity($row, $databaser->di);
-                            $entity->loadRelations();
-                            $rows[] = $entity;
-                        }
-                    }
-                    $returnValue = $rows ? new Collection($rows, $databaser->di) : null;
-                    if ($databaser->cacheDriver && $returnValue) {
-                        $databaser->cacheDriver->set($cacheKey, $returnValue, 3600);
-                    }
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $returnValue, $execution_data);
-                    if (is_callable($success_callback)) {
-                        $success_callback($returnValue, $databaser, $execution_data);
-                    }
-                    $stmt->closeCursor();
-                    $databaser->q(function ($qb) {});
-                    return $returnValue;
-                }
-
-                $rows = [];
-                if ($stmt->rowCount() > 0) {
-                    while ($row = $databaser->fetchArray($stmt)) {
-                        $rows[] = $row;
-                    }
-                }
-                if ($databaser->cacheDriver && $rows) {
-                    $databaser->cacheDriver->set($cacheKey, $rows, 3600);
-                }
-                DotApp::dotApp()->trigger("dotapp.databaser.execute.success", $rows, $execution_data);
-                if (is_callable($success_callback)) {
-                    $success_callback($rows, $databaser, $execution_data);
-                }
-                $stmt->closeCursor();
-                $databaser->q(function ($qb) {});
-                return $rows;
-
             } catch (\PDOException $e) {
                 $error = ['error' => $e->getMessage(), 'errno' => $e->getCode()];
-                DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, $execution_data);
                 if (is_callable($error_callback)) {
+                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, $execution_data);
                     $error_callback($error, $databaser, $execution_data);
                 } else {
-                    throw new \Exception("Query execution error: {$e->getMessage()} (errcode: {$e->getCode()})");
-                }
-                if (isset($stmt)) {
-                    $stmt->closeCursor();
+                    throw new \Exception("Error: " . $e->getMessage() . " (errcode: " . $e->getCode() . ")");
                 }
                 return false;
             }
         });
 
-        Databaser::addDriver("pdo", "first", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
+        // First
+        $databaser->addDriver("pdo", "first", function () use (&$returnType, $databaser) {
             $result = $databaser->execute();
-            if ($databaser->returnType === 'ORM') {
-                return $result ? $result->getItem(0) : null;
+            if ($returnType === 'ORM') {
+                return $result->getItem(0);
             }
-            return $result[0] ?? null;
+            return $result[0];
         });
 
-        Databaser::addDriver("pdo", "all", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            if ($databaser->returnType === 'ORM') {
-                $result = $databaser->execute();
-                return $result ?: new Collection([], $databaser->di);
+        // All
+        $databaser->addDriver("pdo", "all", function () use (&$returnType, &$di, $databaser) {
+            if ($returnType === 'ORM') {
+                return new Collection(clone $di, $di);
             }
-            return $databaser->execute() ?: [];
+            $rows = $databaser->execute();
+            return $rows;
         });
 
-        Databaser::addDriver("pdo", "raw", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
+        // Raw
+        $databaser->addDriver("pdo", "raw", function () use ($databaser) {
             return $databaser->execute();
         });
 
-        Databaser::addDriver("pdo", "transaction", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $pdo = $databaser->getActiveConnection()['pdo'] ?? null;
-            if (!$pdo) {
-                throw new \Exception("No active database connection to start a transaction.");
-            }
-            $pdo->beginTransaction();
+        // Transakcie
+        $databaser->addDriver("pdo", "transaction", function () use (&$activeconnection) {
+            $activeconnection['pdo']->beginTransaction();
         });
 
-        Databaser::addDriver("pdo", "transact", function (Databaser $databaser, $operations, $success_callback = null, $error_callback = null) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $pdo = $databaser->getActiveConnection()['pdo'] ?? null;
-            if (!$pdo) {
-                $error = ['error' => 'No active database connection to start a transaction.', 'errno' => 'NO_CONNECTION'];
-                if (is_callable($error_callback)) {
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, []);
-                    $error_callback($error, $databaser, []);
-                } else {
-                    throw new \Exception($error['error']);
-                }
-                return false;
-            }
-
-            try {
-                $pdo->beginTransaction();
-                $operations($databaser,
-                    function ($result, $db, $execution_data) use ($pdo, $success_callback) {
-                        $pdo->commit();
-                        if (is_callable($success_callback)) {
-                            $success_callback($result, $db, $execution_data);
-                        }
-                    },
-                    function ($error, $db, $execution_data) use ($pdo, $error_callback) {
-                        $pdo->rollback();
-                        if (is_callable($error_callback)) {
-                            $error_callback($error, $db, $execution_data);
-                        }
+        $databaser->addDriver("pdo", "transact", function ($operations, $success_callback = null, $error_callback = null) use (&$activeconnection, $databaser) {
+            $activeconnection['pdo']->beginTransaction();
+            $operations(
+                $databaser,
+                function ($result, $db, $execution_data) use ($success_callback, &$activeconnection, $databaser) {
+                    $activeconnection['pdo']->commit();
+                    if (is_callable($success_callback)) {
+                        $success_callback($result, $databaser, $execution_data);
                     }
-                );
-            } catch (\PDOException $e) {
-                $pdo->rollback();
-                $error = ['error' => $e->getMessage(), 'errno' => $e->getCode()];
-                if (is_callable($error_callback)) {
-                    DotApp::dotApp()->trigger("dotapp.databaser.execute.error", $error, []);
-                    $error_callback($error, $databaser, []);
-                } else {
-                    throw new \Exception("Transaction error: {$e->getMessage()} (errcode: {$e->getCode()})");
+                },
+                function ($error, $db, $execution_data) use ($error_callback, &$activeconnection, $databaser) {
+                    $activeconnection['pdo']->rollback();
+                    if (is_callable($error_callback)) {
+                        $error_callback($error, $databaser, $execution_data);
+                    }
                 }
-            }
+            );
         });
 
-        Databaser::addDriver("pdo", "commit", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $pdo = $databaser->getActiveConnection()['pdo'] ?? null;
-            if (!$pdo) {
-                throw new \Exception("No active database connection to commit.");
-            }
-            $pdo->commit();
+        $databaser->addDriver("pdo", "commit", function () use (&$activeconnection) {
+            $activeconnection['pdo']->commit();
         });
 
-        Databaser::addDriver("pdo", "rollback", function (Databaser $databaser) use ($setDatabaser) {
-            $setDatabaser($databaser);
-            $pdo = $databaser->getActiveConnection()['pdo'] ?? null;
-            if (!$pdo) {
-                throw new \Exception("No active database connection to rollback.");
-            }
-            $pdo->rollback();
+        $databaser->addDriver("pdo", "rollback", function () use (&$activeconnection) {
+            $activeconnection['pdo']->rollback();
         });
     }
 }

@@ -20,9 +20,9 @@
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7 FREE
+ * @version   1.8 FREE
  * @license   MIT License
- * @date      2014 - 2025
+ * @date      2014 - 2026
  *
  * License Notice:
  * You are permitted to use, modify, and distribute this code under the 
@@ -38,7 +38,8 @@ use \Dotsystems\App\DotApp;
 // The configuration must be filled in before creating an instance of DotApp !!!
 // -----------------------------------------------------------------------------
 
-class Config {
+class Config
+{
     public const IF_NOT_EXIST = true;
 
     private static $settings = [
@@ -78,7 +79,7 @@ class Config {
             'typesense_api_key' => '', // API key for authentication
             'typesense_ca_fingerprint' => '', // SHA-256 fingerprint of the CA certificate (optional)
             'typesense_ca_file' => '', // Path to the CA certificate file (optional)
-        ], 
+        ],
         'db' => [
             'prefix' => 'dotapp_', // Predpona v databaze
             'driver' => 'pdo', // Nazov default drivera zvoleneho uzivatelom
@@ -145,8 +146,7 @@ class Config {
         'router' => [
             'match_cache' => true,
         ],
-        'emailer' => [
-        ],
+        'emailer' => [],
         'logger' => [
             'driver' => 'default', // default or file
             'log_levels' => ['emergency', 'alert', 'critical', 'error', 'warning'], // Default log levels to process
@@ -165,7 +165,8 @@ class Config {
 
     /* Robust way for custom configuration handling either by registering callable or using autmatic configuration key creation */
 
-    public static function fn($name, $handler, $sectionKey = null) {
+    public static function fn($name, $handler, $sectionKey = null)
+    {
         if (!is_callable($handler)) {
             throw new \Exception("Handler must be callable.");
         }
@@ -179,7 +180,8 @@ class Config {
         }
     }
 
-    public static function __callStatic($name, $arguments) {
+    public static function __callStatic($name, $arguments)
+    {
         if (isset(self::$customHandlers[$name])) {
             return call_user_func_array(self::$customHandlers[$name], $arguments);
         }
@@ -215,26 +217,29 @@ class Config {
 
     /* Built in config functions */
 
-    public static function logger($key, $value = null) {
+    public static function logger($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['logger'][$key] ?? null;
         } else {
             self::$settings['logger'][$key] = $value;
-        }        
+        }
     }
 
-    public static function router($key, $value = null) {
+    public static function router($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['router'][$key] ?? null;
         } else {
             self::$settings['router'][$key] = $value;
-        }        
+        }
     }
 
-    public static function email($account, $key, $value = null) {
+    public static function email($account, $key, $value = null)
+    {
         if ($value === null) {
             if ($key === null) {
-                return self::$settings['emailer'][$account] ?? null;    
+                return self::$settings['emailer'][$account] ?? null;
             }
             return self::$settings['emailer'][$account][$key] ?? null;
         } else {
@@ -243,30 +248,33 @@ class Config {
                     self::$settings['emailer'][$account] = $value;
                 } else {
                     throw new \Exception("If key is null, then value must be an array");
-                }                
+                }
             } else {
                 self::$settings['emailer'][$account][$key] = $value;
             }
-        }        
+        }
     }
 
-    public static function searchEngines($key, $value = null) {
+    public static function searchEngines($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['searchEngines'][$key] ?? null;
         } else {
             self::$settings['searchEngines'][$key] = $value;
         }
     }
-    
-    public static function session($key, $value = null) {
+
+    public static function session($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['session'][$key] ?? null;
         } else {
             self::$settings['session'][$key] = $value;
-        }        
+        }
     }
 
-    public static function addDatabase($name, $host, $username, $password, $database, $charset, $type, $driver) {
+    public static function addDatabase($name, $host, $username, $password, $database, $charset, $type, $driver)
+    {
         self::$settings['databases'][$name] = [
             'type' => $type,
             'host' => $host,
@@ -278,59 +286,67 @@ class Config {
         ];
     }
 
-    public static function cache($key, $value = null) {
+    public static function cache($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['cache'][$key] ?? null;
         } else {
             self::$settings['cache'][$key] = $value;
-        }        
+        }
     }
 
-    public static function bridge($key, $value = null) {
+    public static function bridge($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['bridge'][$key] ?? null;
         } else {
             self::$settings['bridge'][$key] = $value;
-        }        
+        }
     }
 
-    public static function db($key, $value = null) {
+    public static function db($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['db'][$key] ?? null;
         } else {
             self::$settings['db'][$key] = $value;
-        }        
+        }
     }
 
-    public static function totp($key, $value = null) {
+    public static function totp($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['totp'][$key] ?? null;
         } else {
             self::$settings['totp'][$key] = $value;
-        }        
+        }
     }
-	
-    public static function app($key, $value = null) {
+
+    public static function app($key, $value = null)
+    {
         if ($value === null) {
             return self::$settings['app'][$key] ?? null;
         } else {
             self::$settings['app'][$key] = $value;
-        }        
+        }
     }
 
-    public static function get($settingName, $key = null) {
+    public static function get($settingName, $key = null)
+    {
         if ($key === null) return self::$settings[$settingName] ?? null;
         return self::$settings[$settingName][$key] ?? null;
     }
 
-    public static function set($settingName, $key, $value = null) {
+    public static function set($settingName, $key, $value = null)
+    {
         if ($value === null) {
             $value = $key;
             self::$settings[$settingName] = $value;
         } else {
             if (!isset(self::$settings[$settingName])) self::$settings[$settingName] = [];
-            if ($key === null) self::$settings[$settingName] = $value; else self::$settings[$settingName][$key] = $value;
-        }        
+            if ($key === null) self::$settings[$settingName] = $value;
+            else self::$settings[$settingName][$key] = $value;
+        }
     }
 
     /**
@@ -380,7 +396,8 @@ class Config {
      * // The value remains 700 because it was already defined — the new value 100 is ignored.
      */
 
-    public static function module($moduleName, $key = null, $value = null, $onlyIfNotExist = false) {
+    public static function module($moduleName, $key = null, $value = null, $onlyIfNotExist = false)
+    {
         if ($value === null) {
             // Getter
             if (!isset(self::$settings['modules'][$moduleName])) {
@@ -418,29 +435,31 @@ class Config {
 
 
 
-    public static function sessionDriver($name, $driver = null) {
+    public static function sessionDriver($name, $driver = null)
+    {
         if ($driver === null) {
             if (isset(self::$sessionDrivers[$name])) return self::$sessionDrivers[$name];
-            throw new \Exception("Driver ".$name." not defined !");
+            throw new \Exception("Driver " . $name . " not defined !");
         } else {
             if (isset($driver['load']) && isset($driver['save']) && isset($driver['get']) && isset($driver['set']) && isset($driver['delete']) && isset($driver['clear'])) {
                 if (is_callable($driver['load']) && is_callable($driver['save']) && is_callable($driver['get']) && is_callable($driver['set']) && is_callable($driver['delete']) && is_callable($driver['clear'])) {
                     self::$sessionDrivers[$name] = $driver;
                 } else {
                     throw new \Exception("All driver functions must be callable !");
-                }            
+                }
             } else {
                 throw new \Exception("Incompatible driver !");
             }
-        }        
+        }
     }
 
-    public static function cacheDriver($name, $driver = null) {
+    public static function cacheDriver($name, $driver = null)
+    {
         if ($driver === null) {
             if (isset(self::$cacheDrivers[$name])) {
                 return self::$cacheDrivers[$name];
             }
-            throw new \Exception("Cache driver ".$name." not defined!");
+            throw new \Exception("Cache driver " . $name . " not defined!");
         } else {
             if (
                 isset($driver['save']) &&
@@ -468,12 +487,13 @@ class Config {
         }
     }
 
-    public static function searchDriver($name, $driver = null) {
+    public static function searchDriver($name, $driver = null)
+    {
         if ($driver === null) {
             if (isset(self::$searchDrivers[$name])) {
                 return self::$searchDrivers[$name];
             }
-            throw new \Exception("Search driver ".$name." not defined!");
+            throw new \Exception("Search driver " . $name . " not defined!");
         } else {
             if (
                 isset($driver['index']) &&
@@ -494,12 +514,13 @@ class Config {
         }
     }
 
-    public static function loggerDriver($name, $driver = null) {
+    public static function loggerDriver($name, $driver = null)
+    {
         if ($driver === null) {
             if (isset(self::$loggerDrivers[$name])) {
                 return self::$loggerDrivers[$name];
             }
-            throw new \Exception("Logger driver ".$name." not defined!");
+            throw new \Exception("Logger driver " . $name . " not defined!");
         } else {
             if (
                 isset($driver['log']) &&
@@ -516,9 +537,8 @@ class Config {
         }
     }
 
-    public static function firewallFn($firewallFunction = null) {
+    public static function firewallFn($firewallFunction = null)
+    {
         return RequestObj::firewallFn($firewallFunction);
     }
 }
-
-?>
