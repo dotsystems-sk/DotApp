@@ -19,7 +19,7 @@ use Dotsystems\App\Parts\Validator;
  * $form = Input::group('register_form');
  * $form->text('username', ['class' => 'input'], 'required|alpha_num|min:3');
  * $form->password('pass', [], 'required|strong_password');
- * $securityKeys = $form->export(); // Vráti hidden inputy (ak nepoužívate Template)
+ * $securityKeys = $form->export(); // Returns hidden inputs (if not using Template)
  *
  *
  * 2. HTML Šablóna (Template Syntax):
@@ -34,19 +34,19 @@ use Dotsystems\App\Parts\Validator;
  *
  * 3. Spracovanie Requestu (Backend cez RequestObj):
  * ----------------------------------
- * V rámci DotApp frameworku neriešite $_POST manuálne. Použite Request objekt:
+ * Within DotApp framework, don't handle $_POST manually. Use Request object:
  *
  * // V Controlleri:
  * $result = $this->request->validateInputs('register_form');
  *
  * if ($result === true) {
- * // Validácia úspešná
- * $data = $this->request->data(); // Obsahuje čisté dáta
- * // ... registrácia užívateľa ...
+ * // Validation successful
+ * $data = $this->request->data(); // Contains clean data
+ * // ... user registration ...
  * } else {
- * // Validácia zlyhala
- * // $result obsahuje pole ['status' => 0, 'errors' => [...]]
- * // Môžete ho rovno vrátiť ako JSON odpoveď pre DotApp JS
+ * // Validation failed
+ * // $result contains array ['status' => 0, 'errors' => [...]]
+ * // You can return it directly as JSON response for DotApp JS
  * return $this->response->json($result);
  * }
  *
@@ -310,7 +310,7 @@ class Input {
         $this->errors = [];
         $data = $this->data;
         $uniqueFields = [];
-        // Zabezpečenie, aby sme radio buttony nekontrolovali viackrát pre to isté meno
+        // Ensure that we don't validate radio buttons multiple times for the same name
         foreach ($this->fields as $f) {
             $uniqueFields[$f['name']] = $f['rules'];
         }
@@ -332,7 +332,7 @@ class Input {
 
                 if (!$this->checkRule($rule, $value, $paramString, $data)) {
                     $this->addError($name, $rule, $paramString);
-                    break; // Prvá chyba pre dané pole stačí
+                    break; // First error for given field is enough
                 }
             }
         }
@@ -345,7 +345,7 @@ class Input {
      */
     private function checkRule($rule, $value, $paramString, $allData) {
         
-        // 1. Pravidlá špecifické pre Input (vyžadujú kontext iných polí)
+        // 1. Rules specific to Input (require context of other fields)
         if ($rule === 'match') {
             return isset($allData[$paramString]) && $value === $allData[$paramString];
         }
@@ -364,11 +364,11 @@ class Input {
             case 'integer':         return Validator::isInteger($value);
             case 'positive_number': return Validator::isPositiveNumber($value);
             
-            case 'between': // Očakáva 2 parametre: min,max
+            case 'between': // Expects 2 parameters: min,max
                 if (count($params) < 2) return false;
                 return Validator::isInRange($value, (float)$params[0], (float)$params[1]);
             
-            case 'min': // V novej Validator triede je min/max chápané ako dĺžka reťazca
+            case 'min': // In new Validator class, min/max is understood as string length
                 if (count($params) < 1) return false;
                 return Validator::isMinLength($value, (int)$params[0]);
             
@@ -398,7 +398,7 @@ class Input {
                 return Validator::isOneOf($value, $params);
 
             case 'regex':
-                return Validator::isMatchingRegex($value, $paramString); // Regex sa nesmie explodovať čiarkou
+                return Validator::isMatchingRegex($value, $paramString); // Regex must not be exploded by comma
 
             case 'username':
                  // username:min,max,dash,dot
@@ -418,8 +418,8 @@ class Input {
     }
 
     private function addError($name, $rule, $param) {
-        // Tieto hlášky by mali byť v ideálnom svete v prekladovom súbore
-        // Tu používame jednoduché mapovanie pre rýchlu odozvu
+        // These messages should ideally be in a translation file
+        // Here we use simple mapping for fast response
         $msg = "Validation error ($rule).";
 
         switch ($rule) {
@@ -510,15 +510,15 @@ class Input {
                 return $matches[0];
             }
 
-            // Získame inštanciu formulára
+            // Get form instance
             $inputObj = self::group($group);
             
             $name  = $attrs['name'] ?? uniqid('input_');
             
             $existingField = $inputObj->fields[$name] ?? null;
 
-            // 1. PRAVIDLÁ (RULES):
-            // Ak sú v HTML, majú prednosť. Ak nie, použijeme tie z PHP. Ak nie sú nikde, tak prázdny string.
+            // 1. RULES:
+            // If present in HTML, they take precedence. If not, we use those from PHP. If nowhere, empty string.
             if (isset($attrs['rules'])) {
                 $rules = $attrs['rules'];
             } elseif ($existingField && isset($existingField['rules'])) {
@@ -527,11 +527,11 @@ class Input {
                 $rules = '';
             }
 
-            // Odstránime technické atribúty z poľa atribútov pre HTML
+            // Remove technical attributes from HTML attributes array
             unset($attrs['group'], $attrs['rules'], $attrs['name']);
             
-            // Ak existujú atribúty definované v PHP (napr. class), môžeme ich tu mergnúť, 
-            // ale pre jednoduchosť necháme HTML atribúty vyhrať nad PHP atribútmi.
+            // If there are attributes defined in PHP (e.g. class), we can merge them here,
+            // but for simplicity we let HTML attributes take precedence over PHP attributes.
 
             // 2. SPRACOVANIE PODĽA TYPU
             if ($type === 'select') {
@@ -561,7 +561,7 @@ class Input {
                 $inputObj->textarea($name, $attrs, $rules);
             }
             else {
-                // Text, password, email, atď.
+                // Text, password, email, etc.
                 if (method_exists($inputObj, $type)) {
                     $inputObj->$type($name, $attrs, $rules);
                 } else {

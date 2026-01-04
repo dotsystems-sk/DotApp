@@ -119,7 +119,7 @@ class SessionDriverFile2 {
             // Nastav cookie
             $this->setSessionCookie();
 
-            // Načítaj dáta
+            // Load data
             $driverFn['load']($dsm);
 
             $this->isActive = true;
@@ -144,7 +144,7 @@ class SessionDriverFile2 {
             $prefix .= "exit();\n";
             $prefix .= "?>\n";
 
-            // Ulož iba dáta pre aktuálne sessname
+            // Save only data for current sessname
             $sessionData = [
                 'values' => $this->sessionDataStorage['values'][$dsm->sessname] ?? [],
                 'variables' => $this->sessionDataStorage['variables'][$dsm->sessname] ?? []
@@ -165,7 +165,7 @@ class SessionDriverFile2 {
             $this->sessionDataStorage['values'][$dsm->sessname] = [];
             $this->sessionDataStorage['variables'][$dsm->sessname] = [];
             $this->isActive = false;
-            $this->setSessionCookie(true); // Zmaž cookie
+            $this->setSessionCookie(true); // Delete cookie
         };
 
         // Funkcia LOAD
@@ -255,7 +255,7 @@ class SessionDriverFile2 {
 
             $this->sessionId = $newSessionId;
 
-            // Prenes dáta pre každé sessname
+            // Transfer data for each sessname
             foreach (array_keys($this->sessionDataStorage['values']) as $sessname) {
                 $oldFilename = $this->dir . "/" . $oldSessionId . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $sessname) . '.php';
                 $newFilename = $this->getFilename($sessname);
@@ -265,7 +265,7 @@ class SessionDriverFile2 {
                 $driverFn['save']((object)['sessname' => $sessname]);
             }
 
-            // Zmaž staré súbory, ak je deleteOld true
+            // Delete old files if deleteOld is true
             if ($deleteOld) {
                 foreach (glob($this->dir . "/" . $oldSessionId . '_*.php') as $file) {
                     unlink($file);
@@ -288,7 +288,7 @@ class SessionDriverFile2 {
 
                 $this->sessionId = $new;
 
-                // Prenes dáta pre každé sessname
+                // Transfer data for each sessname
                 foreach (array_keys($this->sessionDataStorage['values']) as $sessname) {
                     $oldFilename = $this->dir . "/" . $oldSessionId . '_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $sessname) . '.php';
                     $newFilename = $this->getFilename($sessname);
@@ -298,7 +298,7 @@ class SessionDriverFile2 {
                     $driverFn['save']((object)['sessname' => $sessname]);
                 }
 
-                // Zmaž staré súbory
+                // Delete old files
                 foreach (glob($this->dir . "/" . $oldSessionId . '_*.php') as $file) {
                     unlink($file);
                 }
@@ -312,7 +312,7 @@ class SessionDriverFile2 {
         // Funkcia GC (Garbage Collection)
         // Volat cez DSM::use()->gc();
         $driverFn['gc'] = function ($dsm) use (&$driverFn) {
-            // Načítaj zoznam všetkých súborov
+            // Load list of all files
             $files = glob($this->dir . '/*.php');
             $processedSessionIds = [];
 
@@ -321,7 +321,7 @@ class SessionDriverFile2 {
                 $basename = basename($file, '.php');
                 $sessionId = explode('_', $basename)[0];
 
-                // Preskoč, ak už bolo SESSIONID spracované
+                // Skip if SESSIONID was already processed
                 if (in_array($sessionId, $processedSessionIds)) {
                     continue;
                 }
@@ -331,11 +331,11 @@ class SessionDriverFile2 {
                 include $file;
                 $output = ob_get_clean();
 
-                // Označ SESSIONID ako spracované
+                // Mark SESSIONID as processed
                 $processedSessionIds[] = $sessionId;
 
                 if (strpos($output, 'expired;') === 0) {
-                    // Zmaž všetky súbory pre toto SESSIONID
+                    // Delete all files for this SESSIONID
                     foreach ($files as $index => $relatedFile) {
                         $relatedBasename = basename($relatedFile, '.php');
                         if (strpos($relatedBasename, $sessionId . '_') === 0) {
@@ -343,12 +343,12 @@ class SessionDriverFile2 {
                             unset($files[$index]);
                         }
                     }
-                    // Zmaž aktuálny súbor (ak ešte existuje)
+                    // Delete current file (if it still exists)
                     if (file_exists($file)) {
                         unlink($file);
                     }
                 } else {
-                    // Vylúč nespracované súbory pre toto SESSIONID
+                    // Exclude unprocessed files for this SESSIONID
                     foreach ($files as $index => $relatedFile) {
                         $relatedBasename = basename($relatedFile, '.php');
                         if (strpos($relatedBasename, $sessionId . '_') === 0) {

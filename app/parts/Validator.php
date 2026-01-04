@@ -76,7 +76,7 @@ class Validator {
             $rules = ['data' => $rules];
         } 
         elseif (is_array($input) && is_array($rules)) {
-            // V poriadku, pokračujeme
+            // OK, continue
         } 
         else {
             throw new \InvalidArgumentException(

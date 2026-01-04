@@ -44,16 +44,16 @@ class DatabaserPdoDriver
         $databases["pdo"] = [];
         $statement['execution_type'] = 0;
 
-        // Pomocná funkcia na určenie typu väzby
+        // Helper function to determine binding type
         $getBindingType = function ($value) {
             if (is_int($value)) return \PDO::PARAM_INT;
-            if (is_float($value)) return \PDO::PARAM_STR; // PDO nemá explicitný float, použijeme string
+            if (is_float($value)) return \PDO::PARAM_STR; // PDO doesn't have explicit float, we use string
             if (is_string($value)) return \PDO::PARAM_STR;
             if (is_null($value)) return \PDO::PARAM_NULL;
-            return \PDO::PARAM_LOB; // Blob ako fallback
+            return \PDO::PARAM_LOB; // Blob as fallback
         };
 
-        // Vyčistenie statementu
+        // Clean up statement
         $clear_statement = function () use (&$statement) {
             unset($statement);
             $statement = [
@@ -108,7 +108,7 @@ class DatabaserPdoDriver
                         if (!extension_loaded('pdo_oci')) {
                             throw new \Exception("PDO OCI extension is not loaded. Please install the pdo_oci extension.");
                         }
-                        // Predpokladáme, že $database obsahuje názov Oracle SID alebo Service Name
+                        // We assume $database contains Oracle SID or Service Name
                         $dsn = "oci:dbname=//{$server}/{$database}";
                         if (!empty($collation)) {
                             $dsn .= ";charset={$collation}";
@@ -138,7 +138,7 @@ class DatabaserPdoDriver
         // Query Builder podpora
         $databaser->addDriver("pdo", "q", function ($querybuilder) use ($databaser, $clear_statement) {
             $clear_statement();
-            $newqb = new QueryBuilder($databaser); // Vždy nový QueryBuilder
+            $newqb = new QueryBuilder($databaser); // Always new QueryBuilder
             if (is_callable($querybuilder)) {
                 $querybuilder($newqb);
             }
@@ -182,7 +182,7 @@ class DatabaserPdoDriver
             ];
         });
 
-        // Načítanie výsledkov
+        // Loading results
         $databaser->addDriver("pdo", "fetchArray", function (&$stmt) {
             return $stmt->fetch(\PDO::FETCH_ASSOC);
         });

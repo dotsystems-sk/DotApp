@@ -20,7 +20,7 @@ class QueryBuilder {
         $this->types = '';
         
         if ($databaser instanceof Databaser) {
-            // Ak je $databaser inštancia Databaser, použi existujúcu logiku
+            // If $databaser is a Databaser instance, use existing logic
             if (isset($databaser->database_drivers['driver'])) {
                 $driver = $databaser->database_drivers['driver'];
                 $databazy = $databaser->getDatabases();
@@ -81,7 +81,7 @@ class QueryBuilder {
         }
 
         if ($queryCallback instanceof QueryBuilder) {
-            // Ak je už QueryBuilder objekt, použijeme ho priamo
+            // If it's already a QueryBuilder object, use it directly
             $subQuery = $queryCallback->getQuery();
         } elseif (is_callable($queryCallback)) {
             // Ak je callable, zavoláme ho na novom QueryBuilder
@@ -215,11 +215,11 @@ class QueryBuilder {
     public function where($column, $operator = null, $value = null, $boolean = 'AND') {
         if ($column instanceof \Closure) {
             $groupBuilder = new QueryBuilder($this->databaser);
-            $groupBuilder->queryParts['type'] = 'SELECT'; // Nastaviť default typ pre sub-query
+            $groupBuilder->queryParts['type'] = 'SELECT'; // Set default type for sub-query
             $column($groupBuilder);
             $groupQuery = $groupBuilder->getQuery();
 
-            // Bezpečná kontrola existence 'where' poľa
+            // Safe check for 'where' field existence
             $whereClause = '';
             if (!empty($groupQuery['queryParts']['where'])) {
                 $whereClause = implode(' ', $groupQuery['queryParts']['where']);
@@ -233,7 +233,7 @@ class QueryBuilder {
             }
         } elseif ($value instanceof \Closure) {
             $subQueryBuilder = new QueryBuilder($this->databaser);
-            $subQueryBuilder->queryParts['type'] = 'SELECT'; // Nastaviť default typ pre sub-query
+            $subQueryBuilder->queryParts['type'] = 'SELECT'; // Set default type for sub-query
             $value($subQueryBuilder);
             $subQuery = $subQueryBuilder->getQuery();
             $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operator (" . $subQuery['query'] . ")";
@@ -373,7 +373,7 @@ class QueryBuilder {
         switch ($this->dbType) {
             case 'sqlsrv':
                 if (!isset($this->queryParts['select'])) {
-                    throw new \Exception("LIMIT (TOP) môže byť použité len s SELECT v SQL Server.");
+                    throw new \Exception("LIMIT (TOP) can only be used with SELECT in SQL Server.");
                 }
                 $this->queryParts['select'] = preg_replace('/^SELECT/', "SELECT TOP ? ", $this->queryParts['select'], 1);
                 $this->addBindings([$limit]);
@@ -420,7 +420,7 @@ class QueryBuilder {
         unset($this->queryParts['offset']);
         unset($this->queryParts['offset_value']);
         unset($this->queryParts['fetch']);
-        // Odstráň posledné 2 bindings (limit a offset)
+        // Remove last 2 bindings (limit and offset)
         if (count($this->bindings) >= 2) {
             $this->bindings = array_slice($this->bindings, 0, -2);
             $this->types = substr($this->types, 0, -2);
@@ -565,26 +565,26 @@ class QueryBuilder {
     }
 
     private function sanitizeColumn($column) {
-        // Ponechať SQL výrazy a hviezdičku bez úprav
+        // Keep SQL expressions and asterisk unchanged
         if ($this->isSqlExpression($column)) {
             return $column;
         }
 
-        // Rozdeliť kvalifikovaný názov (napr. table.column)
+        // Split qualified name (e.g. table.column)
         $parts = explode('.', $column);
         $sanitizedParts = array_map(function ($part) {
-            // Sanitácia názvu (povolené: a-z, A-Z, 0-9, _, medzery, špeciálne znaky)
+            // Sanitize name (allowed: a-z, A-Z, 0-9, _, spaces, special characters)
             $part = trim($part);
             if (empty($part)) {
                 throw new \InvalidArgumentException("Empty column or table name part");
             }
-            return $part; // Zachovať pôvodné znaky, ohraničenie sa postará o bezpečnosť
+            return $part; // Preserve original characters, quoting will handle security
         }, $parts);
 
-        // Zložiť späť názov
+        // Reassemble name
         $sanitizedColumn = implode('.', $sanitizedParts);
 
-        // Ohraničenie podľa typu databázy
+        // Quoting based on database type
         if ($this->dbType === 'sqlsrv') {
             return str_replace('.', '].[', "[$sanitizedColumn]");
         } elseif ($this->dbType === 'pgsql' || $this->dbType === 'oci') {
@@ -594,14 +594,14 @@ class QueryBuilder {
     }
 
     private function isSqlExpression($column) {
-        // Povoliť hviezdičku, SQL funkcie, aliasy a literálne hodnoty
+        // Allow asterisk, SQL functions, aliases and literal values
         return $column === '*' ||
             preg_match('/^[A-Z]+\(\*\)$/i', $column) || // Napr. COUNT(*)
             preg_match('/^[A-Z]+\(.*\)$/i', $column) || // Napr. SUM(column)
             preg_match('/.*\s+(as|AS)\s+\w+/i', $column) || // column AS alias (case insensitive)
-            strpos($column, ' AS ') !== false || // Zachovať spätnú kompatibilitu
-            is_numeric($column) || // Numerické literály, napr. 1, 42.5
-            in_array(strtoupper($column), ['CURRENT_TIMESTAMP', 'NULL', 'TRUE', 'FALSE']); // SQL kľúčové slová
+            strpos($column, ' AS ') !== false || // Maintain backward compatibility
+            is_numeric($column) || // Numeric literals, e.g. 1, 42.5
+            in_array(strtoupper($column), ['CURRENT_TIMESTAMP', 'NULL', 'TRUE', 'FALSE']); // SQL keywords
     }
 
     private function isValidColumn($column) {
@@ -610,12 +610,12 @@ class QueryBuilder {
             return false;
         }
 
-        // Povoliť SQL výrazy
+        // Allow SQL expressions
         if ($this->isSqlExpression($column)) {
             return true;
         }
 
-        // Validácia názvov stĺpcov (povolené: a-z, A-Z, 0-9, _, medzery, špeciálne znaky, bodka)
+        // Validate column names (allowed: a-z, A-Z, 0-9, _, spaces, special characters, dot)
         return preg_match('/^[a-zA-Z0-9_\s\.\-@#$%*]+$/i', $column) &&
                strpos($column, ';') === false &&
                strpos($column, '--') === false &&
@@ -623,15 +623,15 @@ class QueryBuilder {
     }
 
     private function sanitizeTable($table) {
-        // Rozdeliť na názov tabuľky a alias (napr. "users u" -> ["users", "u"])
+        // Split into table name and alias (e.g. "users u" -> ["users", "u"])
         $parts = preg_split('/\s+/', trim($table), 2);
         $tableName = $parts[0];
         $alias = $parts[1] ?? null;
 
-        // Spracovať názov tabuľky (môže obsahovať schema.table)
+        // Process table name (can contain schema.table)
         $tableParts = explode('.', $tableName);
         $sanitizedParts = array_map(function ($part) {
-            // Sanitácia každej časti (povolené: a-z, A-Z, 0-9, _)
+            // Sanitize each part (allowed: a-z, A-Z, 0-9, _)
             $part = preg_replace('/[^a-zA-Z0-9_]/', '', trim($part));
             if (empty($part)) {
                 throw new \InvalidArgumentException("Empty table or schema name part");
@@ -639,7 +639,7 @@ class QueryBuilder {
             return $part;
         }, $tableParts);
 
-        // Ohraničenie názvu tabuľky podľa typu databázy
+        // Quote table name based on database type
         if ($this->dbType === 'sqlsrv') {
             $sanitizedTable = '[' . implode('].[', $sanitizedParts) . ']';
         } elseif ($this->dbType === 'pgsql' || $this->dbType === 'oci') {
@@ -648,7 +648,7 @@ class QueryBuilder {
             $sanitizedTable = '`' . implode('`.`', $sanitizedParts) . '`';
         }
 
-        // Pridať alias ak existuje (bez ohraničenia)
+        // Add alias if exists (without quoting)
         if ($alias) {
             $sanitizedAlias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias);
             $sanitizedTable .= " {$sanitizedAlias}";
@@ -677,7 +677,7 @@ class QueryBuilder {
         $hasQuestionMarks = strpos($sql, '?') !== false;
 
         if ($hasNamedParams && $hasQuestionMarks) {
-            throw new \Exception("RAW SQL nemôže kombinovať pomenované premenné (:name) a otázniky (?) naraz.");
+            throw new \Exception("RAW SQL cannot combine named variables (:name) and question marks (?) at the same time.");
         }
 
         if ($hasNamedParams) {
@@ -702,7 +702,7 @@ class QueryBuilder {
         } else {
             $questionMarkCount = substr_count($sql, '?');
             if ($questionMarkCount > 0 && count($bindings) !== $questionMarkCount) {
-                throw new \Exception("Počet otáznikov (?) v SQL ($questionMarkCount) nesúhlasí s počtom hodnôt v bindings (" . count($bindings) . ").");
+                throw new \Exception("Number of question marks (?) in SQL ($questionMarkCount) doesn't match number of values in bindings (" . count($bindings) . ").");
             }
             $this->queryParts['raw'] = $sql;
             $this->bindings = $bindings;

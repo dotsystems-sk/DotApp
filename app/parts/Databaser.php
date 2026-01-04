@@ -545,10 +545,10 @@ class Databaser
         return null;
     }
 
-    // WHERE HAS - filtre podľa existencie relácie
+    // WHERE HAS - filter by relation existence
     public function whereHas($relation, callable $callback = null)
     {
-        // Implementácia whereHas - zatiaľ základná verzia
+        // Implementation of whereHas - basic version for now
         $this->statement['where_has'][] = [
             'relation' => $relation,
             'callback' => $callback
@@ -556,7 +556,7 @@ class Databaser
         return $this;
     }
 
-    // WHERE DOESNT HAVE - filtre podľa neexistencie relácie
+    // WHERE DOESNT HAVE - filter by relation non-existence
     public function whereDoesntHave($relation, callable $callback = null)
     {
         $this->statement['where_doesnt_have'][] = [
@@ -566,7 +566,7 @@ class Databaser
         return $this;
     }
 
-    // WITH COUNT - eager loading s počtom
+    // WITH COUNT - eager loading with count
     public function withCount($relations)
     {
         $relations = is_array($relations) ? $relations : [$relations];
@@ -574,7 +574,7 @@ class Databaser
         return $this;
     }
 
-    // LOAD MISSING - načítanie chýbajúcich relácií
+    // LOAD MISSING - load missing relations
     public function loadMissing($relations)
     {
         if ($this->statement['return_type'] === 'ORM' && !empty($this->statement['data'])) {
@@ -589,7 +589,7 @@ class Databaser
         return $this;
     }
 
-    // REFRESH - reload všetkých entít
+    // REFRESH - reload all entities
     public function refresh()
     {
         if ($this->statement['return_type'] === 'ORM' && !empty($this->statement['data'])) {
@@ -608,26 +608,26 @@ class Databaser
         return $this;
     }
 
-    // EXISTS - či existujú výsledky (optimalizované)
+    // EXISTS - whether results exist (optimized)
     public function exists()
     {
         // Klonujeme query pre LIMIT 1 optimalizáciu
         $originalQuery = clone $this->qb;
 
         $result = false;
-        $this->qb->select('1')->limit(1); // SELECT 1 LIMIT 1 je najrýchlejšie
+        $this->qb->select('1')->limit(1); // SELECT 1 LIMIT 1 is fastest
 
         $this->execute(function ($data) use (&$result) {
             $result = !empty($data);
-        }, null, false); // false = nespúšťať callback error handling
+        }, null, false); // false = don't trigger callback error handling
 
-        // Obnovíme pôvodný query
+        // Restore original query
         $this->qb = $originalQuery;
 
         return $result;
     }
 
-    // DOESNT EXIST - či neexistujú výsledky
+    // DOESNT EXIST - whether results don't exist
     public function doesntExist()
     {
         return !$this->exists();
@@ -671,7 +671,7 @@ class QueryObject
     public function getQuery()
     {
         $this->databaser->setQB($this->querybuilder);
-        return $this->databaser->getQuery(); // Ak máš túto metódu v Databaser (z driverov), inak ju pridaj ako wrapper
+        return $this->databaser->getQuery(); // If you have this method in Databaser (from drivers), otherwise add it as wrapper
     }
 
     public function first()
@@ -696,7 +696,7 @@ class QueryObject
         $countQueryBuilder->resetLimitOffset();
 
         $this->databaser->setQB($countQueryBuilder);
-        // Pre count query použijeme RAW return type
+        // For count query we use RAW return type
         $originalReturnType = $this->databaser->returnType;
         $this->databaser->returnType = 'RAW';
         $countResult = $this->databaser->execute(function ($result) {
@@ -744,28 +744,28 @@ class QueryObject
         return $this;
     }
 
-    // WHERE DOESNT HAVE - filtre podľa neexistencie relácie
+    // WHERE DOESNT HAVE - filter by relation non-existence
     public function whereDoesntHave($relation, callable $callback = null)
     {
         $this->databaser->whereDoesntHave($relation, $callback);
         return $this;
     }
 
-    // WITH COUNT - eager loading s počtom
+    // WITH COUNT - eager loading with count
     public function withCount($relations)
     {
         $this->databaser->withCount($relations);
         return $this;
     }
 
-    // LOAD MISSING - načítanie chýbajúcich relácií
+    // LOAD MISSING - load missing relations
     public function loadMissing($relations)
     {
         $this->databaser->loadMissing($relations);
         return $this;
     }
 
-    // REFRESH - reload všetkých entít
+    // REFRESH - reload all entities
     public function refresh()
     {
         $this->databaser->refresh();
@@ -778,7 +778,7 @@ class QueryObject
         return $this->databaser->exists();
     }
 
-    // DOESNT EXIST - či neexistujú výsledky
+    // DOESNT EXIST - whether results don't exist
     public function doesntExist()
     {
         return $this->databaser->doesntExist();

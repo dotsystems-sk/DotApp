@@ -85,7 +85,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
 	    $this->load($error_callback);
 	    foreach ($this->with as $relation) {
 		if (strpos($relation, 'hasMany:') === 0) {
-		    // Extrahuj názov tabuľky z relation kľúča
+		    // Extract table name from relation key
 		    $parts = explode(':', $relation);
 		    $relatedTable = $parts[1];
 		    $foreignKey = $parts[2] ?? 'user_id'; // Default fallback
@@ -185,7 +185,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
 	        return $this->query->paginate($perPage, $currentPage, $error_callback);
 	    }
 
-	    // Fallback pre už načítané dáta (neefektívne)
+	    // Fallback for already loaded data (inefficient)
 	    $this->load($error_callback);
 	    $offset = ($currentPage - 1) * $perPage;
 	    $items = array_slice($this->items, $offset, $perPage);
@@ -237,7 +237,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
 	    return $this;
 	}
 
-    // FIND - nájdenie prvého prvku podľa kritéria
+    // FIND - find first item by criteria
     public function find(callable $callback, $error_callback = null) {
         $this->load($error_callback);
         foreach ($this->items as $item) {
@@ -248,7 +248,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return null;
     }
 
-    // SORT BY - triedenie podľa poľa
+    // SORT BY - sort by field
     public function sortBy(string $field, $direction = 'asc', $error_callback = null): self {
         $this->load($error_callback);
         $direction = strtolower($direction);
@@ -273,7 +273,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $this->sortBy($field, 'desc', $error_callback);
     }
 
-    // GROUP BY - zoskupenie podľa poľa
+    // GROUP BY - group by field
     public function groupBy(string $field, $error_callback = null): array {
         $this->load($error_callback);
         $grouped = [];
@@ -310,13 +310,13 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $this;
     }
 
-    // TAKE - obmedzenie počtu prvkov
+    // TAKE - limit number of items
     public function take(int $limit, $error_callback = null): self {
         $this->load($error_callback);
         return new self(array_slice($this->items, 0, $limit), $this->db);
     }
 
-    // SKIP - preskočenie prvkov
+    // SKIP - skip items
     public function skip(int $offset, $error_callback = null): self {
         $this->load($error_callback);
         return new self(array_slice($this->items, $offset), $this->db);
@@ -328,7 +328,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return array_reduce($this->items, $callback, $initial);
     }
 
-    // SEARCH - pokročilé vyhľadávanie
+    // SEARCH - advanced search
     public function search(string $field, string $query, $error_callback = null): self {
         $this->load($error_callback);
         $query = strtolower($query);
@@ -339,7 +339,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         }, $error_callback);
     }
 
-    // CHUNK - spracovanie po častiach
+    // CHUNK - process in chunks
     public function chunk(int $size, callable $callback, $error_callback = null): self {
         $this->load($error_callback);
 
@@ -352,7 +352,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $this;
     }
 
-    // AVG - priemer hodnôt poľa
+    // AVG - average of field values
     public function avg(string $field, $error_callback = null) {
         $this->load($error_callback);
         if (empty($this->items)) return 0;
@@ -369,7 +369,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $count > 0 ? $sum / $count : 0;
     }
 
-    // SUM - súčet hodnôt poľa
+    // SUM - sum of field values
     public function sum(string $field, $error_callback = null) {
         $this->load($error_callback);
         $sum = 0;
@@ -382,7 +382,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $sum;
     }
 
-    // MIN - minimálna hodnota poľa
+    // MIN - minimum field value
     public function min(string $field, $error_callback = null) {
         $this->load($error_callback);
         if (empty($this->items)) return null;
@@ -397,7 +397,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $min;
     }
 
-    // MAX - maximálna hodnota poľa
+    // MAX - maximum field value
     public function max(string $field, $error_callback = null) {
         $this->load($error_callback);
         if (empty($this->items)) return null;
@@ -412,7 +412,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $max;
     }
 
-    // CONTAINS - či kolekcia obsahuje prvok
+    // CONTAINS - whether collection contains item
     public function contains($value, $error_callback = null): bool {
         $this->load($error_callback);
         if (is_callable($value)) {
@@ -451,7 +451,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return new self($intersect, $this->db);
     }
 
-    // MERGE - zlúčenie s inou kolekciou
+    // MERGE - merge with another collection
     public function merge(Collection $collection, $error_callback = null): self {
         $this->load($error_callback);
         $collection->load($error_callback);
@@ -481,7 +481,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return new self($zipped, $this->db);
     }
 
-    // PARTITION - rozdelenie na dve kolekcie podľa callbacku
+    // PARTITION - split into two collections by callback
     public function partition(callable $callback, $error_callback = null): array {
         $this->load($error_callback);
 
@@ -502,7 +502,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         ];
     }
 
-    // REJECT - odmietnutie prvkov podľa callbacku
+    // REJECT - reject items by callback
     public function reject(callable $callback, $error_callback = null): self {
         $this->load($error_callback);
 
@@ -513,7 +513,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return new self($filtered, $this->db);
     }
 
-    // SORT - triedenie podľa callbacku
+    // SORT - sort by callback
     public function sort(callable $callback = null, $error_callback = null): self {
         $this->load($error_callback);
 
@@ -541,7 +541,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $this;
     }
 
-    // SOME - či aspoň jeden prvok vyhovuje callbacku
+    // SOME - whether at least one item matches callback
     public function some(callable $callback, $error_callback = null): bool {
         $this->load($error_callback);
 
@@ -553,7 +553,7 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return false;
     }
 
-    // EVERY - či všetky prvky vyhovujú callbacku
+    // EVERY - whether all items match callback
     public function every(callable $callback, $error_callback = null): bool {
         $this->load($error_callback);
 
@@ -586,12 +586,12 @@ class Collection implements \IteratorAggregate, \Countable, \ArrayAccess {
         return $this;
     }
 
-    // PIPE - zreťazenie operácií cez callback
+    // PIPE - chain operations via callback
     public function pipe(callable $callback) {
         return $callback($this);
     }
 
-    // NTH - každý n-tý prvok
+    // NTH - every nth item
     public function nth(int $step, int $offset = 0, $error_callback = null): self {
         $this->load($error_callback);
 

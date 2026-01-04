@@ -2115,7 +2115,7 @@ class DotApp {
 	*/
 	
 	function repair_url($url) {
-        // Odstráni výkričníky a nahradí viacnásobné lomítka jedným (okrem ://)
+        // Remove exclamation marks and replace multiple slashes with single ones (except ://)
         $url = preg_replace(['/!+/', '/(?<=\w)\/+/'], ['', '/'], $url);
         return $url;
     }

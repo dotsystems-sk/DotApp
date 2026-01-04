@@ -45,16 +45,16 @@ class DatabaserMysqliDriver
         $databases["mysqli"] = [];
         $statement['execution_type'] = 0;
 
-        // Pomocná funkcia na určenie typu väzby (špecifické pre MySQLi)
+        // Helper function to determine binding type (MySQLi specific)
         $getBindingType = function ($value) {
             if (is_int($value)) return 'i';
             if (is_float($value)) return 'd';
             if (is_string($value)) return 's';
-            if (is_null($value)) return 's'; // NULL ako string v MySQLi
+            if (is_null($value)) return 's'; // NULL as string in MySQLi
             return 'b'; // Blob ako fallback
         };
 
-        // Vyčistenie statementu
+        // Clean up statement
         $clear_statement = function () use (&$statement) {
             unset($statement);
             $statement = [
@@ -150,7 +150,7 @@ class DatabaserMysqliDriver
             return null;
         });
 
-        // Načítanie výsledkov
+        // Loading results
         $databaser->addDriver("mysqli", "fetchArray", function (&$array) {
             return mysqli_fetch_assoc($array);
         });

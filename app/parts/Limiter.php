@@ -52,11 +52,11 @@ namespace Dotsystems\App\Parts;
 */
 
 class Limiter {
-    private $limits;           // Pole limitov [interval => max_požiadaviek]
+    private $limits;           // Array of limits [interval => max_requests]
     private $storageKeyPrefix = '_dotlimiter'; //
-    private $storageGetter;    // Callable na získanie dát
-    private $storageSetter;    // Callable na uloženie dát
-    private $identifier;       // Identifikátor (napr. IP, user ID)
+    private $storageGetter;    // Callable to retrieve data
+    private $storageSetter;    // Callable to save data
+    private $identifier;       // Identifier (e.g. IP, user ID)
 
     /**
      * Constructs a new Limiter instance with specified limits, identifier, and storage handlers.
@@ -99,10 +99,10 @@ class Limiter {
     }
 
     /**
-     * Skontroluje, či je požiadavka povolená pre danú routu
+     * Checks if request is allowed for given route
      * @param string|array $route Routa alebo pole rout
-     * @return bool Vracia true, ak je požiadavka povolená, false ak nie
-     * @throws Exception Ak je konfigurácia neplatná
+     * @return bool Returns true if request is allowed, false if not
+     * @throws Exception If configuration is invalid
      */
     public function isAllowed($route) {
         if (empty($this->limits)) {
@@ -119,20 +119,20 @@ class Limiter {
             $data = call_user_func($this->storageGetter, $storageKey, $this->identifier);
             $currentTime = time();
 
-            // Reset, ak interval vypršal
+            // Reset if interval expired
             if ($currentTime >= $data['reset_time']) {
                 $this->reset($storageKey, $interval);
                 $data = call_user_func($this->storageGetter, $storageKey, $this->identifier);
             }
 
-            // Ak je limit prekročený, zablokuj
+            // If limit exceeded, block
             if ($data['count'] >= $limit) {
                 $allowed = false;
                 break;
             }
         }
 
-        // Ak je povolené, inkrementuj všetky počítadlá
+        // If allowed, increment all counters
         if ($allowed) {
             foreach ($this->limits as $interval => $limit) {
                 $storageKey = $key . ':' . $interval;
@@ -146,9 +146,9 @@ class Limiter {
     }
 
     /**
-     * Vygeneruje unikátny kľúč pre routu a identifikátor
+     * Generates unique key for route and identifier
      * @param string|array $route Routa alebo pole rout
-     * @return string Vygenerovaný kľúč
+     * @return string Generated key
      */
     private function generateKey($route) {
         $routeKey = is_array($route) ? json_encode($route) : (string) $route;
@@ -156,7 +156,7 @@ class Limiter {
     }
 
     /**
-     * Inicializuje úložisko pre daný kľúč a interval
+     * Initializes storage for given key and interval
      * @param string $key Kľúč v úložisku
      * @param int $interval Interval v sekundách
      */
@@ -168,7 +168,7 @@ class Limiter {
     }
 
     /**
-     * Resetuje limiter pre daný kľúč a interval
+     * Resets limiter for given key and interval
      * @param string $key Kľúč v úložisku
      * @param int $interval Interval v sekundách
      */
@@ -181,10 +181,10 @@ class Limiter {
     }
 
     /**
-     * Získa zostávajúci počet požiadaviek pre routu a interval
+     * Gets remaining number of requests for route and interval
      * @param string|array $route Routa alebo pole rout
      * @param int $interval Interval v sekundách
-     * @return int Zostávajúci počet
+     * @return int Remaining count
      */
     public function getRemaining($route, $interval) {
         $key = $this->generateKey($route) . ':' . $interval;
@@ -195,10 +195,10 @@ class Limiter {
     }
 
     /**
-     * Získa čas do resetu v sekundách pre routu a interval
+     * Gets time until reset in seconds for route and interval
      * @param string|array $route Routa alebo pole rout
      * @param int $interval Interval v sekundách
-     * @return int Zostávajúci čas do resetu
+     * @return int Remaining time until reset
      */
     public function getResetTime($route, $interval) {
         $key = $this->generateKey($route) . ':' . $interval;
@@ -209,7 +209,7 @@ class Limiter {
     }
 
     /**
-     * Získa informácie o limite pre hlavičky
+     * Gets limit information for headers
      * @param string|array $route Routa alebo pole rout
      * @return array Pole s informáciami o limitoch
      */

@@ -18,7 +18,7 @@ class Entity {
     private $rules = [];
     private $relations = [];
     private $with = []; // Pre eager loading
-    private $morphRelations = []; // Pre polymorfné vzťahy
+    private $morphRelations = []; // For polymorphic relations
     private $events = []; // Event callbacks
     private $softDeletes = false; // Soft delete flag
     private $deletedAtColumn = 'deleted_at';
@@ -80,7 +80,7 @@ class Entity {
 
     public function table($tablename) {
         $tablename = preg_replace('/[^a-zA-Z0-9_]/', '', $tablename);
-        $this->table = $tablename; // Bez backticks - QueryBuilder si ich pridá sám podľa DB typu
+        $this->table = $tablename; // Without backticks - QueryBuilder will add them automatically based on DB type
     }
 
     public function setPrimaryKey($key) {
@@ -102,19 +102,19 @@ class Entity {
                     throw new \Exception("Pole '$field' je povinné.");
                 }
                 if ($r === 'integer' && !is_null($value) && !filter_var($value, FILTER_VALIDATE_INT)) {
-                    throw new \Exception("Pole '$field' musí byť celé číslo.");
+                    throw new \Exception("Field '$field' must be an integer.");
                 }
                 if ($r === 'string' && !is_null($value) && !is_string($value)) { // Doplnené
-                    throw new \Exception("Pole '$field' musí byť reťazec.");
+                    throw new \Exception("Field '$field' must be a string.");
                 }
                 if (preg_match('/^min:(\d+)$/', $r, $matches) && !is_null($value) && strlen($value) < $matches[1]) {
-                    throw new \Exception("Pole '$field' musí mať minimálne {$matches[1]} znakov.");
+                    throw new \Exception("Field '$field' must have at least {$matches[1]} characters.");
                 }
                 if (preg_match('/^max:(\d+)$/', $r, $matches) && !is_null($value) && strlen($value) > $matches[1]) { // Doplnené
-                    throw new \Exception("Pole '$field' môže mať maximálne {$matches[1]} znakov.");
+                    throw new \Exception("Field '$field' can have maximum {$matches[1]} characters.");
                 }
                 if ($r === 'email' && !is_null($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) { // Doplnené
-                    throw new \Exception("Pole '$field' musí byť platná emailová adresa.");
+                    throw new \Exception("Field '$field' must be a valid email address.");
                 }
             }
         }
@@ -269,7 +269,7 @@ class Entity {
     }
 
 
-    // FIND - statická metóda pre nájdenie podľa ID
+    // FIND - static method for finding by ID
     public static function find($db, $id, $callback_ok = null, $callback_error = null) {
         $instance = new static([], $db);
         $instance->db->q(function ($qb) use ($instance, $id) {
@@ -295,7 +295,7 @@ class Entity {
         return $instance;
     }
 
-    // UPDATE - hromadné update všetkých zmien
+    // UPDATE - bulk update of all changes
     public function update(array $attributes, $callback_ok = null, $callback_error = null) {
         foreach ($attributes as $key => $value) {
             $this->attributes[$key] = $value;
@@ -303,7 +303,7 @@ class Entity {
         $this->save($callback_ok, $callback_error);
     }
 
-    // IS DIRTY - či má entity neuložené zmeny
+    // IS DIRTY - whether entity has unsaved changes
     public function isDirty($attribute = null) {
         if ($attribute === null) {
             return !empty(array_diff_assoc($this->attributes, $this->originalAttributes));
@@ -313,7 +313,7 @@ class Entity {
                $this->attributes[$attribute] !== $this->originalAttributes[$attribute];
     }
 
-    // GET DIRTY - získa všetky zmenené atribúty
+    // GET DIRTY - get all changed attributes
     public function getDirty() {
         return array_diff_assoc($this->attributes, $this->originalAttributes);
     }
@@ -371,12 +371,12 @@ class Entity {
         return $this;
     }
 
-    // GET KEY - získa hodnotu primárneho kľúča
+    // GET KEY - get primary key value
     public function getKey() {
         return $this->attributes[$this->primaryKey] ?? null;
     }
 
-    // GET KEY NAME - získa názov primárneho kľúča
+    // GET KEY NAME - get primary key name
     public function getKeyName() {
         return $this->primaryKey;
     }
@@ -395,7 +395,7 @@ class Entity {
         }
     }
 
-    // USES TIMESTAMPS - či používa timestamps
+    // USES TIMESTAMPS - whether it uses timestamps
     public function usesTimestamps() {
         return array_key_exists('created_at', $this->attributes) &&
                array_key_exists('updated_at', $this->attributes);

@@ -1516,6 +1516,43 @@ if ($answer === 'y') {
 
 **Remember: User control and safety first! Always ask, never assume!**
 
+### Template Debugging with **RENDER_TO_FILE**
+
+**When debugging template syntax errors in PHP scripts**, enable template rendering to files:
+
+```php
+// In your debug script, set this constant
+define('__RENDER_TO_FILE__', TRUE); // Enable template debugging
+```
+
+**What this does:**
+
+- Template PHP code is written to `/app/runtime/generator/rendering_[md5]_[number].php`
+- Real files with line numbers instead of `eval()` errors
+- Files remain on disk if errors occur for inspection
+- Much easier debugging of template syntax issues
+
+**Example debug script:**
+
+```php
+<?php
+define('__RENDER_TO_FILE__', TRUE); // Enable template debugging
+define('__MAINTENANCE__', FALSE);
+define('__DEBUG__', TRUE);
+define('__ROOTDIR__', __DIR__);
+
+// ... rest of your script that uses templates
+
+try {
+    // Your template rendering code
+    $result = $renderer->renderView();
+    echo $result;
+} catch (Exception $e) {
+    echo "Template Error: " . $e->getMessage() . "\n";
+    echo "Check /app/runtime/generator/ for generated PHP files\n";
+}
+```
+
 ---
 
 _This guide ensures AI assistants can properly work with DotApp databases using the correct framework patterns and best practices._

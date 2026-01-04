@@ -405,9 +405,9 @@ class Config
             }
 
             if ($key === null) {
-                return self::$settings['modules'][$moduleName]; // Celý modul
+                return self::$settings['modules'][$moduleName]; // Whole module
             } else {
-                return self::$settings['modules'][$moduleName][$key] ?? null; // Konkrétny kľúč
+                return self::$settings['modules'][$moduleName][$key] ?? null; // Specific key
             }
         } else {
             // Setter / or 'set if not exist'

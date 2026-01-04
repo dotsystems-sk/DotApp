@@ -36,7 +36,7 @@ class DI {
     private $dotapp; // Instance-specific DotApp resolver (required)
     public $classname=null;
 
-    // Konštruktor
+    // Constructor
     function __construct($target, $dotapp=null) {
         if ($dotapp === null) $dotapp = DotApp::dotApp();
         if ($target instanceof \Closure || (!is_object($target) && !is_string($target))) {
@@ -56,7 +56,7 @@ class DI {
         return ($this->target);
     }
 
-    // Dynamické volania (inštancie)
+    // Dynamic calls (instances)
     public function __call($method, $arguments) {
         if (!is_object($this->target)) {
             throw new \Exception("Cannot call instance method $method on a non-object target. Use callStatic for class names.");
@@ -96,7 +96,7 @@ class DI {
             $parameters = $reflection->getParameters();
             $resolvedArguments = $this->resolveArguments($parameters, $arguments);
             $result = call_user_func_array([$this->target, $method], $resolvedArguments);
-            // Pre statické volania nie je $this relevantné, takže vraciame výsledok priamo
+            // For static calls $this is not relevant, so we return the result directly
             return $result;
         }
 
