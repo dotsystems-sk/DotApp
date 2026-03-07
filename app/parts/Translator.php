@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Class TRANSLATOR
  * 
@@ -58,42 +59,44 @@
 
 
 namespace Dotsystems\App\Parts;
+
 use \Dotsystems\App\DotApp;
 
-class Translator {
+class Translator
+{
 	
 	// ==========================================
 	// PRIVATE INSTANCE PROPERTIES
 	// ==========================================
-	
+
 	/** @var array Pole s prekladmi [locale => [key => value]] */
 	private $translations;
-	
+
 	/** @var string Default locale for fallback */
 	private $default_locale;
-	
+
 	/** @var string Current active locale */
 	private $locale;
-	
+
 	/** @var array List of translation files to load */
 	private $translation_files;
-	
+
 	/** @var array List of locale-specific translation files [locale => [files]] */
 	private $locale_translation_files;
-	
+
 	/** @var array Pole so subormi ktore boli ci neboli natiahnute [md5(file) => bool] */
 	private $translation_loaded;
-	
+
 	/** @var array Legacy - locale translation loaded tracking */
 	private $locale_translation_loaded;
-	
+
 	/** @var bool All translations loaded??? */
 	private $translations_loaded;
 
 	// ==========================================
 	// STATIC SINGLETON INSTANCE
 	// ==========================================
-	
+
 	/** @var self|null Single instance for facade pattern */
 	private static $instance = null;
 	
@@ -101,18 +104,19 @@ class Translator {
 	// ==========================================
 	// CONSTRUCTOR
 	// ==========================================
-	
+
 	/**
 	 * Constructor - ensures only one instance exists
 	 * Sets up global $translator variable for backward compatibility
 	 */
-	function __construct() {
+	function __construct()
+	{
 		// Ak uz instancia existuje, len nastavime globalnu premennu a vratime sa
 		if (self::$instance !== null) {
 			$this->setupGlobalProxy();
 			return;
 		}
-		
+
 		// Inicializacia stavu
 		$this->locale = "en_us";
 		$this->default_locale = "en_us";
@@ -122,32 +126,33 @@ class Translator {
 		$this->translation_files = array();
 		$this->locale_translation_files = array();
 		$this->translation_loaded = array();
-		
+
 		// Ulozime this ako singleton instanciu
 		self::$instance = $this;
-		
+
 		// Nastavime globalnu premennu $translator (spatna kompatibilita)
 		$this->setupGlobalProxy();
-    }
-	
+	}
+
 	/**
 	 * Sets up global $translator variable as callable for backward compatibility
 	 * This allows: $translator("text") and $translator([])->method()
 	 */
-	private function setupGlobalProxy() {
+	private function setupGlobalProxy()
+	{
 		global $translator;
-		
+
 		$instance = self::$instance;
-		
+
 		// Vytvorime callable ktory proxuje na tuto instanciu
-		$translator = function($text="",...$args) use ($instance) {
+		$translator = function ($text = "", ...$args) use ($instance) {
 			// Ak je prazdne pole, vratime instanciu pre method chaining
 			if ($text === []) {
 				return $instance;
 			}
 			// Ak je text, prelozime ho
-			if (isset($text) && ( ! is_array($text) ) ) {
-				return $instance->translate($text,$args);
+			if (isset($text) && (! is_array($text))) {
+				return $instance->translate($text, $args);
 			}
 			// Fallback - vratime original
 			return $text;
@@ -157,13 +162,14 @@ class Translator {
 	// ==========================================
 	// STATIC FACADE METHODS (Modern API)
 	// ==========================================
-	
+
 	/**
 	 * Get singleton instance
 	 * 
 	 * @return self
 	 */
-	public static function getInstance() {
+	public static function getInstance()
+	{
 		if (self::$instance === null) {
 			new self();
 		}
@@ -173,7 +179,7 @@ class Translator {
 	// ==========================================
 	// PATH RESOLUTION HELPER
 	// ==========================================
-	
+
 	/**
 	 * Resolve file path - supports modular syntax
 	 * 
@@ -191,23 +197,24 @@ class Translator {
 	 * @param string $file File path (regular or modular syntax)
 	 * @return string Resolved absolute file path
 	 */
-	private function resolveFilePath($file) {
+	private function resolveFilePath($file)
+	{
 		// Check if it's a modular path (contains ":" and not a Windows drive letter like "C:")
 		if (strpos($file, ':') !== false && !preg_match('/^[A-Za-z]:/', $file)) {
 			// Parse modular path: "ModuleName:path/to/file.json"
 			$parts = explode(':', $file, 2);
 			$moduleName = trim($parts[0]);
 			$filePath = isset($parts[1]) ? ltrim($parts[1], '/\\') : '';
-			
+
 			// Build full path to module's translations folder
 			$rootDir = defined('__ROOTDIR__') ? __ROOTDIR__ : '';
 			return $rootDir . '/app/modules/' . $moduleName . '/translations/' . $filePath;
 		}
-		
+
 		// Regular path - prepend __ROOTDIR__ if defined
 		return defined('__ROOTDIR__') ? __ROOTDIR__ . $file : $file;
 	}
-	
+
 	/**
 	 * Translate text (static facade)
 	 * 
@@ -215,11 +222,12 @@ class Translator {
 	 * @param mixed ...$args Dynamic arguments for {{ arg0 }}, {{ arg1 }}, etc.
 	 * @return string Translated text or original if not found
 	 */
-	public static function trans($text, ...$args) {
+	public static function trans($text, ...$args)
+	{
 		$inst = self::getInstance();
 		return $inst->translate($text, $args);
 	}
-	
+
 	/**
 	 * Alias for trans() - shorter version
 	 * 
@@ -227,54 +235,59 @@ class Translator {
 	 * @param mixed ...$args Dynamic arguments
 	 * @return string Translated text
 	 */
-	public static function t($text, ...$args) {
+	public static function t($text, ...$args)
+	{
 		return self::trans($text, ...$args);
 	}
-	
+
 	/**
 	 * Set current locale (static facade)
 	 * 
 	 * @param string $locale Locale code (e.g., "sk_sk", "en_us")
 	 * @return self Instance for chaining
 	 */
-	public static function setLocale($locale) {
+	public static function setLocale($locale)
+	{
 		$inst = self::getInstance();
 		$inst->locale = strtolower($locale);
 		return $inst;
 	}
-	
+
 	/**
 	 * Get current locale (static facade)
 	 * 
 	 * @return string Current locale
 	 */
-	public static function getLocale() {
+	public static function getLocale()
+	{
 		$inst = self::getInstance();
 		return $inst->locale;
 	}
-	
+
 	/**
 	 * Set default fallback locale (static facade)
 	 * 
 	 * @param string $locale Default locale code
 	 * @return self Instance for chaining
 	 */
-	public static function setDefaultLocale($locale) {
+	public static function setDefaultLocale($locale)
+	{
 		$inst = self::getInstance();
 		$inst->default_locale = strtolower($locale);
 		return $inst;
 	}
-	
+
 	/**
 	 * Get default locale (static facade)
 	 * 
 	 * @return string Default locale
 	 */
-	public static function getDefaultLocale() {
+	public static function getDefaultLocale()
+	{
 		$inst = self::getInstance();
 		return $inst->default_locale;
 	}
-	
+
 	/**
 	 * Load multi-locale translation file (static facade)
 	 * File should contain: { "en_us": {...}, "sk_sk": {...} }
@@ -287,19 +300,20 @@ class Translator {
 	 * @param string $file Path to JSON file (regular or modular syntax)
 	 * @return self Instance for chaining
 	 */
-	public static function loadFile($file) {
+	public static function loadFile($file)
+	{
 		$inst = self::getInstance();
 		$fullPath = $inst->resolveFilePath($file);
-		
+
 		if (file_exists($fullPath)) {
 			$inst->translation_files[] = $fullPath;
 			$inst->translation_loaded[md5($fullPath)] = false;
 			$inst->translations_loaded = false;
 		}
-		
+
 		return $inst;
 	}
-	
+
 	/**
 	 * Load single-locale translation file (static facade)
 	 * File should contain: { "key": "value", ... }
@@ -313,11 +327,12 @@ class Translator {
 	 * @param string $locale Locale for this file
 	 * @return self Instance for chaining
 	 */
-	public static function loadLocaleFile($file, $locale) {
+	public static function loadLocaleFile($file, $locale)
+	{
 		$inst = self::getInstance();
 		$fullPath = $inst->resolveFilePath($file);
 		$locale = strtolower($locale);
-		
+
 		if (file_exists($fullPath)) {
 			if (!isset($inst->locale_translation_files[$locale])) {
 				$inst->locale_translation_files[$locale] = array();
@@ -326,10 +341,10 @@ class Translator {
 			$inst->translation_loaded[md5($fullPath)] = false;
 			$inst->translations_loaded = false;
 		}
-		
+
 		return $inst;
 	}
-	
+
 	/**
 	 * Load translations from PHP array (static facade)
 	 * Array should be: ["en_us" => ["key" => "value"], "sk_sk" => [...]]
@@ -337,13 +352,14 @@ class Translator {
 	 * @param array $translations Translations array
 	 * @return self Instance for chaining
 	 */
-	public static function loadArray($translations) {
+	public static function loadArray($translations)
+	{
 		$inst = self::getInstance();
 		$translations = $inst->array_change_key_case_recursive($translations);
 		$inst->translations = $inst->array_merge_recursive($inst->translations, $translations);
 		return $inst;
 	}
-	
+
 	/**
 	 * Load translations for specific locale from PHP array (static facade)
 	 * Array should be: ["key" => "value", ...]
@@ -352,19 +368,20 @@ class Translator {
 	 * @param string $locale Locale for these translations
 	 * @return self Instance for chaining
 	 */
-	public static function loadLocaleArray($translations, $locale) {
+	public static function loadLocaleArray($translations, $locale)
+	{
 		$inst = self::getInstance();
 		$locale = strtolower($locale);
 		$translations = $inst->array_change_key_case_recursive($translations);
-		
+
 		if (!isset($inst->translations[$locale])) {
 			$inst->translations[$locale] = array();
 		}
 		$inst->translations[$locale] = $inst->array_merge_recursive($inst->translations[$locale], $translations);
-		
+
 		return $inst;
 	}
-	
+
 	/**
 	 * Check if translation exists for given key (static facade)
 	 * 
@@ -372,43 +389,46 @@ class Translator {
 	 * @param string|null $locale Locale to check (null = current locale)
 	 * @return bool True if translation exists
 	 */
-	public static function has($key, $locale = null) {
+	public static function has($key, $locale = null)
+	{
 		$inst = self::getInstance();
 		$inst->ensureTranslationsLoaded();
-		
+
 		$locale = $locale !== null ? strtolower($locale) : $inst->locale;
 		$key = strtolower($key);
-		
+
 		return isset($inst->translations[$locale][$key]);
 	}
-	
+
 	/**
 	 * Get all translations for current or specified locale (static facade)
 	 * 
 	 * @param string|null $locale Locale (null = current)
 	 * @return array All translations for locale
 	 */
-	public static function all($locale = null) {
+	public static function all($locale = null)
+	{
 		$inst = self::getInstance();
 		$inst->ensureTranslationsLoaded();
-		
+
 		$locale = $locale !== null ? strtolower($locale) : $inst->locale;
-		
+
 		return isset($inst->translations[$locale]) ? $inst->translations[$locale] : array();
 	}
-	
+
 	// ==========================================
 	// LEGACY INSTANCE METHODS (Backward Compatibility)
 	// ==========================================
-	
-	public function __debugInfo() {
-        return [
-            'publicData' => 'DotApp Translator v1.7 - Facade Pattern',
+
+	public function __debugInfo()
+	{
+		return [
+			'publicData' => 'DotApp Translator v1.7 - Facade Pattern',
 			'locale' => $this->locale,
 			'default_locale' => $this->default_locale
-        ];
-    }
-	
+		];
+	}
+
 	/**
 	 * Core translate method
 	 * 
@@ -416,41 +436,43 @@ class Translator {
 	 * @param array $args Dynamic arguments for {{ arg0 }}, {{ arg1 }}, etc.
 	 * @return string Translated text or original if not found (fallback)
 	 */
-	public function translate($text, $args = array()) {
+	public function translate($text, $args = array())
+	{
 		$textl = strtolower($text);
-		
+
 		// Ak nie su loadnute vsetky preklady, doloadneme tie ktore nie su...
 		$this->ensureTranslationsLoaded();
-		
+
 		if (isset($this->translations[$this->locale][$textl])) {
 			$navrat = $this->translations[$this->locale][$textl];
 		} else {
 			$navrat = $text;
 		}
 
-        $argnum = 0;
-        foreach ($args as $arg) {
-            $navrat = str_replace("{{ arg".$argnum." }}", $arg, $navrat);
-            $argnum++;
-        }
+		$argnum = 0;
+		foreach ($args as $arg) {
+			$navrat = str_replace("{{ arg" . $argnum . " }}", $arg, $navrat);
+			$argnum++;
+		}
 
 		return $navrat;
 	}
-	
+
 	/**
 	 * Ensure all pending translation files are loaded
 	 */
-	private function ensureTranslationsLoaded() {
+	private function ensureTranslationsLoaded()
+	{
 		if ($this->translations_loaded == true) {
 			return;
 		}
-		
+
 		foreach ($this->translation_files as $file) {
 			if (!isset($this->translation_loaded[md5($file)]) || !$this->translation_loaded[md5($file)]) {
 				$this->load_translation_file_now($file);
 			}
 		}
-		
+
 		if (isset($this->locale_translation_files[$this->locale]) && is_array($this->locale_translation_files[$this->locale])) {
 			foreach ($this->locale_translation_files[$this->locale] as $file) {
 				if (!isset($this->translation_loaded[md5($file)]) || !$this->translation_loaded[md5($file)]) {
@@ -458,30 +480,32 @@ class Translator {
 				}
 			}
 		}
-		
+
 		$this->translations_loaded = true;
 	}
-	
+
 	/**
 	 * Set locale (legacy method)
 	 * @param string $locale
 	 * @return Translator
 	 */
-	public function set_locale($locale) {
+	public function set_locale($locale)
+	{
 		$this->locale = strtolower($locale);
 		return $this;
 	}
-	
+
 	/**
 	 * Set default locale (legacy method)
 	 * @param string $locale
 	 * @return Translator
 	 */
-	public function set_default_locale($locale) {
+	public function set_default_locale($locale)
+	{
 		$this->default_locale = strtolower($locale);
 		return $this;
 	}
-	
+
 	/**
 	 * Load multi-locale translation file (legacy method)
 	 * 
@@ -493,7 +517,8 @@ class Translator {
 	 * @param string $file Path to JSON file (regular or modular syntax)
 	 * @return Translator
 	 */
-	public function load_translation_file($file) {
+	public function load_translation_file($file)
+	{
 		$fullPath = $this->resolveFilePath($file);
 		if (file_exists($fullPath)) {
 			$this->translation_files[] = $fullPath;
@@ -502,12 +527,13 @@ class Translator {
 		}
 		return $this;
 	}
-	
+
 	/**
 	 * Load multi-locale translation file immediately
 	 * Expected format: { "en_us": { "key": "value" }, "sk_sk": { "key": "value" } }
 	 */
-	private function load_translation_file_now($file) {
+	private function load_translation_file_now($file)
+	{
 		/*
 			Subor prekladu je JSON format. 
 			{
@@ -528,12 +554,12 @@ class Translator {
 				$json_translation = $this->array_change_key_case_recursive($json_translation);
 				$this->translations = $this->array_merge_recursive($this->translations, $json_translation);
 				$this->translation_loaded[md5($file)] = true;
-			}				
+			}
 		} catch (\Exception $e) {
 			// Silently fail
 		}
 	}
-	
+
 	/**
 	 * Load single-locale translation file (legacy method)
 	 * 
@@ -546,10 +572,11 @@ class Translator {
 	 * @param string $locale Locale for this file
 	 * @return Translator
 	 */
-	public function load_locale_translation_file($file, $locale) {
+	public function load_locale_translation_file($file, $locale)
+	{
 		$fullPath = $this->resolveFilePath($file);
 		$locale = strtolower($locale);
-		
+
 		if (file_exists($fullPath)) {
 			if (!isset($this->locale_translation_files[$locale])) {
 				$this->locale_translation_files[$locale] = array();
@@ -560,12 +587,13 @@ class Translator {
 		}
 		return $this;
 	}
-	
+
 	/**
 	 * Load single-locale translation file immediately
 	 * Expected format: { "key": "value", ... }
 	 */
-	private function load_locale_translation_file_now($file, $locale) {
+	private function load_locale_translation_file_now($file, $locale)
+	{
 		/*
 			V subore ktore musi byt PHP skriptom ma byt pole s nazvom $translation a to pole musi mat definovane preklady podla locales...;
 			{
@@ -583,30 +611,32 @@ class Translator {
 				}
 				$this->translations[$locale] = $this->array_merge_recursive($this->translations[$locale], $json_translation);
 				$this->translation_loaded[md5($file)] = true;
-			}	
+			}
 		} catch (\Exception $e) {
 			// Silently fail
 		}
 	}
-	
+
 	/**
 	 * Load translations from array (legacy method)
 	 * @param array $translation
 	 * @return Translator
 	 */
-	public function load_translation($translation) {
+	public function load_translation($translation)
+	{
 		$translation = $this->array_change_key_case_recursive($translation);
 		$this->translations = $this->array_merge_recursive($this->translations, $translation);
 		return $this;
 	}
-	
+
 	/**
 	 * Load locale-specific translations from array (legacy method)
 	 * @param array $translation
 	 * @param string $locale
 	 * @return Translator
 	 */
-	public function load_locale_translation($translation, $locale) {
+	public function load_locale_translation($translation, $locale)
+	{
 		$locale = strtolower($locale);
 		$translation = $this->array_change_key_case_recursive($translation);
 		if (!isset($this->translations[$locale])) {
@@ -628,15 +658,16 @@ class Translator {
 	 * @param array $array
 	 * @return array
 	 */
-	public function array_change_key_case_recursive($array) {
-		return array_map(function($item) {
+	public function array_change_key_case_recursive($array)
+	{
+		return array_map(function ($item) {
 			if (is_array($item)) {
 				$item = $this->array_change_key_case_recursive($item);
 			}
 			return $item;
 		}, array_change_key_case($array, CASE_LOWER));
 	}
-	
+
 	/**
 	 * Recursively merge two arrays
 	 * Unlike PHP's array_merge_recursive, this properly overwrites values
@@ -645,7 +676,8 @@ class Translator {
 	 * @param array $array2
 	 * @return array
 	 */
-	public function array_merge_recursive(array $array1, array $array2) {
+	public function array_merge_recursive(array $array1, array $array2)
+	{
 		$merged = $array1;
 
 		foreach ($array2 as $key => $value) {
@@ -669,7 +701,4 @@ class Translator {
 
 		return $merged;
 	}
-	
 }
-
-?>

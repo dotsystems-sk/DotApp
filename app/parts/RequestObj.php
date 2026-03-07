@@ -334,6 +334,24 @@ class RequestObj {
         $method = $this->getMethod(); // Use existing getMethod() to get the HTTP method
         $data = [];
     
+        $parseBodyData = function() {
+            $parsed = [];
+            $input = file_get_contents('php://input');
+            if (!is_string($input) || $input === '') {
+                return $parsed;
+            }
+
+            // Prefer JSON payloads (e.g. application/json)
+            $jsonData = json_decode($input, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
+                return $jsonData;
+            }
+
+            // Fallback to classic query string style body
+            parse_str($input, $parsed);
+            return is_array($parsed) ? $parsed : [];
+        };
+
         switch ($method) {
             case 'get':
                 $data = $_GET ?? [];
@@ -341,41 +359,20 @@ class RequestObj {
     
             case 'post':
                 $data = $_POST ?? [];
+                // For JSON POST requests, $_POST stays empty - parse raw body as fallback.
+                if (empty($data)) {
+                    $data = $parseBodyData();
+                }
                 break;
     
             case 'put':
             case 'patch':
-                // Parse raw input (e.g., JSON or form data)
-                $input = file_get_contents('php://input');
-                if (!empty($input)) {
-                    // Try parsing as JSON first
-                    $jsonData = json_decode($input, true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $data = $jsonData;
-                        DotApp::DotApp()->protect($data);
-                    } else {
-                        // If not JSON, parse as form data
-                        parse_str($input, $data);
-                        DotApp::DotApp()->protect($data);
-                    }
-                }
+                $data = $parseBodyData();
                 break;
     
             case 'delete':
                 // DELETE requests may include data in the body
-                $input = file_get_contents('php://input');
-                if (!empty($input)) {
-                    // Try parsing as JSON
-                    $jsonData = json_decode($input, true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $data = $jsonData;
-                        DotApp::DotApp()->protect($data);
-                    } else {
-                        // Parse as form data
-                        parse_str($input, $data);
-                        DotApp::DotApp()->protect($data);
-                    }
-                }
+                $data = $parseBodyData();
                 // Note: $_DELETE is not natively supported in PHP, but check if it's manually populated
                 if (!empty($_DELETE)) {
                     $data = array_merge($data, $_DELETE);

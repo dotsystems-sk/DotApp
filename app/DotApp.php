@@ -870,7 +870,7 @@ class DotApp {
                 return $callback->call(...$args);
             };
         }
-        
+       
         // Ak je pole middleware, alebo middleware Chain
         if ($callback instanceof Middleware) {
             $chain = $callback->chain();
@@ -887,7 +887,7 @@ class DotApp {
 
         if (Middleware::instanceOfMiddlewareChain($callback)) {
             $chain = $callback;
-            $fn = function() use ($chain) {                
+            $fn = function() use ($chain) {               
                 $navratFn = $chain->callAllMiddlewares();
                 if ($navratFn instanceof Response) {
                     $this->runRequest($this->request);
@@ -923,7 +923,7 @@ class DotApp {
                     throw new \InvalidArgumentException("Indexed array must contain 2 or 3 elements (class and function, or module, class, and function)!");
                 }
             }
-        
+       
             // Vytvorenie textového formátu
             if ($module !== null && $module !== '' && $class !== null && $class !== '' && $function !== null && $function !== '') {
                 $callback = "$module:$class@$function";
@@ -933,7 +933,7 @@ class DotApp {
                 throw new \InvalidArgumentException("Callback must contain at least non-empty class and function!");
             }
         }
-    
+       
         if (is_string($callback)) {
             // Ak je na konci vykrincnik, tak DI uplne vynechame (ultra rychly call)
             $useDI = true;
@@ -942,26 +942,37 @@ class DotApp {
                 $callback = rtrim($callback, '!');
             }
 
+            // Detekcia modelu pomocou *
+            $isModel = false;
+            if (substr($callback, 0, 1) === '*') {
+                $isModel = true;
+                $callback = substr($callback, 1);
+            }
+
             if ($this->validateFnName($callback)) {
                 $callbackA = explode("@", $callback);
                 $funkcia = $callbackA[1];
-        
+       
                 if (strpos($callbackA[0], ":") !== false) {
                     // Module handling
                     $callback1A = explode(":", $callbackA[0]);
                     if (strpos($callback1A[1], "\\") !== false) {
                         $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\\' .$callback1A[1];
                     } else {
-                        $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Controllers\\' .$callback1A[1];
+                        if ($isModel) {
+                            $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Models\\' .$callback1A[1];
+                        } else {
+                            $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Controllers\\' .$callback1A[1];
+                        }
                     }
-                } else {                
+                } else {               
                     $trieda = $callbackA[0];
                 }
          
                 return function(...$args) use ($trieda, $funkcia, $argsSend, $useDI) {
                     $trieda = str_replace("\\\\","\\",$trieda);
                     $trieda = str_replace("\\\\","\\",$trieda);
-        
+       
                     // Ak mame priznak !, tak robime len cisty call bez reflexie a DI
                     if ($useDI === false) {
                         if (!class_exists($trieda)) throw new \Exception("Class $trieda not found!");
