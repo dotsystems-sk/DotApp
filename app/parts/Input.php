@@ -81,7 +81,7 @@ class Input {
     /** @var DotApp */
     private $dotApp;
 
-    private function __construct($groupName) {
+    function __construct($groupName="nogroup") {
         $this->groupName = $groupName;
         $this->dotApp = DotApp::dotApp();
     }
@@ -113,6 +113,40 @@ class Input {
             'options' => $attrs['options'] ?? []
         ];
         return $this;
+    }
+
+    public function formFunction($action,$method,$functionName,$caller) {
+        $method = strtoupper($method);
+        if (!in_array(strtoupper($method), ['GET', 'POST']) && $functionName == '') {
+            throw new \Exception('Invalid form method. Use GET or POST.');
+        } else if ($functionName != '') {
+            if (!in_array(strtoupper($method), ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'])) {
+                throw new \Exception('Invalid automatic form method !');
+            }
+            $overWriteMethod = $method;
+            $method = "POST";
+        }
+        // Generate encryption key
+        $randomEncKeyPerForm = base64_encode(random_bytes(32));
+        $randomEncKeyPerFormPublic = $this->dotApp->encrypt($randomEncKeyPerForm);
+        $encryptedFnName = $this->dotApp->encrypt($functionName, $randomEncKeyPerForm);
+        $encryptedAction = $this->dotApp->encrypt($action, $randomEncKeyPerForm);
+        $encryptedMethod = !empty($overWriteMethod) ? $this->dotApp->encrypt($overWriteMethod, $randomEncKeyPerForm) : '';
+
+        if ($caller === $this) {
+            // Hidden fields
+            $this->hidden('dotapp-secure-auto-fnname', $encryptedFnName, [], false);
+            $this->hidden('dotapp-secure-auto-fnname-action', $encryptedAction, [], false);
+            $this->hidden('dotapp-secure-auto-fnname-method', $encryptedMethod, [], false);
+            $this->hidden('dotapp-secure-auto-fnname-public', $randomEncKeyPerFormPublic, [], false);
+        } else {
+            return '
+                <input type="hidden" name="dotapp-secure-auto-fnname" value="'.$encryptedFnName.'">
+                <input type="hidden" name="dotapp-secure-auto-fnname-action" value="'.$encryptedAction.'">
+                <input type="hidden" name="dotapp-secure-auto-fnname-method" value="'.$encryptedMethod.'">
+                <input type="hidden" name="dotapp-secure-auto-fnname-public" value="'.$randomEncKeyPerFormPublic.'">
+            ';
+        }
     }
 
     public function text($name, $attrs = [], $rules = '') { return $this->add('text', $name, $attrs, $rules); }
