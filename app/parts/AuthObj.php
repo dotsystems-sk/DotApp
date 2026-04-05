@@ -296,7 +296,7 @@ class AuthObj {
                     $reply['confirmed'] = true;
                     $reply['error'] = 0;
                     $this->authData['logged_stage'] = 1;
-                    if ($this->authData['logged_stage'] === true || Config::session("rm_always_use") === true) $this->setRmToken();
+                    if ($this->authData['rm'] === true || Config::session("rm_always_use") === true) $this->setRmToken();
                     return $reply;
                 } else {
                     $reply['error'] = 2;
@@ -308,7 +308,7 @@ class AuthObj {
             if (isset($tfa['tfa_sms']) && $tfa['tfa_sms'] !== null && $this->authData['tfa_sms'] !== null) {
                 if ($tfa['tfa_sms'] == $this->authData['tfa_sms']) {
                     $this->authData['logged_stage'] = 1;
-                    if ($this->authData['logged_stage'] === true || Config::session("rm_always_use") === true) $this->setRmToken();
+                    if ($this->authData['rm'] === true || Config::session("rm_always_use") === true) $this->setRmToken();
                     $reply['error'] = 0;
                     $reply['confirmed'] = true;
                     return $reply;
@@ -604,14 +604,14 @@ class AuthObj {
                 });
                 $randomRmCookieName = bin2hex(random_bytes(16));
 
-                setcookie('dotapp_rm', $this->dotapp->encrypt($randomRmCookieName, "RememberMe :)", true), [
+                setcookie('dotapp_rm', $this->dotapp->encrypt($randomRmCookieName, Config::get("app","rm_key") ?? "RememberMe :)", true), [
                     'expires' => time() + 3600*24*365,
                     'path' => Config::session("path"),
 					'secure' => Config::session("secure"),
 					'httponly' => Config::session("httponly"),
 					'samesite' => Config::session("samesite")
                 ]);
-                setcookie('dotapp_rm'.hash('sha256',$randomRmCookieName), $this->dotapp->encrypt(hash('sha256',$randomRmCookieName.$rmtoken), "RandomCookieName :)", true), [
+                setcookie('dotapp_rm'.hash('sha256',$randomRmCookieName), $this->dotapp->encrypt(hash('sha256',$randomRmCookieName.$rmtoken), Config::get("app","rmrcm_key") ??"RandomCookieName :)", true), [
                     'expires' => time() + 3600*24*365,
                     'path' => Config::session("path"),
                     'secure' => Config::session("secure"),
@@ -663,7 +663,7 @@ class AuthObj {
             return false;
         } else {
             $rmCookieName = $_COOKIE['dotapp_rm'];
-            $rmCookieName = $this->dotapp->decrypt($rmCookieName, "RememberMe :)", true);
+            $rmCookieName = $this->dotapp->decrypt($rmCookieName, Config::get("app","rm_key") ?? "RememberMe :)", true);
             if ($rmCookieName === false) return false;
             $rmCookieNameSha256 = hash('sha256',$rmCookieName);
             if (!isSet($_COOKIE['dotapp_rm'.$rmCookieNameSha256])) {
@@ -678,7 +678,7 @@ class AuthObj {
             $token = $_COOKIE['dotapp_'.Config::get("app","name_hash")];
             $this->dotApp->unprotect($token);
             if ($this->validateRmToken($token) === true) {
-                $correctRmForToken = $this->dotapp->decrypt($rmCookieValue, "RandomCookieName :)", true);
+                $correctRmForToken = $this->dotapp->decrypt($rmCookieValue, Config::get("app","rmrcm_key") ?? "RandomCookieName :)", true);
                 if ($correctRmForToken === false) return false;
                 if ($correctRmForToken !== hash('sha256',$rmCookieName.$token)) {
                     return false;

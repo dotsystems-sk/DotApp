@@ -94,6 +94,8 @@ class Config
             'name_hash' => '', // Do not fill this!
             'c_enc_key' => 'K9xP7mW3qT2rY6vL8cF4hD5aE0zJ1nB2X7bP9qRtY2mW4kZjN6vL8cF3hD5aE0xQ', // Set the encryption key here, or use Config::set("app","c_enc_key","YOUR KEY");
             'version' => '1.0',
+            'rm_key' => 'RememberMe :)', //Kluc ktorym sa sifruje remember-me token,
+            'rmrcm_key' => 'RandomCookieName :)', //Kluc ktorzm sa sifruje random token remember-me cookie nazov
         ],
         'session' => [
             'driver' => 'default', // default - preconfigured
