@@ -28,6 +28,7 @@
 
 
 namespace Dotsystems\App\Parts;
+use \Dotsystems\App\DotApp;
 
 abstract class Listeners {
 	/*
@@ -60,6 +61,11 @@ abstract class Listeners {
             $this->register($dotapp);
         }		
 	}
+
+    public static function call($method, ...$arguments) {
+        $fn = DotApp::DotApp()->stringToCallable($method);
+        return $fn(...$arguments);
+    }
 	
 	public function __debugInfo() {
         return [

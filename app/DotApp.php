@@ -855,6 +855,10 @@ class DotApp {
         } 
     }
 
+	public static function call($method, ...$arguments) {
+		$fn = DotApp::DotApp()->stringToCallable($method);
+		return $fn(...$arguments);
+	}
     
 
     private function validateFnName($input) {
@@ -1057,7 +1061,7 @@ class DotApp {
     * The function supports three modes:
     *
     * 1. **Basic event listener:** Registers a listener for a specific event.
-    *    Example usage: $listenerid = $dotapp->on("user.registered", function() { echo "Finally someone registered."; });
+    *    Example usage: $listenerid = $dotapp->on("user.registered", function($param1, $param2...) { echo "Finally someone registered."; });
     *
     * 2. **Route-based event listener:** Registers a listener that is triggered only
     *    if the current URL matches the specified route pattern.
