@@ -953,6 +953,13 @@ class DotApp {
                 $callback = substr($callback, 1);
             }
 
+			// Detekcia middleware pomocou #
+			$isMiddleware = false;
+            if (substr($callback, 0, 1) === '#') {
+                $isMiddleware = true;
+                $callback = substr($callback, 1);
+            }
+
             if ($this->validateFnName($callback)) {
                 $callbackA = explode("@", $callback);
                 $funkcia = $callbackA[1];
@@ -965,6 +972,8 @@ class DotApp {
                     } else {
                         if ($isModel) {
                             $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Models\\' .$callback1A[1];
+                        } elseif ($isMiddleware) {
+                            $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Middleware\\' .$callback1A[1];
                         } else {
                             $trieda = '\Dotsystems\App\Modules\\' . $callback1A[0] . '\Controllers\\' .$callback1A[1];
                         }
