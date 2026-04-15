@@ -221,7 +221,9 @@ class Bridge {
                         exchange("'.$kluc.'","'.$addNoise(base64_encode($exchangeThisKey)).'",this);
                     }
                     ';
+                    
                     $dotappJS = str_replace('#exchange(){return"A2c9981ddd475413acb6bfbcd9054fb3fcb1690d3"}',$exChange,$dotappJS);
+                    $dotappJS = str_replace('#exchange() { return "A2c9981ddd475413acb6bfbcd9054fb3fcb1690d3" }',$exChange,$dotappJS);
                     $exChange2 = 'exchangenoise($key) { return $key.replace(/}/g, "=").replace(/' . $noiseRegex . '/g, ""); }';
                     $dotappJS = str_replace("exchangenoise() {}",$exChange2,$dotappJS);
                 }
