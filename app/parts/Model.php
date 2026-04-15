@@ -26,7 +26,7 @@ use \Dotsystems\App\Parts\Controller;
 use \Dotsystems\App\DotApp;
 
 class Model extends Controller {
-	
+	private static $table;
 }
 
 ?>

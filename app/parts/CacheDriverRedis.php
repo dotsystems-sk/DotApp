@@ -206,7 +206,7 @@ class CacheDriverRedis {
                 $this->name = $cm->name();
             }
             $folder = $cm->folder();
-            $hashFolder = md5($folder);
+            $folderHash = md5($folder);
             $keys = $this->redis->sMembers("cache:folder:{$folderHash}:{$this->cacheName}:keys");
             if (!empty($keys)) {
                 $this->redis->del($keys);

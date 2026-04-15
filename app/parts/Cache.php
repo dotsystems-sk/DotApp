@@ -1,4 +1,5 @@
 <?php
+
 /**
  * CLASS Cache - DotApp Cache Manager
  *
@@ -19,7 +20,8 @@ namespace Dotsystems\App\Parts;
 
 use Dotsystems\App\Parts\Config;
 
-class Cache {
+class Cache
+{
     private static $instances = []; // Available Cache instances
     private $folder;
     private $driver;
@@ -35,11 +37,12 @@ class Cache {
      *
      * @param string $cacheName The name of the cache instance.
      */
-    public function __construct($cacheName,$folder,$driver) {
-        $this->folder = __ROOTDIR__."/app/runtime/cache/".$folder;        
-        $this->folder = str_replace("..","",$this->folder);
-        $this->folder = str_replace("//","/",$this->folder);
-        $this->folder = str_replace("//","/",$this->folder);
+    public function __construct($cacheName, $folder, $driver)
+    {
+        $this->folder = __ROOTDIR__ . "/app/runtime/cache/" . $folder;
+        $this->folder = str_replace("..", "", $this->folder);
+        $this->folder = str_replace("//", "/", $this->folder);
+        $this->folder = str_replace("//", "/", $this->folder);
         $this->folder = rtrim($this->folder, "/\\");
         if (!is_dir($this->folder)) {
             mkdir($this->folder, 0700, true);
@@ -54,17 +57,19 @@ class Cache {
         }
     }
 
-    
+
     /**
      * Returns the folder path for the cache.
      *
      * @return string The folder path where cache files are stored.
      */
-    public function folder() {
+    public function folder()
+    {
         return $this->folder;
     }
 
-    public function name() {
+    public function name()
+    {
         return $this->cacheName;
     }
 
@@ -74,7 +79,8 @@ class Cache {
      * @param string|null $cacheName The name of the cache instance (optional).
      * @return Cache The Cache instance.
      */
-    public static function use($cacheName = null, $folder = null, $driver=null) {
+    public static function use($cacheName = null, $folder = null, $driver = null)
+    {
         if ($cacheName === null) {
             $cacheName = hash('sha256', "DotApp Framework null Cache :)");
         }
@@ -87,7 +93,7 @@ class Cache {
         if (isset(self::$instances[$cacheName])) {
             return self::$instances[$cacheName];
         } else {
-            $instance = new self($cacheName,$folder, $driver);
+            $instance = new self($cacheName, $folder, $driver);
             return $instance;
         }
     }
@@ -101,7 +107,8 @@ class Cache {
      * @param array $context Additional context (e.g., user_id).
      * @return $this
      */
-    public function save($key, $data, $lifetime = null, $context = []) {
+    public function save($key, $data, $lifetime = null, $context = [])
+    {
         call_user_func($this->cache_manager['managers'][$this->driver]["save"], $key, $data, $lifetime, $context, $this);
         return $this;
     }
@@ -114,7 +121,8 @@ class Cache {
      * @param bool $destroy Destroy data from memory after loading.
      * @return mixed|null Cached data or null.
      */
-    public function load($key, $context = [], $destroy = false) {
+    public function load($key, $context = [], $destroy = false)
+    {
         return call_user_func($this->cache_manager['managers'][$this->driver]["load"], $key, $context, $destroy, $this);
     }
 
@@ -126,7 +134,8 @@ class Cache {
      * @param bool $load Load data if exists.
      * @return bool Cache exists.
      */
-    public function exists($key, $context = [], $load = false) {
+    public function exists($key, $context = [], $load = false)
+    {
         return call_user_func($this->cache_manager['managers'][$this->driver]["exists"], $key, $context, $load, $this);
     }
 
@@ -137,7 +146,8 @@ class Cache {
      * @param array $context Additional context.
      * @return $this
      */
-    public function delete($key, $context = []) {
+    public function delete($key, $context = [])
+    {
         call_user_func($this->cache_manager['managers'][$this->driver]["delete"], $key, $context, $this);
         return $this;
     }
@@ -147,7 +157,8 @@ class Cache {
      *
      * @return $this
      */
-    public function clear() {
+    public function clear()
+    {
         call_user_func($this->cache_manager['managers'][$this->driver]["clear"], $this);
         return $this;
     }
@@ -157,7 +168,8 @@ class Cache {
      *
      * @return $this
      */
-    public function gc() {
+    public function gc()
+    {
         call_user_func($this->cache_manager['managers'][$this->driver]["gc"], $this);
         return $this;
     }
@@ -168,7 +180,8 @@ class Cache {
      * @param mixed $data Input data.
      * @return mixed Normalized data.
      */
-    public static function normalizeData($data) {
+    public static function normalizeData($data)
+    {
         if (is_array($data)) {
             ksort($data);
             foreach ($data as &$value) {
@@ -185,50 +198,54 @@ class Cache {
     }
 }
 
-class Cache_OLD {
+class Cache_OLD
+{
 
-	public $parentobj;
-	public $cachedir = __ROOTDIR__."/app/runtime/cache/";
-	
-	function __construct($parent) {
-        $this->parendobj = $parent;
+    public $parentobj;
+    public $cachedir = __ROOTDIR__ . "/app/runtime/cache/";
+
+    function __construct($parent)
+    {
+        $this->parentobj = $parent;
     }
-	
-	function cachePageExists($name) {
-		if (file_exists($this->cachedir.$name.".php")) {
-			return(true);
-		} else return(false);
-	}
-	
-	function cachePageSave($name,$renderedpage) {
-		file_put_contents($this->cachedir.$name.".php",$renderedpage);
-	}
-	
-	function cachePageRead($name,$data) {
-		ob_start();
-			$dotapp = $this->parentobj->dotapp;
-			include $this->cachedir.$name.".php";
-		return ob_get_clean();
-	}
-	
-	function cacheCssExists($name) {
-		if (file_exists($this->cachedir.$name.".php")) {
-			return(true);
-		} else return(false);
-	}
-	
-	function cacheCssSave($name,$renderedpage) {
-		file_put_contents($this->cachedir.$name.".php",$renderedpage);
-	}
-	
-	function cacheCssRead($name,$data) {
-		ob_start();
-			$dotapp = $this->parentobj->dotapp;
-			include $this->cachedir.$name.".php";
-		return ob_get_clean();
-	}	
-	
+
+    function cachePageExists($name)
+    {
+        if (file_exists($this->cachedir . $name . ".php")) {
+            return (true);
+        } else return (false);
+    }
+
+    function cachePageSave($name, $renderedpage)
+    {
+        file_put_contents($this->cachedir . $name . ".php", $renderedpage);
+    }
+
+    function cachePageRead($name, $data)
+    {
+        ob_start();
+        $dotapp = $this->parentobj->dotapp;
+        include $this->cachedir . $name . ".php";
+        return ob_get_clean();
+    }
+
+    function cacheCssExists($name)
+    {
+        if (file_exists($this->cachedir . $name . ".php")) {
+            return (true);
+        } else return (false);
+    }
+
+    function cacheCssSave($name, $renderedpage)
+    {
+        file_put_contents($this->cachedir . $name . ".php", $renderedpage);
+    }
+
+    function cacheCssRead($name, $data)
+    {
+        ob_start();
+        $dotapp = $this->parentobj->dotapp;
+        include $this->cachedir . $name . ".php";
+        return ob_get_clean();
+    }
 }
-
-
-?>

@@ -12,7 +12,7 @@ class QR {
      * @param string $text The text to encode in the QR Code.
      * @param array $config Optional configuration options for the QR Code.
      *
-     * @return string The generated QR Code image as a string in PNG format.
+     * @return object Return instance of QR
      *
      * @throws Exception If the QR Code generation fails.
      */
@@ -33,10 +33,10 @@ class QR {
      * contexts, such as embedding the image in an HTML document or sending it
      * as a part of a JSON response.
      *
-     * @param string $image The image to be converted. The image should be in a
+     * @param mixed $image The image to be converted. The image should be in a
      *                      supported format (PNG, JPEG, GIF, etc.).
      *
-     * @return string A base64-encoded string representing the image.
+     * @return  string base64-encoded string representing the image.
      */
     public static function imageToBase64($image) {
         ob_start();
@@ -48,9 +48,14 @@ class QR {
         return 'data:image/png;base64,' . base64_encode($data);
     }
 
+    /**
+     * Returns the generated QR Code image as a PNG resource.
+     *
+     * @return resource The generated QR Code image as a PNG resource.
+     */
     public function outputPNG() {
         return $this->bitmap;
-    }
+    }   
 
     private function buildImage() {
         list($matrix, $widths, $w, $h, $x, $y, $sw, $sh) = $this->encodeData();

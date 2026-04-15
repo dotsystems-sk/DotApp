@@ -68,9 +68,8 @@ abstract class Controller {
     }
     
     public static function call($method, ...$arguments) {
-        static::ensureDi();
-
         if (strpos($method,"@") === false) {
+            static::ensureDi();
             if (method_exists(static::class, $method)) {
                 return static::$di->callStatic($method, ...$arguments);
             }
@@ -79,8 +78,7 @@ abstract class Controller {
         } else {
             $fn = DotApp::DotApp()->stringToCallable($method);
             return $fn(...$arguments);
-        }
-        
+        }        
     }
 	
 	// Alias pre api

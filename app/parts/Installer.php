@@ -641,7 +641,7 @@ class Installer {
             $itemTime = filemtime($item);
             $carryTime = $carry ? filemtime($carry) : 0;
             return $itemTime > $carryTime ? $item : $carry;
-        });
+        }) ?? "";
         $moduleDir = basename($latestDir);
         // Check if there's a nested module directory
         $subDirs = array_filter(glob($latestDir . '/*', GLOB_ONLYDIR));
