@@ -200,6 +200,82 @@ class AuthObj {
     }
 
     /**
+     * Znovu načíta oprávnenia aktuálne prihláseného používateľa z databázy.
+     * Ak používateľ nie je v stave plného prihlásenia (logged_stage 1), nič neurobí.
+     *
+     * @return bool true ak sa oprávnenia obnovili, false ak nie je prihlásený alebo sa načítanie nepodarilo
+     */
+    public function permissionRefresh(): bool {
+        if (!$this->isLogged()) {
+            return false;
+        }
+
+        $userId = $this->authData['user_id'];
+        if ($userId === null) {
+            return false;
+        }
+
+        $ok = false;
+        DB::module("ORM")
+            ->q(function ($qb) use ($userId) {
+                $qb
+                    ->select('*', Config::get("db", "prefix") . 'users')
+                    ->where('id', '=', $userId);
+            })
+            ->execute(
+                function ($result, $db, $debug) use (&$ok) {
+                    if ($result === null) {
+                        return;
+                    }
+                    $user = $result->first();
+                    if (!$user) {
+                        return;
+                    }
+
+                    $rights = $user->hasMany(Config::get("db", "prefix") . 'users_rights', 'user_id');
+                    $rightIds = $rights->Pluck('right_id')->All();
+
+                    $rightDetails = [];
+                    $fetchError = false;
+                    if (!empty($rightIds)) {
+                        DB::module("RAW")
+                            ->q(function ($qb) use ($rightIds) {
+                                $qb->Select('*', Config::get("db", "prefix") . 'users_rights_list')
+                                    ->WhereIn('id', $rightIds)
+                                    ->andWhere('active', '=', 1);
+                            })->execute(
+                                function ($result) use (&$rightDetails) {
+                                    $rightDetails = $result;
+                                },
+                                function ($error, $db, $debug) use (&$fetchError) {
+                                    $fetchError = true;
+                                }
+                            );
+                    }
+
+                    if ($fetchError) {
+                        return;
+                    }
+
+                    $permissions = [];
+                    if (!empty($rightDetails)) {
+                        foreach ($rightDetails as $right) {
+                            $permissions[] = $right['module'] . "." . $right['rightname'];
+                        }
+                    }
+
+                    $this->authData['permissions'] = $permissions;
+                    $ok = true;
+                },
+                function ($error, $db, $debug) {
+                    // ponechať existujúce permissions
+                }
+            );
+
+        return $ok;
+    }
+
+    /**
      * Creates a new user in the system.
      *
      * This function checks if a user with the given username or email already exists.
