@@ -32,6 +32,7 @@ class Auth extends Facade {
         'can',
         'refreshToken',
         'permissionRefresh',
+        'permissions',
         'updateActivity',
         'getAuthData',
         'setAttribute',
