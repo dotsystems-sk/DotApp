@@ -4,57 +4,37 @@ namespace Dotsystems\App\Parts;
 /**
  * CLASS Pagination - DotApp Pagination Component
  *
- * This class provides a flexible, framework-independent pagination builder
- * designed for rendering paginated navigation elements in web applications.
+ * Flexible, framework-independent pagination builder with support for:
+ * - page window calculation
+ * - first/prev/next/last navigation
+ * - ellipsis support
+ * - edge page rendering
+ * - fully customizable rendering via callback
  *
- * It supports configurable page windows, edge links, ellipsis indicators,
- * and navigation arrows. The rendering layer is fully decoupled via a
- * callback-based renderer, allowing complete control over HTML output.
- *
- * The component is designed for use in consistent UI systems where a shared
- * CSS/markup template is applied across the application.
- *
- * Features:
- * - Fluent builder API
- * - Adjustable page window size
- * - Optional first/last and previous/next navigation arrows
- * - Optional ellipsis for compact large-range pagination
- * - Edge page links (first/last pages)
- * - Fully customizable rendering via callback
+ * Designed for consistent UI systems (Bootstrap/Tailwind/custom HTML).
  *
  * Example usage:
  *
- * ```php
  * echo Pagination::paginate(10, 100)
  *     ->window(5)
  *     ->arrows(true)
  *     ->ellipsis(true)
  *     ->edge(true)
- *     ->render(function ($type, $page, $label, $active) {
+ *     ->render(function ($type, $page, $label, $state) {
  *
- *         return match ($type) {
- *             'page' => "<a href='?page={$page}' class='".($active ? "active" : "")."'>{$label}</a>",
- *             'ellipsis' => "<span class='dots'>{$label}</span>",
- *             'first' => "<a href='?page={$page}' class='first'>{$label}</a>",
- *             'prev'  => "<a href='?page={$page}' class='prev'>{$label}</a>",
- *             'next'  => "<a href='?page={$page}' class='next'>{$label}</a>",
- *             'last'  => "<a href='?page={$page}' class='last'>{$label}</a>",
- *             default => '',
- *         };
+ *         $disabled = $state === 'disabled';
+ *         $active   = $state === 'active';
+ *
+ *         return "<li class='page-item ".($active ? 'active' : '').($disabled ? ' disabled' : '')."'>
+ *                     <a class='page-link' href='".($disabled ? "javascript:void(0);" : "?page=$page")."'>
+ *                         $label
+ *                     </a>
+ *                 </li>";
  *     });
- * ```
- *
- * @package   DotApp Framework
- * @author    Štefan Miščík <info@dotsystems.sk>
- * @company   Dotsystems s.r.o.
- * @version   1.8 FREE
- * @license   MIT License
- * @date      2014 - 2026
  */
 
-
-
-class Pagination {
+class Pagination
+{
     private int $current;
     private int $total;
 
@@ -63,7 +43,8 @@ class Pagination {
     private bool $ellipsis = true;
     private bool $edge = true;
 
-    private function __construct(int $current, int $total) {
+    private function __construct(int $current, int $total)
+    {
         $this->current = max(1, $current);
         $this->total = max(0, $total);
     }
@@ -97,7 +78,7 @@ class Pagination {
         return $this;
     }
 
-    public function render(callable $render): string
+    public function render(callable $render, $href=null): string
     {
         if ($this->total <= 0) {
             return '';
@@ -109,6 +90,7 @@ class Pagination {
         $from = $this->current - $half;
         $to   = $this->current + $half;
 
+        // normalize window
         if ($from < 1) {
             $to += (1 - $from);
             $from = 1;
@@ -126,21 +108,34 @@ class Pagination {
         $items = [];
 
         // =========================
-        // LEFT ARROWS
+        // FIRST + PREV
         // =========================
         if ($this->arrows && $this->total > $window) {
-            $items[] = $this->item('first', 1, '«', false);
-            $items[] = $this->item('prev', max(1, $this->current - $window), '‹', false);
+
+            $items[] = $this->item(
+                'first',
+                1,
+                '«',
+                $this->current === 1 ? 'disabled' : 'normal'
+            );
+
+            $items[] = $this->item(
+                'prev',
+                max(1, $this->current - 1),
+                '‹',
+                $this->current === 1 ? 'disabled' : 'normal'
+            );
         }
 
         // =========================
-        // LEFT EDGE + ELLIPSIS
+        // LEFT EDGE
         // =========================
         if ($this->edge && $from > 1) {
-            $items[] = $this->item('page', 1, '1', false);
+
+            $items[] = $this->item('page', 1, '1', $this->current === 1 ? 'active' : 'normal');
 
             if ($this->ellipsis && $from > 2) {
-                $items[] = $this->item('ellipsis', null, '...', false);
+                $items[] = $this->item('ellipsis', null, '...', 'normal');
             }
         }
 
@@ -152,47 +147,66 @@ class Pagination {
                 'page',
                 $i,
                 (string)$i,
-                $i === $this->current
+                $i === $this->current ? 'active' : 'normal'
             );
         }
 
         // =========================
-        // RIGHT EDGE + ELLIPSIS
+        // RIGHT EDGE
         // =========================
         if ($this->edge && $to < $this->total) {
 
             if ($this->ellipsis && $to < $this->total - 1) {
-                $items[] = $this->item('ellipsis', null, '...', false);
+                $items[] = $this->item('ellipsis', null, '...', 'normal');
             }
 
-            $items[] = $this->item('page', $this->total, (string)$this->total, false);
+            $items[] = $this->item(
+                'page',
+                $this->total,
+                (string)$this->total,
+                $this->current === $this->total ? 'active' : 'normal'
+            );
         }
 
         // =========================
-        // RIGHT ARROWS
+        // NEXT + LAST
         // =========================
         if ($this->arrows && $this->total > $window) {
-            $items[] = $this->item('next', min($this->total, $this->current + $window), '›', false);
-            $items[] = $this->item('last', $this->total, '»', false);
+
+            $items[] = $this->item(
+                'next',
+                min($this->total, $this->current + 1),
+                '›',
+                $this->current === $this->total ? 'disabled' : 'normal'
+            );
+
+            $items[] = $this->item(
+                'last',
+                $this->total,
+                '»',
+                $this->current === $this->total ? 'disabled' : 'normal'
+            );
         }
 
-        // render
+        // =========================
+        // RENDER
+        // =========================
         $html = '';
 
         foreach ($items as $it) {
-            $html .= $render($it['type'], $it['page'], $it['label'], $it['active']);
+            $html .= $render($it['type'], $it['page'], $it['label'], $it['state'],$href);
         }
 
         return $html;
     }
 
-    private function item(string $type, ?int $page, string $label, bool $active): array
+    private function item(string $type, ?int $page, string $label, string $state): array
     {
         return [
             'type' => $type,
             'page' => $page,
             'label' => $label,
-            'active' => $active
+            'state' => $state
         ];
     }
 }
