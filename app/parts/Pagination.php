@@ -14,23 +14,67 @@ namespace Dotsystems\App\Parts;
  * Designed for consistent UI systems (Bootstrap/Tailwind/custom HTML).
  *
  * Example usage:
- *
- * echo Pagination::paginate(10, 100)
- *     ->window(5)
- *     ->arrows(true)
- *     ->ellipsis(true)
- *     ->edge(true)
- *     ->render(function ($type, $page, $label, $state) {
- *
- *         $disabled = $state === 'disabled';
- *         $active   = $state === 'active';
- *
- *         return "<li class='page-item ".($active ? 'active' : '').($disabled ? ' disabled' : '')."'>
- *                     <a class='page-link' href='".($disabled ? "javascript:void(0);" : "?page=$page")."'>
- *                         $label
- *                     </a>
- *                 </li>";
- *     });
+  
+public static function paginate($actual_page, $number_of_pages, $href = null, $callable=null) {
+        $paginationOutput = Pagination::paginate($actual_page, $number_of_pages)
+        ->window(5)
+        ->arrows(true)
+        ->ellipsis(false)
+        ->edge(false);
+        
+        if (is_callable($callable)) return $paginationOutput->render($callable, $href);
+        
+        return $paginationOutput->render(function ($type, $page, $label, $state, $href=null) {
+
+            $liClass = "page-item";
+
+            if ($state === 'active') {
+                $liClass .= " active";
+            }
+
+            if ($state === 'disabled') {
+                $liClass .= " disabled";
+            }
+
+            $href = ($state === 'disabled' || $type === 'ellipsis')
+                ? "javascript:void(0);"
+                : "?page={$page}";
+
+            switch ($type) {
+
+                case 'first':
+                    $content = '<i class="icon-base ri ri-skip-back-mini-line icon-18px"></i>';
+                    break;
+
+                case 'prev':
+                    $content = '<i class="icon-base ri ri-arrow-left-s-line icon-18px"></i>';
+                    break;
+
+                case 'next':
+                    $content = '<i class="icon-base ri ri-arrow-right-s-line icon-18px"></i>';
+                    break;
+
+                case 'last':
+                    $content = '<i class="icon-base ri ri-skip-forward-mini-line icon-18px"></i>';
+                    break;
+
+                case 'ellipsis':
+                    $content = '<span class="px-2">...</span>';
+                    break;
+
+                default:
+                    $content = $label;
+            }
+
+            return 
+                "
+                    <li class='{$liClass}'>
+                        <a class='page-link' ".$href($page).">
+                            {$content}
+                        </a>
+                    </li>
+                ";
+        });
  */
 
 class Pagination
