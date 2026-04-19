@@ -36,10 +36,6 @@ public static function paginate($actual_page, $number_of_pages, $href = null, $c
                 $liClass .= " disabled";
             }
 
-            $href = ($state === 'disabled' || $type === 'ellipsis')
-                ? "javascript:void(0);"
-                : "?page={$page}";
-
             switch ($type) {
 
                 case 'first':
@@ -74,7 +70,9 @@ public static function paginate($actual_page, $number_of_pages, $href = null, $c
                         </a>
                     </li>
                 ";
-        });
+        },
+        $href);
+    }
  */
 
 class Pagination
