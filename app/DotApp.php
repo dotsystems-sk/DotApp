@@ -2000,6 +2000,19 @@ class DotApp {
 		json_decode($string);
 		return (json_last_error() == JSON_ERROR_NONE);
 	}
+	public function random_string($length = 16) {
+		$alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+		$max = strlen($alphabet) - 1;
+
+		$bytes = random_bytes($length);
+		$result = '';
+
+		for ($i = 0; $i < $length; $i++) {
+			$result .= $alphabet[ord($bytes[$i]) % $max];
+		}
+
+		return $result;
+	}
 	
 	/* 
 		Normalizuje znaky. Takze prevedie nemecke znaky cinske znaky a podobne na ascii ekvivalenty.
