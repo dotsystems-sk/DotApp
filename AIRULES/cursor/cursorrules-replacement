@@ -1,0 +1,86 @@
+# DotApp Framework — AI Assistant Rules (AIRULES replacement)
+# Source of truth: AIRULES/ (this file is a compact drop-in replacing stock .cursorrules)
+# Stock .cursorrules taught WRONG template syntax. Do not trust {{ $var }} / {{ endif }}.
+
+## CRITICAL IDENTITY
+You are working with the DOTAPP PHP FRAMEWORK — NOT Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent, or jQuery.
+
+Before any work: read AIRULES/00-AGENT-CONTRACT.md and the task-specific AIRULES doc.
+
+## EDIT BOUNDARIES
+ALLOWED:
+- app/config.php
+- app/modules/<YourModule>/** only
+
+ASK FIRST:
+- app/listeners.php
+- .htaccess (prefer: php dotapper.php --create-htaccess)
+
+FORBIDDEN (never):
+- app/parts/**
+- app/DotApp.php
+- app/vendor/**
+- dotapper.php, index.php, initializedb.php
+- app/runtime/**
+- any other module's folder
+
+## DOTAPPER FIRST
+From project root:
+  php dotapper.php --create-module=Name
+  php dotapper.php --module=Name --create-controller=X
+  php dotapper.php --module=Name --create-middleware=X
+  php dotapper.php --module=Name --create-model=X
+--module= must come BEFORE create-* flags.
+
+## CONTROLLERS / ROUTES
+- public static methods extending \Dotsystems\App\Parts\Controller
+- Route strings: Module:Controller@method!
+- Trailing ! = skip DI → NO type-hinted DI parameters
+- # = Middleware namespace, * = Models namespace
+- No named routes; no Laravel Route::prefix()->group()
+
+## DATABASE
+DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute($ok,$err)
+Bindings: ? OR :named — never mix. No DB::table, Eloquent, getConnection, selectRaw, chain find().
+Schema: Installation.php — not DB::migrate().
+
+## TEMPLATES (NOT BLADE)
+CORRECT:
+  {{ var: $title }}
+  {{ if $x }} ... {{ elseif $y }} ... {{ else }} ... {{ /if }}
+  {{ foreach $items as $item }} ... {{ /foreach }}
+  {{ layout:partials/header }}
+  {{ content }}
+  {{_ "Text" }}
+  {{ formName(handler) }}
+  {{ CSRF }}
+
+WRONG:
+  {{ $title }}, {{ endif }}, {{ endforeach }}, @if, @extends, @section
+  {{ include }} in PHP templates (JS-only)
+
+renderView → setViewVar; renderLayout → setLayoutVar.
+
+## FORMS / SECURITY (PREFERRED PATH — USE BY DEFAULT)
+- Tag is <fo-rm> (NOT f-form). Prefer over plain <form> + CSRF alone.
+- {{ formName(handler) }} inside fo-rm — binds handler+action+method (≫ plain CSRF)
+- MUST load /assets/dotapp/dotapp.js first (router injects random encryption keys)
+- JS: $dotapp().form().before/after + parseReply + loading/loader attrs
+- PHP: crcCheck() then form(['POST'],'handler',fn) then ajaxReply
+- Full sample: AIRULES/examples/EX-01-secure-form-complete.md
+- JS global: $dotapp — NOT jQuery $
+
+## CONFIG / SECRETS
+On new apps, generate c_enc_key, rm_key, rmrcm_key with bin2hex(random_bytes(32)).
+/* @AUTOCONFIG */ does NOT auto-fill secrets.
+Module settings MUST have fallbacks:
+  Config::module("Mod","key") ?? Config::module("Mod","key", $default);
+
+## DACORE
+Optional admin module — NOT required for Part 1. Do not call DACore:* unless user asked.
+
+## LEARN MORE
+AIRULES/14-ANTIPATTERNS.md
+AIRULES/15-KNOWN-ISSUES.md
+AIRULES/17-CHECKLISTS.md
+AIRULES/cursor/AGENTS.md

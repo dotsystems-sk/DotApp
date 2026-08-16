@@ -1,0 +1,48 @@
+---
+description: DotApp module PHP — routing, controllers, middleware, Installation
+globs: app/modules/**/*.php
+alwaysApply: false
+---
+
+# DotApp Module PHP
+
+See `AIRULES/03-MODULES-AND-ROUTING.md`, `04-CONTROLLERS-AND-RESPONSES.md`, `07-SCHEMA-AND-INSTALL.md`.
+
+## Routes (in module.init.php)
+
+```php
+Router::get('/shop/', 'Shop:Home@index!', Router::STATIC_ROUTE);
+Router::post('/shop/save', 'Shop:Home@save!')->before('#Shop:Gate@check!');
+```
+
+- Prefixes: `#` Middleware, `*` Models, trailing `!` skips DI
+- Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`
+- No named routes, no Laravel `Route::prefix()->group()`
+
+## Controllers
+
+```php
+namespace Dotsystems\App\Modules\Shop\Controllers;
+class Home extends \Dotsystems\App\Parts\Controller {
+    public static function index($request) {
+        return \Dotsystems\App\Parts\Renderer::new()->module('Shop')
+            ->setView('home')->setViewVar('title', 'Hi')->renderView();
+    }
+}
+```
+
+With `!` in the route: **no** `Renderer $renderer` type-hints.
+
+## Config fallbacks (in initialize)
+
+```php
+Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
+```
+
+## Schema
+
+Use versioned `Installation.php` + module-owned installations table. Do **not** call `DB::migrate()`. Do **not** require DACore unless asked.
+
+## Generate via CLI
+
+`php dotapper.php --module=Shop --create-controller=Home` (module flag first).

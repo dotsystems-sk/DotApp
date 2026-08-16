@@ -1,0 +1,47 @@
+---
+description: DotApp frontend — $dotapp is not jQuery; secure forms and bridge
+globs: app/modules/**/assets/**/*.js
+alwaysApply: false
+---
+
+# DotApp Frontend JS
+
+Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SECURITY.md`.
+
+## Load order
+
+1. `/assets/dotapp/dotapp.js` (router-generated keys)
+2. Optional template/reactive
+3. Module scripts
+
+Bootstrap on `dotapp` event; register plugins on `dotapp-register` via `$dotapp().fn(...)`.
+
+## Never
+
+- `$`, `jQuery`, `$.ajax`, `$.post`
+- Assume getters always chain
+- Skip CRC/CSRF by using raw `fetch` to secure endpoints
+
+## Forms (preferred security — always for user POSTs)
+
+HTML: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`).  
+Must load `/assets/dotapp/dotapp.js` first (injects random keys).  
+Full sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
+
+```javascript
+$dotapp().form('#saveForm')
+  .before(function (data, form) {
+    $dotapp('#btn').attr('loading', 'true').attr('loader', 'dots');
+  })
+  .after(function (data, response, form) {
+    var reply = $dotapp().parseReply(response);
+  });
+```
+
+## AJAX
+
+`$dotapp().load(url, method, data, ok, err)` — not raw fetch for DotApp secure APIs.
+
+## Bridge
+
+Template `{{ dotbridge:on(click)="fn(args)" }}` + `$dotApp->bridge->fn('fn', ...)`.

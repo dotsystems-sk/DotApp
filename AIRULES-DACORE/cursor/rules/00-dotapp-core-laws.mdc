@@ -1,0 +1,50 @@
+---
+description: DotApp core laws — edit boundaries, no Laravel, AIRULES is source of truth
+alwaysApply: true
+---
+
+# DotApp Core Laws
+
+This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
+
+## Edit boundaries
+
+- **ALLOWED:** `app/config.php`, `app/modules/<TargetModule>/` only
+- **ASK FIRST:** `app/listeners.php`, `.htaccess` (prefer `dotapper --create-htaccess`)
+- **FORBIDDEN:** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, any other module
+
+## Before coding
+
+1. Read `AIRULES/00-AGENT-CONTRACT.md`
+2. Use `php dotapper.php` to create modules/controllers/models/middleware
+3. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
+
+## Syntax locks
+
+- Controllers: `public static`; route `"Mod:Ctrl@method!"` (`!` ⇒ no DI params)
+- DB: `DB::module("RAW")->q(fn($qb)=>...)->all()` + `[0] ?? null` (never bare `first()`)
+- Views: `{{ var: $x }}`, `{{ /if }}`, `{{ /foreach }}` — NOT `{{ $x }}` / `endif`
+- Forms (PREFERRED always): `<fo-rm>` + `{{ formName(x) }}` + `/assets/dotapp/dotapp.js` (random keys!) + `crcCheck()` + `form()` — NOT `f-form`, NOT plain CSRF alone
+- Sample: `AIRULES/examples/EX-01-secure-form-complete.md`
+- JS: `$dotapp` + `/assets/dotapp/dotapp.js` — NOT jQuery `$`
+
+## Never ignore return values (AIRULES/18)
+
+- `execute($ok, $err)` — **omitting `$err` throws**
+- `first()` unsafe when empty (RAW warns, ORM fatal) → `all()` + `[0] ?? null`
+- `Crypto::decrypt` → **`false`** · `Cache::load` → **`null`**
+- `HttpHelper::request` / `FastSearch::*` → check `['success']`
+- `Email::send` → **array of error strings**, not `false`
+- `Auth::login` → **`false`** on malformed input
+- missing view/layout → **`""`**, no exception
+- `Validator::validate` → `true` or error array (compare `=== true`)
+- wrap AI / SchemaBuilder / raw DDL in `try/catch`; never empty `catch {}`
+
+## DACore
+
+This project has the DACore admin module. Never edit `app/modules/DACore/`; integrate via `DotApp::call()` APIs. See `AIRULES/30-DACORE-OVERVIEW.md` and rule `08-dacore`.
+
+## Docs
+
+Deep reference: `AIRULES/` (`00`–`22` framework, `30`–`36` DACore). Examples: `AIRULES/examples/` (open one EX file per task). Antipatterns: `AIRULES/14-ANTIPATTERNS.md`.  
+AIRULES supersedes stock `.cursorrules` and old `*_AI_guide.md` files.

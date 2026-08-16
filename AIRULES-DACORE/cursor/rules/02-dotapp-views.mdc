@@ -1,0 +1,44 @@
+---
+description: DotApp views — Renderer syntax is not Blade/Twig
+globs: app/modules/**/views/**
+alwaysApply: false
+---
+
+# DotApp Views
+
+Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
+
+## Correct syntax
+
+```html
+{{ var: $title }}
+{{_ "Login" }}
+{{ if isset($user) }} ... {{ elseif $x }} ... {{ else }} ... {{ /if }}
+{{ foreach $items as $item }} ... {{ /foreach }}
+{{ layout:partials/header }}
+{{ content }}
+{{ formName(saveItem) }}
+{{ CSRF }}
+```
+
+## Wrong (never)
+
+- `{{ $title }}`, `@if`, `@foreach`, `@extends`, `@section`, `@yield`
+- `{{ endif }}`, `{{ endforeach }}`
+- `{{ include 'x' }}` in PHP templates (JS-only)
+- Assuming auto-escaping on `var:`
+
+## Files
+
+- Views: `*.view.php` via `setView('name')`
+- Layouts: `views/layouts/*.layout.php` via `setLayout('path')`
+- Cross-module: `Shop:path`
+
+## Renderer vars
+
+- `renderView()` → `setViewVar` only
+- `renderLayout()` → `setLayoutVar` only
+
+## Assets
+
+`/assets/modules/{Module}/...` and `/assets/dotapp/dotapp.js`.

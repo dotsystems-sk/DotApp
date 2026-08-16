@@ -55,7 +55,7 @@ This keeps routes concise while still letting you access other services via faca
 - **ORM & QueryBuilder Improvements**: Fixed bugs, improved stability, and enhanced performance in Object-Relational Mapping and SQL Query Builder
 - **Complete ORM & QueryBuilder Testing**: Comprehensive test suite covering all Entity, Collection, and QueryBuilder functionality
 - **Database Configuration Fixes**: Corrected driver naming conventions and configuration examples throughout documentation
-- **AI-Friendly Framework**: Added comprehensive AI instructions and guides (.cursorrules, ai_database_guide.md) making the framework highly compatible with advanced AI models like Claude Opus 4.5 and GPT-4.5 Sonnet for perfect code generation
+- **AI-Friendly Framework**: `AIRULES/` (framework) and `AIRULES-DACORE/` (with DACore) are the AI rulebooks
 
 ### Version 1.7.2 Released (2025-12-25)
 
@@ -68,7 +68,7 @@ This keeps routes concise while still letting you access other services via faca
 
 ### AI-Friendly Features (1.8+)
 
-- **Comprehensive AI Instructions**: Complete .cursorrules file and ai_database_guide.md for perfect AI model compatibility
+- **Comprehensive AI Instructions**: `AIRULES/` in the project root (start with `AIRULES/00-AGENT-CONTRACT.md`); with DACore use `AIRULES-DACORE/` copied as `AIRULES/`
 - **Claude Opus 4.5 & GPT-4.5 Sonnet Ready**: Framework designed to work flawlessly with advanced AI models
 - **Structured Code Generation**: AI can perfectly generate controllers, models, routes, and database operations
 - **Self-Documenting Architecture**: Clean, readable code structure that AI understands intuitively

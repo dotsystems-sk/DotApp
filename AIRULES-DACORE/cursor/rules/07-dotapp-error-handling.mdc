@@ -1,0 +1,54 @@
+---
+description: DotApp return values and error handling — four failure styles, never ignore results
+alwaysApply: true
+---
+
+# DotApp Error Handling
+
+Full contract: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
+
+## Four failure styles
+
+| Style | Where | Handling |
+|-------|-------|----------|
+| Callback pair | `execute()`, `Entity::save()/delete()`, `DB::schema()` | pass **both** callbacks |
+| `false` / `null` | `Crypto::decrypt`→`false`, `Cache::load`→`null`, `Auth::login`→`false`, `Config` getters→`null` | compare explicitly |
+| Envelope array | `HttpHelper::request`, `FastSearch::*` | check `['success']` |
+| Exceptions | AI (`AIException`), QueryBuilder build, SchemaBuilder, `Auth::createUser`, `DI::resolve` | `try/catch` |
+
+## Hard rules
+
+1. `execute()` **without** an error callback **throws** — always pass both.
+2. Never bare `->first()`: RAW warns on empty, ORM is fatal. Use `all()` + `[0] ?? null` or `exists()`.
+3. `$execution_data` is **empty on a cache hit** → `$exec['insert_id'] ?? $db->inserted_id()`.
+4. `Crypto::decrypt()` → `=== false` check.
+5. `Cache::load()` → `!== null` check.
+6. `Email::send()` returns **`string[]`** on failure → `!== true` check.
+7. `Validator::validate()` → `=== true` check (failure array is truthy).
+8. `$request->form()` may return your value, `false`, `null`, or **throw** → give it an error callback and guard.
+9. Missing view/layout renders **`""`** with only a log warning → use the fallback argument and check for `''`.
+10. `Entity::save()` returns **void** — never test it.
+11. `trigger()` ignores listener return values; listener exceptions propagate.
+12. Never write an empty `catch {}`. Log with `Logger::use()->error(...)` and return a structured error.
+
+## Template
+
+```php
+try {
+    if (!$request->crcCheck()) {
+        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 400);
+    }
+    $answer = $request->form(['POST'], 'handler', $success, $errorCallback);
+    if (!is_array($answer) || !isset($answer['body'])) {
+        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Rejected'], 400);
+    }
+    return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+} catch (\Throwable $e) {
+    Logger::use()->error('failed', ['msg' => $e->getMessage()]);
+    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Server error'], 500);
+}
+```
+
+## Broken — do not enable
+
+`Renderer::useCache(true)`, `Config::db('cache', true)` with ORM, `DB::migrate()`, `Auth::hasRole()`, `Auth::logged()`, `Injector::bind/singleton`, `Router::hasRoute()` (inverted).

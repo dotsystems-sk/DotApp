@@ -1,0 +1,60 @@
+---
+description: DotApp database — DB::module RAW QueryBuilder, not Eloquent
+globs: app/modules/**/*.php
+alwaysApply: false
+---
+
+# DotApp Database
+
+Full reference: `AIRULES/06-DATABASE.md`.
+
+## Canonical (return values matter — see AIRULES/18)
+
+```php
+// SELECT one: never bare first() (RAW warns, ORM crashes on empty)
+$rows = DB::module('RAW')->q(function ($qb) use ($id) {
+    $qb->select('*')->from('shop_items')->where('id', '=', $id)->limit(1);
+})->all();                       // [] when empty
+$row = $rows[0] ?? null;
+
+// WRITE: BOTH callbacks required — omitting the error one THROWS
+DB::module('RAW')->q(function ($qb) use ($data) {
+    $qb->insert('shop_items', $data);
+})->execute(
+    function ($result, $db, $exec) { $id = $exec['insert_id'] ?? $db->inserted_id(); },
+    function ($error, $db, $exec) { Logger::use()->error('insert', $error); }
+);
+```
+
+`$exec` keys: `affected_rows, insert_id, num_rows, result, query, bindings` — **empty on cache hit**.
+`paginate()` keys: `data, current_page, per_page, total, last_page, from, to, has_more_pages, prev_page, next_page`.
+
+## Bindings
+
+- Prefer QB `where` / `insert` / `set` (auto-bound)
+- `raw($sql, $bindings)`: use `?` **or** `:named` — never both
+- Never interpolate user input into SQL
+
+## Join signature
+
+```php
+$qb->join('users u', 'p.user_id', '=', 'u.id');
+```
+
+## Does not exist
+
+`DB::table`, `DB::getConnection`, `selectRaw`, `whereExists`, `whereColumn`, `count()`, chain `->find(123)`, Eloquent models, working `DB::migrate()`. `whereHas`/`withCount`/`with()` are stubs that never reach SQL.
+
+Counting: `select('COUNT(*) as total')` + `all()`, or `paginate()['total']`, or `exists()`.
+
+## Transactions
+
+`transaction()` → work → `commit()`, with `rollback()` in `catch`.
+
+## Schema
+
+`Installation.php` + SchemaBuilder (`createTableIfNotExist`). **No `timestamps()`** helper. DDL throws — wrap in `try/catch`. Keep `Config::db('cache')` **off** (breaks `Entity::save()`).
+
+## Models / ORM
+
+`Model` is an empty stub. `Entity::save()/delete()` return **void** — use callbacks. `validate()` is private.

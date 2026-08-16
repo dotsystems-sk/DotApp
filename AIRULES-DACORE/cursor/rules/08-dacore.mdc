@@ -1,0 +1,55 @@
+---
+description: DACore admin module integration — menu, rights, pages, AI tools
+alwaysApply: true
+---
+
+# DACore Integration
+
+DACore is an admin-UI **module**, not framework core. Full docs: `AIRULES/30-DACORE-OVERVIEW.md` … `36`.
+
+## Never
+
+- Edit any file under `app/modules/DACore/`
+- `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*`
+- Build your own admin HTML shell
+- Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
+- Register menu / rights / AI tools on every request (do it in `Installation.php`)
+
+## Call map
+
+```php
+DotApp::call("DACore:Menu@register", $menuid, $data);            // bool
+DotApp::call("DACore:Rights@createGroup!", $name, $creator);      // int|null
+DotApp::call("DACore:Rights@createRight!", $groupId, $name, $desc, $module, $rightname, $creator); // int|null
+DotApp::call("DACore:AITools@register", $toolid, $data);          // bool
+DotApp::call("DACore:Page@withMenu!", $title, $body, $header, $css, $js, $menuId); // string HTML
+DotApp::call("DACore:Installations@exist!", $module, $version);    // bool
+DotApp::call("DACore:Installations@insert!", $module, $version, $status, $statusTxt);
+```
+
+Check every return value: `bool` helpers never throw and never log.
+
+## Admin route pattern
+
+```php
+Router::get(Config::module("DACore", "prefixUrl") . "/shop-admin/items", "Shop:Admin@items!")
+    ->before(function ($request) {
+        return DotApp::call("#Shop:Rights@check!", $request, ['dotapp.root', 'Shop.items.view']);
+    });
+```
+
+Permissions are `"{module}.{rightname}"`. Always include `dotapp.root`.
+
+## Page rendering
+
+Render your content with `Renderer` (`renderLayout()` + `setLayoutVar`), then pass the HTML to `Page@withMenu!`. The shell already loads `dotapp.js`, dotgrid, colors.css, core.css, modals and Notiflix — do not re-add them.
+
+## UI
+
+`<dot-grid>` / `<dot-col any="12" md="6" ldesktop="6">` (`md` does not cascade). Icons: `ri ri-*`. Forms: `<fo-rm>` + `{{ formName(handler) }}`.
+
+## AI tools
+
+`rights` must be non-empty and **wildcard-free** (empty = hidden from everyone). Handler signature `($data, $aiobj)`, returns JSON with `result` + `message`. `controller` string ends with `!`.
+
+Examples: `AIRULES/examples/EX-D01` … `EX-D04`.
