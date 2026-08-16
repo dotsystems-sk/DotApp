@@ -2,6 +2,8 @@
 
 Rules: [07-SCHEMA-AND-INSTALL.md](../07-SCHEMA-AND-INSTALL.md).
 
+**MUST:** module tables `{lowercase_modulename}_*` (Shop → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*`.
+
 ## SchemaBuilder — wrap DDL in try/catch (it throws)
 
 ```php

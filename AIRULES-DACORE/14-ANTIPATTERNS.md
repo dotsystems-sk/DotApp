@@ -50,6 +50,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
+| `CREATE TABLE items` / `dotapp_items` / `dacore_*` for a module | `{lowercase_modulename}_items` (Shop → `shop_items`) |
 
 ## Return values / error handling
 

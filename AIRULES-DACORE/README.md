@@ -50,6 +50,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …) **nor `app/modules/DACore/`** (updates wipe every local change; never add files there — only your own module).
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` — **not** jQuery, **not** `f-form`.
+6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items`, `dotapp_*`, or `dacore_*` for your module data.
 
 ## Quick install
 

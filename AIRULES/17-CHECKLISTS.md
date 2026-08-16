@@ -41,6 +41,7 @@
 - [ ] Bindings for all user values (`?` xor `:named`, never mixed)
 - [ ] No `DB::table`, Eloquent, `getConnection`, `selectRaw`, chain `find`, `count()`
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
+- [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items` or `dotapp_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 
 ## Error-handling checklist (see 18)
@@ -86,6 +87,7 @@
 - Diff touches `app/parts/**`
 - Template contains `{{ $var }}` or `@if`
 - Code contains `DB::table` / Eloquent / `$this->db`
+- Module table not prefixed `{lowercase_modulename}_*`
 - Frontend uses `$('#...')` or `$.ajax`
 - Form uses invented `f-form`
 - Handler skips `crcCheck` for DotApp JS POST

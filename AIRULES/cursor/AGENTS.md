@@ -14,6 +14,7 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter).
 - Routes: `Module:Controller@method!` (`!` = no DI parameters in the method).
 - Controllers: `public static function`.
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`.
+- **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data.
 - Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`.
 - Forms (**preferred always**): `<fo-rm>` + `{{ formName(handler) }}` + **`/assets/dotapp/dotapp.js`** (injects random keys) + PHP `crcCheck()` + `form()` — stronger than plain CSRF. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
 - JS: `$dotapp` — **not** `$` / `$.ajax`.

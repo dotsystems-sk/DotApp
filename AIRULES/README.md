@@ -19,6 +19,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …).
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` — **not** jQuery, **not** `f-form`.
+6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items` or `dotapp_*` for module data.
 
 ## Quick install
 

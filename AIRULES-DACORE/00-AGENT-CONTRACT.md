@@ -49,7 +49,8 @@ If you believe a core or DACore bug exists: **stop and ask the user**. Do not pa
 2. **Read** the relevant AIRULES docs for the task (routing / views / DB / forms / JS).
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
-5. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
+5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
+6. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
 
 ### Dotapper-first rule
 
@@ -134,6 +135,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * DOTAPP MODULE FILE
  * - Controllers: Module:Controller@method!  (! = no DI params)
  * - Database: DB::module("RAW")->q(...)->all()|first()|execute()
+ * - Tables: {lowercase_modulename}_*  (Shop → shop_items) — NEVER items, dotapp_*, or dacore_*
  * - Templates: {{ var: $x }}  — NOT {{ $x }}, NOT Blade
  * - Forms: <fo-rm> + {{ formName(handler) }}
  * - JS: $dotapp — NOT jQuery $

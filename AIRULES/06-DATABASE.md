@@ -319,4 +319,4 @@ Also avoid `DB::migrate()` — **no driver implements it**.
 | Laravel migrations | `Installation.php` — see [07](07-SCHEMA-AND-INSTALL.md) |
 | `DB::transaction(fn)` | `transaction()/commit()/rollback()` or `transact()` |
 
-Table naming: core uses `Config::db('prefix')`; module tables conventionally `{modulename}_*`.
+**MUST:** Every table owned by a module is named `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never create unprefixed tables (`items`) or put module data under `dotapp_*`. Core auth tables use `Config::db('prefix')` only. See [07](07-SCHEMA-AND-INSTALL.md) §3.

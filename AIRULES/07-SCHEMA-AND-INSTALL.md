@@ -197,12 +197,20 @@ $sb->foreignKeyExists('shop_items', 'fk_shop_cat');
 
 ---
 
-## 3. Table naming
+## 3. Table naming (**MUST**)
+
+**MUST:** Every table owned by a module is named `{lowercase_modulename}_*` (module `Shop` → `shop_items`, `shop_installations`). Never create unprefixed tables (`items`) or put module data under `dotapp_*`. Core auth tables use `Config::db('prefix')` only.
 
 | Prefix | Owner |
 |--------|-------|
-| `Config::db('prefix')` (default `dotapp_`) | Core users/auth tables |
-| `{modulename}_` | Your module tables |
+| `Config::db('prefix')` (default `dotapp_`) | Core users/auth tables only |
+| `{lowercase_modulename}_` | **All** tables your module creates |
+
+| Wrong | Right (module `Shop`) |
+|-------|------------------------|
+| `items`, `orders` | `shop_items`, `shop_orders` |
+| `Shop_items` | `shop_items` |
+| `dotapp_items` | `shop_items` |
 
 Never write to another module's tables without a documented public API.
 

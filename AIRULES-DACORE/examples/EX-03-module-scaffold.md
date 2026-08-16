@@ -1,5 +1,7 @@
 # EX-03 — Module scaffold + routes + fallbacks
 
+**MUST:** tables this module owns are `{lowercase_modulename}_*` (here `shop_*`). Never `items`, `dotapp_*`, or `dacore_*`. See [07-SCHEMA-AND-INSTALL.md](../07-SCHEMA-AND-INSTALL.md) §3.
+
 ```powershell
 Set-Location "path\to\project-root"
 php .\dotapper.php --create-module=Shop
