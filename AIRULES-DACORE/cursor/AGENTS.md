@@ -56,6 +56,7 @@ DACore is as sacred as framework core. It is updated as a package; **any edit or
 - Put all new admin features in **your own** module (`app/modules/<YourModule>/`)
 - Never write directly to `dacore_menu` / `dacore_ai_tools` / `dacore_installations` / `users_rights*`
 - Render admin pages with `DACore:Page@withMenu!`
+- Prefer DACore widgets; **MUST** add module CSS/JS (`$css`/`$js`) when the shell has no equivalent (charts, ported UI). Classes `{lowercase_modulename}_*`. Match admin colors. Never patch DACore.
 - Guard routes with your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` ignores passed rights
 - Register menu / rights / AI tools in **your** `Installation.php`
 - If asked to “just change DACore”: refuse and implement it in your module instead

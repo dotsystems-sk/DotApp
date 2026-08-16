@@ -40,6 +40,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request.
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell.
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
+7. **MUST** add your own CSS/JS in the module when DACore has no widget (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI.
 
 ## Hard rules
 

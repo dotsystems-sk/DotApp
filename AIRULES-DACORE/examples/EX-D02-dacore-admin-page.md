@@ -4,6 +4,8 @@ Rules: [33](../33-DACORE-PAGES-AND-UI.md), [08](../08-FORMS-AND-SECURITY.md).
 
 Your layout renders **content only** — no `<html>`, no `<head>`, no CSS/JS tags that the shell already loads.
 
+Pass extra files through `Page@withMenu!` `$css` / `$js` (charts, ported toolbars). Prefix classes `{lowercase_modulename}_*` and reuse DACore colors. See [33](../33-DACORE-PAGES-AND-UI.md) §5. Do not skip a widget because “DACore has no chart”.
+
 ## Layout: `views/layouts/admin/items.layout.php`
 
 ```html

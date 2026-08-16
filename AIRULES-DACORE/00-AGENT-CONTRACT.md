@@ -165,6 +165,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 | **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*` | Use the registration APIs |
 | Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |
+| Missing widgets / ported UI | **MUST** add CSS/JS in **your** module (`$css`/`$js` on `withMenu`). Prefix classes `{lowercase_modulename}_*`. Match DACore colors. Never patch DACore. Prefer shell widgets when they fit. |
 | Permission guard | Your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` **ignores** the rights you pass |
 | Admin routes | Always prefixed with `Config::module("DACore","prefixUrl")` |
 

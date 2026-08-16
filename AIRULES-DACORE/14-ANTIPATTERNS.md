@@ -98,6 +98,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `INSERT INTO dacore_ai_tools ...` | `DACore:AITools@register` |
 | Write to `{prefix}users_rights_list` | `DACore:Rights@createRight!` |
 | Build your own admin HTML shell | `DACore:Page@withMenu!` |
+| Never add CSS because the shell exists / smash a ported chart into a DACore table | Module `$css`/`$js` on `withMenu`; classes `{modulename}_*`; DACore colors |
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |

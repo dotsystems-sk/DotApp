@@ -82,7 +82,8 @@
 - [ ] Allow-lists include `dotapp.root`
 - [ ] Page rendered via `DACore:Page@withMenu!`, body contains no `<html>`/`<head>`
 - [ ] Shell assets (`dotapp.js`, dotgrid, colors.css, core.css, modals, Notiflix) not re-added
-- [ ] Forms use `<dot-col any="12" md="6" ldesktop="6">` and `ri ri-*` icons
+- [ ] Extra widgets (charts, ported controls) use **module** CSS/JS on `withMenu` `$css`/`$js` — classes `{lowercase_modulename}_*`, colors match the admin palette
+- [ ] Simple forms **prefer** `<dot-col any="12" md="6" ldesktop="6">` and `ri ri-*` icons (custom layout OK when porting)
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
 - [ ] AI tool `rights` non-empty and wildcard-free; `controller` ends with `!`

@@ -46,6 +46,8 @@ Permissions are `"{module}.{rightname}"`. Always include `dotapp.root`.
 
 Render your content with `Renderer` (`renderLayout()` + `setLayoutVar`), then pass the HTML to `Page@withMenu!`. The shell already loads `dotapp.js`, dotgrid, colors.css, core.css, modals and Notiflix — do not re-add them.
 
+Prefer DACore widgets (cards, `btn`, dotgrid, Remix, Notiflix). **MUST** add CSS/JS in **your** module when the shell has no equivalent (charts, ported controls). Pass them as `$css` / `$js` on `withMenu`. Classes `{lowercase_modulename}_*` (e.g. `.shop_chart`). Match admin colors from the loaded palette — never patch `app/modules/DACore/`.
+
 ## UI
 
 `<dot-grid>` / `<dot-col any="12" md="6" ldesktop="6">` (`md` does not cascade). Icons: `ri ri-*`. Forms: `<fo-rm>` + `{{ formName(handler) }}`.

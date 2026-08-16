@@ -148,7 +148,39 @@ Your own assets go to `app/modules/Shop/assets/...` and are served from `/assets
 
 ---
 
-## 5. Layout structure of your `$body`
+## 5. Own module CSS/JS when the shell is not enough (**MUST**)
+
+Keep the DACore **shell** (`Page@withMenu!`, sidebar, `colors.css`). **Never** edit DACore to add widgets.
+
+1. **Prefer** existing DACore UI (cards, `btn btn-*`, dotgrid, Remix icons, Notiflix) when it fits.
+2. **MUST** add CSS/JS in **your own module** when DACore has no equivalent, or when forcing the template would change the UX too much (charts, ported toolbars, custom controls people already know).
+3. Files live in `app/modules/<YourModule>/assets/` and are passed as `$css` / `$js` to `Page@withMenu!` — never copied into `app/modules/DACore/`.
+4. **CSS class prefix MUST** be `{lowercase_modulename}_*` (same idea as tables): `.shop_chart`, `.shop_btn-export`. Do not collide with DACore / Bootstrap class names.
+5. **Colors MUST** follow the admin palette already loaded (`colors.css` / `core.css`, existing `btn-*` / `bg-label-*`) so the page still looks like DACore, not a second theme. Reuse shell classes and hues — do not patch DACore’s `colors.css`.
+6. Do **not** duplicate shell files (`dotapp.js`, `dotgrid.css`, `core.css`, `colors.css`). Extra libraries (chart JS, etc.) belong in **your** assets.
+
+This is how ports work: keep familiar controls, restyle them to DACore colors, keep the DACore menu/shell. Do **not** smash a ported UI into only DACore cards because “the template has no chart”.
+
+```php
+return static::call(
+    "DACore:Page@withMenu!",
+    Translator::trans('Sales'),
+    $html,
+    [],
+    ['/assets/modules/Shop/css/shop_charts.css'],
+    ['/assets/modules/Shop/js/shop_charts.js'],
+    ''
+);
+```
+
+```css
+/* app/modules/Shop/assets/css/shop_charts.css — served as /assets/modules/Shop/css/shop_charts.css */
+.shop_chart { /* reuse DACore / btn-* hues already on the page */ }
+```
+
+---
+
+## 6. Layout structure of your `$body`
 
 Your content is placed inside the shell's content container. Start from a card, not from `<html>`:
 
@@ -165,7 +197,7 @@ The surrounding shell (`layout-wrapper` → `layout-container` → `layout-menu`
 
 ---
 
-## 6. dotgrid — the grid system
+## 7. dotgrid — the grid system
 
 DACore ships its own grid. Use `<dot-grid>` / `<dot-col>`, not raw Bootstrap rows, for forms and card layouts.
 
@@ -196,7 +228,7 @@ DACore ships its own grid. Use `<dot-grid>` / `<dot-col>`, not raw Bootstrap row
 
 ---
 
-## 7. Icons
+## 8. Icons
 
 Remix Icon via the iconify CSS already loaded:
 
@@ -209,7 +241,7 @@ In `Menu@register` pass just the classes (`ri ri-store-2-line`) — DACore wraps
 
 ---
 
-## 8. Forms inside the admin
+## 9. Forms inside the admin
 
 Use the framework secure-form stack — it is unchanged by DACore ([08](08-FORMS-AND-SECURITY.md), [examples/EX-01](examples/EX-01-secure-form-complete.md)):
 
@@ -232,14 +264,16 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 
 ---
 
-## 9. Mistakes to avoid
+## 10. Mistakes to avoid
 
 | Wrong | Right |
 |-------|-------|
 | Rendering a full `<html>` document | Return only your content and let `Page@withMenu` wrap it |
 | Re-adding `dotgrid.css` / `core.css` / `dotapp.js` | The shell loads them |
+| Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |
+| Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` |
 | `setViewVar` with `renderLayout()` | Use `setLayoutVar` |
-| Bootstrap `col-md-6` alone for admin forms | `<dot-col any="12" md="6" ldesktop="6">` |
+| Bootstrap `col-md-6` alone for simple admin forms | `<dot-col any="12" md="6" ldesktop="6">` (prefer; custom layout OK when porting) |
 | Font Awesome / Bootstrap Icons | Remix Icon `ri ri-*` |
 | Hardcoding `/dacore` | `Config::module("DACore","prefixUrl")` |
 | Assuming a missing layout throws | It returns `""` — check it |
