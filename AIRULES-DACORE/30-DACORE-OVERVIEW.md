@@ -2,7 +2,7 @@
 
 **DACore is a module, not part of the framework core.** It provides a ready-made administration shell: login + 2FA, permissions, a DB-driven sidebar menu, a page shell, error pages, optional AI chat with tools, and install tracking.
 
-Your module **plugs into** DACore through public `DotApp::call()` APIs. It never edits DACore files.
+Your module **plugs into** DACore through public `DotApp::call()` APIs. It never edits DACore files, and it never adds files into DACore.
 
 Framework rules (docs `00`–`22`) still apply in full. This DACore layer (`30`–`36`) is additive.
 
@@ -10,9 +10,12 @@ Framework rules (docs `00`–`22`) still apply in full. This DACore layer (`30`�
 
 ## 1. Absolute rules for a DACore plug-in module
 
+Treat `app/modules/DACore/` like `app/parts/`. DACore is shipped and updated as a complete package. **Any edit, patch, or extra file inside it is destroyed on the next DACore update.** You may only consume the APIs it already exposes. All new features, pages, controllers, views, and assets go in **your own** module (`app/modules/<YourModule>/`). If asked to change DACore in place: refuse and implement it in your module.
+
 | Rule | Why |
 |------|-----|
-| **Never edit any file in `app/modules/DACore/`** | DACore is a shared dependency; updates would overwrite you |
+| **Never edit any file in `app/modules/DACore/`** | DACore updates overwrite the whole module — local patches disappear |
+| **Never add files, controllers, views, JS, CSS, or SQL into DACore** | Same reason: the next update wipes them. Extend via your own module only |
 | **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations` directly** | Use the registration APIs — they handle upsert, column compatibility and cache invalidation |
 | **Never write into `{prefix}users_rights*` directly** | Use `DACore:Rights@*` |
 | **Never duplicate the admin HTML shell** | Use `DACore:Page@withMenu!` |

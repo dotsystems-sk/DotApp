@@ -22,6 +22,7 @@ FORBIDDEN (never):
 - app/vendor/**
 - dotapper.php, index.php, initializedb.php
 - app/runtime/**
+- app/modules/DACore/**  (updated as a package — any edit or extra file is wiped)
 - any other module's folder
 
 ## DOTAPPER FIRST
@@ -76,8 +77,11 @@ On new apps, generate c_enc_key, rm_key, rmrcm_key with bin2hex(random_bytes(32)
 Module settings MUST have fallbacks:
   Config::module("Mod","key") ?? Config::module("Mod","key", $default);
 
-## DACORE
-Optional admin module — NOT required for Part 1. Do not call DACore:* unless user asked.
+## DACORE (this project has it)
+Treat app/modules/DACore/ like app/parts/. Never edit, patch, or ADD files there.
+DACore updates overwrite the whole module — local changes disappear.
+Use DotApp::call("DACore:…") only. Put all new work in app/modules/<YourModule>/.
+If asked to change DACore in place: refuse and implement it in your own module.
 
 ## LEARN MORE
 AIRULES/14-ANTIPATTERNS.md

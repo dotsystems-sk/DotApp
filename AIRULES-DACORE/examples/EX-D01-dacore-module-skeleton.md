@@ -2,6 +2,8 @@
 
 End-to-end: scaffold, routes, rights middleware, installer wiring. Rules: [30](../30-DACORE-OVERVIEW.md), [32](../32-DACORE-RIGHTS.md), [35](../35-DACORE-INSTALL.md).
 
+**Never touch `app/modules/DACore/`.** Scaffold **your** module (`Shop` below). DACore updates overwrite that folder; extras and patches disappear. Use `DotApp::call("DACore:…")` only.
+
 ## 1. Scaffold
 
 ```powershell

@@ -34,10 +34,10 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 
 ### Most important DACore rules
 
-1. **Never edit files in `app/modules/DACore/`** — integrate via `DotApp::call()` APIs.
+1. **Never edit, patch, or add files in `app/modules/DACore/`.** DACore is updated as a package — every local change is **wiped on the next update**. Use only public `DotApp::call("DACore:…")` APIs. Put all new work in **your own** module (`app/modules/<YourModule>/`).
 2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, or `users_rights*`.
 3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
-4. Register menu, rights, and AI tools **in `Installation.php`**, not on every request.
+4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request.
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell.
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
 
@@ -47,7 +47,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 2. **You may edit only:**
    - `app/config.php`
    - files inside **your own** module at `app/modules/<YourModule>/`
-3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …).
+3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …) **nor `app/modules/DACore/`** (updates wipe every local change; never add files there — only your own module).
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` — **not** jQuery, **not** `f-form`.
 

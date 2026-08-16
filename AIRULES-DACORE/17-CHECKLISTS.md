@@ -74,7 +74,7 @@
 
 ## DACore checklist (when the task touches the admin)
 
-- [ ] No file under `app/modules/DACore/` was modified
+- [ ] No file under `app/modules/DACore/` was modified, added, or deleted (updates would wipe it)
 - [ ] No direct SQL on `dacore_*` or `users_rights*` tables (uninstall menu cleanup excepted)
 - [ ] Admin routes prefixed with `Config::module("DACore","prefixUrl")`
 - [ ] Routes guarded by your own `#YourModule:Rights@check!` (not `#DACore:AuthTest@check!`)
@@ -92,6 +92,7 @@
 ## Pre-commit / before “done”
 
 - [ ] No core file modifications in the diff
+- [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete)
 - [ ] No Laravel/Blade/jQuery APIs introduced
 - [ ] `--list-routes` or manual route review if routes changed
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)

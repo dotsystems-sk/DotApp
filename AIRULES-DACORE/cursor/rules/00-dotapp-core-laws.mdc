@@ -9,9 +9,9 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 
 ## Edit boundaries
 
-- **ALLOWED:** `app/config.php`, `app/modules/<TargetModule>/` only
+- **ALLOWED:** `app/config.php`, `app/modules/<TargetModule>/` only (your own module)
 - **ASK FIRST:** `app/listeners.php`, `.htaccess` (prefer `dotapper --create-htaccess`)
-- **FORBIDDEN:** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, any other module
+- **FORBIDDEN:** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, **`app/modules/DACore/**`**, any other module
 
 ## Before coding
 
@@ -40,9 +40,17 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - `Validator::validate` → `true` or error array (compare `=== true`)
 - wrap AI / SchemaBuilder / raw DDL in `try/catch`; never empty `catch {}`
 
-## DACore
+## DACore (same rank as core)
 
-This project has the DACore admin module. Never edit `app/modules/DACore/`; integrate via `DotApp::call()` APIs. See `AIRULES/30-DACORE-OVERVIEW.md` and rule `08-dacore`.
+This project has the DACore admin module. Treat `app/modules/DACore/` like `app/parts/`.
+
+- **Never edit, patch, or add files** under `app/modules/DACore/`
+- DACore is updated as a whole — **every local change is wiped on the next update**
+- Use only public APIs: `DotApp::call("DACore:…")`
+- All new work goes in `app/modules/<YourModule>/`
+- If asked to change DACore in place: refuse and implement it in your own module
+
+See `AIRULES/30-DACORE-OVERVIEW.md` and rule `08-dacore`.
 
 ## Docs
 

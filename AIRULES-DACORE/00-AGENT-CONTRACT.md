@@ -22,7 +22,7 @@ This is **DotApp** — not Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent,
 |------|------------------------|
 | `app/listeners.php` | Prefer `module.listeners.php` inside your module. |
 | `.htaccess` | Prefer `php dotapper.php --create-htaccess`. |
-| Another module's folder | Only with explicit permission naming that module. |
+| Another **your-project** module's folder | Only with explicit permission naming that module. **Never** DACore. |
 
 ### FORBIDDEN (never edit — no exceptions, no “quick fixes”, no “authorized labs”)
 
@@ -36,9 +36,10 @@ This is **DotApp** — not Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent,
 | `initializedb.php` | Core DB bootstrap |
 | `app/runtime/**` | Generated cache/logs/sessions |
 | `assets/dotapp/**` (if present as static copies) | Served dynamically; do not hand-patch |
+| **`app/modules/DACore/**`** | **Admin module shipped and updated as a whole. Any edit, patch, or extra file is wiped on the next DACore update. Consume its public APIs only. Put all new work in `app/modules/<YourModule>/`.** |
 | Any file outside the target module + `app/config.php` | Scope violation |
 
-If you believe a core bug exists: **stop and ask the user**. Do not patch core.
+If you believe a core or DACore bug exists: **stop and ask the user**. Do not patch core. Do not patch DACore.
 
 ---
 
@@ -136,22 +137,31 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Templates: {{ var: $x }}  — NOT {{ $x }}, NOT Blade
  * - Forms: <fo-rm> + {{ formName(handler) }}
  * - JS: $dotapp — NOT jQuery $
- * - Edit only this module + app/config.php. Never edit app/parts/.
+ * - Edit only this module + app/config.php.
+ * - Never edit app/parts/ or app/modules/DACore/ (DACore updates wipe local changes).
  * See AIRULES/00-AGENT-CONTRACT.md
  */
 ```
 
 ---
 
-## 7. DACore is available in this project
+## 7. DACore is sacred (same rank as framework core)
 
-This rulebook variant covers **framework + DACore**. DACore is an admin-UI **module**, not framework core.
+This rulebook variant covers **framework + DACore**. DACore is an admin-UI **module**, not framework core — but you treat its files **exactly like core**.
+
+**Why:** DACore is installed and updated as a complete package. Any edit, patch, extra file, or “small addition” inside `app/modules/DACore/` **vanishes on the next DACore update**. There is no merge and no exception.
+
+| Never | Instead |
+|-------|---------|
+| Edit any existing file under `app/modules/DACore/` | Use public APIs: `DotApp::call("DACore:…")` |
+| **Add** controllers, views, JS, CSS, SQL, or any other file into DACore | Create **your own** module: `app/modules/<YourModule>/` |
+| Quick-fix a DACore bug in place (even if the user asks) | Refuse, explain the update wipe, work around it from your module |
+| Fork / copy DACore internals into DACore | Read DACore source **read-only**; call only documented APIs |
 
 | Rule | Detail |
 |------|--------|
-| **Never edit `app/modules/DACore/`** | Integrate through `DotApp::call()` APIs only |
 | **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*` | Use the registration APIs |
-| Register menu / rights / AI tools | In `Installation.php`, not per request |
+| Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |
 | Permission guard | Your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` **ignores** the rights you pass |
 | Admin routes | Always prefixed with `Config::module("DACore","prefixUrl")` |
@@ -167,6 +177,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Leftover `.cursorrules` / `*_AI_guide.md` vs AIRULES | **AIRULES** |
 | Leftover `database_guide.md` invented APIs | **Ignore** — follow [06-DATABASE.md](06-DATABASE.md) |
 | User explicit instruction to edit core | Ask once to confirm; still prefer not to |
+| User explicit instruction to edit or extend `app/modules/DACore/` | **Refuse.** Updates wipe it. Implement in `app/modules/<YourModule>/` only. |
 
 ---
 

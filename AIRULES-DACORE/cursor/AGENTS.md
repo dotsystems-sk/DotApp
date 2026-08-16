@@ -6,8 +6,9 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter) th
 
 1. Read `AIRULES/00-AGENT-CONTRACT.md`.
 2. Follow the entire `AIRULES/` knowledge base.
-3. Edit **only** `app/config.php` and `app/modules/<TargetModule>/`.
-4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, or other modules.
+3. Edit **only** `app/config.php` and `app/modules/<TargetModule>/` (your own module).
+4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, **or `app/modules/DACore/`**.
+5. **Never add files into DACore.** A DACore update overwrites the whole module; every local change disappears. Extend via **your own** module and `DotApp::call()` APIs only.
 
 ## Non-negotiable syntax
 
@@ -45,12 +46,17 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | DACore installer | `AIRULES/35-DACORE-INSTALL.md` |
 | DACore quirks | `AIRULES/36-DACORE-KNOWN-ISSUES.md` |
 
-## DACore rules
+## DACore rules (hard)
 
-- Never edit `app/modules/DACore/`; integrate via `DotApp::call()` APIs
+DACore is as sacred as framework core. It is updated as a package; **any edit or extra file inside it is wiped on update.**
+
+- **Never** edit, patch, delete, or **add** anything under `app/modules/DACore/`
+- Use only what DACore already exposes: `DotApp::call("DACore:…")`
+- Put all new admin features in **your own** module (`app/modules/<YourModule>/`)
 - Never write directly to `dacore_menu` / `dacore_ai_tools` / `dacore_installations` / `users_rights*`
 - Render admin pages with `DACore:Page@withMenu!`
 - Guard routes with your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` ignores passed rights
-- Register menu / rights / AI tools in `Installation.php`
+- Register menu / rights / AI tools in **your** `Installation.php`
+- If asked to “just change DACore”: refuse and implement it in your module instead
 
 AIRULES is the single source of truth.

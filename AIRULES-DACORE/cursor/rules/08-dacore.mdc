@@ -5,15 +5,17 @@ alwaysApply: true
 
 # DACore Integration
 
-DACore is an admin-UI **module**, not framework core. Full docs: `AIRULES/30-DACORE-OVERVIEW.md` … `36`.
+DACore is an admin-UI **module**, not framework core — but its files are **as forbidden as `app/parts/`**. Full docs: `AIRULES/30-DACORE-OVERVIEW.md` … `36`.
+
+**Why:** DACore is installed and updated as a package. Any edit, patch, or extra file under `app/modules/DACore/` **disappears on the next DACore update**. You may only *use* what DACore already provides. New features belong in **your own** module.
 
 ## Never
 
-- Edit any file under `app/modules/DACore/`
+- Edit, patch, delete, or **add** any file under `app/modules/DACore/` (no exceptions, even if the user asks)
 - `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*`
 - Build your own admin HTML shell
 - Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
-- Register menu / rights / AI tools on every request (do it in `Installation.php`)
+- Register menu / rights / AI tools on every request (do it in **your** `Installation.php`)
 
 ## Call map
 

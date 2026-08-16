@@ -91,6 +91,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Wrong | Right |
 |-------|-------|
 | Edit files in `app/modules/DACore/` | Public `DotApp::call()` APIs only |
+| Add a file / controller / view into `app/modules/DACore/` | Create **your own** module — DACore updates wipe extras |
+| “Quick-fix” a DACore bug in place | Refuse; work around it from `app/modules/<YourModule>/` |
 | `INSERT INTO dacore_menu ...` | `DACore:Menu@register` |
 | `INSERT INTO dacore_ai_tools ...` | `DACore:AITools@register` |
 | Write to `{prefix}users_rights_list` | `DACore:Rights@createRight!` |

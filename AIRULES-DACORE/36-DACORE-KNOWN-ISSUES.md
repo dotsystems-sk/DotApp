@@ -120,7 +120,7 @@ It returns `false` in both cases, so a transient DB failure makes your migration
 
 ## Priority order when docs disagree
 
-1. DACore source under `app/modules/DACore/`
+1. DACore source under `app/modules/DACore/` — **read-only**. Never edit or add files there (updates wipe them).
 2. This DACore layer (`30`–`36`)
 3. Framework docs (`00`–`22`)
 4. Anything else
