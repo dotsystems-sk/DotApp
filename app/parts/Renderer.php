@@ -1138,13 +1138,70 @@ class Renderer
     public function updateLayoutContentData($layoutdata = null)
     {
         // 2025 verzia, doplnene encryption priamo do sablonovacieho systemu 
+        /*$patterns = [
+
+            '/\{\{\_\s*var:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+                return '<?php echo $translator($' . $matches[1] . '); ?>';
+            },
+            '/\{\{\_\s*"([^"]*)"\s*\}\}/' => function ($matches) {
+                return '<?php echo $translator("' . $matches[1] . '"); ?>';
+            },
+
+            '/\{\{\s*var:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+                return '<?php echo $' . $matches[1] . '; ?>';
+            },
+
+            '/\{\{\s+if\s+(.+?)\s+\}\}/' => function ($matches) {
+                return '<?php if (' . $matches[1] . '): ?>';
+            },
+            '/\{\{\s+elseif\s+(.+?)\s+\}\}/' => function ($matches) {
+                return '<?php elseif (' . $matches[1] . '): ?>';
+            },
+            '/\{\{\s+else\s+\}\}/' => function ($matches) {
+                return '<?php else: ?>';
+            },
+            '/\{\{\s+\/if\s+\}\}/' => function ($matches) {
+                return '<?php endif; ?>';
+            },
+
+            '/\{\{\s*foreach\s+((?:\$\w+|\$\w+\[\'\w+\'\])+(?:\[\'.*?\'\])*(?:\s+as\s+\$\w+))\s*\}\}/' => function ($matches) {
+                return '<?php foreach (' . $matches[1] . '): ?>';
+            },
+            '/\{\{\s+\/foreach\s+\}\}/' => function ($matches) {
+                return '<?php endforeach; ?>';
+            },
+
+            '/\{\{\s+while\s+(.+?)\s+\}\}/' => function ($matches) {
+                return '<?php while (' . $matches[1] . '): ?>';
+            },
+            '/\{\{\s+\/while\s+\}\}/' => function ($matches) {
+                return '<?php endwhile; ?>';
+            },
+
+            '/\{\{\s*enc:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+                return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[1] . '); ?>';
+            },
+            '/\{\{\s*enc\(([^)]+)\):\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+                return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[2] . ', "' . $matches[1] . '"); ?>';
+            },
+            '/\{\{\s*enc:\s*"([^"]*)"\s*\}\}/' => function ($matches) {
+                return $this->dotApp->encrypt($matches[1]);
+            },
+            '/\{\{\s*enc\(([^)]+)\):\s*"([^"]*)"\s*\}\}/' => function ($matches) use ($dotapp) {
+                $key = $matches[1];
+                $string = $matches[2];
+                return $this->dotApp->encrypt($string, $key);
+            },
+        ];*/
+
+        // Update 05/2026
         $patterns = [
             /*
                 Prekladač jazyka
                 {{_ var: $variable }} -> '<?php echo $translator($variable); ?>'
                 {{_ "text" }} -> '<?php echo $translator("text"); ?>'
             */
-            '/\{\{\_\s*var:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+            '/\{\{\_\s*var:\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
                 return '<?php echo $translator($' . $matches[1] . '); ?>';
             },
             '/\{\{\_\s*"([^"]*)"\s*\}\}/' => function ($matches) {
@@ -1154,7 +1211,7 @@ class Renderer
             /* Premenné, syntax
             {{ var: $variableName }}
             */
-            '/\{\{\s*var:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+            '/\{\{\s*var:\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
                 return '<?php echo $' . $matches[1] . '; ?>';
             },
 
@@ -1186,7 +1243,7 @@ class Renderer
                 <li>{{ var: $item }}</li>
             {{ /foreach }}
             */
-            '/\{\{\s*foreach\s+((?:\$\w+|\$\w+\[\'\w+\'\])+(?:\[\'.*?\'\])*(?:\s+as\s+\$\w+))\s*\}\}/' => function ($matches) {
+            '/\{\{\s*foreach\s+((?:\$\w+|\$\w+\[\'\w+\'\])+(?:\[(?:\'.*?\'|\d+)\])*(?:\s+as\s+\$\w+))\s*\}\}/' => function ($matches) {
                 return '<?php foreach (' . $matches[1] . '): ?>';
             },
             '/\{\{\s+\/foreach\s+\}\}/' => function ($matches) {
@@ -1214,10 +1271,10 @@ class Renderer
 
                 Skarede riesenie, ale jednoduche a ucelove. Pravdepodobnost klizie miziva az nulova.
             */
-            '/\{\{\s*enc:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+            '/\{\{\s*enc:\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
                 return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[1] . '); ?>';
             },
-            '/\{\{\s*enc\(([^)]+)\):\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
+            '/\{\{\s*enc\(([^)]+)\):\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
                 return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[2] . ', "' . $matches[1] . '"); ?>';
             },
             '/\{\{\s*enc:\s*"([^"]*)"\s*\}\}/' => function ($matches) {
@@ -1278,8 +1335,34 @@ class Renderer
     {
         // Regex to match {{ formName(name) }} tags
         $pattern = '/\{\{\s*formName\(([^)]+)\)\s*\}\}/';
-
+        
+        // Novy 05/2026 - opravene poradie action
         return preg_replace_callback($pattern, function ($matches) use ($html) {
+            $formName = trim($matches[1], '"\''); // Extract form name, remove quotes if present
+            $originalTag = $matches[0]; // Store the original tag to return if processing fails
+
+            // Otvárajúca značka: atribúty v jednej časti; method/action parsujeme samostatne (poradie atribútov nevadí)
+            $formPattern = '/<(form|fo-rm)([^>]+)>.*?\{\{\s*formName\(' . preg_quote($formName, '/') . '\)\s*\}\}.*?<\/\1>/is';
+
+            if (preg_match($formPattern, $html, $formMatches)) {
+                $attrString = $formMatches[2];
+                if (!preg_match('/\bmethod\s*=\s*["\']([^"\']*)["\']/i', $attrString, $mMeth)) {
+                    return $originalTag;
+                }
+                $method = strtoupper($mMeth[1]);
+                $action = $this->dotApp->router->request->getPath();
+                if (preg_match('/\baction\s*=\s*["\']([^"\']*)["\']/i', $attrString, $mAct) && $mAct[1] !== '') {
+                    $action = $mAct[1];
+                }
+                $input = new Input();
+                return $input->formFunction($action, $method, $formName, $this);
+            }
+
+            // If no <form> or <fo-rm> tag is found, return the original tag
+            return $originalTag;
+        }, $html);
+        // Stary do 05/2026
+        /*return preg_replace_callback($pattern, function ($matches) use ($html) {
             $formName = trim($matches[1], '"\''); // Extract form name, remove quotes if present
             $originalTag = $matches[0]; // Store the original tag to return if processing fails
 
@@ -1296,7 +1379,7 @@ class Renderer
 
             // If no <form> or <fo-rm> tag is found, return the original tag
             return $originalTag;
-        }, $html);
+        }, $html);*/
     }
 
     private function extract_code($code)

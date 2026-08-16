@@ -133,6 +133,19 @@ class Response {
      * 
      * @example Response::code(404);
      */
+    public static function new(): Response {
+        self::$instance = null;
+        return self::getInstance();
+    }
+
+    /**
+     * Sets the HTTP response status code
+     * 
+     * @param int $code HTTP status code (e.g., 200, 404, 500)
+     * @return Response
+     * 
+     * @example Response::code(404);
+     */
     public static function code(int $code): Response {
         $instance = self::getInstance();
         $instance->response->status = $code;

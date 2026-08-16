@@ -65,7 +65,7 @@ $translator = new \stdClass();
 
 class DotApp {
     private static $dotAppForStatic;
-    private static $version = 1.7;
+    public static $version = 1.8;
     public $auth; // Kvoli fasade AuthObj
     public $dotapper = array();
     public $initialized;

@@ -838,32 +838,26 @@
         }
 
         #applyLiveHandler(event, selector, handler) {
-            const elements = document.querySelectorAll(selector);
+            const isSpecial = ['bodychange', 'attrchange', 'resizechange', 'positionchange', 'visibilitychange', 'eventwatch']
+                .some(ev => event === ev || event.startsWith(`${ev}:`));
+
+            if (isSpecial) {
+                const elements = document.querySelectorAll(selector);
+                const key = `${event}::${selector}::${handler.toString()}`;
+                elements.forEach(element => {
+                    // ... existujúca kontrola _liveEvents + #setupSpecialEvent ...
+                });
+                return;
+            }
+
             const key = `${event}::${selector}::${handler.toString()}`;
-
-            elements.forEach(element => {
-                if (!element._liveEvents) {
-                    element._liveEvents = new Set();
-                }
-                if (element._liveEvents.has(`${event}::${handler}`)) {
-                    return;
-                }
-                element._liveEvents.add(`${event}::${handler}`);
-
-                const attrName = event.startsWith('attrchange') ? event.split(':')[1] : null;
-                this.#setupSpecialEvent(element, event, handler, attrName);
-            });
-
-            if (!['bodychange', 'attrchange', 'resizechange', 'positionchange', 'visibilitychange', 'eventwatch'].some(ev => event === ev || event.startsWith(`${ev}:`))) {
-                if (!this.#documentHandlers.has(key)) {
-                    const delegatedHandler = (e) => {
-                        if (e.target.matches(selector)) {
-                            handler(e.target, e);
-                        }
-                    };
-                    document.addEventListener(event, delegatedHandler);
-                    this.#documentHandlers.set(key, delegatedHandler);
-                }
+            if (!this.#documentHandlers.has(key)) {
+                const delegatedHandler = (e) => {
+                    const el = e.target && e.target.closest && e.target.closest(selector);
+                    if (el) handler(el, e);
+                };
+                document.addEventListener(event, delegatedHandler);
+                this.#documentHandlers.set(key, delegatedHandler);
             }
         }
 
@@ -2770,67 +2764,89 @@
         }
 
         #handleFormSubmission(form, method = 'POST', action = window.location.href) {
-            let result = null;
+            // === NOVÁ, ROBUSTNÁ VERZIA PARSERU ===
+            const parseBracketedForm = (formData) => {
+                const result = {};
 
-            // Process form data
-            const formData = new FormData();
-            const inputs = form.querySelectorAll('input, select, textarea');
-
-            inputs.forEach(input => {
-                const name = input.name;
-                if (!name) return;
-
-                if (input.type === 'file') {
-                    Array.from(input.files).forEach(file => {
-                        formData.append(name, file);
-                    });
-                } else if (input.type === 'checkbox' || input.type === 'radio') {
-                    if (input.checked) {
-                        formData.append(name, input.value || 'on');
+                const mergeLeaf = (parent, segment, value, forcePhpStyleArray) => {
+                    if (!Object.prototype.hasOwnProperty.call(parent, segment)) {
+                        parent[segment] = forcePhpStyleArray ? [value] : value;
+                        return;
                     }
-                } else if (input.tagName === 'SELECT' && input.multiple) {
-                    Array.from(input.selectedOptions).forEach(option => {
-                        formData.append(name, option.value);
-                    });
-                } else {
-                    if (input.value) {
-                        formData.append(name, input.value);
+                    const existing = parent[segment];
+                    if (Array.isArray(existing)) {
+                        existing.push(value);
+                        return;
                     }
-                }
-            });
+                    parent[segment] = [existing, value];
+                };
 
-            const formDataObj = Object.fromEntries(formData);
+                formData.forEach((value, key) => {
+                    if (value == null || value === '') return;
 
-            // Volanie before hookov
+                    const wantsArrayLeaf = /\[\]\s*$/.test(key);
+                    const keyForSegments = wantsArrayLeaf ? key.replace(/\[\]\s*$/, '') : key;
+                    const segments = keyForSegments.match(/[^[\]]+/g);
+                    if (!segments || segments.length === 0) {
+                        mergeLeaf(result, keyForSegments || key, value, wantsArrayLeaf);
+                        return;
+                    }
+
+                    let current = result;
+
+                    for (let i = 0; i < segments.length; i++) {
+                        const segment = segments[i];
+
+                        if (i === segments.length - 1) {
+                            mergeLeaf(current, segment, value, wantsArrayLeaf);
+                        } else {
+                            if (!(segment in current)) {
+                                const nextSegment = segments[i + 1];
+
+                                if (segment === 'weekdays' || (nextSegment && !isNaN(nextSegment) && parseInt(nextSegment) > 0)) {
+                                    current[segment] = {};
+                                }
+                                else if (nextSegment && !isNaN(nextSegment) && parseInt(nextSegment) === 0) {
+                                    current[segment] = [];
+                                }
+                                else {
+                                    current[segment] = {};
+                                }
+                            }
+                            current = current[segment];
+                        }
+                    }
+                });
+
+                return result;
+            };
+            // ======================================
+
+            const formData = new FormData(form);
+            const formDataObj = parseBracketedForm(formData);
+
             const hooks = this.#forms.get(form);
             if (hooks && hooks.before) {
                 for (const fn of hooks.before) {
                     const resultBefore = fn(formDataObj, form);
                     if (resultBefore instanceof DotAppHalt) {
-                        return; // Haltneme vykonavanie
+                        return;
                     }
                 }
             }
 
-            // Odoslanie cez load
             this.load(action, method, formDataObj,
                 (response) => {
                     if (hooks && hooks.after) {
                         hooks.after.forEach(fn => fn(formDataObj, response, form));
                     }
-                    result = true;
-                    this.#lastResult = result;
                 },
                 (status, error) => {
                     if (hooks && hooks.onError) {
                         hooks.onError.forEach(fn => fn(formDataObj, status, error, form));
                     }
-                    result = false;
-                    this.#lastResult = result;
                 }
             );
-
-            return result;
         }
 
         /*

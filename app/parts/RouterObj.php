@@ -856,12 +856,12 @@ class RouterObj {
         return array_merge($array1,$array2);
     }
 
-    public function hooksFn($obj,$hookname,...$args) {
-        
+        public function hooksFn($obj,$hookname,...$args) {
+
         $newfn = array();
         $newfn['fn'] = null;
         $newfn['data'] = array();
-        
+
 		if (count($args) == 1) {
             $this->hooksToCache($obj,$hookname,"any","*",$args[0]);
             if (!is_callable($args[0])) $args[0] = $this->dotapp->stringToCallable($args[0]);
@@ -874,7 +874,7 @@ class RouterObj {
                 };
                 $newfn['fn'] = $fn_s_di;
 				$this->hooks[$hookname][] = $newfn;
-                
+
 			} else {
 				throw new \InvalidArgumentException("Incorrect input ! Input must be function !");
 			}
@@ -883,7 +883,9 @@ class RouterObj {
 		if (count($args) == 2) {
             $this->hooksToCache($obj,$hookname,"any",$args[0],$args[1]);
             if (is_array($args[0])) {
-                foreach ($args[0] as $argval) $this->hooksFn($hookname,$argval,$args[1]);
+                foreach ($args[0] as $argval) {
+                    $this->hooksFn($obj,$hookname,$argval,$args[1]);
+                }
                 return $this;
             }
 			if ($this->route_allow("any",$args[0],1)) {
@@ -900,18 +902,26 @@ class RouterObj {
 				} else {
 					throw new \InvalidArgumentException("Incorrect input ! Input must be function !");
 				}
-			}			
+			}
 		}
 
 		if (count($args) == 3) {
             $this->hooksToCache($obj,$hookname,$args[0],$args[1],$args[2]);
+            if (is_array($args[0])) {
+                foreach ($args[0] as $meth) {
+                    $this->hooksFn($obj,$hookname,$meth,$args[1],$args[2]);
+                }
+                return $this;
+            }
             if (is_array($args[1])) {
-                foreach ($args[1] as $argval) $this->hooksFn($hookname,$args[0],$argval,$args[2]);
+                foreach ($args[1] as $argval) {
+                    $this->hooksFn($obj,$hookname,$args[0],$argval,$args[2]);
+                }
                 return $this;
             }
 			if ($this->route_allow($args[0],$args[1],1)) {
                 if (!is_callable($args[2])) $args[2] = $this->dotapp->stringToCallable($args[2]);
-				if (is_callable($args[2])) {                        
+				if (is_callable($args[2])) {
 					    $newfn['fn'] = $args[2];
                         $newfn['route'] = $args[1];
                         $newfn['data'] = $this->matchdata['matched'];
@@ -930,13 +940,21 @@ class RouterObj {
         if (count($args) == 4) {
             $this->hooksToCache($obj,$hookname,$args[0],$args[1],$args[2],$args[3]);
             $limiter = $args[3];
+            if (is_array($args[0])) {
+                foreach ($args[0] as $meth) {
+                    $this->hooksFn($obj,$hookname,$meth,$args[1],$args[2],$args[3]);
+                }
+                return $this;
+            }
             if (is_array($args[1])) {
-                foreach ($args[1] as $argval) $this->hooksFn($hookname,$args[0],$argval,$args[2]);
+                foreach ($args[1] as $argval) {
+                    $this->hooksFn($obj,$hookname,$args[0],$argval,$args[2],$args[3]);
+                }
                 return $this;
             }
 			if ($this->route_allow($args[0],$args[1],1)) {
                 if (!is_callable($args[2])) $args[2] = $this->dotapp->stringToCallable($args[2]);
-				if (is_callable($args[2])) {                        
+				if (is_callable($args[2])) {
 					    $newfn['fn'] = $args[2];
                         $newfn['route'] = $args[1];
                         $newfn['data'] = $this->matchdata['matched'];
@@ -971,13 +989,40 @@ class RouterObj {
         }        
     }
 
+	private function route_allow_methods_match_current($spec): bool {
+		$req = $this->request->getMethod();
+		if (is_array($spec)) {
+			foreach ($spec as $m) {
+				$k = strtolower((string) $m);
+				if ($k === 'any' || $k === $req) {
+					return true;
+				}
+			}
+			return false;
+		}
+		$k = strtolower((string) $spec);
+		return ($k === 'any' || $k === $req);
+	}
+
+	private function route_allow_methods_spec_is_any($spec): bool {
+		if (is_array($spec)) {
+			foreach ($spec as $m) {
+				if (strtolower((string) $m) === 'any') {
+					return true;
+				}
+			}
+			return false;
+		}
+		return strtolower((string) $spec) === 'any';
+	}
+
 	/*
 		Povolime vlozenie routy?
 		route_allow($path);
 		route_allow($method,$path);
         route_allow($method,$path,$ignoruj_obsadene); - Toto pouzivame len v ramci vnutornych funkcii
 	*/
-	private function route_allow(...$args) {
+			private function route_allow(...$args) {
 
 		if (count($args) == 1) {
 			if (in_array($args[0],$this->reserved)) return(false);
@@ -1002,19 +1047,23 @@ class RouterObj {
 		if (count($args) == 2) {
 			if (in_array($args[1],$this->reserved)) return(false);
 
-			if ($args[0] == $this->request->getMethod() || $args[0] == "any") {
-                if ($args[0] == "any") {
-                    if (in_array($args[1],$this->obsadene_routy["get"])) return(false);
-                    if (in_array($args[1],$this->obsadene_routy["post"])) return(false);
-                    if (in_array($args[1],$this->obsadene_routy["put"])) return(false);
-                    if (in_array($args[1],$this->obsadene_routy["delete"])) return(false);
-                    if (in_array($args[1],$this->obsadene_routy["patch"])) return(false);
-                    if (in_array($args[1],$this->obsadene_routy["options"])) return(false);
-                    if (in_array($args[1],$this->obsadene_routy["head"])) return(false);
-                    if (in_array($args[1],$this->obsadene_routy["trace"])) return(false);
-                } else {
-                    if (in_array($args[1],$this->obsadene_routy[$args[0]])) return(false);
-                }
+			if (!$this->route_allow_methods_match_current($args[0])) {
+				return (false);
+			}
+
+            if ($this->route_allow_methods_spec_is_any($args[0])) {
+                if (in_array($args[1],$this->obsadene_routy["get"])) return(false);
+                if (in_array($args[1],$this->obsadene_routy["post"])) return(false);
+                if (in_array($args[1],$this->obsadene_routy["put"])) return(false);
+                if (in_array($args[1],$this->obsadene_routy["delete"])) return(false);
+                if (in_array($args[1],$this->obsadene_routy["patch"])) return(false);
+                if (in_array($args[1],$this->obsadene_routy["options"])) return(false);
+                if (in_array($args[1],$this->obsadene_routy["head"])) return(false);
+                if (in_array($args[1],$this->obsadene_routy["trace"])) return(false);
+            } else {
+                $reqMethod = $this->request->getMethod();
+                if (in_array($args[1],$this->obsadene_routy[$reqMethod])) return(false);
+            }
                 
 				if ($args[1] == $this->request->getPath()) {
                     $this->matchdata['matched'] = $this->match_url($args[1], $this->request->getPath());
@@ -1027,13 +1076,14 @@ class RouterObj {
 						}
 					return(false);
 				}
-			} else return(false);
 		}
 
         if (count($args) == 3) {
 			if (in_array($args[1],$this->reserved)) return(false);
 
-			if ($args[0] == $this->request->getMethod() || $args[0] == "any") {      
+			if (!$this->route_allow_methods_match_current($args[0])) {
+				return (false);
+			}
 				if ($args[1] == $this->request->getPath()) {
                     $this->matchdata['matched'] = array();
 					return(true);
@@ -1045,7 +1095,6 @@ class RouterObj {
 						}
 					return(false);
 				}
-			} else return(false);
 		}
 
         return(false);
@@ -1064,7 +1113,7 @@ class RouterObj {
 			} else {
 				$najdeny429 = isset($this->routy['error']['429']) ? $this->routy['error']['429'] : false;
 				if ($najdeny429 != false) {
-					echo $this->renderer->loadViewStatic('error_'.$najdeny404);
+					echo $this->renderer->loadViewStatic('error_'.$najdeny429);
                     $this->save_cache();
 					die();
 				}

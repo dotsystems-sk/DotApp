@@ -35,7 +35,8 @@ class Request extends Facade {
         'form',
         'lock',
         'firewall',
-        'query'
+        'query',
+        'formToArray',
     ];
 
     public static function middleware(string $name, $callback=null, ...$args) {

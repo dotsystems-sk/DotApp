@@ -537,12 +537,27 @@ class Databaser
         return null;
     }
 
+    public function insertedId()
+    {
+        return $this->inserted_id();
+    }
+
+    public function lastInsertedId()
+    {
+        return $this->inserted_id();
+    }
+
     public function affected_rows()
     {
         if (isset($this->database_drivers['drivers'][$this->database_drivers['driver']]['affected_rows'])) {
             return $this->database_drivers['drivers'][$this->database_drivers['driver']]['affected_rows']();
         }
         return null;
+    }
+
+    public function affectedRows()
+    {
+        return $this->affected_rows();
     }
 
     // WHERE HAS - filter by relation existence

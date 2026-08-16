@@ -25,7 +25,10 @@ class HttpHelper {
      * @param string $method HTTP method (GET, POST, PUT, DELETE, etc.)
      * @param string $url Target URL
      * @param array $data Data to send (will be JSON-encoded unless rawBody is provided)
-     * @param array $auth Authentication parameters ['username', 'password', 'api_key', 'ca_fingerprint', 'ca_file']
+     * @param array $auth Authentication parameters ['username', 'password', 'api_key', 'ca_fingerprint', 'ca_file',
+     *                  'timeout' => max. seconds for the **entire** cURL transfer (connect + waiting for response body),
+     *                  'connect_timeout' => seconds only for establishing TCP/TLS (default **2**). If `timeout` is omitted,
+     *                  it defaults to **connect_timeout + 30** so roughly **30 s** remain for the API response after connect.]
      * @param array $headers Additional HTTP headers (optional)
      * @param array $queryParams Query parameters for GET requests (optional)
      * @param string|null $rawBody Raw body data to send (e.g., NDJSON for bulk operations)
@@ -124,8 +127,23 @@ class HttpHelper {
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 500); // 0.5 seconds for connection
             curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1000);       // 1 second total
         } else {
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Increased timeout for binary downloads
+            $connectTimeout = isset($auth['connect_timeout'])
+                ? max(1, (int) $auth['connect_timeout'])
+                : 2;
+
+            if (isset($auth['timeout']) && (int) $auth['timeout'] > 0) {
+                $timeoutSec = max(1, (int) $auth['timeout']);
+            } else {
+                // CURLOPT_TIMEOUT = celý transfer od štartu; connect má vlastný limit → rezerva ~30 s na telo odpovede
+                $timeoutSec = $connectTimeout + 30;
+            }
+
+            if (defined('CURLOPT_CONNECTTIMEOUT_MS')) {
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $connectTimeout * 1000);
+            } else {
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connectTimeout);
+            }
+            curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSec);
         }
 
         $response = curl_exec($ch);
@@ -179,6 +197,96 @@ class HttpHelper {
         }
 
         return $result;
+    }
+
+    /**
+     * Same as {@see request()}, but repeats the call when the outcome looks transient (timeouts, connection errors,
+     * HTTP 429 / 502 / 503 / 504, invalid JSON body with those statuses).
+     *
+     * @param int $maxAttempts   Minimum 1, capped at 15
+     * @param int $initialDelayMs Delay before second attempt (then multiplied by ~1.8x, capped at 8000 ms)
+     */
+    public static function requestWithRetries(
+        string $method,
+        string $url,
+        array $data = [],
+        array $auth = [],
+        array $headers = [],
+        array $queryParams = [],
+        ?string $rawBody = null,
+        bool $binary = false,
+        int $maxAttempts = 3,
+        int $initialDelayMs = 500
+    ): array {
+        $maxAttempts = max(1, min(15, $maxAttempts));
+        $delayMs = max(0, $initialDelayMs);
+        $last = null;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $last = self::request($method, $url, $data, $auth, $headers, $queryParams, $rawBody, $binary);
+            if (($last['error'] === null && $last['success']) || !self::isRetryableTransportOrOverload($last)) {
+                return $last;
+            }
+            if ($attempt < $maxAttempts && $delayMs > 0) {
+                usleep($delayMs * 1000);
+                $delayMs = min((int) round($delayMs * 1.8), 8000);
+            }
+        }
+
+        return $last;
+    }
+
+    /**
+     * @param array{success?: bool, http_code?: int, response?: mixed, error?: string|null} $result
+     */
+    public static function isRetryableTransportOrOverload(array $result): bool
+    {
+        $code = (int) ($result['http_code'] ?? 0);
+        if (in_array($code, [429, 502, 503, 504], true)) {
+            return true;
+        }
+        $err = isset($result['error']) ? (string) $result['error'] : '';
+        if ($err !== '' && stripos($err, 'cURL error:') === 0) {
+            return self::curlErrorLooksTransient($err);
+        }
+        if (
+            stripos($err, 'Invalid JSON response') !== false
+            && $code >= 502
+            && $code <= 504
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static function curlErrorLooksTransient(string $err): bool
+    {
+        $lower = strtolower($err);
+        $needles = [
+            'timed out',
+            'timeout',
+            'operation timed out',
+            'connection refused',
+            'could not resolve host',
+            'couldn\'t connect',
+            'couldn\'t resolve host',
+            'failed to connect',
+            'empty reply from server',
+            'connection reset',
+            'recv failure',
+            'ssl_read:',
+            'got nothing',
+            'ssl connection',
+            'network is unreachable',
+            'connection aborted',
+        ];
+        foreach ($needles as $n) {
+            if (strpos($lower, $n) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 ?>

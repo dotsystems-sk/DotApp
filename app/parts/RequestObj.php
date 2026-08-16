@@ -255,6 +255,67 @@ class RequestObj {
     }
 
     /**
+     * Ploché (alebo polovične vnorené) kľúče s PHP "form" syntaxou prevedie na vnorené pole.
+     * Príklady: weekdays[2], nieco[0], nieco[text][dalsi]
+     *
+     * @param  array  $data  asoc. pole, kde môžu byť kľúče s hranatými zátvorkami
+     * @return array
+     */
+    function formToArray(array $data): array
+    {
+        $parseKey = static function (string $key): ?array {
+            if (strpos($key, '[') === false) {
+                return null;
+            }
+            $parts = preg_split('/\[|\]/', $key, -1, PREG_SPLIT_NO_EMPTY);
+            return (count($parts) > 1) ? $parts : null;
+        };
+
+        $setPath = null;
+        $setPath = function (array &$out, array $segments, $value) use (&$setPath): void {
+            if ($segments === []) {
+                return;
+            }
+
+            $head = $segments[0];
+            $isLast = count($segments) === 1;
+
+            if ($isLast) {
+                if (isset($out[$head]) && is_array($out[$head]) && is_array($value) && $value !== []) {
+                    $out[$head] = array_replace_recursive($out[$head], $value);
+                } else {
+                    $out[$head] = $value;
+                }
+                return;
+            }
+
+            if (!isset($out[$head]) || !is_array($out[$head])) {
+                $out[$head] = [];
+            }
+
+            $sub =& $out[$head];
+            $setPath($sub, array_slice($segments, 1), $value);
+        };
+
+        $out = [];
+        foreach ($data as $k => $v) {
+            if (is_array($v)) {
+                $v = $this->formToArray($v);
+            }
+
+            $path = is_string($k) ? $parseKey($k) : null;
+
+            if ($path !== null) {
+                $setPath($out, $path, $v);
+            } else {
+                $out[$k] = $v;   // fallback pre scalar hodnoty bez zátvoriek
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Gets or sets match data for dynamic URL parameters.
      * Locked for editing if gsLocked is true.
      *

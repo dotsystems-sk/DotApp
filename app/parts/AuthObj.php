@@ -840,7 +840,15 @@ class AuthObj {
         ];
         $appname = Config::get("app","name");
         $this->deleteAutologinTokenFromDatabase();
+        setcookie('dotapp_rm', "", [
+            'expires' => time() - 3600,
+            'path' => Config::session("path"),
+        ]);
         setcookie('dotapp_'.Config::get("app","name_hash"), "", [
+            'expires' => time() - 3600,
+            'path' => Config::session("path"),
+        ]);
+        setcookie('dotapp_session', "", [
             'expires' => time() - 3600,
             'path' => Config::session("path"),
         ]);
