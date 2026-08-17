@@ -22,6 +22,7 @@ Treat `app/modules/DACore/` like `app/parts/`. DACore is shipped and updated as 
 | **Never use `$_SESSION`** | Use `DSM` ([20](20-CACHE-LOGGER-SESSION.md)) |
 | **Never rely on `#DACore:AuthTest@check!` for permission checks** | It ignores the rights you pass — see [36](36-DACORE-KNOWN-ISSUES.md); create your own `Middleware/Rights.php` |
 | Register menu/rights/tools **from `Installation.php`**, not on every request | Otherwise you write to the DB on each page load |
+| **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — never `Auth::confirmTwoFactor` while already logged in |
 
 Editable paths are unchanged: `app/config.php` and `app/modules/<YourModule>/` only ([00](00-AGENT-CONTRACT.md)).
 

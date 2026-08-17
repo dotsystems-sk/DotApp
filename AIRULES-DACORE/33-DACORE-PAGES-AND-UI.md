@@ -159,6 +159,38 @@ Keep the DACore **shell** (`Page@withMenu!`, sidebar, `colors.css`). **Never** e
 5. **Colors MUST** follow the admin palette already loaded (`colors.css` / `core.css`, existing `btn-*` / `bg-label-*`) so the page still looks like DACore, not a second theme. Reuse shell classes and hues — do not patch DACore’s `colors.css`.
 6. Do **not** duplicate shell files (`dotapp.js`, `dotgrid.css`, `core.css`, `colors.css`). Extra libraries (chart JS, etc.) belong in **your** assets.
 
+### Frontend: `$dotapp` is the admin runtime (**MUST**)
+
+DACore administration **runs on `$dotapp`** (`/assets/dotapp/dotapp.js` is already in the shell). New admin pages should use `$dotapp` for DOM, forms, and network.
+
+**jQuery and `$dotapp` may coexist** on the same page (ported widgets, existing plugins). They are not mutually exclusive for UI. The hard split:
+
+| Allowed with jQuery | **Forbidden** — always `$dotapp` |
+|---------------------|-----------------------------------|
+| DOM widgets, datepickers, charts that still need `$` | **All HTTP to the app:** forms, `load`, bridge, uploads |
+| Temporary leftover UI during a port | `$.ajax` / `$.post` / `$.get` / raw `fetch` to DotApp endpoints |
+
+Requests **MUST** go through `$dotapp().form` / `$dotapp().load` / `dotbridge` so CRC, CSRF, keys and signatures stay intact. Mixing jQuery UI with `$dotapp` transport is fine; mixing jQuery **AJAX** with DotApp endpoints is not.
+
+**When porting** jQuery plugins: **ask first**, then **rewrite** them as a new `$dotapp` library (porting = writing a new lib — do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) **§4.C** and [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget (`dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`), **use that** — do not copy DACore JS into your module. Do not silently keep `$.ajax`. If they keep jQuery for UI only, still send every request with `$dotapp`.
+
+Plugin registration (own libraries): see [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 and [EX-15](examples/EX-15-dotapp-js-library.md). Never edit `app/parts/js/` or `app/modules/DACore/`.
+
+```javascript
+(function () {
+  var runMe = function ($dotapp) {
+    $dotapp().fn("shopChart", function (opts) {
+      // `this` is the DotApp instance — use this.load / this.form, never $.ajax
+      return this;
+    });
+  };
+  if (window.$dotapp) runMe(window.$dotapp);
+  else window.addEventListener("dotapp-register", function () { runMe(window.$dotapp); }, { once: true });
+})();
+```
+
+Duplicate `fn()` names **throw**. Pass the script via `Page@withMenu!` `$js`.
+
 This is how ports work: keep familiar controls, restyle them to DACore colors, keep the DACore menu/shell. Do **not** smash a ported UI into only DACore cards because “the template has no chart”.
 
 ```php
@@ -258,9 +290,21 @@ Use the framework secure-form stack — it is unchanged by DACore ([08](08-FORMS
 </fo-rm>
 ```
 
+**MUST:** `{{ formName(saveItem) }}` sits **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.
+
 PHP handler: `crcCheck()` → `form(['POST'], 'saveItem', $ok, $err)` → `ajaxReply()`. Because `dotapp.js` is already loaded by the shell, your page script only registers the hooks.
 
+**MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, toast with **Notiflix** (`Notify.success` / `failure`). Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
+
+**MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
+
+**MUST (block while in flight):** while save / toggle / reorder / paginate is running, cover the form or the **whole list** so the user cannot click or drag again. **Notiflix is DACore-admin only** (this shell). **Preferred on admin pages:** `Notiflix.Block`. **Alternative on admin:** equivalent overlay in **your** module. **Public / front-office pages** in the same project **MUST** use **module preloaders** — Notiflix is not loaded there. Skipping Notiflix does **not** skip preloaders. **MUST** remove the overlay on success **and** error. Overlay a stable parent; patch `TBODY` / inner wrap. UX **MUST** be excellent on desktop **and** mobile (visible spinner, intercepts touch, no hover-only). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+
 For toasts, Notiflix is available (loaded by the shell); modals come from `dotapp.modals.js`.
+
+**MUST (delete confirm):** never `alert()` / `window.confirm()`. Ask in a graphical dialog first (`Notiflix.Confirm` preferred, or `$dotapp().modal`). Then `load()`. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+
+**MUST (operator 2FA / dangerous actions):** DACore operators **MUST** have at least one 2FA method and **MUST NOT** be able to turn it off. Before an action that can seriously damage the system (delete admin, wipe data, grant `dotapp.root`, …), re-prompt with `$dotapp().twoFactor` and verify in **your** module. Do **not** call `Auth::confirmTwoFactor` (login stage 2 only). See [32](32-DACORE-RIGHTS.md) §6.
 
 ---
 
@@ -270,6 +314,13 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 |-------|-------|
 | Rendering a full `<html>` document | Return only your content and let `Page@withMenu` wrap it |
 | Re-adding `dotgrid.css` / `core.css` / `dotapp.js` | The shell loads them |
+| `$.ajax` for admin saves / lists | `$dotapp().form` / `$dotapp().load` / `dotbridge` (jQuery UI OK) |
+| `location.reload()` after toggle/save on the same page | JSON `html` + patch DOM + Notiflix toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| One `<fo-rm>` per row button / D&D via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
+| List still clickable during reorder / toggle | Overlay the wrapper (Notiflix preferred **or** module preloaders); remove on success **and** error; desktop **and** mobile |
+| Dangerous admin action with no second 2FA prompt | Step-up `$dotapp().twoFactor` + verify in your module ([32](32-DACORE-RIGHTS.md) §6) |
+| `alert()` / `window.confirm()` on delete | `Notiflix.Confirm` or `$dotapp().modal`, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| UI that disables an operator’s 2FA | Forbidden |
 | Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |
 | Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` |
 | `setViewVar` with `renderLayout()` | Use `setLayoutVar` |

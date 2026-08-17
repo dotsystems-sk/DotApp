@@ -74,9 +74,19 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `f-form` | **`<fo-rm>`** |
 | jQuery `$` / `$.ajax` | `$dotapp` / `$dotapp().load` |
 | Plain `<form>` without formName for DotApp JS | `<fo-rm>` + `{{ formName(x) }}` |
+| `{{ formName }}` after `</fo-rm>` or before `<fo-rm>` | **MUST** put it **between** `<fo-rm>` and `</fo-rm>` |
 | Skip `crcCheck` | Always for DotApp transport |
 | Static `/app/parts/js/dotapp.js` on pages | `/assets/dotapp/dotapp.js` |
+| Edit `app/parts/js/` to add a plugin | Your module `assets/js` + `$dotapp().fn` on `dotapp-register` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4, [EX-15](examples/EX-15-dotapp-js-library.md)) |
+| Wrap `$.fn.plugin` / `$(el).plugin()` and call it a `$dotapp` port | Rewrite vanilla + `$dotapp().fn` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md)) |
+| Register a library on the `dotapp` event | `dotapp-register` |
 | Assume getter chaining | Many getters return values |
+| `location.reload()` after `fo-rm` / `load` (stay on page) | Return `html` in JSON, patch the DOM, short toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md)) |
+| Empty `.after()` / `alert()` | Toast (DACore: Notiflix) + live list; `redirectTo` only when leaving the page |
+| One `<fo-rm>` per row button / drag-and-drop via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
+| List still clickable / second drag during `load()` | Cover the wrapper (Notiflix preferred **or** module preloaders) until success **and** error — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |
+| `alert()` / `window.confirm()` on delete | Graphical dialog (`Notiflix.Confirm` on admin), then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 
 ## Config / security
 
@@ -99,6 +109,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Write to `{prefix}users_rights_list` | `DACore:Rights@createRight!` |
 | Build your own admin HTML shell | `DACore:Page@withMenu!` |
 | Never add CSS because the shell exists / smash a ported chart into a DACore table | Module `$css`/`$js` on `withMenu`; classes `{modulename}_*`; DACore colors |
+| `$.ajax` / `$.post` on admin pages (even if jQuery is loaded) | `$dotapp().form` / `$dotapp().load` / `dotbridge` |
+| Keep jQuery plugins on a port without asking, or wrap `$.fn` | **Ask**, then **rewrite** as `$dotapp().fn` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md)). If DACore already ships it, use it. |
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |
@@ -108,5 +120,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Bootstrap `col-md-6` in admin forms | `<dot-col any="12" md="6" ldesktop="6">` |
 | Re-add `dotapp.js` / dotgrid / core.css | The shell already loads them |
 | Ignoring `Menu@register` / `AITools@register` return | They return `bool`, never throw or log |
+| Dangerous admin action without a second 2FA prompt | Step-up `$dotapp().twoFactor` + verify in your module ([32](32-DACORE-RIGHTS.md) §6) |
+| Let an operator turn 2FA off | Forbidden — at least one method MUST stay on |
 
 Details: [30](30-DACORE-OVERVIEW.md)–[36](36-DACORE-KNOWN-ISSUES.md).

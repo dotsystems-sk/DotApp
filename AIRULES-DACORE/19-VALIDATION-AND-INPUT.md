@@ -136,7 +136,7 @@ Failure shapes:
 
 ### formName (preferred for whole-form security)
 
-`{{ formName(handler) }}` emits **4** encrypted hidden fields: `dotapp-secure-auto-fnname`, `...-action`, `...-method`, `...-public`. See [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md).
+`{{ formName(handler) }}` emits **4** encrypted hidden fields: `dotapp-secure-auto-fnname`, `...-action`, `...-method`, `...-public`. **MUST** place it **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. See [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md).
 
 ---
 

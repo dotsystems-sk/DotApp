@@ -6,7 +6,7 @@ DACore-specific traps. Framework-level issues are in [15](15-KNOWN-ISSUES.md).
 
 ## 1. `#DACore:AuthTest@check!` ignores the rights you pass
 
-When called with a non-null array it does **not** evaluate your argument — it checks a hardcoded FaceTerminal permission list. It is only reliable for its registered purpose: CRC validation of `POST /dacore/*`.
+When called with a non-null array it does **not** evaluate your argument — it checks a hardcoded built-in permission list. It is only reliable for its registered purpose: CRC validation of `POST /dacore/*`.
 
 **Consequence:** never use it as your permission guard.
 

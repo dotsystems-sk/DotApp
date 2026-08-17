@@ -49,7 +49,7 @@ Always include **before** your module script:
 Notes:
 
 - Prefer **`<fo-rm>`** over `<form>` (bots/scanners target `<form>`; DotApp converts at runtime).
-- `{{ formName(saveContact) }}` must sit **inside** the fo-rm and the tag must have `method`.
+- **MUST:** `{{ formName(saveContact) }}` sits **between** `<fo-rm …>` and `</fo-rm>` — never after `</fo-rm>`, never before `<fo-rm>`. The tag must have `method`. Outside the pair the renderer leaves `{{ formName }}` unchanged (silent failure).
 - Renderer emits encrypted hidden fields binding **handler name + action URL + HTTP method** to a per-form key. Forging or swapping handlers from HTML is not practical.
 
 ## 2) Module JS — hooks + loader + parseReply
@@ -71,6 +71,8 @@ Notes:
       .after(function (data, response, form) {
         var reply = $dotapp().parseReply(response);
         if (reply && reply.status == 1) {
+          // This sample **leaves** the page. For lists / toggles / add-on-same-page
+          // MUST patch reply.html + toast instead — see EX-06. Never location.reload().
           window.location = reply.redirectTo || "/shop/";
           return;
         }
@@ -186,7 +188,11 @@ class Contact extends \Dotsystems\App\Parts\Controller
 <!-- WRONG name -->
 <div f-form>...</div>
 
-<!-- WRONG: formName outside fo-rm -->
+<!-- WRONG: formName before fo-rm -->
 {{ formName(saveContact) }}
 <fo-rm>...</fo-rm>
+
+<!-- WRONG: formName after </fo-rm> -->
+<fo-rm>...</fo-rm>
+{{ formName(saveContact) }}
 ```

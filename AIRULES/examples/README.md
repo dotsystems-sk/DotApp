@@ -9,7 +9,8 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-03-module-scaffold.md](EX-03-module-scaffold.md) | New module, routes, config fallbacks |
 | [EX-04-database-crud.md](EX-04-database-crud.md) | Select/insert/update/delete, transactions, pagination, **return shapes** |
 | [EX-05-renderer-page.md](EX-05-renderer-page.md) | Page render: view + layout + assets |
-| [EX-06-dotapp-js-boot.md](EX-06-dotapp-js-boot.md) | Page JS boot, loaders, form hooks |
+| [EX-06-dotapp-js-boot.md](EX-06-dotapp-js-boot.md) | Page JS boot, **module preloaders**, **live DOM** (no reload), **delete confirm** |
+| [EX-15-dotapp-js-library.md](EX-15-dotapp-js-library.md) | New `$dotapp().fn(...)` library **or** jQuery → `$dotapp` port |
 | [EX-07-bridge.md](EX-07-bridge.md) | Button → PHP via `dotbridge` |
 | [EX-08-config-secrets.md](EX-08-config-secrets.md) | New app keys, module setting fallbacks |
 | [EX-09-validation-and-errors.md](EX-09-validation-and-errors.md) | Validator / Input groups / JSON error envelopes |
@@ -17,7 +18,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-11-email-sms-qr.md](EX-11-email-sms-qr.md) | Email, SMS provider, QR codes |
 | [EX-12-ai-search-mcp.md](EX-12-ai-search-mcp.md) | AI calls, FastSearch, MCP tools |
 | [EX-13-schema-migrations.md](EX-13-schema-migrations.md) | SchemaBuilder, DDL, introspection |
-| [EX-14-auth-and-2fa.md](EX-14-auth-and-2fa.md) | Login, permissions, 2FA, user creation |
+| [EX-14-auth-and-2fa.md](EX-14-auth-and-2fa.md) | Login, permissions, 2FA (`$dotapp().twoFactor`), user creation |
 
 Theory lives in `AIRULES/0x-*.md` / `1x-*.md` / `2x-*.md`. These files are **executable patterns**.
 
@@ -30,7 +31,7 @@ Theory lives in `AIRULES/0x-*.md` / `1x-*.md` / `2x-*.md`. These files are **exe
 For any form a user submits in a browser:
 
 1. **Must** load `/assets/dotapp/dotapp.js` (it injects per-session encryption keys).
-2. **Must** use `<fo-rm>` + `{{ formName(handlerName) }}`.
+2. **Must** use `<fo-rm>` + `{{ formName(handlerName) }}`. **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.
 3. **Must** validate with `$request->crcCheck()` then `$request->form(...)`.
 
 This binds the handler name, action URL and HTTP method under a per-form key plus CRC and a one-time CSRF token — far stronger than a plain CSRF field. `{{ CSRF }}` alone is not sufficient for the DotApp JS transport.

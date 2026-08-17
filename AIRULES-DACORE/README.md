@@ -41,6 +41,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell.
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
 7. **MUST** add your own CSS/JS in the module when DACore has no widget (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI.
+8. DACore admin runs on **`$dotapp`**. jQuery may sit beside it for UI widgets, but **every request** uses `$dotapp` (`form` / `load` / bridge) — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C and [EX-15](examples/EX-15-dotapp-js-library.md).
 
 ## Hard rules
 
@@ -50,7 +51,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
    - files inside **your own** module at `app/modules/<YourModule>/`
 3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …) **nor `app/modules/DACore/`** (updates wipe every local change; never add files there — only your own module).
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
-5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` — **not** jQuery, **not** `f-form`.
+5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** cover the form/list until the request ends. **DACore admin:** Notiflix (preferred) **or** your module preloaders. **Public website:** you **MUST** build preloaders yourself (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin) — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile.
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items`, `dotapp_*`, or `dacore_*` for your module data.
 
 ## Quick install
@@ -87,7 +88,7 @@ Theory lives in `00`–`22`. **Ready copy-paste patterns** are in [examples/](ex
 | [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder |
 | [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, Installation.php |
 | [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md) | fo-rm, CRC, CSRF |
-| [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge |
+| [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
 | [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md) | Config, keys, fallbacks |
 | [11-AUTH-AND-CRYPTO.md](11-AUTH-AND-CRYPTO.md) | Auth, 2FA, Crypto |
 | [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, … |

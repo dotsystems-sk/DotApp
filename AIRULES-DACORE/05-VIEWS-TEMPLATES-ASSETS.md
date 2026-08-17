@@ -144,7 +144,7 @@ Space required after `{{` before `if`. Closing tag is `{{ /if }}`.
 {{ enc(mykey): "literal" }}
 ```
 
-`{{ formName(x) }}` requires an enclosing `<form>` or `<fo-rm>` **with a `method` attribute**; otherwise the tag is left **unchanged** in the output (silent failure — check your HTML).
+`{{ formName(x) }}` **MUST** sit **between** `<fo-rm …>` and `</fo-rm>` (or `<form>`), and that tag **MUST** have a `method` attribute. After `</fo-rm>` / before `<fo-rm>` / missing `method` → the tag is left **unchanged** in the output (silent failure — check your HTML).
 
 `{{ enc(key): $x }}` encrypts at runtime; `{{ enc: "literal" }}` encrypts at **compile time**. Decrypt with the same context key via `Crypto::decrypt($v, 'key')` — remember it returns **`false`** on failure.
 

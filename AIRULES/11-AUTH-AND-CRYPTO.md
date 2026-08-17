@@ -146,6 +146,8 @@ $code   = TOTP::generate($secret);               // for verification/testing
 
 You must send SMS/email codes yourself (see [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md)).
 
+**Frontend (**MUST**):** code boxes use `$dotapp(".two-fa-inputs input").twoFactor(...)` — already in `dotapp.js` (auto-advance, paste, auto-submit). **MUST NOT** invent a custom OTP widget. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Built-in 2FA fields” and [EX-14](examples/EX-14-auth-and-2fa.md).
+
 ---
 
 ## 6. Remember-me
@@ -224,3 +226,4 @@ See [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md). Use `DSM::use('You
 5. Always pass `$key2` to Crypto and check `=== false`.
 6. Understand that remember-me bypasses 2FA before enabling `rm_autologin`.
 7. Implement password reset and login throttling yourself (`Limiter` + your own table).
+8. 2FA code boxes: `$dotapp().twoFactor` — do not invent an OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).

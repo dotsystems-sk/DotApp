@@ -73,7 +73,7 @@ $dotapp('#login [name="email"]').addClass('ok');       // then act
 ## 3. Network: always `load()` for DotApp endpoints
 
 ```javascript
-$dotapp().load(url, "POST", { id: 5 },
+$dotapp().load(url, "POST", { id: $dotapp(el).attr("data-id") },
   function (response) {
     var reply = $dotapp().parseReply(response);   // decodes base64 JSON from ajaxReply
     if (!reply || reply.status != 1) { return; }
@@ -86,29 +86,350 @@ $dotapp().load(url, "POST", { id: 5 },
 
 `$dotapp().parseReply(text)` is required because PHP `ajaxReply()` returns **base64-encoded JSON**.
 
-Form submits are routed through this pipeline automatically unless the form has `data-dotapp-nojs`.
+Form submits are routed through this pipeline automatically unless the form has `data-dotapp-nojs`. **There is no full-page reload.** If `.after()` / the `load` callback does not update the DOM, the user sees nothing until they refresh — that is a **bug**.
 
 Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms, `uploadFile` for raw `FormData` uploads.
 
+### Interactive UX (**MUST**)
+
+`<fo-rm>` is hijacked by `dotapp.js` (`preventDefault` + `load()`). Native submit / PHP `header('Location')` / hoping the browser reloads **does not run**.
+
+| Stay on this page (list, toggle, add row, inline save) | Leave the page (login, wizard step, “save then open detail”) |
+|------------------------------------------------------|--------------------------------------------------------------|
+| **MUST** return fresh markup or data in JSON and patch the DOM | `redirectTo` + `window.location` is OK |
+| **MUST** show a short, non-blocking toast (“Enabled”, “Saved”) | Toast optional if navigation is immediate |
+| **MUST** overlay the region while in flight (desktop **and** mobile) | — |
+| **MUST NOT** `location.reload()` / `window.location` as the success path | |
+
+PHP (stay on page):
+
+```php
+return ['code' => 200, 'body' => [
+    'status' => 1,
+    'message' => 'Enabled',
+    'html' => $tableHtml,   // re-rendered tbody / list fragment
+]];
+```
+
+JS:
+
+```javascript
+.after(function (data, response, form) {
+    var reply = $dotapp().parseReply(response);
+    if (reply && reply.status == 1) {
+        if (reply.html) $dotapp('#listWrap').html(reply.html);
+        if (window.Notiflix && Notiflix.Notify) {
+            Notiflix.Notify.success(reply.message || 'Saved');
+        }
+    } else if (reply && reply.message) {
+        if (window.Notiflix && Notiflix.Notify) {
+            Notiflix.Notify.failure(reply.message);
+        }
+    }
+    $dotapp(form).attr('blocked', '0');
+});
+```
+
+Same rule for `$dotapp().load(...)` (toggles, delete, “add rule”). Bind row actions with `.live()` so they still work after the HTML is replaced. Toast: **DACore admin** → Notiflix (shell). **Public website** → your module notify. Never `alert()`.
+
+**MUST NOT** wrap row actions in `<fo-rm>` (move up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `load()`. `<fo-rm>` is only for a real multi-field submit. See [08](08-FORMS-AND-SECURITY.md) “One-shot actions are not forms”.
+
+### Block while in flight (**MUST** — desktop and mobile)
+
+This is **first-class UX**, not decoration. Pages **MUST** feel fast, obvious, and foolproof on a **desktop and on a phone**. Skipping a visible busy state is a bug.
+
+While a request that mutates a region is running, the user **MUST NOT** be able to fire the same or a conflicting action again (double-submit, second drag, extra tap). Cover the region. Ignore further **clicks and touches** until done.
+
+| What is running | **MUST** block |
+|-----------------|---------------|
+| `<fo-rm>` submit | `blocked` + `$dotapp().halt()`; button `loading`/`loader`; cover the form |
+| List toggle / delete / paginate / filter | Cover the **whole list wrapper**; ignore further clicks/taps until done |
+| Reorder / drag-and-drop | Cover the **whole list / drop zone** so another drag/touch-move cannot start |
+
+Show the loader **before** `load()` (or in `.before()`). **MUST** remove it in **both** the success and error callbacks (and in `.after()`). A stuck overlay is a bug.
+
+Cover a **stable parent** you do **not** replace entirely; patch the inner fragment (`TBODY`, `#listInner`). Replacing the blocked node’s `innerHTML` wipes the overlay.
+
+**Notiflix is DACore-only** (the admin shell). It is **not** on public / front-office pages.
+
+- **DACore admin** (`Page@withMenu!`): pick **one** stack per page — **Notiflix** (already loaded; preferred) **or** an equivalent in **your module**. Do not re-add Notiflix. Do not patch DACore.
+- **Public website** (no DACore shell): **MUST** ship preloaders in **your module**. Notiflix is not there.
+
+Skipping Notiflix on an admin page does **not** waive preloaders. A custom system that fails the UX bar is not acceptable.
+
+**UX bar (MUST — admin and public):**
+
+- Overlay is **visible** on desktop **and** mobile (contrast, spinner large enough to see on a phone).
+- Overlay intercepts **pointer and touch**. Hover-only busy states are forbidden.
+- Cover the **region being mutated**. On a narrow screen the list/form still looks blocked.
+- Do not rely on desktop-only layout for the busy state.
+- One in-flight request per region; a second tap/drag is ignored until the overlay is gone.
+- Toasts are short and non-blocking. Never `alert()`.
+
+Notiflix API (when you choose option 1):
+
+```javascript
+Notiflix.Block.standard("#listWrap", "Loading…");   // CSS selector, NodeList, or array of nodes — not one Element
+$dotapp().load(url, "POST", payload, function (raw) {
+    // parseReply, patch TBODY / #listInner, Notify.success
+    Notiflix.Block.remove("#listWrap");
+}, function () {
+    Notiflix.Block.remove("#listWrap");
+    Notiflix.Notify.failure("Request failed");
+});
+```
+
+**MUST NOT:** leave the list draggable/tappable during save; start a second `load()` on the same region while the first is in flight; forget to remove the overlay on the error path; empty `.after()` / empty `load` success callback; `alert()`; rely on a full reload “so the table updates”; skip overlays because “we didn’t use Notiflix”.
+
+Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
+
+### Confirm before delete (**MUST**)
+
+Any delete (row, detail, bulk) **MUST** ask first in a **graphical** dialog: title, what will be deleted, **Cancel**, and a destructive confirm. It **MUST** work on desktop **and** mobile.
+
+**MUST NOT:** `alert()`, `window.confirm()`, `prompt()`, or delete on the first click.
+
+Only after the user confirms, call `$dotapp().load(...)` (encrypted `data-*`, overlay while in flight).
+
+**DACore admin** (`Page@withMenu!`): use the shell — **`Notiflix.Confirm`** (preferred) or `$dotapp().modal` from `dotapp.modals.js` (read that file for the signature). Do not re-add Notiflix. Do not invent a second dialog library.
+
+```javascript
+Notiflix.Confirm.show(
+  "Delete this item?",
+  "This cannot be undone.",
+  "Delete",
+  "Cancel",
+  function () {
+    // overlay + load() with encrypted data-id
+  }
+);
+```
+
+**Public website:** Notiflix is not there — ship a module modal (same contract, classes `{lowercase_modulename}_*`).
+
+If the delete can **seriously damage** the system (admin account, wipe, `dotapp.root`), graphical confirm **and** step-up 2FA ([32](32-DACORE-RIGHTS.md) §6).
+
+Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
+
+### Built-in 2FA fields (**MUST**)
+
+`dotapp.js` already implements OTP digit boxes: auto-advance, backspace, arrows, paste, validation, auto-submit. **MUST** use `$dotapp(...).twoFactor(...)`. **MUST NOT** invent a custom 2FA widget, wrap a jQuery OTP plugin, or hand-roll keydown/paste. Do not patch DACore’s login screens to swap this out.
+
+PHP is still `Auth::confirmTwoFactor` ([11](11-AUTH-AND-CRYPTO.md) §5). This API is only the **input UX**.
+
+```html
+<div class="two-fa-inputs">
+  <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+  <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+  <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+  <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+  <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+  <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+</div>
+```
+
+```javascript
+$dotapp(".two-fa-inputs input").twoFactor(function (code) {
+    $dotapp().load("/shop/login/2fa", "POST", { tfa: code }, function (raw) {
+        var reply = $dotapp().parseReply(raw);
+        if (reply && reply.status == 1 && reply.redirectTo) {
+            window.location = reply.redirectTo;   // leaving the login page is OK
+        }
+    });
+}, { length: 6, allowLetters: false, autoSubmit: true });
+```
+
+Getter (incomplete → `false`): `$dotapp(".two-fa-inputs input").twoFactor()`.
+
+Settings (defaults): `length` 6, `allowLetters` false, `uppercase` true, `autoSubmit` true, `invalidClass` `'invalid'`, `pattern` null. Number of `<input>`s **MUST** match `length`.
+
+Full input + PHP: [examples/EX-14-auth-and-2fa.md](examples/EX-14-auth-and-2fa.md). Source of truth: `app/parts/js/dotapp-docs.html` (read-only) § Two-Factor Authentication.
+
 ---
 
-## 4. Plugins
+## 4. Custom `$dotapp` libraries (plugins / FE modules)
+
+**Never edit** `app/parts/js/` (`dotapp.js`, `dotapp.template.js`, `dotapp.reactive.js`). Those are core. Put your library in **your PHP module**: `app/modules/<YourModule>/assets/js/...` → `/assets/modules/<YourModule>/js/...`.
+
+Source of truth for the API: `app/parts/js/dotapp-docs.html` (read-only). Shipped add-ons to copy the **pattern** from (read-only): `dotapp.template.js`, `dotapp.reactive.js`.
+
+### Events
+
+| Event | When | Use for |
+|-------|------|---------|
+| `dotapp-register` | fires **first**, core is ready to accept `fn()` | **Register** libraries |
+| `dotapp` | fires after register | **Use** `$dotapp` in page code |
+| `dotapp-template-ready` / `dotapp-reactive-ready` | official add-on loaded | optional wait |
+| `dotapp-<yourname>-ready` | your lib finished `fn()` | optional wait |
+
+Page logic listens to `dotapp`. Libraries listen to **`dotapp-register`**. Mixing them up is the usual bug.
+
+### `fn(name, callback)`
+
+`$dotapp().fn('shopHighlight', function (...) { ... })` hangs the function on every DotApp instance as `$dotapp('#el').shopHighlight()`.
+
+- `this` is the DotApp instance. Selected nodes: `this.getElements()`.
+- Duplicate `fn('sameName')` **throws** — use an `isRegistered` flag **and** `try/catch` on `"already registered"` (official / DACore-style libs do this).
+- Always wrap in an IIFE. If `window.$dotapp` already exists, call `runMe` immediately; else wait for `dotapp-register` (`{ once: true }`).
+- HTTP from a library **MUST** use `this.load` / `this.form` / bridge — never `$.ajax` / raw `fetch` to DotApp endpoints.
+- Per-element widgets: one node → return the instance API; many → return `this`. Chainable helpers always `return this`.
+
+### A. Chainable helper (return `this`)
 
 ```javascript
 (function () {
-  var runMe = function ($dotapp) {
-    $dotapp().fn("toast", function (msg) {
-      // `this` is the DotApp instance
-      return this;
-    });
-    window.dispatchEvent(new Event("toast-ready"));
-  };
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp-register", function () { runMe(window.$dotapp); }, { once: true });
+    var isRegistered = false;
+    var runMe = function ($dotapp) {
+        if (isRegistered) { return; }
+        isRegistered = true;
+
+        $dotapp().fn('shopHighlight', function (color) {
+            color = color || 'yellow';
+            this.getElements().forEach(function (el) {
+                el.style.backgroundColor = color;
+            });
+            return this;
+        });
+
+        window.dispatchEvent(new Event('dotapp-shophighlight-ready'));
+    };
+
+    if (window.$dotapp) runMe(window.$dotapp);
+    else window.addEventListener('dotapp-register', function () { runMe(window.$dotapp); }, { once: true });
 })();
 ```
 
-Duplicate `fn()` registration **throws** — guard with try/catch if scripts can load twice.
+Usage (after `dotapp`): `$dotapp('#box').shopHighlight('red').addClass('active');`
+
+### B. Instance module (official `template` / `reactive` / connector pattern)
+
+One instance per DOM node, cached on the element. Register on `dotapp-register`. Throw if the selector is not exactly one element when that is required.
+
+```javascript
+(function () {
+    var isRegistered = false;
+
+    var runMe = function ($dotapp) {
+        if (isRegistered) { return; }
+        isRegistered = true;
+
+        function ShopChart(dotApp, settings) {
+            this.dotApp = dotApp;
+            this.settings = settings || {};
+        }
+        ShopChart.prototype.refresh = function () {
+            var self = this;
+            this.dotApp.load(this.settings.url, 'GET', {}, function (raw) {
+                var reply = self.dotApp.parseReply(raw);
+                if (!reply || reply.status != 1) { return; }
+            });
+        };
+
+        $dotapp().fn('shopChart', function (settings) {
+            var key = '_shopChart';
+            var els = this.getElements();
+            if (els.length !== 1) {
+                throw new Error('shopChart requires exactly one element');
+            }
+            var el = els[0];
+            if (!el[key]) {
+                el[key] = new ShopChart(this, settings);
+            }
+            return el[key];
+        });
+
+        window.dispatchEvent(new Event('dotapp-shopchart-ready'));
+    };
+
+    if (window.$dotapp) runMe(window.$dotapp);
+    else window.addEventListener('dotapp-register', function () { runMe(window.$dotapp); }, { once: true });
+})();
+```
+
+Usage: `var chart = $dotapp('#sales').shopChart({ url: '/shop/chart' }); chart.refresh();`
+
+### Load order
+
+```html
+<script src="/assets/dotapp/dotapp.js"></script>
+<script src="/assets/dotapp/dotapp.template.js"></script>   <!-- optional official -->
+<script src="/assets/dotapp/dotapp.reactive.js"></script>  <!-- optional official -->
+<script src="/assets/modules/Shop/js/shop_chart.js"></script>
+<script src="/assets/modules/Shop/js/page.js"></script>
+```
+
+On DACore admin pages the shell already loads `dotapp.js`. Pass your library URL in `Page@withMenu!` `$js` **before** the page script.
+
+### Official add-ons (do not copy into DACore / do not fork in `app/parts/js`)
+
+| File (core) | `fn` name | Ready event |
+|-------------|-----------|-------------|
+| `dotapp.template.js` | `template` | `dotapp-template-ready` |
+| `dotapp.reactive.js` | `reactive` | `dotapp-reactive-ready` |
+
+Copy their **IIFE + `fn` + ready event** shape. Put the new file in your module assets.
+
+### C. Porting a jQuery plugin = writing a new `$dotapp` library
+
+Porting **is** writing a new library. Do **not** wrap `$.fn.foo` (`$(el).plugin()` inside `$dotapp().fn` is not a port). Rewrite in vanilla DOM, then hang it on `$dotapp` with `fn()`.
+
+**When porting, ask the user** (usually yes). jQuery may stay for leftover UI; **every request** still uses `$dotapp().load` / `form` / bridge.
+
+If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').dotSelect2()`, `.dotDataTable()`, `.modal()`, `.toast()`, `.daterangepicker()`). Do **not** copy DACore JS into your module. Read those files **read-only** as shape examples. Put **your** port in `app/modules/<YourModule>/assets/js/` — never into `app/modules/DACore/` or `app/parts/js/`.
+
+#### Playbook
+
+1. Keep the **public API shape**: `$('#el').select2(opts)` → `$dotapp('#el').dotSelect2(opts)` (or `{modulename}Picker`).
+2. Keep **CSS class / markup** when you want drop-in HTML (`select.select2`, `.toast`, `.modal`, `data-bs-*`). Extra DACore styling uses `{lowercase_modulename}_*` in **your** CSS.
+3. Vanilla constructors. Cache instances in a `WeakMap` or `el._key`. No `$` inside the library.
+4. Register on **`dotapp-register`**. Dual guard: `isRegistered` **and** `try/catch` if the error message contains `"already registered"`.
+5. Loop `this.getElements()`. **One** node → return the widget API. **Many** → return `this`. Empty `$dotapp().fn` call → factory (dynamic modal / notify manager).
+6. Optional `autoInit()` on `DOMContentLoaded` for markup hooks. Skip nodes with `data-{name}-skip` or an existing instance.
+7. Dispatch `dotapp-<name>-ready`. Optional `window.DotXxx = { mount, get }` for callers that are not on the chain.
+8. Replace `$.ajax` / `$.getJSON` with `this.load` + `parseReply`. `fetch` is only OK for static/public files that do not go through CRC.
+9. Bind **document** click/keydown once in `runMe` for dismiss/toggle (`data-bs-dismiss`, `data-bs-toggle`) — do not attach one listener per instance.
+
+#### Widget shapes (pick one)
+
+| Shape | Return from `fn` | Use when |
+|-------|------------------|----------|
+| Per-element widget | 1 el → API, many → `this` | select, table, date range |
+| Markup + `getOrCreate` | `this.get(0)` then instance | toast / modal already in HTML |
+| Factory on `$dotapp()` | manager / new dialog | `$dotapp().modal(settings)`, `$dotapp().dotNotify()` |
+| Chainable helper | `this` | highlight, class tweaks (pattern A) |
+
+#### jQuery → `$dotapp` map (inside the new library)
+
+| jQuery | In the port |
+|--------|-------------|
+| `$('#x')` / `$(el)` | `this.getElements()` / native `el` / `$dotapp(el)` |
+| `$.fn.plugin = …` | `$dotapp().fn('plugin', …)` |
+| `$(document).ready` | `domReady` helper, then `dotapp-*-ready` |
+| `.on('click', fn)` | `el.addEventListener` or `$dotapp(el).on` / `.live` for dynamic nodes |
+| `$(document).on('click', '.x', fn)` | one `document.addEventListener` + `e.target.closest` |
+| `.data('k')` | `el.dataset` / `getAttribute` |
+| `.find('.c')` | `el.querySelectorAll` |
+| `$.ajax` / `$.post` | `$dotapp().load` + `parseReply` |
+| `$(this)` in a handler | `e.currentTarget` or `$dotapp(e.currentTarget)` |
+
+#### `fn` wrapper (per-element ports)
+
+```javascript
+$dotapp().fn("shopPicker", function (options) {
+    var out = [];
+    this.getElements().forEach(function (el) {
+        var api = mount(el, options);
+        if (api) out.push(api);
+    });
+    return out.length === 1 ? out[0] : this;
+});
+```
+
+Usage after `dotapp`: `var picker = $dotapp('#city').shopPicker({ search: true });`
+
+Read-only DACore ports (if installed): `app/modules/DACore/assets/js/dotapp.select2.js`, `dotapp.datatable.js`, `dotapp.modals.js`, `dotapp.toasts.js`, `dotapp.daterangepicker.js`. Copy the **shape**, not the files.
+
+Full copy-paste (new lib + port skeleton): [examples/EX-15-dotapp-js-library.md](examples/EX-15-dotapp-js-library.md).
 
 ---
 

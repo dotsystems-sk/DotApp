@@ -61,11 +61,16 @@
 ## Secure form checklist (PREFERRED path)
 
 - [ ] Markup uses `<fo-rm>` (not `f-form`, prefer over plain `<form>`+CSRF alone)
-- [ ] `{{ formName(handler) }}` inside the fo-rm
+- [ ] `{{ formName(handler) }}` **MUST** sit **between** `<fo-rm>` and `</fo-rm>` (never after `</fo-rm>`)
 - [ ] Page loads **`/assets/dotapp/dotapp.js`** before module JS (session keys!)
-- [ ] JS: `$dotapp().form` + `parseReply` (+ optional `loading`/`loader`)
+- [ ] JS: `$dotapp().form` + `parseReply` + **MUST** block while in flight (**module preloaders**; desktop **and** mobile; remove overlay on success **and** error)
+- [ ] Success **MUST** patch the DOM (`reply.html` / data) + short toast — no `location.reload()` while staying on the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md))
+- [ ] Row actions (toggle/delete/reorder/drag-and-drop) use `$dotapp().load()` + encrypted `data-*` — **not** one `<fo-rm>` per button
 - [ ] PHP: `crcCheck()` then `form([...], "handler", ...)` then `ajaxReply`
 - [ ] Followed `AIRULES/examples/EX-01-secure-form-complete.md` when implementing
+- [ ] New / ported `$dotapp` libraries follow [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 / [EX-15](examples/EX-15-dotapp-js-library.md) (`dotapp-register`, `fn()`, `this.load` — no `$.ajax`)
+- [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
+- [ ] Deletes use a graphical confirm dialog first — never `alert()` / `window.confirm()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 
 ## Config / secrets checklist
 
@@ -89,8 +94,15 @@
 - Code contains `DB::table` / Eloquent / `$this->db`
 - Module table not prefixed `{lowercase_modulename}_*`
 - Frontend uses `$('#...')` or `$.ajax`
+- Frontend wraps `$.fn.plugin` instead of rewriting as `$dotapp().fn`
 - Form uses invented `f-form`
+- `{{ formName }}` placed after `</fo-rm>` or before `<fo-rm>`
 - Handler skips `crcCheck` for DotApp JS POST
+- Success path is `location.reload()` / empty `.after()` while staying on the page
+- One `<fo-rm>` per row button (up/down/toggle/delete) or drag-and-drop via forms
+- List/form still clickable during `load()`; overlay not removed on the error path; missing module preloaders
+- Custom OTP digit widget instead of `$dotapp().twoFactor`
+- Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - `execute()` called with a single callback
 - `->first()` used without a guard
 - A return value is used without checking its failure form

@@ -1,6 +1,6 @@
 # EX-02 — Secure edit form → API route
 
-Pattern from real modules (e.g. FaceTerminal employee edit): page UI posts to an API path; handler name is a stable string like `upravazamestnanca`.
+Page UI posts to an API path. The handler name is a stable string like `saveItem` — it must match `form(..., 'saveItem', ...)` in PHP.
 
 ## View / layout fragment
 
@@ -22,6 +22,8 @@ Pattern from real modules (e.g. FaceTerminal employee edit): page UI posts to an
 <script src="/assets/modules/Shop/js/item-edit.js"></script>
 ```
 
+**MUST:** `{{ formName(saveItem) }}` is between `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.
+
 Use `{{ enc(context): $id }}` when IDs must not be forgeable in plain HTML. Decrypt in PHP with the **same** context string.
 
 ## JS
@@ -39,9 +41,11 @@ Use `{{ enc(context): $id }}` when IDs must not be forgeable in plain HTML. Decr
       .after(function (data, response, form) {
         var reply = $dotapp().parseReply(response);
         if (reply && reply.status == 1) {
-          // toast / reload partial
+          if (reply.html) $dotapp("#listInner").html(reply.html);
+          if (reply.message) $dotapp("#status").attr("hide", "false").html(reply.message);
+          // redirectTo only if this screen should be left
         } else if (reply && reply.message) {
-          alert(reply.message);
+          $dotapp("#error-message").attr("hide", "false").html(reply.message);
         }
         $dotapp(form).attr("blocked", "0");
         $dotapp("#itemSaveBtn").removeAttr("loading").removeAttr("loader");

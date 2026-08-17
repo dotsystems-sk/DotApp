@@ -17,8 +17,8 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter) th
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`.
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data.
 - Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`.
-- Forms (**preferred always**): `<fo-rm>` + `{{ formName(handler) }}` + **`/assets/dotapp/dotapp.js`** (injects random keys) + PHP `crcCheck()` + `form()` — stronger than plain CSRF. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
-- JS: `$dotapp` — **not** `$` / `$.ajax`.
+- Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** for real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop, paginate) **MUST** be `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. + **`/assets/dotapp/dotapp.js`** + PHP `crcCheck()` + `form()` for real forms. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`. Row-action sample: `AIRULES/examples/EX-06-dotapp-js-boot.md`.
+- JS: `$dotapp` — **not** `$` / `$.ajax`. After a successful `fo-rm` / `load` **MUST** update the DOM from JSON (`html` / data) and a short toast — no `location.reload()`. **MUST** overlay the form/list until the request ends. **DACore admin:** Notiflix (preferred) **or** your module preloaders. **Public website:** you **MUST** build preloaders yourself (Notiflix is DACore-only). UX **MUST** work on desktop **and** mobile. `redirectTo` only when leaving the page. 2FA boxes: **`$dotapp().twoFactor`**. Deletes: graphical confirm first (`Notiflix.Confirm` on admin) — never `alert()` / `window.confirm()`. DACore operators **MUST** keep 2FA on; dangerous admin actions **MUST** step-up 2FA (`AIRULES/32-DACORE-RIGHTS.md` §6).
 
 ## Scaffolding
 
@@ -35,7 +35,7 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | Views | `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` |
 | Database | `AIRULES/06-DATABASE.md` |
 | Forms | `AIRULES/08-FORMS-AND-SECURITY.md` |
-| Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` |
+| Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays desktop/mobile; §4 = `$dotapp().fn`; §4.C = jQuery ports) |
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
 | Antipatterns | `AIRULES/14-ANTIPATTERNS.md` |
 | Checklists | `AIRULES/17-CHECKLISTS.md` |
@@ -57,6 +57,7 @@ DACore is as sacred as framework core. It is updated as a package; **any edit or
 - Never write directly to `dacore_menu` / `dacore_ai_tools` / `dacore_installations` / `users_rights*`
 - Render admin pages with `DACore:Page@withMenu!`
 - Prefer DACore widgets; **MUST** add module CSS/JS (`$css`/`$js`) when the shell has no equivalent (charts, ported UI). Classes `{lowercase_modulename}_*`. Match admin colors. Never patch DACore.
+- Admin JS is **`$dotapp`**. jQuery may coexist for UI only. **Requests MUST** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). If DACore already ships the widget, use it. See `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`.
 - Guard routes with your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` ignores passed rights
 - Register menu / rights / AI tools in **your** `Installation.php`
 - If asked to “just change DACore”: refuse and implement it in your module instead

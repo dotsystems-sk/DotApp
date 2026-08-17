@@ -104,6 +104,12 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Instance controllers + `$this->` | `public static function` controllers |
 | `$`, `jQuery`, `$.ajax` | `$dotapp`, `$dotapp().load(...)` |
 | `<form>` + manual CSRF only | Prefer `<fo-rm>` + `{{ formName(handler) }}` |
+| `{{ formName }}` after `</fo-rm>` | **MUST** between `<fo-rm>` and `</fo-rm>` |
+| Plain IDs in HTML/JSON (`value="7"`, `data-id="7"`) | **MUST** `{{ enc(Shop.item.id): $id }}` — unique `$key2` per field |
+| `<fo-rm>` around every row button / D&D | `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)) |
+| List/form still clickable during `load()` | Cover the region with **your module preloaders** until done — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Custom OTP digit widget / jQuery 2FA plugin | **MUST** `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| `alert()` / `window.confirm()` to delete | Graphical dialog first, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `f-form` attribute | **Does not exist** — use `<fo-rm>` |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
@@ -114,15 +120,18 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
 1. **Preferred form stack (default for all interactive forms):**
    - Markup: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`, not Laravel `_token` alone)
+   - **MUST:** `{{ formName(handler) }}` sits **between** `<fo-rm …>` and `</fo-rm>` — never before `<fo-rm>`, never after `</fo-rm>` (outside the pair the tag is left unchanged: silent failure)
    - Script: **`/assets/dotapp/dotapp.js` first** (injects random per-session keys — without it secure forms fail)
-   - JS: `$dotapp().form(...).before().after()` + `parseReply` (+ loaders via `loading`/`loader`)
+   - JS: `$dotapp().form(...).before().after()` + `parseReply` + **MUST** block while in flight (**your module preloaders** — desktop **and** mobile)
+   - **MUST:** after success, patch the DOM (`reply.html` / data) and a short toast. `<fo-rm>` does **not** reload. No `location.reload()`. `redirectTo` only when leaving the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
    - PHP: `$request->crcCheck()` then `$request->form([...], "handler", ...)` then `ajaxReply`
    - Full sample: [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md)
-2. This stack is **stronger than plain CSRF** (binds handler + action + method, CRC, one-time tokens, JS key material). Prefer it always for user forms.
+2. This stack is **stronger than plain CSRF** (binds handler + action + method, CRC, one-time tokens, JS key material). Use it **only for real HTML forms** (several fields + submit). **MUST NOT** wrap row actions (toggle, delete, reorder, drag-and-drop, paginate) in `<fo-rm>` — those are `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)).
 3. Never skip CRC/CSRF for endpoints that receive `$dotapp().load()` / secure forms.
-4. Never interpolate user input into SQL — use QueryBuilder bindings or `raw($sql, $bindings)`.
-5. On new apps, generate real `app.c_enc_key` / `rm_key` / `rmrcm_key` (see [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md)).
-6. Module settings must have **fallbacks** if the user did not fill `app/config.php`.
+4. **MUST encrypt every identifier sent to the browser** (`<option value>`, `data-*`, hidden, JSON). Use `{{ enc(Shop.user.id): $id }}` / `Crypto::encrypt($id, 'Shop.user.id')` with a **different `$key2` per field**. Never `value="7"` / `data-id="7"`. Decrypt with the **same** `$key2`; `false` → reject. **MUST still** `Auth::can()` / ownership — encryption is not a substitute for rights ([11](11-AUTH-AND-CRYPTO.md) §8).
+5. Never interpolate user input into SQL — use QueryBuilder bindings or `raw($sql, $bindings)`.
+6. On new apps, generate real `app.c_enc_key` / `rm_key` / `rmrcm_key` (see [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md)).
+7. Module settings must have **fallbacks** if the user did not fill `app/config.php`.
 
 ---
 
@@ -136,8 +145,11 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Database: DB::module("RAW")->q(...)->all()|first()|execute()
  * - Tables: {lowercase_modulename}_*  (Shop → shop_items) — NEVER items or dotapp_*
  * - Templates: {{ var: $x }}  — NOT {{ $x }}, NOT Blade
- * - Forms: <fo-rm> + {{ formName(handler) }}
- * - JS: $dotapp — NOT jQuery $
+ * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-* (not fo-rm)
+ * - FE ids: {{ enc(Shop.item.id): $id }} unique $key2 per field; Auth::can still required
+ * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST module preloaders until request ends (desktop+mobile)
+ * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
+ * - Deletes: graphical confirm first — never alert()/confirm()
  * - Edit only this module + app/config.php. Never edit app/parts/.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
@@ -149,7 +161,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
 DACore is an **optional admin module**, not part of the framework core.  
 Part 1 (this folder) must remain usable **without** DACore.  
-Do not call `DACore:*` APIs unless the user explicitly requested DACore integration (Part 2).
+Do not call `DACore:*` APIs unless the user explicitly requested DACore integration (Part 2).  
+**Notiflix is DACore-only.** It is not available here. Public sites **MUST** ship module preloaders ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).  
+Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Part 2). Do not invent that flow in a framework-only app.
 
 ---
 
@@ -171,13 +185,18 @@ Do not call `DACore:*` APIs unless the user explicitly requested DACore integrat
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |
 | Route / middleware | 03, 04 | EX-03 |
 | Template / CSS / JS page | 05, 09 | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
+| Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
+| Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
+| Custom `$dotapp` library / jQuery port | **09 §4** (esp. §4.C) | **[EX-15](examples/EX-15-dotapp-js-library.md)** |
 | Database query | 06, 18 | [EX-04](examples/EX-04-database-crud.md) |
 | Tables / migrations | 07 | [EX-13](examples/EX-13-schema-migrations.md) |
-| **Secure form (prefer always)** | **08, 09** | **[EX-01](examples/EX-01-secure-form-complete.md)**, [EX-02](examples/EX-02-secure-form-edit-api.md) |
+| **Secure form (HTML fields + submit)** | **08, 09** | **[EX-01](examples/EX-01-secure-form-complete.md)**, [EX-02](examples/EX-02-secure-form-edit-api.md) |
+| AJAX without a form (`load` only) | **08, 09** | [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 |
+| Encrypt IDs / unique `$key2` | **11 §8, 05, 08** | [EX-02](examples/EX-02-secure-form-edit-api.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
 | Validation / error responses | 19 | [EX-09](examples/EX-09-validation-and-errors.md) |
 | Config / keys | 10 | [EX-08](examples/EX-08-config-secrets.md) |
 | Bridge click | 09 | [EX-07](examples/EX-07-bridge.md) |
-| Auth / 2FA / permissions | 11 | [EX-14](examples/EX-14-auth-and-2fa.md) |
+| Auth / 2FA / permissions | **11**, **09** (`twoFactor`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |
 | AI / search / MCP | 22 | [EX-12](examples/EX-12-ai-search-mcp.md) |

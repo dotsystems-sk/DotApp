@@ -6,6 +6,8 @@ Your layout renders **content only** — no `<html>`, no `<head>`, no CSS/JS tag
 
 Pass extra files through `Page@withMenu!` `$css` / `$js` (charts, ported toolbars). Prefix classes `{lowercase_modulename}_*` and reuse DACore colors. See [33](../33-DACORE-PAGES-AND-UI.md) §5. Do not skip a widget because “DACore has no chart”.
 
+Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests** stay on `$dotapp().form` / `load` / bridge. Porting = rewrite as `$dotapp().fn` ([09](../09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](EX-15-dotapp-js-library.md)) — **ask first**, do not wrap `$.fn`. If DACore already has the widget, use it.
+
 ## Layout: `views/layouts/admin/items.layout.php`
 
 ```html
@@ -131,9 +133,14 @@ Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplie
 
         if (reply && reply.status == 1) {
           if (window.Notiflix && Notiflix.Notify) {
-            Notiflix.Notify.success("Saved");
+            Notiflix.Notify.success(reply.message || "Saved");
           }
-          window.location = $dotapp("#itemForm").attr("data-list-url") || document.referrer;
+          if (reply.html) {
+            $dotapp("#listWrap").html(reply.html);
+          } else if ($dotapp("#itemForm").attr("data-list-url")) {
+            // leaving the edit screen → list is OK
+            window.location = $dotapp("#itemForm").attr("data-list-url") || document.referrer;
+          }
         } else if (reply && reply.message) {
           if (window.Notiflix && Notiflix.Notify) {
             Notiflix.Notify.failure(reply.message);
@@ -149,6 +156,12 @@ Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplie
   else window.addEventListener("dotapp", function () { runMe(window.$dotapp); }, { once: true });
 })();
 ```
+
+On a **list** page (add rule, toggle, delete, reorder): overlay `#listWrap` **before** `load()` (Notiflix.Block preferred, or your module preloader), patch inner HTML, then remove the overlay on success **and** error. Toast (Notiflix.Notify or your equivalent). Do not `location.reload()`. Row actions are `type="button"` + encrypted `data-*` + `$dotapp().load()` — **not** one `<fo-rm>` per button. Pattern: [EX-06](EX-06-dotapp-js-boot.md).
+
+If the action can **seriously damage** the system (delete an admin, wipe data, grant `dotapp.root`), **MUST** step-up 2FA first (`$dotapp().twoFactor` + verify in your module). Operators cannot turn 2FA off. See [32](../32-DACORE-RIGHTS.md) §6.
+
+Every **delete** **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin — never `alert()` / `window.confirm()`). Then `load()`. See [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
 ## Controller side
 

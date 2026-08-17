@@ -111,7 +111,11 @@ Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `
 .after(function (data, response, form) {
   var reply = $dotapp().parseReply(response);
   if (!reply) { return; }
-  if (reply.status == 1) { window.location = reply.redirectTo || '/'; return; }
+  if (reply.status == 1) {
+    if (reply.html) { $dotapp('#listWrap').html(reply.html); }
+    else if (reply.redirectTo) { window.location = reply.redirectTo; }
+    return;
+  }
   if (reply.errors) {
     Object.keys(reply.errors).forEach(function (field) {
       $dotapp('[name="' + field + '"]').addClass('danger');

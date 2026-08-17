@@ -65,7 +65,7 @@ Or `#Shop:AuthGate@check!` middleware class created via dotapper.
 
 Copy [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md).
 
-Must include `/assets/dotapp/dotapp.js` (random keys). Prefer this over plain CSRF. Theory: [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md).
+Must include `/assets/dotapp/dotapp.js` (random keys). Prefer this over plain CSRF. **MUST:** `{{ formName }}` between `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. After success while staying on the page: patch `reply.html` + toast — not `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md)). Row **delete:** graphical confirm first (never `alert()` / `window.confirm()`), then `load()`. Theory: [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md).
 
 ---
 
@@ -175,7 +175,7 @@ php .\dotapper.php --module=Shop --test
 | Email, SMS provider, QR | [examples/EX-11](examples/EX-11-email-sms-qr.md) |
 | AI, FastSearch, MCP tools | [examples/EX-12](examples/EX-12-ai-search-mcp.md) |
 | SchemaBuilder DDL / introspection | [examples/EX-13](examples/EX-13-schema-migrations.md) |
-| Login, permissions, 2FA | [examples/EX-14](examples/EX-14-auth-and-2fa.md) |
+| Login, permissions, 2FA | [examples/EX-14](examples/EX-14-auth-and-2fa.md) (`$dotapp().twoFactor` for code boxes) |
 
 ---
 

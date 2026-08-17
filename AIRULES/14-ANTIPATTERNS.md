@@ -74,9 +74,19 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `f-form` | **`<fo-rm>`** |
 | jQuery `$` / `$.ajax` | `$dotapp` / `$dotapp().load` |
 | Plain `<form>` without formName for DotApp JS | `<fo-rm>` + `{{ formName(x) }}` |
+| `{{ formName }}` after `</fo-rm>` or before `<fo-rm>` | **MUST** put it **between** `<fo-rm>` and `</fo-rm>` |
 | Skip `crcCheck` | Always for DotApp transport |
 | Static `/app/parts/js/dotapp.js` on pages | `/assets/dotapp/dotapp.js` |
+| Edit `app/parts/js/` to add a plugin | Your module `assets/js` + `$dotapp().fn` on `dotapp-register` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4, [EX-15](examples/EX-15-dotapp-js-library.md)) |
+| Wrap `$.fn.plugin` / `$(el).plugin()` and call it a `$dotapp` port | Rewrite vanilla + `$dotapp().fn` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md)) |
+| Register a library on the `dotapp` event | `dotapp-register` |
 | Assume getter chaining | Many getters return values |
+| `location.reload()` after `fo-rm` / `load` (stay on page) | Return `html` in JSON, patch the DOM, short toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md)) |
+| Empty `.after()` / `alert()` | Toast + live list; `redirectTo` only when leaving the page |
+| One `<fo-rm>` per row button / drag-and-drop via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
+| List still clickable / second drag during `load()` | Cover the wrapper with **module preloaders** until success **and** error — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |
+| `alert()` / `window.confirm()` on delete | Graphical dialog, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 
 ## Config / security
 

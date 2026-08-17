@@ -17,7 +17,9 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 {{ foreach $items as $item }} ... {{ /foreach }}
 {{ layout:partials/header }}
 {{ content }}
-{{ formName(saveItem) }}
+<fo-rm method="POST">
+  {{ formName(saveItem) }}
+</fo-rm>
 {{ CSRF }}
 ```
 
