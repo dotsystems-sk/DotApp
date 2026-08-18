@@ -9,9 +9,10 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 
 ## Edit boundaries
 
-- **ALLOWED:** `app/config.php`, `app/modules/<TargetModule>/` only (your own module)
+- **ALLOWED:** `app/config.php`, `app/modules/<TargetModule>/` only (the module you are programming, including **its** assets)
 - **ASK FIRST:** `app/listeners.php`, `.htaccess` (prefer `dotapper --create-htaccess`)
-- **FORBIDDEN:** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, **`app/modules/DACore/**`**, any other module
+- **FORBIDDEN:** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, any other module
+- **DACore:** default **FORBIDDEN** (`app/modules/DACore/**` — files and assets). **MUST NOT propose** a DACore edit. **Exception:** user themselves asks to edit DACore **and** confirms the next update wipes it (`AIRULES/00` §1). Otherwise implement in the current module.
 
 ## Before coding
 
@@ -36,7 +37,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - DACore AI writes: `ui_events` (name = tool id) + `DACore.AI.UIEvent` on the matching page only (`AIRULES/34` §5)
 - DACore operators MUST keep 2FA; dangerous admin actions MUST step-up 2FA (`AIRULES/32` §6)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** module preloaders; desktop **and** mobile). (`AIRULES/09` §3, EX-06)
-- Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
+- Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined; **ASK** on other lists. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
 - Before a new DACore admin library/widget: **MUST** grep `app/modules/DACore/` (read-only) and this module — reuse what exists (`AIRULES/33`)
 
 ## Never ignore return values (AIRULES/18)
@@ -51,15 +52,16 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - `Validator::validate` → `true` or error array (compare `=== true`)
 - wrap AI / SchemaBuilder / raw DDL in `try/catch`; never empty `catch {}`
 
-## DACore (same rank as core)
+## DACore (same rank as core by default)
 
-This project has the DACore admin module. Treat `app/modules/DACore/` like `app/parts/`.
+This project has the DACore admin module. Treat `app/modules/DACore/` like `app/parts/` **unless** the informed exception applies.
 
-- **Never edit, patch, or add files** under `app/modules/DACore/`
+- **Never** edit, patch, or add files under `app/modules/DACore/` by default (including DACore assets)
+- **MUST NOT propose** a DACore edit — implement in the **current** module only
 - DACore is updated as a whole — **every local change is wiped on the next update**
 - Use only public APIs: `DotApp::call("DACore:…")`
-- All new work goes in `app/modules/<YourModule>/`
-- If asked to change DACore in place: refuse and implement it in your own module
+- All new work goes in `app/modules/<YourModule>/` (that module’s assets too)
+- Edit DACore **only** if the user **themselves** asks **and** confirms they accept the wipe (`AIRULES/00-AGENT-CONTRACT.md` §1)
 
 See `AIRULES/30-DACORE-OVERVIEW.md` and rule `08-dacore`.
 

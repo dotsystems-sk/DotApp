@@ -35,7 +35,7 @@ public static function items($request)
         [],                                             // $header
         ['/assets/modules/Shop/css/admin.css'],         // $css
         ['/assets/modules/Shop/js/admin-items.js'],     // $js
-        ''                                              // $menuId ('' = full menu)
+        ''                                              // $menuId: '' = shared; 'Shop.nav' = module-own — ASK ([31])
     );
 }
 ```
@@ -65,7 +65,9 @@ DotApp::call(
 | `$header` | Array of raw HTML lines for `<head>`, or a ready string |
 | `$css` | Array of URLs → `<link rel="stylesheet" href="...">`; empty entries skipped |
 | `$js` | Array of URLs → `<script src="..."></script>` before `</body>` |
-| `$menuId` | `''`/`null` = full menu; a `menuid` = only that branch plus a "Return back" link |
+| `$menuId` | `''`/`null` = full shared menu; a `menuid` = **direct children of that id** (one level) plus a synthetic **Return back** leaf at the bottom (do not register Return back) |
+
+**MUST ASK** when starting a **new** DACore module: shared full sidebar vs module-own menu. Canonical layout, grouping (`type` 0 / 2 / 1), and wiring: [31](31-DACORE-MENU.md).
 
 Returns the complete page HTML — return it directly from your controller.
 
@@ -103,7 +105,9 @@ When `AI.enabled` is true, DACore injects the chat CSS/JS itself; do not add the
 
 Growing lists (logs, users, items, orders) **MUST** use SQL `paginate()` ([06](06-DATABASE.md)) **and** an **interactive AJAX** pager ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) in the **first** version. Empty table today is not a skip. **MUST NOT** dump `->all()` into the table. **MUST NOT** navigate with `<a href="?page=2">` / `location.reload()` — that reloads the admin shell and is not a pager.
 
-First paint may be server-rendered page 1. Further pages: `$dotapp().load()` POST with `page` (clamp in PHP) plus current filters. Overlay the list while in flight.
+**Search:** when **planning** the list, **ASK**. Lookup lists (articles, products, catalog) **MUST** ship interactive AJAX search unless declined (debounce, 3+ chars, SQL + `paginate()`, overlay). [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. **Search DACore first** for search-field chrome.
+
+First paint may be server-rendered page 1. Further pages: `$dotapp().load()` POST with `page` (clamp in PHP) plus current filters (`q`). Overlay the list while in flight.
 
 ```php
 $page = DB::module('RAW')->q(/* ... */)->paginate(20, $currentPage);
@@ -327,7 +331,7 @@ PHP handler: `crcCheck()` → `form(['POST'], 'saveItem', $ok, $err)` → `ajaxR
 
 **MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
 
-**MUST (paginate growing lists):** logs, users, items **MUST** have an AJAX pager. See this file §3. **MUST NOT** dump `->all()` or reload with `<a href="?page=">`.
+**MUST (paginate growing lists):** logs, users, items **MUST** have an AJAX pager. See this file §3. **MUST NOT** dump `->all()` or reload with `<a href="?page=">`. **Search / list UX:** [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 — **ASK** in the plan; empty state + sticky header **MUST**.
 
 **MUST (block while in flight):** while save / toggle / reorder / paginate is running, cover the form or the **whole list** so the user cannot click or drag again. **Notiflix is DACore-admin only** (this shell). **Preferred on admin pages:** `Notiflix.Block`. **Alternative on admin:** equivalent overlay in **your** module. **Public / front-office pages** in the same project **MUST** use **module preloaders** — Notiflix is not loaded there. Skipping Notiflix does **not** skip preloaders. **MUST** remove the overlay on success **and** error. Overlay a stable parent; patch `TBODY` / inner wrap. UX **MUST** be excellent on desktop **and** mobile (visible spinner, intercepts touch, no hover-only). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
@@ -352,6 +356,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | `$.ajax` for admin saves / lists | `$dotapp().form` / `$dotapp().load` / `dotbridge` (jQuery UI OK) |
 | `location.reload()` after toggle/save on the same page | JSON `html` + patch DOM + Notiflix toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Logs/users/items with no pager, or `<a href="?page=">` | `paginate()` + AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, this file §3) |
+| Catalog/articles list with no search | **ASK**; lookup lists **MUST** AJAX search ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | One `<fo-rm>` per row button / D&D via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
 | List still clickable during reorder / toggle | Overlay the wrapper (Notiflix preferred **or** module preloaders); remove on success **and** error; desktop **and** mobile |
 | Dangerous admin action with no second 2FA prompt | Step-up `$dotapp().twoFactor` + **PHP** verifies the code before persist ([32](32-DACORE-RIGHTS.md) §6) |
@@ -362,8 +367,10 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | UI that disables an operator’s 2FA | Forbidden |
 | Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |
 | New select/table/modal/toast/date library without grepping DACore | Search `app/modules/DACore/` (read-only) + your module first (this file §4) |
-| Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` |
+| Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` — **MUST NOT propose** a DACore patch ([00](00-AGENT-CONTRACT.md) §1) |
 | `setViewVar` with `renderLayout()` | Use `setLayoutVar` |
+| Guess shared vs module-own menu / ten leaves under a header | **ASK**; grouping and `$menuId`: [31](31-DACORE-MENU.md) |
+| Register “Return back” | DACore appends it on a non-empty `$menuId` |
 | Bootstrap `col-md-6` alone for simple admin forms | `<dot-col any="12" md="6" ldesktop="6">` (prefer; custom layout OK when porting) |
 | Font Awesome / Bootstrap Icons | Remix Icon `ri ri-*` |
 | Hardcoding `/dacore` | `Config::module("DACore","prefixUrl")` |

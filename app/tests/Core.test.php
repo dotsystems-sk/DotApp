@@ -1,14 +1,14 @@
 <?php
 /**
  * CORE FUNCTIONALITY TESTS FOR DOTAPP FRAMEWORK
- * Version 1.8
+ * Version 2.0
  *
  * Tests for core framework functionality that can be tested without database
  *
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.8 FREE
+ * @version   2.0 FREE
  * @date      2014 - 2026
  * @license   MIT License
  */

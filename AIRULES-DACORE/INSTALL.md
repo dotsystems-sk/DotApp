@@ -94,7 +94,7 @@ Prefer Option A for Cursor.
 
 In the first message of a session (or pin it in Cursor User Rules / Project Rules):
 
-> You are working on a DotApp PHP project with DACore. Read `AIRULES/00-AGENT-CONTRACT.md` before any edit. Follow all files under `AIRULES/`. Never invent Laravel/Blade/Eloquent/jQuery APIs. Never edit `app/parts/`, `app/DotApp.php`, `dotapper.php`, or `app/modules/DACore/` (DACore updates wipe local changes — never add files there either). Allowed edits: `app/config.php` and `app/modules/<YourModule>/` only.
+> You are working on a DotApp PHP project with DACore. Read `AIRULES/00-AGENT-CONTRACT.md` before any edit. Follow all files under `AIRULES/`. Never invent Laravel/Blade/Eloquent/jQuery APIs. Never edit `app/parts/`, `app/DotApp.php`, or `dotapper.php`. Do **not** edit `app/modules/DACore/` (files or assets) unless the user **themselves** asks and confirms they accept the update wipe — never **propose** a DACore edit. Allowed edits: `app/config.php` and the **current** module `app/modules/<YourModule>/` only (including that module’s assets).
 
 ## Step 4 — First-run secrets (new apps)
 

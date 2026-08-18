@@ -1,10 +1,14 @@
-# dotApp PHP Framework 🚀
+# DotApp 2.0 PHP Framework 🚀
 
 Full documentation is available at:  
 
 [https://dotapp.dev/](https://dotapp.dev/)
 
-dotApp is an ultra-fast, powerful, and scalable PHP framework for modern web applications. It stays lean yet handles very large apps, with clean structure that's easy for humans, vibe coders, and AI assistants to read, learn, and build on. **Starting with version 1.8, dotApp includes comprehensive AI instructions** making it perfectly compatible with advanced AI models like Claude Opus 4.5 and GPT-4.5 Sonnet for flawless code generation. It ships with a built-in Bridge for seamless PHP↔JS calls and an ultra-light reactive frontend library, alongside fast routing and templating.  
+**DotApp 2.0 is released — and it is fully AI READY.** After a long stretch of demanding real-world use, the framework is ready for production: internals are tighter, bugs found under heavy load are gone, and the AI rulebook (`AIRULES/` + `AIRULES-DACORE/`) was stress-tested in **Cursor** with **Grok 4.5** and **Grok 4.6**. The apps those sessions produced are secure, snappy, and ready to ship — even though these models stay cheap to run. Documentation is being prepared on [dotapp.dev](https://dotapp.dev/) — that remains the official site.
+
+DotApp is an ultra-fast, powerful, and scalable PHP framework for modern web applications. It stays lean yet handles very large apps, with clean structure that's easy for humans, vibe coders, and AI assistants to read, learn, and build on. It ships with a built-in Bridge for seamless PHP↔JS calls and an ultra-light reactive frontend library, alongside fast routing and templating.
+
+**DACore**, the official administration module, is available **free** — login, 2FA, rights, menus, and an admin shell that your own modules plug into. Details stay on [dotapp.dev](https://dotapp.dev/).
 
 **Proudly made in Slovakia** 🇸🇰
 
@@ -16,73 +20,83 @@ dotApp is an ultra-fast, powerful, and scalable PHP framework for modern web app
 
 🔹 **Flexible templating system**
 
-🔹 **AI-optimized codebase** - Perfect for Claude Opus 4.5 and GPT-4.5 Sonnet
+🔹 **Fully AI READY** — `AIRULES/` battle-tested in Cursor with Grok 4.5 and 4.6; generated apps stay secure and fast
 
-# Currently Working On 🛠️
+🔹 **Callable strings** — trailing `!` skips DI; `#` = middleware; `*` = model:
 
-We’re actively developing **Connector**, a powerful JS and PHP library integrated into the DotApp framework! Watch our testing demo to see how nodes are beautifully connected with mouse-driven logic, showcasing a stunning backend *and* frontend experience. The JS part is ready, and the PHP part is in progress. Check it out! 🚀
+```php
+Router::get('/', 'Shop:Home@index!');                    // controller, no DI
+Router::post('/save', 'Shop:Home@save!')
+    ->before('#Shop:AuthGate@check!');                   // # middleware
+$item = DotApp::call('*Shop:Item@find!', $id);          // * model
+```
 
-[![Connector Testing Demo](https://img.youtube.com/vi/nmEU7y1HS2Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=nmEU7y1HS2Y)
+🔹 **DACore admin module** — official admin UI, free
 
 **Support DotApp’s development!** Be among the first 100 sponsors to earn permanent recognition on [dotapp.dev](https://dotapp.dev). [Sponsor Now](https://github.com/sponsors/dotsystems-sk)
 
 ## Getting Started
 
-The dotApp instance is globally accessible, and you can work with it through facades for brevity. A few quick routing examples (single path, array of paths, controller strings, static routes):
+The DotApp instance is globally accessible. Work through facades. Controllers are `public static` methods. A trailing **`!`** on a callable **turns the DI container off** for that call — the preferred path for hot routes. Prefix **`#`** targets **middleware**, **`*`** targets a **model**.
 
 ```php
-// Single route
-Router::get('/', fn($request) => 'Hello World');
+// Static route (exact URL, no pattern matching) + controller, no DI
+Router::get('/', 'Shop:Home@index!', Router::STATIC_ROUTE);
 
-// Multiple paths share the same handler
+// Dynamic param + integer constraint
+Router::get('/item/{id:i}', 'Shop:Home@item!');
+
+// POST + middleware gate (# = Middleware class, ! = skip DI)
+Router::post('/save', 'Shop:Home@save!')
+    ->before('#Shop:AuthGate@check!');
+
+// Closures still work when you want them
 Router::get(['/', '/home'], fn($request) => 'Welcome!');
 
-// Controller syntax (module:Controller@method)
-Router::get('/users/{id}', 'Users:Profile@show');
-
-// Static route (no pattern matching) example
-Router::post('/login', 'Users:Login@loginPost', Router::STATIC_ROUTE);
+// Call a model (*) or another controller from PHP
+$item = DotApp::call('*Shop:Item@find!', $id);
+$html = DotApp::call('Shop:Home@helper!', $request);
 ```
 
-This keeps routes concise while still letting you access other services via facades or `DotApp::DotApp()` when needed.
+Hot-path controller (no injected services — you construct what you need):
+
+```php
+public static function index($request)
+{
+    $renderer = \Dotsystems\App\Parts\Renderer::new();
+    return $renderer->module('Shop')
+        ->setView('home')
+        ->setViewVar('title', 'Hello')
+        ->renderView();
+}
+```
+
+Route: `'Shop:Home@index!'`. Omit the `!` only when the method should receive DI parameters.
 
 ## What's New ✨
 
-### Version 1.8 Released (NEW – 2026-01-04)
+### Version 2.0 Released (NEW – 2026-08-18)
 
-- **Separated Database Drivers**: MySQLi and PDO drivers are now in separate files (`DatabaserMysqliDriver.php`, `DatabaserPdoDriver.php`) for better maintainability
-- **Custom Database Driver Support**: Register your own database drivers using `Databaser::customDriver('name', 'DriverClass')` for MongoDB, Redis, or any custom database
-- **ORM & QueryBuilder Improvements**: Fixed bugs, improved stability, and enhanced performance in Object-Relational Mapping and SQL Query Builder
-- **Complete ORM & QueryBuilder Testing**: Comprehensive test suite covering all Entity, Collection, and QueryBuilder functionality
-- **Database Configuration Fixes**: Corrected driver naming conventions and configuration examples throughout documentation
-- **AI-Friendly Framework**: `AIRULES/` (framework) and `AIRULES-DACORE/` (with DACore) are the AI rulebooks
+This is not a coat of paint. 2.0 is the result of **heavy production use** plus a hard rewrite of how agents are allowed to touch the stack. The rulebook was driven in **Cursor** with **Grok 4.5** and **Grok 4.6**. Apps that came out of those sessions are **secure, snappy, and shippable** — on models that stay cheap to run.
 
-### Version 1.7.2 Released (2025-12-25)
+- **Fully AI READY**: First-class support for AI agents. `AIRULES/` (framework) and `AIRULES-DACORE/` (with DACore) tell Cursor / Grok exactly how to write DotApp — not Laravel, not Blade, not jQuery.
+- **`!` skips DI**: `'Shop:Home@index!'` turns the container off for that controller method. Fast, explicit, no mystery injection on hot paths.
+- **Callable prefixes**: `#Shop:Gate@check!` = middleware, `*Shop:Item@find!` = model, `Shop:Home@index!` = controller. Same string form on routes, `->before()`, and `DotApp::call()`.
+- **Secure forms by default**: `<fo-rm>` + `{{ formName(handler) }}` + CRC — stronger than a plain CSRF token. Row actions (toggle, delete, paginate) use `$dotapp().load()`, not a `<fo-rm>` per button.
+- **Encrypted IDs in the browser**: no raw `data-id="7"`. `{{ enc(Shop.item.id): $id }}` on the way out, decrypt + rights check on the way in.
+- **Lists that can grow must paginate**: `paginate()` + **AJAX** pager on first ship. No `->all()` dumps, no `?page=` full reload of the admin shell.
+- **DSM, not `$_SESSION`**: `DSM::use('Shop')->set/get/delete` for app session state.
+- **`$dotapp`, not `$`**: live DOM patch + overlay + toast after save. No `location.reload()`. File uploads go through `$dotapp().uploadFile`.
+- **DB the DotApp way**: `DB::module('RAW')->q(function ($qb) { ... })->all()|first()|execute()`. Module tables are `{lowercase_modulename}_*` (`Shop` → `shop_items`).
+- **DACore admin — free**: login, 2FA, rights, DB-driven menu, page shell, optional AI chat with tools. Your module plugs in via `DotApp::call('DACore:…')`. See [dotapp.dev](https://dotapp.dev/).
+- **Production hardening**: bugs found under real load are gone; ORM, QueryBuilder, routing, and the JS stack were cleaned up because they had to survive daily use — not a demo.
 
-- **Middleware chaining**: Define multiple middlewares at once (arrays), run them as a **group()**, and react conditionally with **when()**, **true()**, **false()** callbacks.
-- **Router + facades polish**: Static route flag, array routes, and controller strings (`Module:Controller@method`) with DI-backed resolution.
-- **OTP & QR utilities**: `TOTP` generates Base32 secrets, TOTP codes, and otpauth URIs; `QR` builds PNG/base64 QR codes with styling options.
-- **Email/SMS stack**: `Emailer` (SMTP + IMAP/POP3) with `Email` facade helpers; `Sms` facade + `SmsProvider` interface for send/validate/status.
-- **MCP server support**: Model Context Protocol server layer with tool/resource/prompt registration and JSON-RPC `initialize`, `tools/list`, `resources/list`, `prompts/list`, and execution handling.
-- **Bug fixes & stability**: routing/middleware pipeline tweaks, limiter handling, and DI/resolver robustness.
+### AI READY (2.0)
 
-### AI-Friendly Features (1.8+)
-
-- **Comprehensive AI Instructions**: `AIRULES/` in the project root (start with `AIRULES/00-AGENT-CONTRACT.md`); with DACore use `AIRULES-DACORE/` copied as `AIRULES/`
-- **Claude Opus 4.5 & GPT-4.5 Sonnet Ready**: Framework designed to work flawlessly with advanced AI models
-- **Structured Code Generation**: AI can perfectly generate controllers, models, routes, and database operations
-- **Self-Documenting Architecture**: Clean, readable code structure that AI understands intuitively
-
-### Highlights from 1.7
-
-- Testing with Tester Class: Lightweight unit and integration testing for modules and core.
-- FastSearch Library: Unified search interface for Elasticsearch, OpenSearch, Meilisearch, Algolia, and Typesense.
-- Cache Library: Driver-agnostic caching with file-based and Redis support.
-- Centralized Configuration with Config Facade: Unified configuration management.
-- Session Drivers: Five built-in drivers (Default, File, File2, DB, Redis) for flexible session management.
-- Router Facade: Alias for $dotApp->router.
-- DB Facade: Alias for $dotApp->db.
-- Request Facade: Alias for $dotApp->request.
+- **Shipped rulebook**: drop `AIRULES/` next to `index.php` (start at `AIRULES/00-AGENT-CONTRACT.md`). If DACore is installed, copy `AIRULES-DACORE/` as `AIRULES/`.
+- **Cursor + Grok 4.5 / 4.6**: stress-tested until generated admin and public UI stayed secure and fast — not a pile of framework-wrong guesses.
+- **Cheap models, serious apps**: you do not need the most expensive model in the catalog. Affordable agents follow the rules and still emit real DotApp code.
+- **Hard boundaries for agents**: they may edit `app/config.php` and `app/modules/<YourModule>/` — not the kernel, not DACore. That is why the output stays maintainable.
 
 ## 👥 Installation
 
@@ -223,7 +237,7 @@ Options:
 
 ## 🧪 Version Note
 
-This is the **version 1.8 release** of dotApp, featuring enhanced AI compatibility with comprehensive instructions for advanced AI models like Claude Opus 4.5 and GPT-4.5 Sonnet.
+This is the **DotApp 2.0** release: production-ready, **fully AI READY**, with a real agent rulebook, `!` to skip DI, `#` / `*` callables, hardened forms and lists, and the **DACore** admin module available free. The AIRULES pack was stress-tested in Cursor with Grok 4.5 and Grok 4.6 — generated apps stay secure and fast, even on inexpensive models. Full documentation lives at [https://dotapp.dev/](https://dotapp.dev/).
 
 Older versions may have duplicate function names (lowercase and PascalCase) due to the transition to **PascalCase** for naming, maintaining **backward compatibility**. This has minimal impact on performance.
 

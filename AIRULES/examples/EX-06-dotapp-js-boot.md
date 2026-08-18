@@ -130,7 +130,32 @@ $dotapp().live("click", ".js-shop-page", function (e) {
 });
 ```
 
-PHP: clamp `page` to `1 … last_page`, return `{ status: 1, html: $rowsAndPager }`. Patch rows **and** the pager. First paint may be page 1 server-rendered.
+PHP: clamp `page` to `1 … last_page`, return `{ status: 1, html: $rowsAndPager }`. Patch rows **and** the pager. First paint may be page 1 server-rendered. Keep `q` in every list POST.
+
+**Search — ASK in the plan.** Lookup lists (articles, products, catalog) **MUST** ship interactive AJAX search unless declined. Debounce ~300 ms, fire from **3 characters**, SQL `LIKE` + `paginate()`, overlay, patch `#listInner`. **MUST NOT** `<fo-rm>` on each keystroke. Empty / under 3 chars = unfiltered page 1.
+
+```javascript
+var currentQuery = "";
+var searchTimer = null;
+$dotapp().live("input", "#shopSearch", function () {
+  var q = ($dotapp("#shopSearch").val() || "").trim();
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(function () {
+    currentQuery = q.length >= 3 ? q : "";
+    if (listBusy) return;
+    listBusy = true;
+    $dotapp("#listWrap").addClass("shop_busy");
+    $dotapp().load("/shop/items/list", "POST", { page: 1, q: currentQuery },
+      function (raw) {
+        var reply = $dotapp().parseReply(raw);
+        if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
+        listDone();
+      },
+      function () { listDone(); }
+    );
+  }, 300);
+});
+```
 
 **Delete MUST confirm first** (graphical dialog — never `alert()` / `window.confirm()`):
 
@@ -172,3 +197,4 @@ $dotapp().live("click", ".js-delete", function (e) {
 - One `<fo-rm>` per table-row action (up/down/toggle/delete) or drag-and-drop via forms
 - Leave the list/form clickable during `load()`; skip overlay cleanup on the error path; skip module preloaders
 - Growing list with no pager, or pager that reloads via `<a href="?page=">`
+- Lookup list with no search, or search that reloads / filters `->all()` in JS

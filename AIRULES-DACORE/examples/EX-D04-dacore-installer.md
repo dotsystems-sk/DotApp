@@ -88,7 +88,9 @@ class Installation extends Installer
                     }
                 }
 
-                // ---------- 3. menu ----------
+                // ---------- 3. menu (ASK: shared vs module-own — [31]) ----------
+                // This sample is the **shared** tree: header + type 2 group + leaf.
+                // Module-own: header + one entry here; inner pages pass withMenu $menuId.
                 $sectionRights = json_encode(['dotapp.root', 'Shop.*']);
                 $itemRights = json_encode(['dotapp.root', 'Shop.administrator', 'Shop.items.view']);
 

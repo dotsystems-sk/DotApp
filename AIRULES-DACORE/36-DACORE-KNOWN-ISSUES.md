@@ -36,7 +36,7 @@ DB::module('RAW')->q(function ($qb) {
 })->execute(null, function ($e) { Logger::use()->error('menu cleanup', $e); });
 ```
 
-This is the one sanctioned direct write to a DACore table, and only during uninstall. Prefixing every `menuid` with your module name makes it safe.
+This is the one sanctioned direct write to a DACore table, and only during uninstall. **`menuid` MUST start with your module name.** Uninstall **MUST** delete only that prefix (`Shop.%` from Shop, `Reports.%` from Reports). An extension that hung items under another module’s header **MUST NOT** `DELETE … LIKE 'HostModule.%'` — that destroys the host menu. See [31](31-DACORE-MENU.md).
 
 ---
 
@@ -118,9 +118,15 @@ It returns `false` in both cases, so a transient DB failure makes your migration
 
 ---
 
+## 13. `Menu@getItems($menuId)` is one level when `$menuId !== ''`
+
+Full menu (`''`) loads every `dacore_menu` row and builds the tree. A branch id selects only `menuid = X OR parent = X`, then appends **Return back**. Grandchildren of those rows are **not** loaded, so `type => 2` groups under a module-own `$menuId` will not show their leaves. Inner items **MUST** be direct children of the branch id. See [31](31-DACORE-MENU.md).
+
+---
+
 ## Priority order when docs disagree
 
-1. DACore source under `app/modules/DACore/` — **read-only**. Never edit or add files there (updates wipe them).
+1. DACore source under `app/modules/DACore/` — **read-only by default**. Do not edit or add files there (updates wipe them) unless the user **themselves** asked and confirmed the wipe ([00](00-AGENT-CONTRACT.md) §1). **MUST NOT propose** that edit.
 2. This DACore layer (`30`–`36`)
 3. Framework docs (`00`–`22`)
 4. Anything else

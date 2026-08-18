@@ -138,7 +138,9 @@ $dotapp().live("click", ".js-shop-page", function (e) {
 });
 ```
 
-PHP: clamp `page` to `1 … last_page`, return `{ status: 1, html: $rowsAndPager }`. Patch rows **and** the pager. First paint may be page 1 server-rendered. Public site: same JS with your module overlay instead of Notiflix.
+PHP: clamp `page` to `1 … last_page`, return `{ status: 1, html: $rowsAndPager }`. Patch rows **and** the pager. First paint may be page 1 server-rendered. Keep `q` in every list POST. Public site: same JS with your module overlay instead of Notiflix.
+
+**Search — ASK in the plan.** Lookup lists **MUST** ship interactive AJAX search unless declined. Debounce ~300 ms, fire from **3 characters**, SQL + `paginate()`, overlay, patch `#listInner`. **MUST NOT** `<fo-rm>` on each keystroke. See [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
 **Delete MUST confirm first.** DACore admin: `Notiflix.Confirm` (never `alert()` / `window.confirm()`). Public site: your module modal.
 
@@ -177,3 +179,4 @@ $dotapp().live("click", ".js-delete", function (e) {
 - One `<fo-rm>` per table-row action (up/down/toggle/delete) or drag-and-drop via forms
 - Leave the list/form clickable during `load()`; skip overlay cleanup on the error path; skip preloaders because Notiflix was not used
 - Growing list with no pager, or pager that reloads via `<a href="?page=">`
+- Lookup list with no search, or search that reloads / filters `->all()` in JS

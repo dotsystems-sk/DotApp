@@ -74,6 +74,8 @@
 - [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
 - [ ] Deletes use a graphical confirm dialog first — never `alert()` / `window.confirm()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] Accumulating lists have an **interactive AJAX** pager (`type="button"` + `$dotapp().load()`, overlay while in flight, patch rows **and** pager) — not missing, not `<a href="?page=">` / `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] Lookup lists (articles, products, catalog, …) have **interactive AJAX search** (debounce, 3+ chars, SQL + `paginate()`) unless the user declined; other lists were **asked** in the plan — not JS-filter of `->all()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] List plan **asked** filters / sort / bulk / page size / DSM remember / CSV-if-it-fits; empty state + sticky header + match highlight shipped when required ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
 
 ## Config / secrets checklist
@@ -92,6 +94,7 @@
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)
 - [ ] Checklists above satisfied for touched areas
 - [ ] Users/logs/items (or any accumulating list) shipped with **interactive AJAX** pager — not omitted, not a full-page `?page=` reload
+- [ ] Lookup lists shipped with AJAX search (or the user declined); other lists were asked in the plan
 - [ ] User-facing summary mentions AIRULES docs followed
 
 ## Red flags — stop and fix
@@ -112,6 +115,7 @@
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
+- Lookup list (articles, catalog, …) with **no search**, or search that filters `->all()` in JS / reloads the page
 - `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
 - JS overlay/modal as the only 2FA or save check — PHP must refuse without valid proof
 - File/ZIP in `FormData` + `load()` / `<fo-rm>` — use `$dotapp().uploadFile`

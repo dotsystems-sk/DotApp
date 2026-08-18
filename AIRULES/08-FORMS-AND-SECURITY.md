@@ -220,7 +220,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; **your module preloaders** covering the list/form until `load()` ends (success **and** error). Notiflix is DACore-only — not available here. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **MUST** confirm deletes in a graphical dialog (module modal) — never `alert()` / `window.confirm()`.
-8. **MUST** paginate accumulating lists on **first ship** (`paginate()` + interactive AJAX buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()`. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+8. **MUST** paginate accumulating lists on **first ship** (`paginate()` + interactive AJAX buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()`. Lookup lists **MUST** ship AJAX search unless declined; **ASK** on other lists. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 9. **MUST** re-check in PHP on every persist. FE overlay/modal is UX only.
 10. **MUST** upload files with `$dotapp().uploadFile` — never `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers).
 

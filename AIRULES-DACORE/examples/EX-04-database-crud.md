@@ -142,7 +142,7 @@ foreach ($page['data'] as $row) { /* ... */ }
 $last = $page['last_page'];
 ```
 
-**MUST:** users, logs, items, or any accumulating table use `paginate()` on **first ship** — not `->all()` into the view, not “few rows now so skip”. The pager in the browser is **interactive AJAX** (`type="button"` + `$dotapp().load()`), not `<a href="?page=">` / `location.reload()`. See [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](EX-06-dotapp-js-boot.md).
+**MUST:** users, logs, items, or any accumulating table use `paginate()` on **first ship** — not `->all()` into the view, not “few rows now so skip”. The pager in the browser is **interactive AJAX** (`type="button"` + `$dotapp().load()`), not `<a href="?page=">` / `location.reload()`. Lookup lists **MUST** AJAX search unless declined — **ASK** in the plan. See [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](EX-06-dotapp-js-boot.md).
 
 ---
 

@@ -74,6 +74,8 @@
 - [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
 - [ ] Deletes use a graphical confirm dialog first — never `alert()` / `window.confirm()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] Accumulating lists have an **interactive AJAX** pager (`type="button"` + `$dotapp().load()`, overlay while in flight, patch rows **and** pager) — not missing, not `<a href="?page=">` / `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] Lookup lists (articles, products, catalog, …) have **interactive AJAX search** (debounce, 3+ chars, SQL + `paginate()`) unless the user declined; other lists were **asked** in the plan — not JS-filter of `->all()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] List plan **asked** filters / sort / bulk / page size / DSM remember / CSV-if-it-fits; empty state + sticky header + match highlight shipped when required ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
 
 ## Config / secrets checklist
@@ -86,7 +88,8 @@
 
 ## DACore checklist (when the task touches the admin)
 
-- [ ] No file under `app/modules/DACore/` was modified, added, or deleted (updates would wipe it)
+- [ ] No file under `app/modules/DACore/` was modified, added, or deleted — **unless** the user **themselves** asked to edit DACore **and** confirmed the update wipe ([00](00-AGENT-CONTRACT.md) §1)
+- [ ] Did **not** propose a DACore edit; new CSS/JS/views live in the **current** module’s assets
 - [ ] No direct SQL on `dacore_*` or `users_rights*` tables (uninstall menu cleanup excepted)
 - [ ] Admin routes prefixed with `Config::module("DACore","prefixUrl")`
 - [ ] Routes guarded by your own `#YourModule:Rights@check!` (not `#DACore:AuthTest@check!`)
@@ -102,10 +105,13 @@
 - [ ] Port of jQuery libraries: **searched DACore first**; user was **asked**; plugin was **rewritten** as `$dotapp().fn` (not a `$.fn` wrap). Playbook: 09 §4.C / EX-15. DACore widgets reused when they already exist.
 - [ ] Simple forms **prefer** `<dot-col any="12" md="6" ldesktop="6">` and `ri ri-*` icons (custom layout OK when porting)
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
+- [ ] If this module has a sidebar: own `type => 0` header (one is ideal; more only if needed). **Asked** shared vs module-own before a new module. Many items: `type => 2` groups **or** header + one entry + `withMenu` `$menuId`. `menuid` starts with **this** module. Uninstall deletes only that prefix — not a host module’s menu ([31](31-DACORE-MENU.md))
+- [ ] Did **not** register a “Return back” row (DACore appends it on a branch `$menuId`)
 - [ ] Trigger file is **`dainstall.php`** (not `install.php`) on **your** module under DACore; `init/` has current copies of `module.init.php` and `module.listeners.php` ([35](35-DACORE-INSTALL.md) §4–§6)
 - [ ] Root `module.init.php` / `module.listeners.php` were **not** blanked unless the user asked to export
 - [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs** — those rules are for plug-in modules only
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
+- [ ] Inbox events use `DACore:Notifications@push` on the event (`!== true` checked) — not installer, not every request, not `INSERT` into `dacore_notifications*` ([37](37-DACORE-NOTIFICATIONS.md))
 - [ ] AI tool `rights` non-empty and wildcard-free; `controller` ends with `!`
 - [ ] AI handler signature `($data, $aiobj)` returning JSON with `result` + `message`
 - [ ] Write AI tools that change on-screen data return `ui_events` (`name` = tool id); matching page listens `DACore.AI.UIEvent` and AJAX-refreshes — other pages ignore ([34](34-DACORE-AI-TOOLS.md) §5)
@@ -119,17 +125,20 @@
 ## Pre-commit / before “done”
 
 - [ ] No core file modifications in the diff
-- [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete)
+- [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)
 - [ ] No Laravel/Blade/jQuery APIs introduced
 - [ ] `--list-routes` or manual route review if routes changed
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)
 - [ ] Checklists above satisfied for touched areas
 - [ ] Users/logs/items (or any accumulating list) shipped with **interactive AJAX** pager — not omitted, not a full-page `?page=` reload
+- [ ] Lookup lists shipped with AJAX search (or the user declined); other lists were asked in the plan
 - [ ] User-facing summary mentions AIRULES docs followed
 
 ## Red flags — stop and fix
 
 - Diff touches `app/parts/**`
+- Diff touches `app/modules/DACore/` without an informed, user-initiated ask ([00](00-AGENT-CONTRACT.md) §1)
+- Agent proposed a DACore patch instead of implementing in the current module
 - Template contains `{{ $var }}` or `@if`
 - Code contains `DB::table` / Eloquent / `$this->db`
 - Module table not prefixed `{lowercase_modulename}_*`
@@ -145,6 +154,7 @@
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
+- Lookup list (articles, catalog, …) with **no search**, or search that filters `->all()` in JS / reloads the page
 - `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
 - JS overlay/modal as the only 2FA or save check — PHP must refuse without valid proof
 - File/ZIP in `FormData` + `load()` / `<fo-rm>` — use `$dotapp().uploadFile`

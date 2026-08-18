@@ -256,6 +256,76 @@ SQL: `DB::module("RAW")->q(...)->paginate($perPage, $page)`. UI helper: [12](12-
 
 Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md), [examples/EX-04-database-crud.md](examples/EX-04-database-crud.md).
 
+### Interactive AJAX search on lists (**MUST ASK** / often **MUST ship**)
+
+A pager without search is incomplete UX on any list the operator **looks up** by name, title, SKU, or number. Agents **MUST NOT** ship a bare table and skip search because it was not in the prompt.
+
+**When planning a list, ASK in chat** (do not guess, do not skip the question):
+
+| Kind of list | Default |
+|--------------|---------|
+| Lookup content: articles, products, catalog, customers, orders by number | **Ship search** unless the user says no |
+| Users, logs, rights rows, short admin tables | **ASK:** “Do you want interactive AJAX search on this list?” |
+
+**MUST (when search is in):** same stay-on-page contract as the pager. Overlay the list, `$dotapp().load()`, patch rows **and** pager, remove overlay on success **and** error. Desktop **and** mobile.
+
+**MUST:**
+
+- Filter **in SQL** with `paginate()` — **MUST NOT** `->all()` then filter in JS
+- Debounce typing (~300 ms). Run a search from **3 characters**. Empty / shorter than 3 = unfiltered page **1**
+- New query resets `page` to **1**. Pager POSTs keep `q`
+- **MUST NOT** `<fo-rm>` per keystroke. One text input + `$dotapp().live("input", …)`
+- PHP: trim, cap length, bind `LIKE` (escape `%` / `_` in the user string). Never concatenate `$q` into SQL
+- When `q` is set and `total` is 0: show a **no matches** line (product copy), not a blank table
+
+```html
+<input type="search" id="shopSearch" class="form-control" placeholder="Search items…" autocomplete="off">
+```
+
+```javascript
+var currentQuery = "";
+var searchTimer = null;
+$dotapp().live("input", "#shopSearch", function () {
+  var q = ($dotapp("#shopSearch").val() || "").trim();
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(function () {
+    currentQuery = q.length >= 3 ? q : "";
+    shopBusy(true);
+    $dotapp().load("/shop/items/list", "POST", { page: 1, q: currentQuery },
+      function (raw) {
+        var reply = $dotapp().parseReply(raw);
+        if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
+        shopBusy(false);
+      },
+      function () { shopBusy(false); }
+    );
+  }, 300);
+});
+```
+
+Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
+
+### List UX — filters, sort, empty state, more (**MUST ASK** / **MUST**)
+
+When **planning** a list, **ASK** in chat for the rows marked ASK. Do not skip. Do not invent a toast-undo after delete (graphical confirm is enough).
+
+Same stay-on-page contract as the pager: overlay, `$dotapp().load()`, patch rows **and** pager, no `location.reload()`, desktop **and** mobile.
+
+| Feature | Rule |
+|---------|------|
+| Empty catalog (0 rows in DB) | **MUST** — product copy + primary action (“New item”), not a naked table |
+| No matches (search/filter, `total` 0) | **MUST** — “No items match …” + way to clear |
+| Sticky table header | **MUST** on accumulating tables — `position: sticky` in **your** module CSS (`{lowercase_modulename}_*`) |
+| Highlight search match | **MUST** when search is on — escape HTML first, then wrap the match (no `.html()` of raw `$q`) |
+| Extra filters (status, date, category) | **ASK** — SQL `WHERE` + `paginate()`, keep values in every list POST with `q` / `page` |
+| Column sort (click header) | **ASK**; lookup lists **MUST** unless declined — PHP **whitelist** of columns; never put the request string into `ORDER BY` |
+| Bulk actions (checkboxes + delete/activate) | **ASK** — encrypted ids, graphical confirm, `$dotapp().load()`, overlay |
+| Page size 10 / 25 / 50 | **ASK** — clamp in PHP (cap, e.g. 100); config fallback |
+| Remember last `q` / filters / page | **ASK** — **`DSM::use('Shop')`**, never `$_SESSION` ([20](20-CACHE-LOGGER-SESSION.md)) |
+| CSV export of the **current** filter | **ASK only if it fits** (catalog, orders, reports). Skip on most lists. If yes: same rights + SQL filter as the table; not a silent `->all()` dump |
+
+**MUST NOT:** filter or sort only the current HTML page in JS; `<fo-rm>` per filter change; unvalidated `ORDER BY`; sticky header by patching DotApp/DACore CSS.
+
 ### Confirm before delete (**MUST**)
 
 Any delete (row, detail, bulk) **MUST** ask first in a **graphical** dialog: title, what will be deleted, **Cancel**, and a destructive confirm. It **MUST** work on desktop **and** mobile (large enough buttons, no hover-only).

@@ -1,6 +1,6 @@
 # Guide to Creating Tests for DotApp Framework Modules
 
-This guide provides simple steps for creating tests for your modules in the DotApp Framework (version 1.7 FREE) using the `Tester` class. It is designed for module developers familiar with the framework’s modular structure, showing how to write tests in `app/modules/MODULE_NAME/tests/` using the `Dotsystems\App\Modules\MODULE_NAME\tests` namespace. Tests are run using the built-in `dotapper.php` CLI tool.
+This guide provides simple steps for creating tests for your modules in the DotApp Framework (version 2.0) using the `Tester` class. It is designed for module developers familiar with the framework’s modular structure, showing how to write tests in `app/modules/MODULE_NAME/tests/` using the `Dotsystems\App\Modules\MODULE_NAME\tests` namespace. Tests are run using the built-in `dotapper.php` CLI tool.
 
 ## Table of Contents
 
@@ -140,5 +140,5 @@ Summary: 1/1 tests passed (0 skipped, 0 failed)
 **Author**: Štefan Miščík  
 **Company**: Dotsystems s.r.o.  
 **License**: MIT License  
-**Version**: 1.7 FREE  
-**Date**: 2014 - 2025
+**Version**: 2.0 FREE  
+**Date**: 2014 - 2026

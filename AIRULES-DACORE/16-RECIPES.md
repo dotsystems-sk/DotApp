@@ -2,7 +2,7 @@
 
 These recipes use **framework APIs only**, so they work with or without DACore. Replace `Shop` with your module name.
 
-For admin-area work (menu, rights, admin pages, AI tools) use the DACore recipes instead: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md)–[EX-D04](examples/EX-D04-dacore-installer.md) and docs [30](30-DACORE-OVERVIEW.md)–[36](36-DACORE-KNOWN-ISSUES.md).
+For admin-area work (menu, rights, admin pages, AI tools, inbox) use the DACore recipes instead: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md)–[EX-D05](examples/EX-D05-dacore-notifications.md) and docs [30](30-DACORE-OVERVIEW.md)–[37](37-DACORE-NOTIFICATIONS.md).
 
 ---
 
@@ -173,7 +173,7 @@ php .\dotapper.php --module=Shop --test
 
 Users, logs, items, orders — any collection that **can accumulate** — **MUST** `->paginate($perPage, $page)` on the **first** version, not `->all()` into the view. **“Few rows now” is not a skip.**
 
-Pager **MUST** be **interactive AJAX**: `type="button"` + `$dotapp().load()`; overlay the list while in flight; patch rows **and** pager. **MUST NOT** `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing. Admin markup: `DACore:Page@paginate!` `$callable` as buttons ([33](33-DACORE-PAGES-AND-UI.md) §3).
+Pager **MUST** be **interactive AJAX**: `type="button"` + `$dotapp().load()`; overlay the list while in flight; patch rows **and** pager. **MUST NOT** `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing. Admin markup: `DACore:Page@paginate!` `$callable` as buttons ([33](33-DACORE-PAGES-AND-UI.md) §3). Lookup lists: **AJAX search** unless declined — **ASK** in the plan ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
 
 Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: [EX-04](examples/EX-04-database-crud.md), [EX-06](examples/EX-06-dotapp-js-boot.md), [EX-D01](examples/EX-D01-dacore-module-skeleton.md).
 

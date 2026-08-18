@@ -9,8 +9,8 @@
  * @category  Configuration
  * @author    Štefan Miščík <stefan@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.7 FREE
- * @date      2014 - 2025
+ * @version   2.0 FREE
+ * @date      2014 - 2026
  * @license   MIT License
  * 
  * License Notice:

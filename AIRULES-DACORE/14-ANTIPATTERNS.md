@@ -90,6 +90,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |
 | `alert()` / `window.confirm()` on delete | Graphical dialog (`Notiflix.Confirm` on admin), then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Growing list with no pager / `<a href="?page=">` | AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3) |
+| Articles/catalog list with no search / JS-filter of `->all()` | **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Naked empty table / unvalidated `ORDER BY` / JS-only sort / toast-undo after delete | Empty state **MUST**; sort whitelist; confirm is enough ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + `$request->upload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 | Accept `.php` / trust browser MIME on upload | Reject scripts in PHP: extension + `finfo` + headers ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 
@@ -108,10 +110,20 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 
 | Wrong | Right |
 |-------|-------|
-| Edit files in `app/modules/DACore/` | Public `DotApp::call()` APIs only |
-| Add a file / controller / view into `app/modules/DACore/` | Create **your own** module — DACore updates wipe extras |
-| “Quick-fix” a DACore bug in place | Refuse; work around it from `app/modules/<YourModule>/` |
+| Edit files in `app/modules/DACore/` (default) | Current module only; **MUST NOT propose** a DACore edit |
+| Add a file / controller / view / asset into `app/modules/DACore/` | Create **your own** module — DACore updates wipe extras |
+| Offer “I can patch DACore” | Implement in `app/modules/<YourModule>/` |
+| “Quick-fix” a DACore bug in place without an informed ask | Warn (update wipe); proceed **only** if they still insist on editing DACore ([00](00-AGENT-CONTRACT.md) §1) |
 | `INSERT INTO dacore_menu ...` | `DACore:Menu@register` |
+| `INSERT INTO dacore_notifications ...` | `DACore:Notifications@push` ([37](37-DACORE-NOTIFICATIONS.md)) |
+| Module-owned inbox table / second bell UI | DACore navbar + `{prefix}/dacore/notifications` |
+| `Notifications@push` in `Installation.php` or every request | Call on the event in **your** controller/service |
+| Own sidebar with no header (`type => 0`) | One header per module; more only if you need more sections ([31](31-DACORE-MENU.md)) |
+| Ten `type => 1` leaves under a header in the global sidebar | **ASK** shared vs module-own; group with `type => 2`, or header + one entry ([31](31-DACORE-MENU.md)) |
+| Guess the menu layout on a new DACore module | Ask in chat first — do not scaffold until the user picks |
+| Nest groups under a `withMenu` `$menuId` | Branch is one level; inner items are direct children of that id |
+| Register a “Return back” menu row | DACore appends it when `$menuId !== ''` |
+| Extension uninstall `DELETE … LIKE 'Host.%'` | Delete only **your** `menuid` prefix ([31](31-DACORE-MENU.md), [36](36-DACORE-KNOWN-ISSUES.md)) |
 | `INSERT INTO dacore_ai_tools ...` | `DACore:AITools@register` |
 | Write to `{prefix}users_rights_list` | `DACore:Rights@createRight!` |
 | Build your own admin HTML shell | `DACore:Page@withMenu!` |
@@ -130,7 +142,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | AI tool `rights => ['Mod.*']` | No wildcards for AI tools |
 | Bootstrap `col-md-6` in admin forms | `<dot-col any="12" md="6" ldesktop="6">` |
 | Re-add `dotapp.js` / dotgrid / core.css | The shell already loads them |
-| Ignoring `Menu@register` / `AITools@register` return | They return `bool`, never throw or log |
+| Ignoring `Menu@register` / `AITools@register` / `Notifications@push` return | They return `bool`, never throw or log |
 | Dangerous admin action without a second 2FA prompt | Step-up `$dotapp().twoFactor` + **PHP** verifies before persist ([32](32-DACORE-RIGHTS.md) §6) |
 | 2FA overlay/modal as the only gate; save writes anyway | PHP refuses without a valid code ([08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6) |
 | Dangerous flag turned off on the same save as other settings | General save ignores “off”; separate 2FA handler ([32](32-DACORE-RIGHTS.md) §6) |
@@ -138,4 +150,4 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Write AI tool with no page refresh / `location.reload()` after chat write | `ui_events` + `DACore.AI.UIEvent` listener; filter by tool id ([34](34-DACORE-AI-TOOLS.md) §5) |
 | Secrets in `ui_events` payload | Ids and view hints only |
 
-Details: [30](30-DACORE-OVERVIEW.md)–[36](36-DACORE-KNOWN-ISSUES.md).
+Details: [30](30-DACORE-OVERVIEW.md)–[37](37-DACORE-NOTIFICATIONS.md).

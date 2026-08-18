@@ -203,8 +203,8 @@ return static::call(
     [],                                              // extra <head> lines
     ['/assets/modules/Shop/css/admin.css'],
     ['/assets/modules/Shop/js/admin-items.js'],
-    ''                                               // full menu
+    ''                                               // full shared menu — or a branch id for module-own ([31](../31-DACORE-MENU.md); ASK)
 );
 ```
 
-Pass a `menuid` as the last argument to show only that menu branch plus a "Return back" link.
+Pass a `menuid` as the last argument to show only that branch’s **direct children** plus a generated **Return back** leaf. Do not register Return back. **ASK** shared vs module-own before a new module.

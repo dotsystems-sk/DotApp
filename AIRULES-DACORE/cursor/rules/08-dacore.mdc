@@ -5,17 +5,19 @@ alwaysApply: true
 
 # DACore Integration
 
-DACore is an admin-UI **module**, not framework core — but its files are **as forbidden as `app/parts/`**. Full docs: `AIRULES/30-DACORE-OVERVIEW.md` … `36`.
+DACore is an admin-UI **module**, not framework core — by default its files are **as forbidden as `app/parts/`**. Full docs: `AIRULES/30-DACORE-OVERVIEW.md` … `37`.
 
-**Why:** DACore is installed and updated as a package. Any edit, patch, or extra file under `app/modules/DACore/` **disappears on the next DACore update**. You may only *use* what DACore already provides. New features belong in **your own** module.
+**Why:** DACore is installed and updated as a package. Any edit, patch, or extra file under `app/modules/DACore/` **disappears on the next DACore update**. You may only *use* what DACore already provides. New features belong in **the current module** (including **its** assets). **MUST NOT propose** a DACore edit. Touch DACore **only** after an informed, user-initiated ask (`AIRULES/00` §1).
 
 ## Never
 
-- Edit, patch, delete, or **add** any file under `app/modules/DACore/` (no exceptions, even if the user asks)
-- `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `{prefix}users_rights*`
+- Edit, patch, delete, or **add** any file under `app/modules/DACore/` (including DACore assets) — **default.** **MUST NOT propose** this. Implement in the **current** module. **Exception:** the user **themselves** asks to edit DACore **and** confirms they accept the update wipe (`AIRULES/00` §1). Otherwise **strict ban**.
+- `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `{prefix}users_rights*`
 - Build your own admin HTML shell
 - Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
 - Register menu / rights / AI tools on every request (do it in **your** `Installation.php`)
+- Push inbox notifications from the installer or every request — `DACore:Notifications@push` on the event only (`AIRULES/37`)
+- Steal another module’s `menuid` prefix or uninstall with `DELETE … LIKE 'Host.%'` — your `menuid` starts with **your** module; own sidebar gets a `type => 0` header. **ASK** shared vs module-own menu before scaffolding (`AIRULES/31`). Do not dump 10 leaves under a header. Do not register “Return back”.
 - Use `$_SESSION` / `session_start()` — **MUST** `DSM::use('Shop')` (`AIRULES/20`)
 - Use `install.php` on **your** module that works under DACore — use **`dainstall.php`** + `init/` copies (`AIRULES/35-DACORE-INSTALL.md` §4–§6). Do not blank root init files unless the user asked to export. **Never** apply `dainstall.php` / `init/` / inert stubs to `app/modules/DACore/` itself.
 
@@ -26,6 +28,7 @@ DotApp::call("DACore:Menu@register", $menuid, $data);            // bool
 DotApp::call("DACore:Rights@createGroup!", $name, $creator);      // int|null
 DotApp::call("DACore:Rights@createRight!", $groupId, $name, $desc, $module, $rightname, $creator); // int|null
 DotApp::call("DACore:AITools@register", $toolid, $data);          // bool
+DotApp::call("DACore:Notifications@push", $data);                 // bool
 DotApp::call("DACore:Page@withMenu!", $title, $body, $header, $css, $js, $menuId); // string HTML
 DotApp::call("DACore:Installations@exist!", $module, $version);    // bool
 DotApp::call("DACore:Installations@insert!", $module, $version, $status, $statusTxt);
@@ -52,7 +55,7 @@ Prefer DACore widgets (cards, `btn`, dotgrid, Remix, Notiflix). **MUST search fi
 
 Admin runtime is **`$dotapp`** (already in the shell). jQuery may coexist for **UI widgets only**. **All HTTP to the app** uses `$dotapp().form` / `$dotapp().load` / `dotbridge` — never `$.ajax` / `$.post` / raw `fetch` to DotApp endpoints. When porting jQuery plugins, **ask**, then **rewrite** as `$dotapp().fn(...)` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`. If DACore already ships the widget, use it — never copy DACore JS into your module.
 
-Growing lists (logs, users, items) **MUST** use `paginate()` and an **interactive AJAX** pager on **first ship** (`DACore:Page@paginate!` `$callable` as buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or `<a href="?page=">` / `location.reload()`. See `AIRULES/09` §3 and `AIRULES/33` §3.
+Growing lists (logs, users, items) **MUST** use `paginate()` and an **interactive AJAX** pager on **first ship** (`DACore:Page@paginate!` `$callable` as buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or `<a href="?page=">` / `location.reload()`. Lookup lists **MUST** AJAX search unless declined; **ASK** on other lists (`AIRULES/09` §3). See `AIRULES/09` §3 and `AIRULES/33` §3.
 
 **Persist:** PHP **MUST** re-check (2FA, rights, validation). A 2FA overlay covering Save is UX only — removing it **MUST** still fail on the server (`AIRULES/08`, `AIRULES/32` §6).
 
@@ -66,4 +69,4 @@ Growing lists (logs, users, items) **MUST** use `paginate()` and an **interactiv
 
 `rights` must be non-empty and **wildcard-free** (empty = hidden from everyone). Handler signature `($data, $aiobj)`, returns JSON with `result` + `message`. `controller` string ends with `!`. Write tools that change a live admin view **MUST** return `ui_events` (`name` = tool id). Page JS listens for `DACore.AI.UIEvent`, filters by name, AJAX-refreshes — **MUST NOT** `location.reload()`. Other screens ignore. No secrets in `payload`. See `AIRULES/34-DACORE-AI-TOOLS.md` §5.
 
-Examples: `AIRULES/examples/EX-D01` … `EX-D04`.
+Examples: `AIRULES/examples/EX-D01` … `EX-D05`.

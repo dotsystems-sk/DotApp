@@ -1,8 +1,10 @@
 # EX-D01 — Complete DACore admin module skeleton
 
-End-to-end: scaffold, routes, rights middleware, installer wiring. Rules: [30](../30-DACORE-OVERVIEW.md), [32](../32-DACORE-RIGHTS.md), [35](../35-DACORE-INSTALL.md).
+End-to-end: scaffold, routes, rights middleware, installer wiring. Rules: [30](../30-DACORE-OVERVIEW.md), [31](../31-DACORE-MENU.md), [32](../32-DACORE-RIGHTS.md), [35](../35-DACORE-INSTALL.md).
 
-**Never touch `app/modules/DACore/`.** Scaffold **your** module (`Shop` below). DACore updates overwrite that folder; extras and patches disappear. Use `DotApp::call("DACore:…")` only.
+**ASK in chat before scaffolding the menu:** shared full sidebar vs **module-own** (`Page@withMenu` last argument). This sample uses the **shared** tree (`$menuId` `''`) with a header + `type => 2` group. A large module is usually header + one entry in the global sidebar, and inner pages pass `'Shop.nav'`. Do not register “Return back”. See [31](../31-DACORE-MENU.md).
+
+**Never touch `app/modules/DACore/` by default** (files or assets). Scaffold **your** module (`Shop` below). **MUST NOT propose** a DACore edit. DACore updates overwrite that folder. Use `DotApp::call("DACore:…")`. Informed exception: [00](../00-AGENT-CONTRACT.md) §1.
 
 ## 1. Scaffold
 
@@ -179,7 +181,7 @@ class Admin extends \Dotsystems\App\Parts\Controller
             [],
             ['/assets/modules/Shop/css/admin.css'],
             ['/assets/modules/Shop/js/admin-items.js'],
-            ''
+            ''   // shared full menu; module-own = 'Shop.nav' — ASK ([31])
         );
     }
 

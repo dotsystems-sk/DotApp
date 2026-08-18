@@ -60,6 +60,82 @@ Wildcards work **here** (menu) but **not** for AI tool rights ([34](34-DACORE-AI
 
 ---
 
+## Own header, grouping, and module-own menu (**MUST**)
+
+Not every module has a sidebar. If **your** module **does** register menu items:
+
+**Ideal:** one section header of your own (`type => 0`, `parent => ''`, `menuid` like `Shop.main`). Extra headers are OK when the product has several top-level sections. Do **not** register only leaves at the root — the sidebar will not group.
+
+**Group when there are many items.** A header with ten `type => 1` leaves wastes the **global** admin sidebar. From about **five** items, either nest them under expandable parents (`type => 2`) on the shared menu, or switch to a **module-own** menu. Shape for shared grouping: header `0` → group `2` → leaf `1`.
+
+**Two layouts — ASK the user in chat before you scaffold a new DACore module** (do not guess, do not default to ten flat leaves):
+
+| Layout | When | Main (global) sidebar | Inside the module |
+|--------|------|----------------------|-------------------|
+| **Shared** | Few items, or the user wants everything in one tree | Your header + groups (`2`) + leaves | `Page@withMenu!(…, '')` — full menu |
+| **Module-own** | Many items (typical when the module is a real app) | Your header + **one** leaf that opens the module | `Page@withMenu!(…, 'Shop.nav')` — only that branch |
+
+Module-own is the better UX for a large module: the global sidebar stays short; after the operator opens the module, the sidebar is **that module’s own list**. DACore always appends a **Return back** leaf at the **bottom** of a branch menu (`getItems($menuId)` when `$menuId !== ''`). **MUST NOT** register that item yourself.
+
+A non-empty `$menuId` loads **one level only** (`menuid = X OR parent = X`). Nested `type => 2` groups under that branch will **not** show their children. Grouping with `type => 2` belongs on the **shared** menu (full table). On a module-own sidebar, register inner items as **direct children** of the branch id (`type => 1`). A long inner list is fine — it does not crowd the rest of the admin. See [36](36-DACORE-KNOWN-ISSUES.md).
+
+Module-own wiring:
+
+```php
+// Global sidebar: header + one entry (does not list the module’s pages)
+DotApp::call("DACore:Menu@register", "Shop.main", [ /* type 0, parent '' */ ]);
+DotApp::call("DACore:Menu@register", "Shop.main.home", [
+    'name' => 'Shop',
+    'parent' => 'Shop.main',
+    'url' => '/shop-admin/',
+    'urlprefix' => 1,
+    'type' => 1,
+    // …
+]);
+
+// Inner items — parent is the branch id passed to withMenu, NOT Shop.main
+DotApp::call("DACore:Menu@register", "Shop.nav.items", [
+    'name' => 'Items',
+    'parent' => 'Shop.nav',
+    'url' => '/shop-admin/items',
+    'urlprefix' => 1,
+    'type' => 1,
+    // …
+]);
+```
+
+Every inner admin page (same `$menuId` on all of them):
+
+```php
+return static::call("DACore:Page@withMenu!", $title, $html, [], $css, $js, 'Shop.nav');
+```
+
+`''` / `null` = full shared menu. A `menuid` = that branch’s direct children + Return back. See [33](33-DACORE-PAGES-AND-UI.md).
+
+Do **not** register `Shop.nav` itself as a root `type => 0` header — it would appear as a second section in the global sidebar. It is only the `parent` / `$menuId` of the inner items.
+
+**`menuid` always starts with your module name** (`Shop.…`). That is what uninstall deletes. Register from `Installation.php` ([35](35-DACORE-INSTALL.md)).
+
+**Allowed:** an **extension** module may hang items under another module’s header or parent (`'parent' => 'Shop.main.catalog'`) when it extends that product. The `menuid` still belongs to **you** (`Reports.shop.export`). Do **not** reuse `Shop.*` ids.
+
+```php
+// Reports extends Shop — under Shop's catalog, but the id is Reports.*
+DotApp::call("DACore:Menu@register", "Reports.shop.export", [
+    'name' => 'Export',
+    'parent' => 'Shop.main.catalog',
+    'icon' => 'ri ri-download-2-line',
+    'url' => '/reports-admin/shop-export',
+    'urlprefix' => 1,
+    'rights' => json_encode(['dotapp.root', 'Shop.administrator', 'Reports.export']),
+    'type' => 1,
+    'ordering' => 50,
+]);
+```
+
+**Uninstall MUST** remove **only your** rows (`WHERE menuid LIKE 'Reports.%'` or the explicit ids you registered). **MUST NOT** `DELETE … LIKE 'Shop.%'` from an extension — that wipes the host module’s menu. See [36](36-DACORE-KNOWN-ISSUES.md).
+
+---
+
 ## Correct registration (from `Installation.php`)
 
 ```php
@@ -134,7 +210,7 @@ Each node:
 ]
 ```
 
-Passing a non-empty `$menuId` returns that branch plus a synthetic **"Return back"** leaf pointing at `prefixUrl + defaultUrl`. Results are cached under key `DACore.menu` with context `{menuid, user}` for 600 s when `useCache` is on.
+Passing a non-empty `$menuId` selects `menuid = X OR parent = X` (**one level**), then appends a synthetic **"Return back"** leaf pointing at `prefixUrl + defaultUrl` (last — do not register it). Results are cached under key `DACore.menu` with context `{menuid, user}` for 600 s when `useCache` is on.
 
 Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — returns `<li>` fragments without a wrapping `<ul>`. `$options` accepts `current_file` and `base_href`. Normally `Page@withMenu` does this for you.
 
@@ -152,3 +228,9 @@ Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — r
 | `INSERT INTO dacore_menu ...` | `DACore:Menu@register` |
 | Ignoring the return value | Check `!== true` and log |
 | Expecting an unregister call | None exists — plan your uninstall SQL |
+| Own sidebar with no `type => 0` header | One header per module (`Shop.main`); more only if you need more sections |
+| Ten `type => 1` leaves under a header (global sidebar) | **ASK** shared vs module-own; group with `type => 2`, or header + one entry + `withMenu` `$menuId` |
+| Guess the layout / skip the chat question | Stop and ask: shared full menu or module-own menu |
+| Nest `type => 2` groups under a branch `$menuId` | Branch is one level — inner items are direct `type => 1` children of that id |
+| Invent a “Return back” menu row | DACore appends it when `$menuId !== ''` |
+| Extension `menuid` `Shop.extra…` / uninstall `LIKE 'Shop.%'` | Your prefix (`Reports.…`); delete only `Reports.%` ([31](31-DACORE-MENU.md)) |

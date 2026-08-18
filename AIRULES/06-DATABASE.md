@@ -82,6 +82,8 @@ Skip a pager **only** when the set is **closed by product design** and will neve
 
 The pager in the browser is **interactive AJAX** — [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Paginate accumulating lists”. **MUST NOT** reload the site with `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing.
 
+**MUST (search):** lookup lists (articles, products, catalog, …) **MUST** ship **interactive AJAX search** (SQL `LIKE` + `paginate()`, debounce, from 3 characters) unless the user declined. Other lists: **ASK** in the plan. **MUST NOT** `->all()` and filter in JS. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Interactive AJAX search”.
+
 ### Write with callbacks (mandatory pattern)
 
 ```php

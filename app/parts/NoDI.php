@@ -10,7 +10,7 @@
  * * @package    DotApp Framework
  * @author     Štefan Miščík <info@dotsystems.sk>
  * @company    Dotsystems s.r.o.
- * @version    1.0
+ * @version    2.0
  * @license    MIT License
  * @date      2014 - 2026
  */

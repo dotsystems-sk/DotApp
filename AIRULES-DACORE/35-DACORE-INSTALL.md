@@ -119,7 +119,8 @@ class Installation extends Installer
                     }
                 }
 
-                // ---- 3. menu ----
+                // ---- 3. menu (ASK shared vs module-own — [31]) ----
+                // Shared sample: header + type 2 + leaf. Many items: header + one entry, inner withMenu $menuId.
                 $menuRights = json_encode(['dotapp.root', 'Shop.administrator', 'Shop.items.view']);
 
                 $menu = [
@@ -231,7 +232,7 @@ class Installation extends Installer
 }
 ```
 
-Deleting `dacore_menu` rows directly is acceptable **only in an uninstaller**, because DACore offers no unregister API. Never do it during normal operation.
+Deleting `dacore_menu` rows directly is acceptable **only in an uninstaller**, because DACore offers no unregister API. Never do it during normal operation. Delete **only your** `menuid` prefix (`Shop.%`). An extension that added items under another module **MUST NOT** delete that host’s prefix. Own sidebar: register a `type => 0` header. **ASK** shared vs module-own before a new module; group with `type => 2` or use header + one entry ([31](31-DACORE-MENU.md)).
 
 ---
 
@@ -363,4 +364,6 @@ After DACore’s installer succeeds, it overwrites these stubs from `init/`. Unt
 - [ ] AI tool `rights` non-empty and wildcard-free
 - [ ] `dacore_ai_tools` verified to exist before registering tools
 - [ ] Uninstaller removes tools, rights, menu rows and your tables
+- [ ] Menu uninstall deletes only **your** `menuid` prefix (not a host module’s `LIKE 'Other.%'`) ([31](31-DACORE-MENU.md))
+- [ ] New module: user was **asked** shared vs module-own; many items are grouped (`type => 2`) or module-own ([31](31-DACORE-MENU.md))
 - [ ] Every `execute()` has both callbacks ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md))

@@ -8,7 +8,7 @@ if (PHP_SAPI !== 'cli') {
 
 /**
  * DOTAPP DATABASE INITIALIZATION SCRIPT - initializedb.php
- * Version 1.8
+ * Version 2.0
  *
  * This script initializes the DotApp database with all required tables
  * for the users management system. It converts raw SQL to QueryBuilder format
@@ -147,7 +147,7 @@ if (PHP_SAPI !== 'cli') {
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.8 FREE
+ * @version   2.0 FREE
  * @date      2014 - 2026
  * @license   MIT License
  * @security  User confirmation required for all operations

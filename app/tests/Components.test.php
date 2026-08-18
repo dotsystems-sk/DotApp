@@ -1,7 +1,7 @@
 <?php
 /**
  * COMPONENTS TESTS FOR DOTAPP FRAMEWORK
- * Version 1.8
+ * Version 2.0
  *
  * Tests for component classes that can be tested without database
  * Router, Email, SMS, RouterObj, Request, etc.
@@ -9,7 +9,7 @@
  * @package   DotApp Framework
  * @author    Štefan Miščík <info@dotsystems.sk>
  * @company   Dotsystems s.r.o.
- * @version   1.8 FREE
+ * @version   2.0 FREE
  * @date      2014 - 2026
  * @license   MIT License
  */

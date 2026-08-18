@@ -34,7 +34,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Persist: PHP re-checks — NOT a JS overlay/modal as the only gate (`AIRULES/08`)
 - Files: `$dotapp().uploadFile` — NOT `FormData` + `load()` / `<fo-rm>`. PHP rejects `.php` (ext + `finfo` MIME + headers) (`AIRULES/09`)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list with **module preloaders** until the request ends (desktop **and** mobile). (`AIRULES/09` §3, EX-06)
-- Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
+- Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined; **ASK** on other lists. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
 
 ## Never ignore return values (AIRULES/18)
 

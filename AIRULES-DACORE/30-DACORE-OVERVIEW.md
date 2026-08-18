@@ -2,31 +2,34 @@
 
 **DACore is a module, not part of the framework core.** It provides a ready-made administration shell: login + 2FA, permissions, a DB-driven sidebar menu, a page shell, error pages, optional AI chat with tools, and install tracking.
 
-Your module **plugs into** DACore through public `DotApp::call()` APIs. It never edits DACore files, and it never adds files into DACore.
+Your module **plugs into** DACore through public `DotApp::call()` APIs. By default it never edits DACore files or assets, and it never adds files into DACore. **MUST NOT propose** a DACore edit. Work only in the **current** module. Informed exception: [00](00-AGENT-CONTRACT.md) §1.
 
-Framework rules (docs `00`–`22`) still apply in full. This DACore layer (`30`–`36`) is additive.
+Framework rules (docs `00`–`22`) still apply in full. This DACore layer (`30`–`37`) is additive.
 
 ---
 
 ## 1. Absolute rules for a DACore plug-in module
 
-Treat `app/modules/DACore/` like `app/parts/`. DACore is shipped and updated as a complete package. **Any edit, patch, or extra file inside it is destroyed on the next DACore update.** You may only consume the APIs it already exposes. All new features, pages, controllers, views, and assets go in **your own** module (`app/modules/<YourModule>/`). If asked to change DACore in place: refuse and implement it in your module.
+Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped and updated as a complete package. **Any edit, patch, or extra file inside it is destroyed on the next DACore update.** You may only consume the APIs it already exposes. All new features, pages, controllers, views, and **assets** go in **the module you are programming** (`app/modules/<YourModule>/`). **MUST NOT propose** editing DACore. If the user **themselves** asks to change DACore in place **and** confirms they accept the wipe: then you may edit DACore for that request ([00](00-AGENT-CONTRACT.md) §1). Otherwise: implement it in your module.
 
 | Rule | Why |
 |------|-----|
-| **Never edit any file in `app/modules/DACore/`** | DACore updates overwrite the whole module — local patches disappear |
-| **Never add files, controllers, views, JS, CSS, or SQL into DACore** | Same reason: the next update wipes them. Extend via your own module only |
-| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings` directly** | Use the registration APIs — they handle upsert, column compatibility and cache invalidation. Installer tables are DACore-owned. |
+| **Never edit any file in `app/modules/DACore/`** (default) | DACore updates overwrite the whole module — local patches disappear |
+| **Never add files, controllers, views, JS, CSS, or SQL into DACore** (default) | Same reason: the next update wipes them. Extend via your own module only |
+| **Never propose a DACore patch** | The user must ask; the agent must not offer it |
+| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox` directly** | Use the registration / push APIs — they handle upsert/fan-out, column compatibility and cache invalidation. Installer tables are DACore-owned. |
 | **Never write into `{prefix}users_rights*` directly** | Use `DACore:Rights@*` |
 | **Never duplicate the admin HTML shell** | Use `DACore:Page@withMenu!` |
 | **Never use `$_SESSION` / `session_start()`** | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
 | **Never rely on `#DACore:AuthTest@check!` for permission checks** | It ignores the rights you pass — see [36](36-DACORE-KNOWN-ISSUES.md); create your own `Middleware/Rights.php` |
 | Register menu/rights/tools **from `Installation.php`**, not on every request | Otherwise you write to the DB on each page load |
+| Push inbox notifications **on the event** | `DACore:Notifications@push` — not installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)) |
+| **ASK menu layout** on a new DACore module | Shared full sidebar vs module-own (`withMenu` `$menuId`). Many items: group `type => 2` or header + one entry ([31](31-DACORE-MENU.md)) |
 | DACore-bound module (**your** module under DACore, **not** `app/modules/DACore/`): **`dainstall.php`** + `init/` copies of init/listeners | Framework `install.php` would auto-run; DACore’s installer must own install + activation ([35](35-DACORE-INSTALL.md) §4–§6). **MUST NOT** change DACore itself this way. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
 | **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — **PHP** verifies the code before persist (overlay is UX only); never `Auth::confirmTwoFactor` while already logged in |
 
-Editable paths are unchanged: `app/config.php` and `app/modules/<YourModule>/` only ([00](00-AGENT-CONTRACT.md)).
+Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` only (that module’s assets included). DACore: [00](00-AGENT-CONTRACT.md) §1.
 
 ---
 
@@ -47,6 +50,7 @@ Editable paths are unchanged: `app/config.php` and `app/modules/<YourModule>/` o
 | Render pagination | `DACore:Page@paginate!` | `string` HTML |
 | Register / update AI tool | `DACore:AITools@register` | `bool` |
 | Delete AI tool | `DACore:AITools@delete` (alias `@unregister`) | `bool` |
+| Push inbox notification | `DACore:Notifications@push` | `bool` |
 | Add AI system context | `DACore:AI@addSystemContext` | `bool` |
 | Migration guard | `DACore:Installations@exist!` | `bool` |
 | Record migration | `DACore:Installations@insert!` | `bool` |
@@ -68,6 +72,8 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_modules` | ZIP-installed modules (DACore-owned — **never write**) |
 | `dacore_plugin_logs` | Plugin installer audit (DACore-owned — **never write**) |
 | `dacore_settings` | DACore-wide settings (DACore-owned — **never write**) |
+| `dacore_notifications` | Inbox events (DACore-owned — **never write**; `Notifications@push` only) |
+| `dacore_notifications_inbox` | Per-user read state (DACore-owned — **never write**) |
 
 Framework tables it uses (does not own): `{prefix}users`, `{prefix}users_rights`, `{prefix}users_rights_groups`, `{prefix}users_rights_list`.
 
@@ -194,4 +200,5 @@ Reminder from [12](12-SERVICES.md): `trigger()` **ignores listener return values
 | Admin pages, dotgrid, tables | [33](33-DACORE-PAGES-AND-UI.md) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | AI tools | [34](34-DACORE-AI-TOOLS.md) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
 | Installer wiring | [35](35-DACORE-INSTALL.md) | [EX-D04](examples/EX-D04-dacore-installer.md) |
+| Inbox notifications | [37](37-DACORE-NOTIFICATIONS.md) | [EX-D05](examples/EX-D05-dacore-notifications.md) |
 | DACore quirks | [36](36-DACORE-KNOWN-ISSUES.md) | — |

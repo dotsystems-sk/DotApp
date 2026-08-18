@@ -7,7 +7,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 `AIRULES-DACORE/` is the DACore overlay. Use it in a project where **the DACore admin module is installed**.
 
 - **Language:** English
-- **Contents:** docs `00`–`22` = framework · `30`–`36` = DACore layer
+- **Contents:** docs `00`–`22` = framework · `30`–`37` = DACore layer
 
 ### Which variant to use
 
@@ -18,7 +18,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 
 Never copy both into the same project — the agent would have two conflicting sources. Copy this folder into the project **as `AIRULES/`**.
 
-## DACore layer (`30`–`36`)
+## DACore layer (`30`–`37`)
 
 | File | Contents |
 |------|----------|
@@ -29,18 +29,19 @@ Never copy both into the same project — the agent would have two conflicting s
 | [34-DACORE-AI-TOOLS.md](34-DACORE-AI-TOOLS.md) | AI tools for the DACore chat |
 | [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | `dainstall.php`, `init/`, export, DACore tracking |
 | [36-DACORE-KNOWN-ISSUES.md](36-DACORE-KNOWN-ISSUES.md) | DACore bugs and traps |
+| [37-DACORE-NOTIFICATIONS.md](37-DACORE-NOTIFICATIONS.md) | Inbox `Notifications@push` |
 
-Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D04](examples/EX-D04-dacore-installer.md).
+Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D05](examples/EX-D05-dacore-notifications.md).
 
 ### Most important DACore rules
 
-1. **Never edit, patch, or add files in `app/modules/DACore/`.** DACore is updated as a package — every local change is **wiped on the next update**. Use only public `DotApp::call("DACore:…")` APIs. Put all new work in **your own** module (`app/modules/<YourModule>/`).
-2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, or `users_rights*`.
+1. **Never edit, patch, or add files in `app/modules/DACore/` by default** (including DACore assets). **MUST NOT propose** a DACore edit. Put all new work in **the current module**. Touch DACore **only** if the user **themselves** asks **and** confirms the next update wipes it ([00](00-AGENT-CONTRACT.md) §1). Otherwise **strict ban**. Use `DotApp::call("DACore:…")`.
+2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, or `users_rights*`.
 3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
-4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. **Your** modules that work **under** DACore use **`dainstall.php`** (the framework never runs it) and keep copies of `module.init.php` / `module.listeners.php` in **`init/`**. Blank the root files only when the user asks to export — DACore unpacks, runs `dainstall.php`, then copies `init/` into the root on success. **This does not apply to the DACore module itself** (`app/modules/DACore/`) — never rename, blank, or wrap DACore that way. See [35](35-DACORE-INSTALL.md) §4–§6.
-5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell.
+4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. Push inbox notifications with **`DACore:Notifications@push` on the event** — not from the installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)). **Your** modules that work **under** DACore use **`dainstall.php`** (the framework never runs it) and keep copies of `module.init.php` / `module.listeners.php` in **`init/`**. Blank the root files only when the user asks to export — DACore unpacks, runs `dainstall.php`, then copies `init/` into the root on success. **This does not apply to the DACore module itself** (`app/modules/DACore/`) — never rename, blank, or wrap DACore that way. See [35](35-DACORE-INSTALL.md) §4–§6.
+5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell. **ASK** shared vs module-own menu before a new DACore module. Many items: group with `type => 2`, or header + one entry and pass `$menuId` ([31](31-DACORE-MENU.md)).
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
-7. **MUST search DACore first** before a new library or widget (grep `app/modules/DACore/` read-only + your module). The base already has many subpages and libraries — reuse them. **MUST** add your own CSS/JS in the module only when that search finds no equivalent (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI.
+7. **MUST search DACore first** before a new library or widget (grep `app/modules/DACore/` read-only + your module). The base already has many subpages and libraries — reuse them. **MUST** add your own CSS/JS in the **current** module only when that search finds no equivalent (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI (unless the informed exception in [00](00-AGENT-CONTRACT.md) §1).
 8. DACore admin runs on **`$dotapp`**. jQuery may sit beside it for UI widgets, but **every request** uses `$dotapp` (`form` / `load` / bridge) — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C and [EX-15](examples/EX-15-dotapp-js-library.md).
 
 ## Hard rules
@@ -48,12 +49,12 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 1. **AIRULES is the single source of truth** for AI. The old `.cursorrules`, `database_guide.md`, and module `*_AI_guide.md` files are gone.
 2. **You may edit only:**
    - `app/config.php`
-   - files inside **your own** module at `app/modules/<YourModule>/`
-3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …) **nor `app/modules/DACore/`** (updates wipe every local change; never add files there — only your own module).
+   - files inside **the module you are programming** at `app/modules/<YourModule>/` (including **its** assets)
+3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …). **DACore:** default same ban (`app/modules/DACore/` — files and assets). **MUST NOT propose** a DACore edit. **Exception:** user themselves asks and confirms the update wipe ([00](00-AGENT-CONTRACT.md) §1).
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** cover the form/list until the request ends. **DACore admin:** Notiflix (preferred) **or** your module preloaders. **Public website:** you **MUST** build preloaders yourself (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin) — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile. User-visible strings **MUST** read as shipped product copy — never prompt-echo.
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items`, `dotapp_*`, or `dacore_*` for your module data.
-7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. No pager, or a pager that reloads the admin shell, is incomplete. “Few rows now” is not a skip. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3.
+7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. No pager, or a pager that reloads the admin shell, is incomplete. “Few rows now” is not a skip. Lookup lists **MUST** ship **AJAX search** unless declined; **ASK** on other lists. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3.
 8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
 9. **MUST** re-check every persist in **PHP**. Frontend modal/overlay is UX only — skipping it **MUST** still fail on the server. Canonical: [08](08-FORMS-AND-SECURITY.md).
 10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).

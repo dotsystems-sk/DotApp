@@ -170,7 +170,7 @@ php .\dotapper.php --module=Shop --test
 
 Users, logs, items, orders — any collection that **can accumulate** — **MUST** `->paginate($perPage, $page)` on the **first** version, not `->all()` into the view. **“Few rows now” is not a skip.**
 
-Pager **MUST** be **interactive AJAX**: `type="button"` + `$dotapp().load()`; overlay the list while in flight; patch rows **and** pager. **MUST NOT** `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing.
+Pager **MUST** be **interactive AJAX**: `type="button"` + `$dotapp().load()`; overlay the list while in flight; patch rows **and** pager. **MUST NOT** `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing. Lookup lists: **AJAX search** (debounce, 3+ chars) unless declined — **ASK** in the plan ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
 
 Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: [EX-04](examples/EX-04-database-crud.md), [EX-06](examples/EX-06-dotapp-js-boot.md).
 

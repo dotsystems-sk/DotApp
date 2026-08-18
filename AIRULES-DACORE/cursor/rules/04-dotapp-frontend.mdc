@@ -16,7 +16,7 @@ Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SEC
 
 Bootstrap on `dotapp` event; register plugins on `dotapp-register` via `$dotapp().fn(...)`.
 
-Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/` or `app/modules/DACore/`. **MUST grep DACore (read-only) and this module first** — reuse an existing widget; do not write a second copy. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`. If DACore already ships the widget, use it.
+Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/`. Never edit `app/modules/DACore/` by default (informed exception: `AIRULES/00` §1). **MUST grep DACore (read-only) and this module first** — reuse an existing widget; do not write a second copy. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`. If DACore already ships the widget, use it.
 
 ## Never
 
@@ -27,6 +27,7 @@ Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (
 - One `<fo-rm>` per row action — use `$dotapp().load()` + encrypted `data-*` (`AIRULES/08-FORMS-AND-SECURITY.md`)
 - Leave a list/form clickable during `load()` — overlay until success **and** error (Notiflix preferred **or** module preloaders; desktop **and** mobile) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
 - Dump users/logs/items with `->all()`, skip the pager because “few rows now”, or change pages by reloading `<a href="?page=">` / `location.reload()` — interactive AJAX pager + `$dotapp().load()` (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Ship a catalog/articles list with no search, or filter `->all()` in JS — **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars)
 - Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
 - Delete with `alert()` / `window.confirm()` — graphical dialog first (`Notiflix.Confirm` on admin) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
 - Skip step-up 2FA on a dangerous DACore action — `AIRULES/32-DACORE-RIGHTS.md` §6
