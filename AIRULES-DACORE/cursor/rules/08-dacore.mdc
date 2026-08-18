@@ -56,6 +56,6 @@ Admin runtime is **`$dotapp`** (already in the shell). jQuery may coexist for **
 
 ## AI tools
 
-`rights` must be non-empty and **wildcard-free** (empty = hidden from everyone). Handler signature `($data, $aiobj)`, returns JSON with `result` + `message`. `controller` string ends with `!`.
+`rights` must be non-empty and **wildcard-free** (empty = hidden from everyone). Handler signature `($data, $aiobj)`, returns JSON with `result` + `message`. `controller` string ends with `!`. Write tools that change a live admin view **MUST** return `ui_events` (`name` = tool id). Page JS listens for `DACore.AI.UIEvent`, filters by name, AJAX-refreshes — **MUST NOT** `location.reload()`. Other screens ignore. No secrets in `payload`. See `AIRULES/34-DACORE-AI-TOOLS.md` §5.
 
 Examples: `AIRULES/examples/EX-D01` … `EX-D04`.

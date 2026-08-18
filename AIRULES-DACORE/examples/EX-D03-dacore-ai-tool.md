@@ -142,7 +142,10 @@ class AITools extends \Dotsystems\App\Parts\Controller
                 'result' => true,
                 'message' => 'Price of "' . $item['title'] . '" set to ' . $price . '.',
                 'ui_events' => [
-                    ['name' => 'Shop.Items.Updated', 'payload' => ['id' => $id, 'price' => $price]],
+                    [
+                        'name' => 'Shop.Items.Update', // MUST equal toolid
+                        'payload' => ['id' => $id], // add page/filter when the list is paginated
+                    ],
                 ],
             ], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
@@ -152,7 +155,22 @@ class AITools extends \Dotsystems\App\Parts\Controller
     }
 ```
 
-`ui_events` are forwarded only when `result` is truthy. Event names must match `^[A-Za-z0-9_.:-]{1,120}$`.
+`ui_events` are forwarded only when `result` is truthy. `name` **MUST** equal the tool id (`Shop.Items.Update`). Payload: only what the **items list page** needs (id, page/filter). **MUST NOT** include secrets or keys. Lookup tools omit `ui_events`.
+
+### Page JS (only on the items list — not on Users)
+
+```javascript
+window.addEventListener("DACore.AI.UIEvent", function (ev) {
+  if (!ev || !ev.detail) return;
+  if (ev.detail.name !== "Shop.Items.Update") return;
+  var p = ev.detail.payload || {};
+  if (!$dotapp("#shopItemsWrap").length) return;
+  // overlay + $dotapp().load(...) using p.id / p.page — same as the page's own refresh
+  // MUST NOT location.reload()
+});
+```
+
+The users-admin script **MUST NOT** listen for `Shop.Items.Update`. If that file is not on the page, the event is ignored. See [34](../34-DACORE-AI-TOOLS.md) §5.
 
 ## 4. System context
 
@@ -194,4 +212,6 @@ foreach (['Shop.Items.Search', 'Shop.Items.Update'] as $toolid) {
 - [ ] `try/catch` around the whole body
 - [ ] Model-supplied ids validated against the DB
 - [ ] Write tools use `requires_confirmation => true` and a realistic `risk_level`
+- [ ] Write tools that change on-screen admin data return `ui_events` (`name` = tool id); the matching page listens for `DACore.AI.UIEvent` and AJAX-refreshes — no `location.reload()`; other pages ignore the name
+- [ ] `ui_events` payload has no secrets / keys
 - [ ] Registration happens in `Installation.php`, not per request

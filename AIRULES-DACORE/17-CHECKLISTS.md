@@ -99,6 +99,7 @@
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
 - [ ] AI tool `rights` non-empty and wildcard-free; `controller` ends with `!`
 - [ ] AI handler signature `($data, $aiobj)` returning JSON with `result` + `message`
+- [ ] Write AI tools that change on-screen data return `ui_events` (`name` = tool id); matching page listens `DACore.AI.UIEvent` and AJAX-refreshes — other pages ignore ([34](34-DACORE-AI-TOOLS.md) §5)
 - [ ] `dacore_ai_tools` existence verified before registering tools
 - [ ] Uninstaller removes tools, rights, prefixed menu rows and your tables
 - [ ] Operators keep at least one 2FA method; your module cannot turn it off
@@ -133,6 +134,7 @@
 - Custom OTP digit widget instead of `$dotapp().twoFactor`
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
+- Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
 - Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
 - `execute()` called with a single callback
 - `->first()` used without a guard

@@ -123,5 +123,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Ignoring `Menu@register` / `AITools@register` return | They return `bool`, never throw or log |
 | Dangerous admin action without a second 2FA prompt | Step-up `$dotapp().twoFactor` + verify in your module ([32](32-DACORE-RIGHTS.md) §6) |
 | Let an operator turn 2FA off | Forbidden — at least one method MUST stay on |
+| Write AI tool with no page refresh / `location.reload()` after chat write | `ui_events` + `DACore.AI.UIEvent` listener; filter by tool id ([34](34-DACORE-AI-TOOLS.md) §5) |
+| Secrets in `ui_events` payload | Ids and view hints only |
 
 Details: [30](30-DACORE-OVERVIEW.md)–[36](36-DACORE-KNOWN-ISSUES.md).

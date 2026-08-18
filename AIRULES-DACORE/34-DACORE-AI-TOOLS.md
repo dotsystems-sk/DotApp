@@ -176,24 +176,55 @@ DACore enforces the `rights` list. Everything else — ownership checks, quotas,
 
 ---
 
-## 5. Refreshing the UI after a write tool
+## 5. Refresh the open page after a write tool (**MUST**)
 
-A write tool can ask the frontend to react by returning `ui_events`:
+When an AI tool **changes data that some admin screen already shows**, that screen **MUST** update **in place** (AJAX / `$dotapp().load()` / the same fetch the page already uses). **MUST NOT** `location.reload()`.
 
-```php
-return json_encode([
-    'result' => true,
-    'message' => 'Item updated.',
-    'ui_events' => [
-        [
-            'name' => 'Shop.Items.Updated',      // ^[A-Za-z0-9_.:-]{1,120}$
-            'payload' => ['id' => $id],
-        ],
-    ],
-]);
+This is **MUST** wherever it improves UX (lists, calendars, detail panes, paginated tables). It is **not** a global refresh: the **open page** decides. If the operator is on **Users** and the assistant creates an **item**, the users page **MUST NOT** move. If that page’s script is not loaded, nothing happens — that is correct.
+
+### Pipeline (do not invent another bus)
+
+1. The tool JSON includes `ui_events` **only on success** (`result` truthy). DACore **drops** them when `result` is false.
+2. The model **MUST NOT** mention `ui_events` in the chat. DACore forwards them on `POST …/dacore/api/v1/ai/chat/send`.
+3. The chat widget dispatches **one** browser event on `window`:
+
+`DACore.AI.UIEvent` — `ev.detail.name` (string), `ev.detail.payload` (object).
+
+4. **Your** page JS listens, **filters by `name`**, then refreshes **only that widget**.
+
+### When to send
+
+| Send `ui_events` | Do not |
+|------------------|--------|
+| Create / update / delete / assign that a live admin view can show | Lookup / search / get-only tools |
+| After the write actually committed | Validation failure, no-op, permission refusal |
+
+One tool may return **several** events. Names: `^[A-Za-z0-9_.:-]{1,120}$`.
+
+### Event `name` (**MUST** = tool id)
+
+Use the **same** string as `toolid` (`Shop.Items.Update`, not `Shop.Items.Updated` or `refreshList`). The page whitelist matches the tool the assistant just ran.
+
+### Payload (you design it — situation-specific)
+
+Put **only** what that screen needs to show the right slice: record id, date, page/filter for pagination, employee id to highlight. Each screen is different; design the payload so the listener can land on the **correct page of a paginated list** or the **correct month**, then **re-fetch**. Do **not** ship a full HTML row in the payload unless that is already how the page patches.
+
+**MUST NOT** put secrets in `payload`: encryption keys, API keys, passwords, tokens, CSRF material, connection strings. Do not dump extra PII. Numeric/string **ids** needed to find the row are fine **in JS memory**. If a value will be written into HTML (`data-*`, `<option value>`), **encrypt** it the usual way ([11](11-AUTH-AND-CRYPTO.md) §8) — do not treat this event as a way to leak plain ids into the DOM.
+
+### Page JS (**MUST**)
+
+Load this only on the screen that owns the data. Filter `detail.name`. Missing DOM / destroyed widget → return. Refresh with the **same** endpoint and overlay policy as a **manual** refresh on that screen (Notiflix / module overlay when that refresh already blocks; silent patch only when that screen already does).
+
+```javascript
+window.addEventListener("DACore.AI.UIEvent", function (ev) {
+  if (!ev || !ev.detail) return;
+  if (ev.detail.name !== "Shop.Items.Update") return;
+  var p = ev.detail.payload || {};
+  // p.id, p.page, … — then $dotapp().load(...) + patch html; no location.reload()
+});
 ```
 
-`ui_events` are collected **only when `result` is truthy** and are forwarded to the chat frontend, where your page JS can listen for them.
+Copy-paste: [examples/EX-D03-dacore-ai-tool.md](examples/EX-D03-dacore-ai-tool.md).
 
 ---
 
@@ -248,6 +279,10 @@ foreach (['Shop.Items.Search', 'Shop.Items.Update'] as $toolid) {
 | Letting exceptions escape | `try/catch` and return `result: false` |
 | Putting permission names in `howtouse` | Rights belong in `rights` only |
 | Tool `description` that echoes the ticket | Product copy operators can see ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
+| Write tool with no `ui_events` while an admin list/calendar shows that data | Return `ui_events` (name = tool id) + page listener on `DACore.AI.UIEvent` ([34](34-DACORE-AI-TOOLS.md) §5) |
+| `location.reload()` after an AI write | `$dotapp().load()` / existing page fetch; filter by `detail.name` |
+| Users page refreshing because an **item** tool fired | Listeners **MUST** ignore other `name`s; script only on the matching screen |
+| Secrets / API keys / passwords in `payload` | Ids and view hints only — never keys |
 | `INSERT INTO dacore_ai_tools ...` | `DACore:AITools@register` |
 | Registering tools in `module.init.php` | `Installation.php` |
 | Trusting model-supplied ids blindly | Validate ownership and ranges |

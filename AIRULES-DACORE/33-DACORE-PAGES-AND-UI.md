@@ -308,6 +308,8 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 
 **MUST (product copy):** labels, help under buttons, rights descriptions, menu names, toasts. A software company would ship the sentence — never prompt-echo (`This user can hide the AI icon themselves.`). See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8.
 
+**MUST (AI write on this page):** if this screen shows data that an AI tool can change, listen for `DACore.AI.UIEvent`, accept only that tool’s `detail.name`, AJAX-refresh. Ignore other tools. No `location.reload()`. See [34](34-DACORE-AI-TOOLS.md) §5.
+
 ---
 
 ## 10. Mistakes to avoid
@@ -323,6 +325,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | Dangerous admin action with no second 2FA prompt | Step-up `$dotapp().twoFactor` + verify in your module ([32](32-DACORE-RIGHTS.md) §6) |
 | `alert()` / `window.confirm()` on delete | `Notiflix.Confirm` or `$dotapp().modal`, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo copy on a right / button / help | Product language ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
+| AI tool changed this list and the table stayed stale / full reload | `DACore.AI.UIEvent` + `$dotapp().load()` ([34](34-DACORE-AI-TOOLS.md) §5) |
 | UI that disables an operator’s 2FA | Forbidden |
 | Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |
 | Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` |

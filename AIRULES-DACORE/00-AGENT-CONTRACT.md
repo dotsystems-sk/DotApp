@@ -154,6 +154,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Deletes: graphical confirm first — never alert()/confirm()
  * - UI copy: product language — never prompt-echo / “this user can…”
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
+ * - DACore AI writes: ui_events (name = tool id) + DACore.AI.UIEvent on the matching page only
  * - Edit only this module + app/config.php.
  * - Never edit app/parts/ or app/modules/DACore/ (DACore updates wipe local changes).
  * See AIRULES/00-AGENT-CONTRACT.md
@@ -184,6 +185,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 | Admin JS / ports | DACore runs on **`$dotapp`**. jQuery may coexist for **UI only**. **All requests** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library — **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget, use it. |
 | **Notiflix** | **DACore admin shell only.** On `Page@withMenu!` you may use it (preferred) **or** your module overlay. Public / front-office pages **MUST** ship **module preloaders** — Notiflix is not there. Preloaders are **MUST** either way ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3). |
 | **Operator 2FA** | DACore operators **MUST** have at least one 2FA method (TOTP / SMS / email) and **MUST NOT** be able to turn it off. Dangerous admin actions **MUST** re-prompt with `$dotapp().twoFactor` and verify in **your** module — not `Auth::confirmTwoFactor` (login stage 2 only). See [32](32-DACORE-RIGHTS.md) §6. |
+| **AI write → open page** | Write tools **MUST** return `ui_events` (`name` = tool id) when an admin screen shows that data. Page JS listens `DACore.AI.UIEvent`, filters by name, AJAX-refreshes — no `location.reload()`. Wrong page **MUST NOT** refresh. No secrets in payload. [34](34-DACORE-AI-TOOLS.md) §5. |
 | Permission guard | Your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` **ignores** the rights you pass |
 | Admin routes | Always prefixed with `Config::module("DACore","prefixUrl")` |
 
@@ -239,6 +241,6 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Permissions / route guards | 32 | EX-D01 |
 | Operator 2FA / dangerous admin actions | **32 §6**, **09** (`twoFactor`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | Admin page, dotgrid, tables | 33 | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
-| AI tools | 34 | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
+| AI tools | 34 (incl. §5 `ui_events`) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
 | Installer wiring | 35 | [EX-D04](examples/EX-D04-dacore-installer.md) |
 | DACore quirks | 36 | — |

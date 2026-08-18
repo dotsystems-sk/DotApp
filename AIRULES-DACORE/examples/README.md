@@ -26,7 +26,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 |------|-----------|
 | [EX-D01-dacore-module-skeleton.md](EX-D01-dacore-module-skeleton.md) | New admin module: routes, rights middleware, controller |
 | [EX-D02-dacore-admin-page.md](EX-D02-dacore-admin-page.md) | Admin page: table, dotgrid form, secure save, page JS |
-| [EX-D03-dacore-ai-tool.md](EX-D03-dacore-ai-tool.md) | AI tool: register, read tool, write tool, `ui_events` |
+| [EX-D03-dacore-ai-tool.md](EX-D03-dacore-ai-tool.md) | AI tool: register, write + `ui_events`, `DACore.AI.UIEvent` page refresh |
 | [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | Installer: tables → rights → menu → AI tools → record |
 
 Theory lives in `0x`–`2x` (framework) and `3x` (DACore). These files are **executable patterns**.
