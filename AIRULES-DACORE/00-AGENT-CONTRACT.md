@@ -115,6 +115,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Custom OTP digit widget / jQuery 2FA plugin | **MUST** `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `alert()` / `window.confirm()` to delete | Graphical dialog first (`Notiflix.Confirm` on admin, module modal on the public site) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo UI copy (“this user can hide the icon…”) | Product copy a software company would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
+| New admin library without searching DACore | **MUST** grep `app/modules/DACore/` (read-only) + your module first ([33](33-DACORE-PAGES-AND-UI.md)) |
 | `f-form` attribute | **Does not exist** — use `<fo-rm>` |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
@@ -158,6 +159,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
  * - UI copy: product language — never prompt-echo / “this user can…”
+ * - DACore: search DACore (read-only) + this module before writing a new library/widget — do not reinvent
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
  * - DACore AI writes: ui_events (name = tool id) + DACore.AI.UIEvent on the matching page only
  * - Edit only this module + app/config.php.
@@ -186,12 +188,13 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 | **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*` | Use the registration APIs |
 | Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |
-| Missing widgets / ported UI | **MUST** add CSS/JS in **your** module (`$css`/`$js` on `withMenu`). Prefix classes `{lowercase_modulename}_*`. Match DACore colors. Never patch DACore. Prefer shell widgets when they fit. |
+| Missing widgets / ported UI | **MUST search DACore first** (read-only). Then **MUST** add CSS/JS in **your** module (`$css`/`$js` on `withMenu`) only if nothing fits. Prefix classes `{lowercase_modulename}_*`. Match DACore colors. Never patch DACore. |
 | Admin JS / ports | DACore runs on **`$dotapp`**. jQuery may coexist for **UI only**. **All requests** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library — **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget, use it. |
 | **Notiflix** | **DACore admin shell only.** On `Page@withMenu!` you may use it (preferred) **or** your module overlay. Public / front-office pages **MUST** ship **module preloaders** — Notiflix is not there. Preloaders are **MUST** either way ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3). |
 | **Operator 2FA** | DACore operators **MUST** have at least one 2FA method (TOTP / SMS / email) and **MUST NOT** be able to turn it off. Dangerous admin actions **MUST** re-prompt with `$dotapp().twoFactor` and verify in **your** module — not `Auth::confirmTwoFactor` (login stage 2 only). See [32](32-DACORE-RIGHTS.md) §6. |
 | **AI write → open page** | Write tools **MUST** return `ui_events` (`name` = tool id) when an admin screen shows that data. Page JS listens `DACore.AI.UIEvent`, filters by name, AJAX-refreshes — no `location.reload()`. Wrong page **MUST NOT** refresh. No secrets in payload. [34](34-DACORE-AI-TOOLS.md) §5. |
 | **Lists / pager** | Users, logs, items **MUST** `paginate()` + **interactive AJAX** on first ship. No pager or a `?page=` reload is incomplete. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3. |
+| **Search DACore first** | Before a new JS/CSS library, `$dotapp().fn` widget, or page chrome: grep `app/modules/DACore/` (read-only) and your module. The base already has many subpages and libraries. Use what exists; write new code only in **your** module. [33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”. |
 | Permission guard | Your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` **ignores** the rights you pass |
 | Admin routes | Always prefixed with `Config::module("DACore","prefixUrl")` |
 
@@ -247,7 +250,8 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Menu items | 31 | EX-D01 |
 | Permissions / route guards | 32 | EX-D01 |
 | Operator 2FA / dangerous admin actions | **32 §6**, **09** (`twoFactor`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
-| Admin page, dotgrid, tables | 33 (incl. §3 AJAX pager) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
+| Admin page, dotgrid, tables | 33 (incl. §3 AJAX pager; **search DACore first**) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
+| New admin library / widget / `$dotapp().fn` | **33** “Search DACore first”, **09 §4** | [EX-15](examples/EX-15-dotapp-js-library.md) |
 | AI tools | 34 (incl. §5 `ui_events`) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
 | Installer wiring | 35 | [EX-D04](examples/EX-D04-dacore-installer.md) |
 | DACore quirks | 36 | — |

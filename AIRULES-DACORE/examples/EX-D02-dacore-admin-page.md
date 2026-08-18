@@ -4,7 +4,7 @@ Rules: [33](../33-DACORE-PAGES-AND-UI.md), [08](../08-FORMS-AND-SECURITY.md).
 
 Your layout renders **content only** — no `<html>`, no `<head>`, no CSS/JS tags that the shell already loads.
 
-Pass extra files through `Page@withMenu!` `$css` / `$js` (charts, ported toolbars). Prefix classes `{lowercase_modulename}_*` and reuse DACore colors. See [33](../33-DACORE-PAGES-AND-UI.md) §5. Do not skip a widget because “DACore has no chart”.
+Pass extra files through `Page@withMenu!` `$css` / `$js` (charts, ported toolbars) **only after** grepping DACore (read-only) and this module — reuse an existing widget. Prefix classes `{lowercase_modulename}_*` and reuse DACore colors. See [33](../33-DACORE-PAGES-AND-UI.md) §4 “Search DACore first” and §5. Do not skip a widget because “DACore has no chart” **after** a real search found nothing.
 
 Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests** stay on `$dotapp().form` / `load` / bridge. Porting = rewrite as `$dotapp().fn` ([09](../09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](EX-15-dotapp-js-library.md)) — **ask first**, do not wrap `$.fn`. If DACore already has the widget, use it.
 

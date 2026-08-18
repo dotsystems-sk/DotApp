@@ -405,10 +405,11 @@ Porting **is** writing a new library. Do **not** wrap `$.fn.foo` (`$(el).plugin(
 
 **When porting, ask the user** (usually yes). jQuery may stay for leftover UI; **every request** still uses `$dotapp().load` / `form` / bridge.
 
-If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').dotSelect2()`, `.dotDataTable()`, `.modal()`, `.toast()`, `.daterangepicker()`). Do **not** copy DACore JS into your module. Read those files **read-only** as shape examples. Put **your** port in `app/modules/<YourModule>/assets/js/` — never into `app/modules/DACore/` or `app/parts/js/`.
+If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').dotSelect2()`, `.dotDataTable()`, `.modal()`, `.toast()`, `.daterangepicker()`). **MUST search first:** grep `app/modules/DACore/` (read-only) and your module `assets/` — DACore has many subpages and libraries in the base. Do **not** write a second copy. Do **not** copy DACore JS into your module. Read those files **read-only** as shape examples. Put **your** port in `app/modules/<YourModule>/assets/js/` — never into `app/modules/DACore/` or `app/parts/js/`. Canonical: [33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”.
 
 #### Playbook
 
+0. **Search first** ([33](33-DACORE-PAGES-AND-UI.md)): grep DACore (read-only) and your module. If the widget exists, **stop** and use it.
 1. Keep the **public API shape**: `$('#el').select2(opts)` → `$dotapp('#el').dotSelect2(opts)` (or `{modulename}Picker`).
 2. Keep **CSS class / markup** when you want drop-in HTML (`select.select2`, `.toast`, `.modal`, `data-bs-*`). Extra DACore styling uses `{lowercase_modulename}_*` in **your** CSS.
 3. Vanilla constructors. Cache instances in a `WeakMap` or `el._key`. No `$` inside the library.

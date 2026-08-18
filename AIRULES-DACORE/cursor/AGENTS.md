@@ -57,6 +57,7 @@ DACore is as sacred as framework core. It is updated as a package; **any edit or
 - Put all new admin features in **your own** module (`app/modules/<YourModule>/`)
 - Never write directly to `dacore_menu` / `dacore_ai_tools` / `dacore_installations` / `users_rights*`
 - Render admin pages with `DACore:Page@withMenu!`
+- **MUST search DACore first** before a new JS/CSS library, `$dotapp().fn` widget, or page chrome: grep `app/modules/DACore/` (read-only: assets, vendor, views) and `app/modules/<YourModule>/assets/`. The base already has many subpages and libraries. If it exists, **use it** — do not fork or copy DACore files into your module. Write new code only when the search finds nothing, and only in **your** module. Canonical: `AIRULES/33-DACORE-PAGES-AND-UI.md` “Search DACore first”.
 - Prefer DACore widgets; **MUST** add module CSS/JS (`$css`/`$js`) when the shell has no equivalent (charts, ported UI). Classes `{lowercase_modulename}_*`. Match admin colors. Never patch DACore.
 - Admin JS is **`$dotapp`**. jQuery may coexist for UI only. **Requests MUST** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). If DACore already ships the widget, use it. See `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`.
 - Guard routes with your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` ignores passed rights

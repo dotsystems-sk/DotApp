@@ -158,13 +158,30 @@ JS already present before your `$js`:
 
 Your own assets go to `app/modules/Shop/assets/...` and are served from `/assets/modules/Shop/...`.
 
+### Search DACore first (**MUST**)
+
+DACore ships **many admin subpages and libraries** in the base. Agents **MUST NOT** start by writing a new JS/CSS library, `$dotapp().fn` widget, vendor bundle, or page chrome.
+
+**Before any new library or control:**
+
+1. Search `app/modules/DACore/` **read-only** — `assets/js`, `assets/css`, `vendor`, views, controllers — for the same job (select, table, modal, toast, date range, confirm, overlay, pager, icons, cards, …).
+2. Search **your** module `app/modules/<YourModule>/assets/` — it may already exist from an earlier task.
+3. Check what the shell already loads (this file §4) and named `$dotapp` widgets (including `dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`, `twoFactor`, Notiflix, `Page@paginate!`, dotgrid, Remix). The files on disk are the source of truth — that list is not exhaustive.
+
+**If it exists: use it.** Call it from **your** page. Do not fork it. Do not copy DACore files into your module. Do not add a second select / DataTable / modal / toast / date / confirm library.
+
+**If it does not exist:** write it in **your** module and pass it as `$css` / `$js` on `withMenu` ([§5](#5-own-module-cssjs-when-the-shell-is-not-enough-must) below). Never drop the new file into `app/modules/DACore/`.
+
+A new library without that search is a bug.
+
 ---
 
 ## 5. Own module CSS/JS when the shell is not enough (**MUST**)
 
 Keep the DACore **shell** (`Page@withMenu!`, sidebar, `colors.css`). **Never** edit DACore to add widgets.
 
-1. **Prefer** existing DACore UI (cards, `btn btn-*`, dotgrid, Remix icons, Notiflix) when it fits.
+1. **MUST search first** ([this file §4](#search-dacore-first-must)): DACore already has many subpages and libraries. Grep DACore (read-only) and your module before writing a new widget.
+2. **Prefer** existing DACore UI (cards, `btn btn-*`, dotgrid, Remix icons, Notiflix) when it fits.
 2. **MUST** add CSS/JS in **your own module** when DACore has no equivalent, or when forcing the template would change the UX too much (charts, ported toolbars, custom controls people already know).
 3. Files live in `app/modules/<YourModule>/assets/` and are passed as `$css` / `$js` to `Page@withMenu!` — never copied into `app/modules/DACore/`.
 4. **CSS class prefix MUST** be `{lowercase_modulename}_*` (same idea as tables): `.shop_chart`, `.shop_btn-export`. Do not collide with DACore / Bootstrap class names.
@@ -343,6 +360,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | AI tool changed this list and the table stayed stale / full reload | `DACore.AI.UIEvent` + `$dotapp().load()` ([34](34-DACORE-AI-TOOLS.md) §5) |
 | UI that disables an operator’s 2FA | Forbidden |
 | Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |
+| New select/table/modal/toast/date library without grepping DACore | Search `app/modules/DACore/` (read-only) + your module first (this file §4) |
 | Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` |
 | `setViewVar` with `renderLayout()` | Use `setLayoutVar` |
 | Bootstrap `col-md-6` alone for simple admin forms | `<dot-col any="12" md="6" ldesktop="6">` (prefer; custom layout OK when porting) |

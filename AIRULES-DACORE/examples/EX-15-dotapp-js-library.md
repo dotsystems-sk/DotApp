@@ -4,9 +4,11 @@ Rules: [09-DOTAPP-JS-AND-BRIDGE.md](../09-DOTAPP-JS-AND-BRIDGE.md) §4 (playbook
 
 **Porting a jQuery plugin is writing a new `$dotapp` library.** Do not wrap `$.fn.foo`. Rewrite in vanilla DOM, then `$dotapp().fn(...)`.
 
-**Never** add files under `app/parts/js/` or `app/modules/DACore/`. Put the library in **your** module assets.
+**MUST search first.** DACore already has many admin subpages and libraries. Grep `app/modules/DACore/` **read-only** (`assets/js`, `assets/css`, `vendor`, views) and `app/modules/<YourModule>/assets/` **before** writing a new `$dotapp().fn` library. If it exists, **call that** — do not fork those files. Read them **read-only** for shape. Canonical: [33](../33-DACORE-PAGES-AND-UI.md) “Search DACore first”.
 
-If DACore already ships the widget (`dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`), **call that** — do not fork those files. Read them **read-only** for shape.
+**Never** add files under `app/parts/js/` or `app/modules/DACore/`. Put a **new** library in **your** module assets only after that search finds nothing.
+
+Named examples (not exhaustive — disk is the source of truth): `dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`, `twoFactor`, Notiflix.
 
 ---
 

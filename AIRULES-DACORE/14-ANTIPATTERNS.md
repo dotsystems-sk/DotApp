@@ -114,6 +114,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Never add CSS because the shell exists / smash a ported chart into a DACore table | Module `$css`/`$js` on `withMenu`; classes `{modulename}_*`; DACore colors |
 | `$.ajax` / `$.post` on admin pages (even if jQuery is loaded) | `$dotapp().form` / `$dotapp().load` / `dotbridge` |
 | Keep jQuery plugins on a port without asking, or wrap `$.fn` | **Ask**, then **rewrite** as `$dotapp().fn` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md)). If DACore already ships it, use it. |
+| New select/table/modal/toast/date lib without searching DACore | Grep `app/modules/DACore/` (read-only) + your module first; reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |

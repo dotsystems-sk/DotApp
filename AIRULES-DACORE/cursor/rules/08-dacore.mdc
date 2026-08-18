@@ -46,7 +46,7 @@ Permissions are `"{module}.{rightname}"`. Always include `dotapp.root`.
 
 Render your content with `Renderer` (`renderLayout()` + `setLayoutVar`), then pass the HTML to `Page@withMenu!`. The shell already loads `dotapp.js`, dotgrid, colors.css, core.css, modals and Notiflix — do not re-add them.
 
-Prefer DACore widgets (cards, `btn`, dotgrid, Remix, Notiflix). **MUST** add CSS/JS in **your** module when the shell has no equivalent (charts, ported controls). Pass them as `$css` / `$js` on `withMenu`. Classes `{lowercase_modulename}_*` (e.g. `.shop_chart`). Match admin colors from the loaded palette — never patch `app/modules/DACore/`.
+Prefer DACore widgets (cards, `btn`, dotgrid, Remix, Notiflix). **MUST search first:** grep `app/modules/DACore/` (read-only) and your module assets before writing a new library — the base already has many subpages and widgets. If it exists, use it; do not fork. **MUST** add CSS/JS in **your** module only when the search finds no equivalent (charts, ported controls). Pass them as `$css` / `$js` on `withMenu`. Classes `{lowercase_modulename}_*` (e.g. `.shop_chart`). Match admin colors from the loaded palette — never patch `app/modules/DACore/`.
 
 Admin runtime is **`$dotapp`** (already in the shell). jQuery may coexist for **UI widgets only**. **All HTTP to the app** uses `$dotapp().form` / `$dotapp().load` / `dotbridge` — never `$.ajax` / `$.post` / raw `fetch` to DotApp endpoints. When porting jQuery plugins, **ask**, then **rewrite** as `$dotapp().fn(...)` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`. If DACore already ships the widget, use it — never copy DACore JS into your module.
 

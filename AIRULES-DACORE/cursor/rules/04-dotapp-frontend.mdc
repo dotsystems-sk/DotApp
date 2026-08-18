@@ -16,7 +16,7 @@ Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SEC
 
 Bootstrap on `dotapp` event; register plugins on `dotapp-register` via `$dotapp().fn(...)`.
 
-Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/` or `app/modules/DACore/`. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`. If DACore already ships the widget, use it.
+Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/` or `app/modules/DACore/`. **MUST grep DACore (read-only) and this module first** — reuse an existing widget; do not write a second copy. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`. If DACore already ships the widget, use it.
 
 ## Never
 

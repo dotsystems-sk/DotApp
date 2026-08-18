@@ -40,7 +40,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request.
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell.
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
-7. **MUST** add your own CSS/JS in the module when DACore has no widget (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI.
+7. **MUST search DACore first** before a new library or widget (grep `app/modules/DACore/` read-only + your module). The base already has many subpages and libraries — reuse them. **MUST** add your own CSS/JS in the module only when that search finds no equivalent (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI.
 8. DACore admin runs on **`$dotapp`**. jQuery may sit beside it for UI widgets, but **every request** uses `$dotapp` (`form` / `load` / bridge) — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C and [EX-15](examples/EX-15-dotapp-js-library.md).
 
 ## Hard rules

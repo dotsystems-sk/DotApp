@@ -91,11 +91,12 @@
 - [ ] Page rendered via `DACore:Page@withMenu!`, body contains no `<html>`/`<head>`
 - [ ] Shell assets (`dotapp.js`, dotgrid, colors.css, core.css, modals, Notiflix) not re-added
 - [ ] Extra widgets (charts, ported controls) use **module** CSS/JS on `withMenu` `$css`/`$js` — classes `{lowercase_modulename}_*`, colors match the admin palette
+- [ ] **Searched DACore first** (read-only `app/modules/DACore/` assets/vendor/views + your module) before writing a new library/widget; reused what exists ([33](33-DACORE-PAGES-AND-UI.md))
 - [ ] Network calls use `$dotapp().form` / `load` / bridge — never `$.ajax` (jQuery UI widgets OK)
 - [ ] After save/toggle on the same page: `reply.html` patched + Notiflix toast — no `location.reload()`
 - [ ] In-flight: overlay on the form/list (Notiflix preferred **or** module preloaders); remove on success **and** error; no second tap/drag until done; works on desktop **and** mobile
 - [ ] List row actions / drag-and-drop use `$dotapp().load()` + encrypted `data-*` — not one `<fo-rm>` per button
-- [ ] Port of jQuery libraries: user was **asked**; plugin was **rewritten** as `$dotapp().fn` (not a `$.fn` wrap). Playbook: 09 §4.C / EX-15. DACore widgets reused when they already exist.
+- [ ] Port of jQuery libraries: **searched DACore first**; user was **asked**; plugin was **rewritten** as `$dotapp().fn` (not a `$.fn` wrap). Playbook: 09 §4.C / EX-15. DACore widgets reused when they already exist.
 - [ ] Simple forms **prefer** `<dot-col any="12" md="6" ldesktop="6">` and `ri ri-*` icons (custom layout OK when porting)
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
@@ -140,6 +141,7 @@
 - Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
 - Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
 - Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
+- New admin library/widget without grepping DACore (read-only) and the current module first
 - `execute()` called with a single callback
 - `->first()` used without a guard
 - A return value is used without checking its failure form
