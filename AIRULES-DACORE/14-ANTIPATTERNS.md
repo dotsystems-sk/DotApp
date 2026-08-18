@@ -90,6 +90,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |
 | `alert()` / `window.confirm()` on delete | Graphical dialog (`Notiflix.Confirm` on admin), then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Growing list with no pager / `<a href="?page=">` | AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3) |
+| File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + `$request->upload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| Accept `.php` / trust browser MIME on upload | Reject scripts in PHP: extension + `finfo` + headers ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 
 ## Config / security
 
@@ -99,6 +101,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Rely on `@AUTOCONFIG` | Empty — set keys yourself |
 | Module settings with no fallback | Always `Config::module ?? Config::module(..., default)` |
 | `$_SESSION` / `session_start()` | `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md)) |
+| JS overlay / modal as the only save or 2FA gate | PHP re-checks; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | Edit core to add config API | Use `Config::module` / `Config::set` |
 
 ## DACore
@@ -128,7 +131,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Bootstrap `col-md-6` in admin forms | `<dot-col any="12" md="6" ldesktop="6">` |
 | Re-add `dotapp.js` / dotgrid / core.css | The shell already loads them |
 | Ignoring `Menu@register` / `AITools@register` return | They return `bool`, never throw or log |
-| Dangerous admin action without a second 2FA prompt | Step-up `$dotapp().twoFactor` + verify in your module ([32](32-DACORE-RIGHTS.md) §6) |
+| Dangerous admin action without a second 2FA prompt | Step-up `$dotapp().twoFactor` + **PHP** verifies before persist ([32](32-DACORE-RIGHTS.md) §6) |
+| 2FA overlay/modal as the only gate; save writes anyway | PHP refuses without a valid code ([08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6) |
+| Dangerous flag turned off on the same save as other settings | General save ignores “off”; separate 2FA handler ([32](32-DACORE-RIGHTS.md) §6) |
 | Let an operator turn 2FA off | Forbidden — at least one method MUST stay on |
 | Write AI tool with no page refresh / `location.reload()` after chat write | `ui_events` + `DACore.AI.UIEvent` listener; filter by tool id ([34](34-DACORE-AI-TOOLS.md) §5) |
 | Secrets in `ui_events` payload | Ids and view hints only |

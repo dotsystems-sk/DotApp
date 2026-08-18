@@ -74,12 +74,14 @@
 - [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
 - [ ] Deletes use a graphical confirm dialog first — never `alert()` / `window.confirm()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] Accumulating lists have an **interactive AJAX** pager (`type="button"` + `$dotapp().load()`, overlay while in flight, patch rows **and** pager) — not missing, not `<a href="?page=">` / `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
 
 ## Config / secrets checklist
 
 - [ ] New installs: real `c_enc_key`, `rm_key`, `rmrcm_key`, unique `app.name`
 - [ ] Module settings have fallbacks if unset
 - [ ] App session state uses **`DSM::use('Shop')`** — not `$_SESSION` / `session_start()` ([20](20-CACHE-LOGGER-SESSION.md))
+- [ ] Persist handlers re-check in **PHP** (2FA, rights, validation) — FE overlay/modal is not the gate ([08](08-FORMS-AND-SECURITY.md))
 - [ ] Secrets not committed carelessly
 
 ## Pre-commit / before “done”
@@ -111,6 +113,9 @@
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
 - `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
+- JS overlay/modal as the only 2FA or save check — PHP must refuse without valid proof
+- File/ZIP in `FormData` + `load()` / `<fo-rm>` — use `$dotapp().uploadFile`
+- Upload accepts `.php` or trusts client MIME — reject in PHP (`finfo` + extension)
 - `execute()` called with a single callback
 - `->first()` used without a guard
 - A return value is used without checking its failure form

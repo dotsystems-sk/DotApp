@@ -88,7 +88,58 @@ $dotapp().load(url, "POST", { id: $dotapp(el).attr("data-id") },
 
 Form submits are routed through this pipeline automatically unless the form has `data-dotapp-nojs`. **There is no full-page reload.** If `.after()` / the `load` callback does not update the DOM, the user sees nothing until they refresh — that is a **bug**.
 
-Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms, `uploadFile` for raw `FormData` uploads.
+Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms. **Files:** `$dotapp().uploadFile` — never hand-built `FormData` on `load()` / `<fo-rm>`.
+
+### File uploads (**MUST**)
+
+`$dotapp().load()` and `<fo-rm>` post JSON `{ data, crc }`. A ZIP (or any file) stuffed into `FormData` on that pipeline **cannot** carry the CRC. PHP `crcCheck()` fails (400/403), the AJAX error callback fires, and the user sees a generic “Request failed” instead of the server `message`.
+
+**MUST:** `$dotapp().uploadFile(file, url, progressCallback)` — Promise of response **text**, then `$dotapp().parseReply(text)`. Drop zone: `$dotapp().dragAndDropFile(dropZone, fileInput, callback, parallel)` (it calls `uploadFile`).
+
+**MUST NOT:** `new FormData()` + `load()` / `form()` / `fetch` / `$.ajax`. **MUST NOT** put `<input type="file">` inside `<fo-rm>` and expect CRC to work.
+
+`uploadFile` sends the file as multipart field `user_files`. PHP:
+
+```php
+$request->upload(function (array $files) use (&$out) {
+    $file = $files[0] ?? null;
+    if ($file === null || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        $out = ['status' => 0, 'message' => 'Upload failed'];
+        return;
+    }
+
+    $name = strtolower((string) ($file['name'] ?? ''));
+    $ext = strtolower((string) ($file['extension'] ?? pathinfo($name, PATHINFO_EXTENSION)));
+    $blocked = ['php', 'phtml', 'php3', 'php4', 'php5', 'phar', 'pht', 'phps', 'cgi', 'exe', 'htaccess'];
+    if ($ext === '' || in_array($ext, $blocked, true) || preg_match('/\.(php|phtml|phar)(\.|$)/i', $name)) {
+        $out = ['status' => 0, 'message' => 'This file type is not allowed'];
+        return;
+    }
+
+    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+    $mime = (string) $finfo->file($file['tmp_name']);
+    if ($mime === '' || str_contains($mime, 'php') || str_contains($mime, 'x-httpd-php')) {
+        $out = ['status' => 0, 'message' => 'This file type is not allowed'];
+        return;
+    }
+
+    // allow-list for this feature (example: images only)
+    $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+    $allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!in_array($ext, $allowedExt, true) || !in_array($mime, $allowedMime, true)) {
+        $out = ['status' => 0, 'message' => 'This file type is not allowed'];
+        return;
+    }
+
+    // move from $file['tmp_name'] — never trust $file['type'] (client MIME)
+    $out = ['status' => 1, 'message' => 'Uploaded', 'name' => $file['name']];
+});
+return \Dotsystems\App\DotApp::DotApp()->ajaxReply($out, 200);
+```
+
+**MUST (every upload, PHP):** reject executable / script files. **`.php` and PHP variants are always forbidden** — no product exception. Check **extension** (including `.jpg.php` / `.php.jpg`), **MIME from the bytes** (`finfo` on `tmp_name`), and **magic / headers**. Frontend `accept=` is UX only. **MUST NOT** trust `$file['type']`. **MUST NOT** store an unchecked file where the web server can execute it.
+
+**MUST NOT** `crcCheck()` on this endpoint — there is no `{ data, crc }`. Guard with `#Shop:Rights@check!` / `Auth::can()`. Return HTTP **200** + `status` 0|1 so the Promise resolves and you toast `reply.message`. HTTP 400/403/500 hits `fetch`’s error path (generic failure). Overlay the drop zone until the Promise settles.
 
 ### Interactive UX (**MUST**)
 
@@ -237,7 +288,7 @@ Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md)
 
 `dotapp.js` already implements OTP digit boxes: auto-advance, backspace, arrows, paste, validation, auto-submit. **MUST** use `$dotapp(...).twoFactor(...)`. **MUST NOT** invent a custom 2FA widget, wrap a jQuery OTP plugin, or hand-roll keydown/paste.
 
-PHP is still `Auth::confirmTwoFactor` ([11](11-AUTH-AND-CRYPTO.md) §5). This API is only the **input UX**.
+PHP is still `Auth::confirmTwoFactor` ([11](11-AUTH-AND-CRYPTO.md) §5). This API is only the **input UX**. Completing the boxes does **not** authorize anything — the POST handler **MUST** verify the code.
 
 ```html
 <div class="two-fa-inputs">
@@ -293,7 +344,7 @@ Page logic listens to `dotapp`. Libraries listen to **`dotapp-register`**. Mixin
 - `this` is the DotApp instance. Selected nodes: `this.getElements()`.
 - Duplicate `fn('sameName')` **throws** — use an `isRegistered` flag **and** `try/catch` on `"already registered"` (official / DACore-style libs do this).
 - Always wrap in an IIFE. If `window.$dotapp` already exists, call `runMe` immediately; else wait for `dotapp-register` (`{ once: true }`).
-- HTTP from a library **MUST** use `this.load` / `this.form` / bridge — never `$.ajax` / raw `fetch` to DotApp endpoints.
+- HTTP from a library **MUST** use `this.load` / `this.form` / `this.uploadFile` / bridge — never `$.ajax` / raw `fetch` to DotApp endpoints. Files **MUST NOT** go through `load()` as `FormData`.
 - Per-element widgets: one node → return the instance API; many → return `this`. Chainable helpers always `return this`.
 
 ### A. Chainable helper (return `this`)
@@ -408,7 +459,7 @@ If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').
 5. Loop `this.getElements()`. **One** node → return the widget API. **Many** → return `this`. Empty `$dotapp().fn` call → factory (dynamic modal / notify manager).
 6. Optional `autoInit()` on `DOMContentLoaded` for markup hooks. Skip nodes with `data-{name}-skip` or an existing instance.
 7. Dispatch `dotapp-<name>-ready`. Optional `window.DotXxx = { mount, get }` for callers that are not on the chain.
-8. Replace `$.ajax` / `$.getJSON` with `this.load` + `parseReply`. `fetch` is only OK for static/public files that do not go through CRC.
+8. Replace `$.ajax` / `$.getJSON` with `this.load` + `parseReply`. File uploads: `this.uploadFile` — never `FormData` on `load()`. `fetch` is only OK for static/public files that do not go through CRC.
 9. Bind **document** click/keydown once in `runMe` for dismiss/toggle (`data-bs-dismiss`, `data-bs-toggle`) — do not attach one listener per instance.
 
 #### Widget shapes (pick one)

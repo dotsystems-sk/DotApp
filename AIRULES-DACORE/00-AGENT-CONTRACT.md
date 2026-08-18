@@ -118,6 +118,8 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | New admin library without searching DACore | **MUST** grep `app/modules/DACore/` (read-only) + your module first ([33](33-DACORE-PAGES-AND-UI.md)) |
 | `f-form` attribute | **Does not exist** — use `<fo-rm>` |
 | `$_SESSION` / `session_start()` | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
+| JS overlay / modal as the only save or 2FA gate | **MUST** re-check in PHP; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
+| File/ZIP in `FormData` + `load()` / `<fo-rm>` | **MUST** `$dotapp().uploadFile` + `$request->upload()`; PHP rejects `.php` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
@@ -141,6 +143,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 7. Module settings must have **fallbacks** if the user did not fill `app/config.php`.
 8. **MUST paginate accumulating lists** (users, logs, items, …) with an **interactive** pager (`$dotapp().load()`). Shipping the list with no pager, or changing pages by reloading the document, is incomplete. [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 9. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).
+10. **MUST** re-check every persist in **PHP** (`crcCheck`, `Auth::can`, 2FA code, ownership, validation). Frontend modal/overlay/disabled control is **UX only**. Removing the overlay **MUST** still fail on the server ([08](08-FORMS-AND-SECURITY.md)).
+11. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP: `$request->upload()` — not `crcCheck()` on that endpoint. **MUST** reject `.php` and other executables (extension + `finfo` MIME + headers); FE `accept=` is UX only ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
 
 ---
 
@@ -162,6 +166,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Deletes: graphical confirm first — never alert()/confirm()
  * - UI copy: product language — never prompt-echo / “this user can…”
  * - Session: DSM::use('Shop') — NEVER $_SESSION / session_start()
+ * - Save checks: PHP MUST re-verify — FE modal/overlay is UX only
+ * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST reject .php (ext+MIME+headers)
  * - Your module under DACore: dainstall.php (NOT install.php); init/ copies; blank root only on user-asked export. NEVER apply this to app/modules/DACore/
  * - DACore: search DACore (read-only) + this module before writing a new library/widget — do not reinvent
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
@@ -189,7 +195,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 
 | Rule | Detail |
 |------|--------|
-| **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*` | Use the registration APIs |
+| **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `{prefix}users_rights*` | Use the registration APIs |
 | Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
 | **`dainstall.php` + `init/`** | **Your** modules that work **under** DACore (`app/modules/Shop/`, …). **MUST** `dainstall.php` (not `install.php`). Keep copies of `module.init.php` / `module.listeners.php` in `init/`. Blank the root files only when the user asks to **export**. DACore unpacks, runs `dainstall.php`, then copies `init/` into the root on success. **MUST NOT** do any of this to `app/modules/DACore/` itself. [35](35-DACORE-INSTALL.md) §4–§6. |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |

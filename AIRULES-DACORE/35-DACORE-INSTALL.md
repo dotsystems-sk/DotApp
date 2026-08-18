@@ -263,6 +263,8 @@ Installation::module('Shop')->install();
 3. **On success**, copies `init/module.init.php` and `init/module.listeners.php` over the module root. Routes and listeners become live; the module starts working.
 4. If `dainstall.php` fails, those copies **do not** run. The root files stay inert. Correct — a half-installed module must not register routes.
 
+DACore’s own plugin installer (ZIP upload, installer logs, `dacore_modules` / `dacore_plugin_logs` / `dacore_settings`) is **DACore-owned**. **MUST NOT** write those tables or reimplement that UI in your module.
+
 Idempotency stays in `Installations@exist!` / `insert!`, not in a framework rename of `dainstall.php`.
 
 Manual re-run on a machine where the module is already live (e.g. you added version `1.0.1`):

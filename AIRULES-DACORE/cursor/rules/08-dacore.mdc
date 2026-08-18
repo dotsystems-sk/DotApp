@@ -12,7 +12,7 @@ DACore is an admin-UI **module**, not framework core — but its files are **as 
 ## Never
 
 - Edit, patch, delete, or **add** any file under `app/modules/DACore/` (no exceptions, even if the user asks)
-- `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*`
+- `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `{prefix}users_rights*`
 - Build your own admin HTML shell
 - Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
 - Register menu / rights / AI tools on every request (do it in **your** `Installation.php`)
@@ -54,9 +54,13 @@ Admin runtime is **`$dotapp`** (already in the shell). jQuery may coexist for **
 
 Growing lists (logs, users, items) **MUST** use `paginate()` and an **interactive AJAX** pager on **first ship** (`DACore:Page@paginate!` `$callable` as buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or `<a href="?page=">` / `location.reload()`. See `AIRULES/09` §3 and `AIRULES/33` §3.
 
+**Persist:** PHP **MUST** re-check (2FA, rights, validation). A 2FA overlay covering Save is UX only — removing it **MUST** still fail on the server (`AIRULES/08`, `AIRULES/32` §6).
+
+**Files:** `$dotapp().uploadFile` + `$request->upload()`. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers); FE `accept=` is UX only.
+
 ## UI
 
-`<dot-grid>` / `<dot-col any="12" md="6" ldesktop="6">` (`md` does not cascade). Icons: `ri ri-*`. Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions / drag-and-drop = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch `reply.html` + toast — no `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** your module preloaders; desktop **and** mobile). Growing lists **MUST** AJAX-paginate. Operators **MUST** keep 2FA on; dangerous actions **MUST** step-up 2FA (`AIRULES/32-DACORE-RIGHTS.md` §6) with `$dotapp().twoFactor`. Deletes **MUST** use a graphical confirm (`Notiflix.Confirm` or `$dotapp().modal`) — never `alert()` / `window.confirm()`. User-visible strings **MUST** be product copy — never prompt-echo (`AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8).
+`<dot-grid>` / `<dot-col any="12" md="6" ldesktop="6">` (`md` does not cascade). Icons: `ri ri-*`. Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions / drag-and-drop = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch `reply.html` + toast — no `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** your module preloaders; desktop **and** mobile). Growing lists **MUST** AJAX-paginate. Operators **MUST** keep 2FA on; dangerous actions **MUST** step-up 2FA (`AIRULES/32-DACORE-RIGHTS.md` §6) with `$dotapp().twoFactor` and **PHP must verify the code before persist** (overlay is not the gate). Deletes **MUST** use a graphical confirm (`Notiflix.Confirm` or `$dotapp().modal`) — never `alert()` / `window.confirm()`. User-visible strings **MUST** be product copy — never prompt-echo (`AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8).
 
 ## AI tools
 

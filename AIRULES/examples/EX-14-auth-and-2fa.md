@@ -2,6 +2,8 @@
 
 Rules: [11-AUTH-AND-CRYPTO.md](../11-AUTH-AND-CRYPTO.md).
 
+`$dotapp().twoFactor` is **input UX only**. Completing the boxes or covering Save with a modal does **not** authorize. The PHP handler **MUST** verify the code before persist ([08](../08-FORMS-AND-SECURITY.md)).
+
 ## Login handler (secure form + all error codes)
 
 ```php

@@ -31,6 +31,8 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Deletes: graphical confirm first (`Notiflix.Confirm` on admin) — NOT `alert()` / `window.confirm()` (`AIRULES/09` §3)
 - UI copy: product language — NOT prompt-echo / “this user can…” (`AIRULES/05` §8)
 - Session: `DSM::use('Shop')` — NOT `$_SESSION` / `session_start()` (`AIRULES/20`)
+- Persist: PHP re-checks — NOT a JS overlay/modal as the only gate (`AIRULES/08`)
+- Files: `$dotapp().uploadFile` — NOT `FormData` + `load()` / `<fo-rm>`. PHP rejects `.php` (ext + `finfo` MIME + headers) (`AIRULES/09`)
 - DACore AI writes: `ui_events` (name = tool id) + `DACore.AI.UIEvent` on the matching page only (`AIRULES/34` §5)
 - DACore operators MUST keep 2FA; dangerous admin actions MUST step-up 2FA (`AIRULES/32` §6)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** module preloaders; desktop **and** mobile). (`AIRULES/09` §3, EX-06)

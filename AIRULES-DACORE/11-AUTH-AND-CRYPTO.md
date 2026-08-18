@@ -228,3 +228,4 @@ See [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md). **MUST** `DSM::use
 7. Implement password reset and login throttling yourself (`Limiter` + your own table).
 8. 2FA code boxes: `$dotapp().twoFactor` — do not invent an OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
 9. App session state: **`DSM::use('Shop')`** — never `$_SESSION` / `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).
+10. Persist in **PHP**: re-check 2FA / rights / validation. A frontend overlay is UX only ([08](08-FORMS-AND-SECURITY.md)).

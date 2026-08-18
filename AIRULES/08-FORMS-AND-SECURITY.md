@@ -23,6 +23,7 @@ Edit/API sample: [examples/EX-02-secure-form-edit-api.md](examples/EX-02-secure-
 |-----|------|
 | `<fo-rm>` + `{{ formName }}` | Real form: several fields + submit (profile, CMS article, login, “save employee”). |
 | `$dotapp().load(url, method, data, ok, err)` | One-shot action: click, toggle, delete, paginate, filter, **reorder / drag-and-drop**. |
+| `$dotapp().uploadFile(file, url, progress)` | **Files / ZIP.** Never `FormData` on `load()` / `<fo-rm>` — CRC cannot wrap a file. |
 
 `load()` **automatically** adds CSRF, CRC, the `dotapp: load` header and posts `{ data, crc }`. PHP **MUST** still `crcCheck()`. A `<fo-rm>` submit uses this same pipeline. **`fo-rm` does not make a click “more secure” than `load()`.**
 
@@ -198,16 +199,30 @@ For standard UX forms, **formName remains preferred**.
 
 ---
 
+## Server is the authority (**MUST**)
+
+Frontend checks (modal, overlay covering Save, disabled toggle, `$dotapp().twoFactor` complete) are **UX only**. They MAY run so the user understands what is required.
+
+**MUST:** the PHP handler that **persists** the change repeats the same check (`crcCheck`, `Auth::can`, 2FA code, ownership, validation). Missing or wrong proof → refuse and **leave the previous state**.
+
+**MUST NOT:** treat a JS overlay, hidden button, or skipped modal as authorization. Removing the overlay or posting the form from DevTools **MUST** still fail on the server.
+
+Applies to every save, toggle, delete, and settings write — not only 2FA.
+
+---
+
 ## Must-dos
 
 1. `<fo-rm>` + `{{ formName(...) }}` **only** for real HTML forms (several fields + submit). **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>`. One-shot row actions (toggle, delete, reorder, drag-and-drop, paginate): `$dotapp().load()` — **MUST NOT** wrap them in `<fo-rm>`.
 2. `/assets/dotapp/dotapp.js` on every page that uses secure forms/bridge/load.
-3. `crcCheck()` before trusting `form()` or `load()` bodies.
+3. `crcCheck()` before trusting `form()` or `load()` bodies. File uploads: `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint ([09](09-DOTAPP-JS-AND-BRIDGE.md) file uploads).
 4. Encrypt every FE identifier with a **unique `$key2` per field**; decrypt with the same key; reject `false`. **MUST still** `Auth::can()` / ownership.
 5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; **your module preloaders** covering the list/form until `load()` ends (success **and** error). Notiflix is DACore-only — not available here. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **MUST** confirm deletes in a graphical dialog (module modal) — never `alert()` / `window.confirm()`.
 8. **MUST** paginate accumulating lists on **first ship** (`paginate()` + interactive AJAX buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()`. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+9. **MUST** re-check in PHP on every persist. FE overlay/modal is UX only.
+10. **MUST** upload files with `$dotapp().uploadFile` — never `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers).
 
 ## Must-nots
 
@@ -225,3 +240,6 @@ For standard UX forms, **formName remains preferred**.
 12. Dump logs/users/items with `->all()` and no pager, or paginate by reloading `<a href="?page=">`.
 13. Use `data-dotapp-nojs` unless rebuilding the whole chain.
 14. Load raw `app/parts/js/dotapp.js` instead of `/assets/dotapp/dotapp.js` on pages.
+15. Use a JS overlay/modal as the only 2FA or save gate — PHP **MUST** refuse without valid proof.
+16. Put a file/ZIP in `FormData` on `load()` / `<fo-rm>` — **MUST** `$dotapp().uploadFile` ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
+17. Accept `.php` / trust client MIME / skip `finfo` on upload — **MUST** reject scripts in PHP.

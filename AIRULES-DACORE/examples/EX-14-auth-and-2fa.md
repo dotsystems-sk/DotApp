@@ -1,6 +1,8 @@
 # EX-14 — Auth, permissions, 2FA
 
-Rules: [11-AUTH-AND-CRYPTO.md](../11-AUTH-AND-CRYPTO.md).
+Rules: [11-AUTH-AND-CRYPTO.md](../11-AUTH-AND-CRYPTO.md). Operator step-up: [32](../32-DACORE-RIGHTS.md) §6.
+
+`$dotapp().twoFactor` is **input UX only**. Completing the boxes or covering Save with a modal does **not** authorize. The PHP handler **MUST** verify the code before persist ([08](../08-FORMS-AND-SECURITY.md)).
 
 ## Login handler (secure form + all error codes)
 

@@ -303,6 +303,10 @@ SMS/email step-up: issue a new 6-digit code, store it in **your module** session
 
 Overlay the confirm UI until the request ends ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3). Still `Auth::can()` / encrypted ids / `crcCheck()`.
 
+The overlay is **UX only**. **MUST** verify the 2FA code in PHP **before** persisting — including turning a 2FA method off. If the request skipped the modal (overlay removed, Save clicked anyway, DevTools POST), **MUST NOT** write. No code / wrong code → refuse and leave 2FA on. See [08](08-FORMS-AND-SECURITY.md) “Server is the authority”.
+
+**Dangerous flags in your module (MUST):** do not persist “off” on the same handler as ordinary settings. The general save **MUST ignore** a request that turns the flag off (including a crafted POST). Turning it off **MUST** be a separate PHP handler that verifies a 2FA code first. Covering Save with a 2FA overlay is not enough.
+
 Do **not** patch DACore’s own login or user screens to enforce this. Put the prompt and the check in **your** module.
 
 ---
@@ -321,4 +325,6 @@ Do **not** patch DACore’s own login or user screens to enforce this. Put the p
 | Checking rights only in the UI | Enforce on the route **and** in the handler |
 | `Auth::confirmTwoFactor` for a logged-in dangerous action | TOTP: `TOTP::generate` vs `attributes()['tfa_auth_secret']`; SMS/email: your one-time challenge ([32](32-DACORE-RIGHTS.md) §6) |
 | UI that turns off an operator’s last 2FA method | Forbidden — operators MUST keep at least one method |
+| 2FA overlay/modal only; save still writes without a code | PHP verifies the code **before** persist ([08](08-FORMS-AND-SECURITY.md), this file §6) |
+| Dangerous flag turned off on the same save as other settings | General save ignores “off”; a separate 2FA handler turns it off ([32](32-DACORE-RIGHTS.md) §6) |
 | Right description that echoes the ticket (“this user can hide the icon…”) | Product copy: name the capability only ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |

@@ -16,7 +16,7 @@ Treat `app/modules/DACore/` like `app/parts/`. DACore is shipped and updated as 
 |------|-----|
 | **Never edit any file in `app/modules/DACore/`** | DACore updates overwrite the whole module — local patches disappear |
 | **Never add files, controllers, views, JS, CSS, or SQL into DACore** | Same reason: the next update wipes them. Extend via your own module only |
-| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations` directly** | Use the registration APIs — they handle upsert, column compatibility and cache invalidation |
+| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings` directly** | Use the registration APIs — they handle upsert, column compatibility and cache invalidation. Installer tables are DACore-owned. |
 | **Never write into `{prefix}users_rights*` directly** | Use `DACore:Rights@*` |
 | **Never duplicate the admin HTML shell** | Use `DACore:Page@withMenu!` |
 | **Never use `$_SESSION` / `session_start()`** | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
@@ -24,7 +24,7 @@ Treat `app/modules/DACore/` like `app/parts/`. DACore is shipped and updated as 
 | Register menu/rights/tools **from `Installation.php`**, not on every request | Otherwise you write to the DB on each page load |
 | DACore-bound module (**your** module under DACore, **not** `app/modules/DACore/`): **`dainstall.php`** + `init/` copies of init/listeners | Framework `install.php` would auto-run; DACore’s installer must own install + activation ([35](35-DACORE-INSTALL.md) §4–§6). **MUST NOT** change DACore itself this way. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
-| **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — never `Auth::confirmTwoFactor` while already logged in |
+| **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — **PHP** verifies the code before persist (overlay is UX only); never `Auth::confirmTwoFactor` while already logged in |
 
 Editable paths are unchanged: `app/config.php` and `app/modules/<YourModule>/` only ([00](00-AGENT-CONTRACT.md)).
 
@@ -65,6 +65,9 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_ai_tools` | AI tool registry: `toolid`, `creator`, `description`, `howtouse`, `controller`, `rights`, `helper`, `workflow`, `tool_type`, `risk_level`, `requires_confirmation`, `intent_tags`, `allowed_tools`, `forbidden_tools` |
 | `dacore_chat` | AI chat sessions |
 | `dacore_chat_messages` | AI chat messages |
+| `dacore_modules` | ZIP-installed modules (DACore-owned — **never write**) |
+| `dacore_plugin_logs` | Plugin installer audit (DACore-owned — **never write**) |
+| `dacore_settings` | DACore-wide settings (DACore-owned — **never write**) |
 
 Framework tables it uses (does not own): `{prefix}users`, `{prefix}users_rights`, `{prefix}users_rights_groups`, `{prefix}users_rights_list`.
 

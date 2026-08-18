@@ -35,7 +35,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 ### Most important DACore rules
 
 1. **Never edit, patch, or add files in `app/modules/DACore/`.** DACore is updated as a package — every local change is **wiped on the next update**. Use only public `DotApp::call("DACore:…")` APIs. Put all new work in **your own** module (`app/modules/<YourModule>/`).
-2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, or `users_rights*`.
+2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, or `users_rights*`.
 3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
 4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. **Your** modules that work **under** DACore use **`dainstall.php`** (the framework never runs it) and keep copies of `module.init.php` / `module.listeners.php` in **`init/`**. Blank the root files only when the user asks to export — DACore unpacks, runs `dainstall.php`, then copies `init/` into the root on success. **This does not apply to the DACore module itself** (`app/modules/DACore/`) — never rename, blank, or wrap DACore that way. See [35](35-DACORE-INSTALL.md) §4–§6.
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell.
@@ -55,6 +55,8 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items`, `dotapp_*`, or `dacore_*` for your module data.
 7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. No pager, or a pager that reloads the admin shell, is incomplete. “Few rows now” is not a skip. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3.
 8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
+9. **MUST** re-check every persist in **PHP**. Frontend modal/overlay is UX only — skipping it **MUST** still fail on the server. Canonical: [08](08-FORMS-AND-SECURITY.md).
+10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
 
 ## Quick install
 
