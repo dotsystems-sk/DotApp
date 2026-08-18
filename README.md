@@ -79,14 +79,14 @@ Route: `'Shop:Home@index!'`. Omit the `!` only when the method should receive DI
 
 This is not a coat of paint. 2.0 is the result of **heavy production use** plus a hard rewrite of how agents are allowed to touch the stack. The rulebook was driven in **Cursor** with **Grok 4.5** and **Grok 4.6**. Apps that came out of those sessions are **secure, snappy, and shippable** — on models that stay cheap to run.
 
-- **Fully AI READY**: First-class support for AI agents. `AIRULES/` (framework) and `AIRULES-DACORE/` (with DACore) tell Cursor / Grok exactly how to write DotApp — not Laravel, not Blade, not jQuery.
+- **Fully AI READY**: First-class support for AI agents. `AIRULES/` (framework) and `AIRULES-DACORE/` (with DACore) tell Cursor / Grok exactly how to write DotApp.
 - **`!` skips DI**: `'Shop:Home@index!'` turns the container off for that controller method. Fast, explicit, no mystery injection on hot paths.
 - **Callable prefixes**: `#Shop:Gate@check!` = middleware, `*Shop:Item@find!` = model, `Shop:Home@index!` = controller. Same string form on routes, `->before()`, and `DotApp::call()`.
 - **Secure forms by default**: `<fo-rm>` + `{{ formName(handler) }}` + CRC — stronger than a plain CSRF token. Row actions (toggle, delete, paginate) use `$dotapp().load()`, not a `<fo-rm>` per button.
 - **Encrypted IDs in the browser**: no raw `data-id="7"`. `{{ enc(Shop.item.id): $id }}` on the way out, decrypt + rights check on the way in.
 - **Lists that can grow must paginate**: `paginate()` + **AJAX** pager on first ship. No `->all()` dumps, no `?page=` full reload of the admin shell.
 - **DSM, not `$_SESSION`**: `DSM::use('Shop')->set/get/delete` for app session state.
-- **`$dotapp`, not `$`**: live DOM patch + overlay + toast after save. No `location.reload()`. File uploads go through `$dotapp().uploadFile`.
+- **`$dotapp()` frontend**: live DOM patch + overlay + toast after save. No `location.reload()`. File uploads go through `$dotapp().uploadFile`.
 - **DB the DotApp way**: `DB::module('RAW')->q(function ($qb) { ... })->all()|first()|execute()`. Module tables are `{lowercase_modulename}_*` (`Shop` → `shop_items`).
 - **DACore admin — free**: login, 2FA, rights, DB-driven menu, page shell, optional AI chat with tools. Your module plugs in via `DotApp::call('DACore:…')`. See [dotapp.dev](https://dotapp.dev/).
 - **Production hardening**: bugs found under real load are gone; ORM, QueryBuilder, routing, and the JS stack were cleaned up because they had to survive daily use — not a demo.
@@ -94,7 +94,7 @@ This is not a coat of paint. 2.0 is the result of **heavy production use** plus 
 ### AI READY (2.0)
 
 - **Shipped rulebook**: drop `AIRULES/` next to `index.php` (start at `AIRULES/00-AGENT-CONTRACT.md`). If DACore is installed, copy `AIRULES-DACORE/` as `AIRULES/`.
-- **Cursor + Grok 4.5 / 4.6**: stress-tested until generated admin and public UI stayed secure and fast — not a pile of framework-wrong guesses.
+- **Cursor + Grok 4.5 / 4.6**: stress-tested until generated admin and public UI stayed secure and fast.
 - **Cheap models, serious apps**: you do not need the most expensive model in the catalog. Affordable agents follow the rules and still emit real DotApp code.
 - **Hard boundaries for agents**: they may edit `app/config.php` and `app/modules/<YourModule>/` — not the kernel, not DACore. That is why the output stays maintainable.
 
