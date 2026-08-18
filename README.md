@@ -1,10 +1,10 @@
-# DotApp 2.0 PHP Framework 🚀
+# DotApp PHP Framework 2.0
 
 Full documentation is available at:  
 
 [https://dotapp.dev/](https://dotapp.dev/)
 
-**DotApp 2.0 is released — and it is fully AI READY.** After a long stretch of demanding real-world use, the framework is ready for production: internals are tighter, bugs found under heavy load are gone, and the AI rulebook (`AIRULES/` + `AIRULES-DACORE/`) was stress-tested in **Cursor** with **Grok 4.5** and **Grok 4.6**. The apps those sessions produced are secure, snappy, and ready to ship — even though these models stay cheap to run. Documentation is being prepared on [dotapp.dev](https://dotapp.dev/) — that remains the official site.
+**DotApp PHP Framework 2.0 is released — and it is fully AI READY.** After a long stretch of demanding real-world use, the framework is ready for production: internals are tighter, bugs found under heavy load are gone, and the AI rulebook (`AIRULES/` + `AIRULES-DACORE/`) was stress-tested in **Cursor** with **Grok 4.5** and **Grok 4.6**. The apps those sessions produced are secure, snappy, and ready to ship — even though these models stay cheap to run. Documentation is being prepared on [dotapp.dev](https://dotapp.dev/) — that remains the official site.
 
 DotApp is an ultra-fast, powerful, and scalable PHP framework for modern web applications. It stays lean yet handles very large apps, with clean structure that's easy for humans, vibe coders, and AI assistants to read, learn, and build on. It ships with a built-in Bridge for seamless PHP↔JS calls and an ultra-light reactive frontend library, alongside fast routing and templating.
 
@@ -237,7 +237,7 @@ Options:
 
 ## 🧪 Version Note
 
-This is the **DotApp 2.0** release: production-ready, **fully AI READY**, with a real agent rulebook, `!` to skip DI, `#` / `*` callables, hardened forms and lists, and the **DACore** admin module available free. The AIRULES pack was stress-tested in Cursor with Grok 4.5 and Grok 4.6 — generated apps stay secure and fast, even on inexpensive models. Full documentation lives at [https://dotapp.dev/](https://dotapp.dev/).
+This is **DotApp PHP Framework 2.0**: production-ready, **fully AI READY**, with a real agent rulebook, `!` to skip DI, `#` / `*` callables, hardened forms and lists, and the **DACore** admin module available free. The AIRULES pack was stress-tested in Cursor with Grok 4.5 and Grok 4.6 — generated apps stay secure and fast, even on inexpensive models. Full documentation lives at [https://dotapp.dev/](https://dotapp.dev/).
 
 Older versions may have duplicate function names (lowercase and PascalCase) due to the transition to **PascalCase** for naming, maintaining **backward compatibility**. This has minimal impact on performance.
 
@@ -257,6 +257,6 @@ Full documentation is available at:
 
 ## 📝 License
 
-dotApp is licensed under the **MIT License**. You must **retain the author's name** in all library headers.  
+DotApp PHP Framework 2.0 is licensed under the **MIT License**. You must **retain the author's name** in all library headers.  
 
 Additional Permission: The Software may be used for training AI models, provided the copyright notice is retained.
