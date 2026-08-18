@@ -173,7 +173,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Controllers: Module:Controller@method!  (! = no DI params)
  * - Database: DB::module("RAW")->q(...)->all()|first()|execute()
  * - Tables: {lowercase_modulename}_*  (Shop → shop_items) — NEVER items, dotapp_*, or dacore_*
- * - Templates: {{ var: $x }}  — NOT {{ $x }}, NOT Blade
+ * - Templates: {{ var: $x }}  — NOT {{ $x }}. VIEW = outer file; setLayout+renderView fills {{ content }} in that view (or renderLayout / str_replace)
  * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-* (not fo-rm)
  * - FE ids: {{ enc(Shop.item.id): $id }} unique $key2 per field; Auth::can still required
  * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST overlay until request ends (DACore admin: Notiflix or module; public site: module preloaders; desktop+mobile)

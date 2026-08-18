@@ -33,9 +33,15 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 
 ## Files
 
-- Views: `*.view.php` via `setView('name')`
-- Layouts: `views/layouts/*.layout.php` via `setLayout('path')`
+- Views: `*.view.php` via `setView('name')` — **this is the outer file**
+- Layouts: `views/layouts/*.layout.php` via `setLayout('path')` — **inner piece**
 - Cross-module: `Shop:path`
+
+## How they compose (MUST)
+
+**Your module owns the HTML document:** `setView` + `setLayout` + `renderView()` → layout HTML replaces `{{ content }}` **inside the view**. The layout does not wrap the view. The view **MUST** contain `{{ content }}` or the layout is discarded.
+
+Other valid paths: `setLayout` + `renderLayout()` (fragment; view ignored); or generate HTML to a string and inject with `setViewVar` / `str_replace`. Full: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b.
 
 ## Renderer vars
 

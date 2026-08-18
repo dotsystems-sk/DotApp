@@ -33,9 +33,15 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 
 ## Files
 
-- Views: `*.view.php` via `setView('name')`
-- Layouts: `views/layouts/*.layout.php` via `setLayout('path')`
+- Views: `*.view.php` via `setView('name')` — **this is the outer file**
+- Layouts: `views/layouts/*.layout.php` via `setLayout('path')` — **inner piece**
 - Cross-module: `Shop:path`
+
+## How they compose (MUST)
+
+**Public / owned document:** `setView` + `setLayout` + `renderView()` → layout HTML replaces `{{ content }}` **inside the view**. The layout does not wrap the view. The view **MUST** contain `{{ content }}` or the layout is discarded. Other paths: `renderLayout()` (fragment); or generate HTML and inject with `setViewVar` / `str_replace`. Full: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b.
+
+**DACore admin:** do **not** use `{{ content }}` as the page shell. Render a layout fragment and pass `$title`, `$body`, `$css`, `$js` to `DACore:Page@withMenu!`. Canonical: `AIRULES/33-DACORE-PAGES-AND-UI.md`.
 
 ## Renderer vars
 

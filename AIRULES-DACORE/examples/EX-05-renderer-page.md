@@ -14,6 +14,8 @@ return \Dotsystems\App\Parts\Renderer::new()
 
 `renderView()` uses **view vars only**. For layout-only render use `setLayoutVar` + `renderLayout()`.
 
+This sample is a **full public page your module owns** ([05](../05-VIEWS-TEMPLATES-ASSETS.md) §1b). **DACore admin pages are different:** render a layout fragment and pass it to `DACore:Page@withMenu!` — [33](../33-DACORE-PAGES-AND-UI.md), [EX-D02](EX-D02-dacore-admin-page.md).
+
 ## views/home.view.php
 
 ```html

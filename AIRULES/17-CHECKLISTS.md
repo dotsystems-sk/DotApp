@@ -28,6 +28,7 @@
 
 - [ ] Variables: `{{ var: $x }}` only
 - [ ] Closers: `{{ /if }}` `{{ /foreach }}` (not endif/endforeach)
+- [ ] VIEW is the outer file; `setLayout` + `renderView()` fills `{{ content }}` in that view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b)
 - [ ] Layouts via `{{ layout:... }}` / Renderer setLayout
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS

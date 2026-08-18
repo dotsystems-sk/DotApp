@@ -2,6 +2,8 @@
 
 Your module renders **only its content**. DACore supplies the shell (head, sidebar, navbar, footer, AI chat).
 
+**MUST:** pass `$title`, `$body`, `$header`, `$css`, `$js` (and `$menuId`) to `DACore:Page@withMenu!`. The Page controller generates the page. Do **not** `setView` a full `<html>` document. Do **not** put `{{ content }}` in your admin fragment and expect DACore to fill it — that slot is the **framework Renderer** on pages **you** own ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b), not the admin shell.
+
 ---
 
 ## 1. The rendering pattern

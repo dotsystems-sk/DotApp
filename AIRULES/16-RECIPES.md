@@ -39,10 +39,10 @@ public static function index($request)
 }
 ```
 
-**views/home.view.php** — shell with `{{ content }}`  
-**views/layouts/content/welcome.layout.php** — `{{ var: $message }}` via view vars when using `renderView` (pass message as viewVar).
+**views/home.view.php** — outer shell with `{{ content }}`  
+**views/layouts/content/welcome.layout.php** — inner HTML; `{{ var: $message }}` via **view vars** when using `renderView` (pass message as viewVar).
 
-If using `renderLayout()` alone, use `setLayoutVar`.
+If using `renderLayout()` alone, use `setLayoutVar`. You may also generate a layout to a string and inject it (`setViewVar` / `str_replace`). Full composition: [05](05-VIEWS-TEMPLATES-ASSETS.md) §1b.
 
 ---
 

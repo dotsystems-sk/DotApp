@@ -101,7 +101,7 @@ return Renderer::new()
 
 `renderLayout()` uses **layout vars only** (`setLayoutVar`).  
 `renderView()` eval uses **view vars only** (`setViewVar`).  
-Do not assume layout vars bleed into view vars.
+Do not assume layout vars bleed into view vars. **VIEW = outer file:** `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b).
 
 ### JSON API
 

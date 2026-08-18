@@ -15,6 +15,67 @@
 
 ---
 
+## 1b. How templates compose (MUST) — framework Renderer, not the DACore admin shell
+
+This section is **DotApp’s Renderer** when **your module owns the HTML document** (public site, emails, widgets, a standalone page).
+
+**DACore admin pages are a different procedure.** You do **not** `setView` a full `<html>` shell and you do **not** fill `{{ content }}` yourself. Render **only your fragment** (`renderLayout()`), then pass `$title`, `$body`, `$header`, `$css`, `$js` to `DACore:Page@withMenu!`. The Page controller generates the shell. Canonical: [33-DACORE-PAGES-AND-UI.md](33-DACORE-PAGES-AND-UI.md), sample [EX-D02](examples/EX-D02-dacore-admin-page.md).
+
+---
+
+**The VIEW is the outer file. The LAYOUT is the inner piece.**  
+`renderView()` loads the `.view.php`. If you also called `setLayout()`, it **replaces the literal `{{ content }}` in that view with the generated layout HTML**. The layout does **not** wrap the view.
+
+Three valid ways **for pages you own** (all first-class):
+
+### A — Automatic slot (`{{ content }}`)
+
+Your view is the page (doctype, head, body). The layout is the middle.
+
+```php
+$html = Renderer::new()->module('Shop')
+    ->setView('home')                 // views/home.view.php — MUST contain {{ content }}
+    ->setLayout('content/welcome')    // this HTML is inserted at {{ content }}
+    ->setViewVar('title', 'Shop')     // renderView() sees view vars only
+    ->renderView();
+```
+
+**MUST:** the view contains the token `{{ content }}`. Without it, the layout is discarded. Without `setLayout()`, `{{ content }}` stays in the HTML as text.
+
+### B — Layout only (fragment, AJAX row, email block)
+
+No view. You get a HTML chunk. **This is also the fragment you pass as `$body` to `Page@withMenu!` on admin pages** ([33](33-DACORE-PAGES-AND-UI.md)).
+
+```php
+$chunk = Renderer::new()->module('Shop')
+    ->setLayout('partials/item-row', 'partials/empty')
+    ->setLayoutVar('item', $row)
+    ->renderLayout();                 // VIEW is ignored; layout vars only
+```
+
+### C — Generate to a string, inject yourself
+
+Render a layout (or any HTML) into a variable, then place it: `setViewVar` + `{{ var: $slot }}`, or `str_replace` on **your** marker in the already-rendered string. Do **not** invent DACore’s `<!--additionalcss-->` markers on your public pages — those exist only inside DACore’s Page controller.
+
+```php
+$nav = Renderer::new()->module('Shop')
+    ->setLayout('partials/nav')
+    ->setLayoutVar('active', 'home')
+    ->renderLayout();
+
+$page = Renderer::new()->module('Shop')
+    ->setView('home')
+    ->setViewVar('navbar', $nav)
+    ->renderView();
+// home.view.php: {{ var: $navbar }}
+
+$page = str_replace('<!--NAV-->', $nav, $page);
+```
+
+`{{ layout:partials/header }}` is a **plain include** (no closer). It is not wrapping and it is not `{{ content }}`.
+
+---
+
 ## 2. Missing files fail SILENTLY — this is critical
 
 | Situation | Result |
@@ -131,7 +192,7 @@ Space required after `{{` before `if`. Closing tag is `{{ /if }}`.
 {{ content }}
 ```
 
-`{{ content }}` is where `setLayout()` output is injected during `renderView()`. Layout tags are pure includes — there is no closing tag.
+`{{ content }}` works **only** on the `setView` + `setLayout` + `renderView()` path (§1b A). Layout tags are pure includes — there is no closing tag. On `renderLayout()`, use `{{ layout:... }}` to nest — `{{ content }}` is not filled.
 
 ### Security / crypto
 
@@ -317,7 +378,7 @@ Files: `app/modules/{Module}/translations/{locale}.json`. Keys are the source te
 | `@if(...) @endif` | `{{ if ... }} {{ /if }}` |
 | `{{ endif }}` / `{{ endforeach }}` | `{{ /if }}` / `{{ /foreach }}` |
 | `@include('x')` | `{{ layout:x }}` |
-| `@extends` / `@section` / `@yield` | `renderView()` + `{{ content }}` |
+| `@extends` / `@section` / `@yield` / layout-as-outer-shell | VIEW = outer file; LAYOUT fills `{{ content }}` — or `renderLayout()` / inject a string (§1b) |
 | `{{ $x ?? 'd' }}` | prepare in the controller |
 | `@csrf` | `{{ CSRF }}` / `{{ formName(...) }}` |
 | `{{ __('k') }}` | `{{_ "Source text" }}` |
