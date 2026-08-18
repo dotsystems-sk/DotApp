@@ -31,6 +31,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Deletes: graphical confirm first — NOT `alert()` / `window.confirm()` (`AIRULES/09` §3)
 - UI copy: product language — NOT prompt-echo / “this user can…” (`AIRULES/05` §8)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list with **module preloaders** until the request ends (desktop **and** mobile). (`AIRULES/09` §3, EX-06)
+- Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
 
 ## Never ignore return values (AIRULES/18)
 

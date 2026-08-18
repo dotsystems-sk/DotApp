@@ -61,6 +61,14 @@ class Module extends \Dotsystems\App\Parts\Module
                     }
                     return DotApp::call('#Shop:Rights@check!', $request, $editRights);
                 });
+
+            Router::post($admin . '/items/list', 'Shop:Admin@itemsList!', Router::STATIC_ROUTE)
+                ->before(function ($request) use ($viewRights) {
+                    if ($request->crcCheck() === false) {
+                        return new Response(403, DotApp::call(Config::module('DACore', 'error403Page')));
+                    }
+                    return DotApp::call('#Shop:Rights@check!', $request, $viewRights);
+                });
         }
     }
 
@@ -123,7 +131,7 @@ class Admin extends \Dotsystems\App\Parts\Controller
     public static function items($request)
     {
         $perPage = (int) (Config::module('Shop', 'itemsPerPage') ?? 20);
-        $page = max(1, (int) ($request->query()['page'] ?? 1));
+        $page = 1;
 
         $result = DB::module('RAW')->q(function ($qb) {
             $qb->select(['id', 'title', 'sku', 'price', 'active'])
@@ -137,7 +145,15 @@ class Admin extends \Dotsystems\App\Parts\Controller
             'DACore:Page@paginate!',
             $result['current_page'],
             $result['last_page'],
-            $baseUrl . '/items?page='
+            null,
+            function ($type, $pageNo, $label, $state, $href) {
+                if ($type === 'ellipsis') {
+                    return '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                }
+                $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
+                return '<li class="page-item ' . $state . '"><button type="button" class="page-link js-shop-page" data-page="'
+                    . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
+            }
         );
 
         $html = Renderer::new()
@@ -163,6 +179,53 @@ class Admin extends \Dotsystems\App\Parts\Controller
             ['/assets/modules/Shop/js/admin-items.js'],
             ''
         );
+    }
+
+    public static function itemsList($request)
+    {
+        try {
+            $perPage = (int) (Config::module('Shop', 'itemsPerPage') ?? 20);
+            $body = $request->data(true)['data'] ?? [];
+            $page = max(1, (int) ($body['page'] ?? 1));
+
+            $result = DB::module('RAW')->q(function ($qb) {
+                $qb->select(['id', 'title', 'sku', 'price', 'active'])
+                   ->from('shop_items')
+                   ->orderBy('id', 'DESC');
+            })->paginate($perPage, $page);
+
+            $links = DotApp::call(
+                'DACore:Page@paginate!',
+                $result['current_page'],
+                $result['last_page'],
+                null,
+                function ($type, $pageNo, $label, $state, $href) {
+                    if ($type === 'ellipsis') {
+                        return '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                    }
+                    $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
+                    return '<li class="page-item ' . $state . '"><button type="button" class="page-link js-shop-page" data-page="'
+                        . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
+                }
+            );
+
+            $html = Renderer::new()
+                ->module('Shop')
+                ->setLayout('admin/items-inner', 'admin/empty')
+                ->setLayoutVar('items', $result['data'])
+                ->setLayoutVar('links', $links)
+                ->renderLayout();
+
+            if ($html === '') {
+                Logger::use()->error('Shop admin items-inner layout empty');
+                return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Template error'], 500);
+            }
+
+            return DotApp::DotApp()->ajaxReply(['status' => 1, 'html' => $html], 200);
+        } catch (\Throwable $e) {
+            Logger::use()->error('Shop itemsList failed', ['msg' => $e->getMessage()]);
+            return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Server error'], 500);
+        }
     }
 
     public static function itemSave($request)
@@ -235,6 +298,7 @@ app/modules/Shop/
   Controllers/AITools.php
   Middleware/Rights.php
   views/layouts/admin/items.layout.php
+  views/layouts/admin/items-inner.layout.php
   views/layouts/admin/empty.layout.php
   assets/css/admin.css
   assets/js/admin-items.js

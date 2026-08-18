@@ -11,7 +11,7 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
 ## Layout: `views/layouts/admin/items.layout.php`
 
 ```html
-<div class="card mb-6">
+<div class="card mb-6" id="listWrap" data-list-url="{{ var: $baseUrl }}/items/list">
   <h5 class="card-header d-flex justify-content-between align-items-center">
     <span>{{_ "Items" }} <span class="badge bg-label-primary">{{ var: $total }}</span></span>
     <a href="{{ var: $baseUrl }}/items/0" class="btn btn-primary btn-sm">
@@ -19,6 +19,7 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
     </a>
   </h5>
 
+  <div id="listInner">
   <div class="table-responsive text-nowrap">
     <table class="table table-hover">
       <thead>
@@ -59,10 +60,11 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
   <div class="card-footer">
     <ul class="pagination mb-0">{{ var: $links }}</ul>
   </div>
+  </div>
 </div>
 ```
 
-Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. Conditions wrap the expression in parentheses as the framework parser expects a simple expression.
+Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — not `<a href="?page=">` ([33](../33-DACORE-PAGES-AND-UI.md) §3). `#listInner` is the fragment AJAX replaces (rows **and** pager).
 
 ## Edit form with dotgrid + secure form
 
@@ -157,7 +159,22 @@ Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplie
 })();
 ```
 
-On a **list** page (add rule, toggle, delete, reorder): overlay `#listWrap` **before** `load()` (Notiflix.Block preferred, or your module preloader), patch inner HTML, then remove the overlay on success **and** error. Toast (Notiflix.Notify or your equivalent). Do not `location.reload()`. Row actions are `type="button"` + encrypted `data-*` + `$dotapp().load()` — **not** one `<fo-rm>` per button. Pattern: [EX-06](EX-06-dotapp-js-boot.md).
+On a **list** page (add rule, toggle, delete, reorder, **page**): overlay `#listWrap` **before** `load()` (Notiflix.Block preferred, or your module preloader), patch `#listInner` (rows **and** pager), then remove the overlay on success **and** error. Toast (Notiflix.Notify or your equivalent). Do not `location.reload()`. Pager controls are `type="button"` + `$dotapp().load()` — **not** `<a href="?page=">`, **not** one `<fo-rm>` per button. SQL: `paginate()`. Pattern: [EX-06](EX-06-dotapp-js-boot.md), [EX-D01](EX-D01-dacore-module-skeleton.md).
+
+```javascript
+$dotapp().live("click", ".js-shop-page", function (e) {
+  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+  Notiflix.Block.standard("#listWrap", "Loading…");
+  $dotapp().load($dotapp("#listWrap").attr("data-list-url"), "POST", { page: page },
+    function (raw) {
+      var reply = $dotapp().parseReply(raw);
+      if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
+      Notiflix.Block.remove("#listWrap");
+    },
+    function () { Notiflix.Block.remove("#listWrap"); }
+  );
+});
+```
 
 If the action can **seriously damage** the system (delete an admin, wipe data, grant `dotapp.root`), **MUST** step-up 2FA first (`$dotapp().twoFactor` + verify in your module). Operators cannot turn 2FA off. See [32](../32-DACORE-RIGHTS.md) §6.
 

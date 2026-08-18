@@ -121,6 +121,25 @@ Row markup — **no** `<fo-rm>` per button:
 
 Drag-and-drop: same — `data-rule="{{ enc(Shop.rule.id): $id }}"` on the token; on drop cover `#listWrap`, then `$dotapp().load(..., { f: "move", id: ..., from: ..., to: ... })`. Never one `<fo-rm>` per arrow. Never start a second drag until the overlay is gone.
 
+**Pager MUST exist and MUST be AJAX** (users, logs, items — any accumulating list, first ship). SQL `paginate()`. Buttons, not `<a href="?page=">` / `location.reload()`:
+
+```javascript
+$dotapp().live("click", ".js-shop-page", function (e) {
+  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+  Notiflix.Block.standard("#listWrap", "Loading…");
+  $dotapp().load("/shop/items/list", "POST", { page: page, q: currentQuery },
+    function (raw) {
+      var reply = $dotapp().parseReply(raw);
+      if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
+      Notiflix.Block.remove("#listWrap");
+    },
+    function () { Notiflix.Block.remove("#listWrap"); }
+  );
+});
+```
+
+PHP: clamp `page` to `1 … last_page`, return `{ status: 1, html: $rowsAndPager }`. Patch rows **and** the pager. First paint may be page 1 server-rendered. Public site: same JS with your module overlay instead of Notiflix.
+
 **Delete MUST confirm first.** DACore admin: `Notiflix.Confirm` (never `alert()` / `window.confirm()`). Public site: your module modal.
 
 ```javascript
@@ -157,3 +176,4 @@ $dotapp().live("click", ".js-delete", function (e) {
 - `alert()` / `window.confirm()` / `prompt()` — use a graphical dialog; deletes **MUST** confirm first
 - One `<fo-rm>` per table-row action (up/down/toggle/delete) or drag-and-drop via forms
 - Leave the list/form clickable during `load()`; skip overlay cleanup on the error path; skip preloaders because Notiflix was not used
+- Growing list with no pager, or pager that reloads via `<a href="?page=">`

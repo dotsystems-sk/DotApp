@@ -183,6 +183,36 @@ $dotapp().load(url, "POST", payload, function (raw) {
 
 Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
 
+### Paginate accumulating lists (**MUST** — ship it, interactive, no reload)
+
+Two failures, **both bugs**:
+
+1. **No pager** on a list that can grow (users, logs, items, orders, messages, files, events) — even if the table is empty today.
+2. A pager that **reloads the admin shell** (`<a href="?page=2">`, `location.reload()`, full navigation). That is not interactive.
+
+Agents **MUST NOT** dump the table with `->all()` ([06](06-DATABASE.md)). Skip a pager **only** for a set that is closed by product design (four fixed cards). **“Few rows now” is not a skip.**
+
+The pager **MUST** be **interactive AJAX**: stay on the page, overlay the list (Notiflix preferred **or** module) while the request runs, `$dotapp().load()`, patch `html` (rows **and** pager), remove overlay on success **and** error. Desktop **and** mobile. The overlay is a busy state — it is **not** a page reload.
+
+First paint may be server-rendered page 1. Further pages: POST with `page` (clamp in PHP) plus current filters. Pager: `type="button"` + `.live()` — **MUST NOT** `<fo-rm>` per page button. DACore markup: `DACore:Page@paginate!` with a **`$callable`** that emits buttons — do not pass a `?page=` `$href` that navigates. See [33](33-DACORE-PAGES-AND-UI.md).
+
+```javascript
+$dotapp().live("click", ".js-shop-page", function (e) {
+  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+  Notiflix.Block.standard("#listWrap", "Loading…");
+  $dotapp().load("/dacore/shop-admin/items/list", "POST", { page: page, q: currentQuery },
+    function (raw) {
+      var reply = $dotapp().parseReply(raw);
+      if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
+      Notiflix.Block.remove("#listWrap");
+    },
+    function () { Notiflix.Block.remove("#listWrap"); }
+  );
+});
+```
+
+SQL: `->paginate($perPage, $page)`. Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md), [examples/EX-D02-dacore-admin-page.md](examples/EX-D02-dacore-admin-page.md).
+
 ### Confirm before delete (**MUST**)
 
 Any delete (row, detail, bulk) **MUST** ask first in a **graphical** dialog: title, what will be deleted, **Cancel**, and a destructive confirm. It **MUST** work on desktop **and** mobile.

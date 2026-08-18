@@ -173,6 +173,38 @@ $dotapp().load(url, "POST", payload, function (raw) {
 
 Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
 
+### Paginate accumulating lists (**MUST** — ship it, interactive, no reload)
+
+Two failures, **both bugs**:
+
+1. **No pager** on a list that can grow (users, logs, items, orders, messages, files, events) — even if the table is empty today.
+2. A pager that **reloads the document** (`<a href="?page=2">`, `location.reload()`, full navigation). That is not interactive.
+
+Agents **MUST NOT** dump the table with `->all()` ([06](06-DATABASE.md)). Skip a pager **only** for a set that is closed by product design (four fixed cards). **“Few rows now” is not a skip.**
+
+The pager **MUST** be **interactive AJAX**: stay on the page, overlay the list wrapper while the request runs, `$dotapp().load()`, patch `html` (rows **and** pager), remove overlay on success **and** error. Desktop **and** mobile. The overlay is a busy state — it is **not** a page reload.
+
+First paint may be server-rendered page 1. Further pages: POST (or the same list API) with `page` (clamp `1 … last_page` in PHP). Keep current filters in that payload. Pager controls: `type="button"` + `.live()` — **MUST NOT** wrap them in `<fo-rm>`.
+
+```javascript
+$dotapp().live("click", ".js-shop-page", function (e) {
+  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+  shopBusy(true);
+  $dotapp().load("/shop/items/list", "POST", { page: page, q: currentQuery },
+    function (raw) {
+      var reply = $dotapp().parseReply(raw);
+      if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
+      shopBusy(false);
+    },
+    function () { shopBusy(false); }
+  );
+});
+```
+
+SQL: `DB::module("RAW")->q(...)->paginate($perPage, $page)`. UI helper: [12](12-SERVICES.md) §7 (`Pagination::paginate` + your `render` callback as **buttons**, not `href`).
+
+Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md), [examples/EX-04-database-crud.md](examples/EX-04-database-crud.md).
+
 ### Confirm before delete (**MUST**)
 
 Any delete (row, detail, bulk) **MUST** ask first in a **graphical** dialog: title, what will be deleted, **Cancel**, and a destructive confirm. It **MUST** work on desktop **and** mobile (large enough buttons, no hover-only).

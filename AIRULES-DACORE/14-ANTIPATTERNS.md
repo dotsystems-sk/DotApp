@@ -48,6 +48,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `join('users','u', col, '=', col2)` myth | `join('users u', 'p.user_id', '=', 'u.id')` |
 | Eloquent models | Optional Entity ORM or plain RAW |
 | String-built SQL with user input | Bindings only (`?` xor `:named`) |
+| Logs / users / items via `->all()` into the view / no pager because “few rows now” | `->paginate($perPage, $page)` on first ship ([06](06-DATABASE.md)) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
@@ -88,6 +89,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | List still clickable / second drag during `load()` | Cover the wrapper (Notiflix preferred **or** module preloaders) until success **and** error — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |
 | `alert()` / `window.confirm()` on delete | Graphical dialog (`Notiflix.Confirm` on admin), then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Growing list with no pager / `<a href="?page=">` | AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3) |
 
 ## Config / security
 

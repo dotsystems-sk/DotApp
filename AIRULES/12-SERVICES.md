@@ -209,11 +209,15 @@ $html = Pagination::paginate($page['current_page'], $page['last_page'])
         // $type: first|prev|page|ellipsis|next|last
         // $state: active|disabled|normal
         if ($type === 'ellipsis') { return '<li class="disabled"><span>…</span></li>'; }
-        return '<li class="' . $state . '"><a href="' . $href . $pageNo . '">' . $label . '</a></li>';
-    }, '/shop/?page=');
+        $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
+        return '<li class="' . $state . '"><button type="button" class="js-shop-page" data-page="'
+            . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
+    });
 ```
 
 `render()` returns an HTML `string` (empty string when total ≤ 0). This is unrelated to SQL `paginate()`.
+
+In-app lists **MUST** paginate with **buttons** + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3). **MUST NOT** pass a `?page=` `$href` that reloads the site.
 
 ---
 

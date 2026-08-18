@@ -207,6 +207,7 @@ For standard UX forms, **formName remains preferred**.
 5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; **your module preloaders** covering the list/form until `load()` ends (success **and** error). Notiflix is DACore-only — not available here. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **MUST** confirm deletes in a graphical dialog (module modal) — never `alert()` / `window.confirm()`.
+8. **MUST** paginate accumulating lists on **first ship** (`paginate()` + interactive AJAX buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()`. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
 ## Must-nots
 
@@ -221,5 +222,6 @@ For standard UX forms, **formName remains preferred**.
 9. One `<fo-rm>` per table-row button (up/down/toggle/delete) or drag-and-drop via forms.
 10. Leave a list/form clickable (or start a second `load()`) while the first request is still in flight; forget to remove the overlay on the error path; skip module preloaders.
 11. Delete with `alert()` / `window.confirm()` or with no confirm dialog.
-12. Use `data-dotapp-nojs` unless rebuilding the whole chain.
-13. Load raw `app/parts/js/dotapp.js` instead of `/assets/dotapp/dotapp.js` on pages.
+12. Dump logs/users/items with `->all()` and no pager, or paginate by reloading `<a href="?page=">`.
+13. Use `data-dotapp-nojs` unless rebuilding the whole chain.
+14. Load raw `app/parts/js/dotapp.js` instead of `/assets/dotapp/dotapp.js` on pages.

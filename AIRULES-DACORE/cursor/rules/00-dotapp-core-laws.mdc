@@ -33,6 +33,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - DACore AI writes: `ui_events` (name = tool id) + `DACore.AI.UIEvent` on the matching page only (`AIRULES/34` §5)
 - DACore operators MUST keep 2FA; dangerous admin actions MUST step-up 2FA (`AIRULES/32` §6)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** module preloaders; desktop **and** mobile). (`AIRULES/09` §3, EX-06)
+- Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
 
 ## Never ignore return values (AIRULES/18)
 

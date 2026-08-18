@@ -18,6 +18,7 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter) th
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data.
 - Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`. User-visible strings **MUST** be product copy (a software company would ship it) — never prompt-echo / “this user can…”. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8.
 - Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** for real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop, paginate) **MUST** be `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. + **`/assets/dotapp/dotapp.js`** + PHP `crcCheck()` + `form()` for real forms. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`. Row-action sample: `AIRULES/examples/EX-06-dotapp-js-boot.md`.
+- **Lists MUST paginate:** users, logs, items, orders, messages — any collection that can grow. Ship `paginate()` + an **interactive AJAX** pager in the first version (even if the table is empty today). **MUST NOT** dump `->all()`. **MUST NOT** change pages by reloading the admin shell (`<a href="?page=">`, `location.reload()`). Overlay the list while the request runs; patch rows **and** pager from JSON. Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3, `AIRULES/33-DACORE-PAGES-AND-UI.md` §3.
 - JS: `$dotapp` — **not** `$` / `$.ajax`. After a successful `fo-rm` / `load` **MUST** update the DOM from JSON (`html` / data) and a short toast — no `location.reload()`. **MUST** overlay the form/list until the request ends. **DACore admin:** Notiflix (preferred) **or** your module preloaders. **Public website:** you **MUST** build preloaders yourself (Notiflix is DACore-only). UX **MUST** work on desktop **and** mobile. `redirectTo` only when leaving the page. 2FA boxes: **`$dotapp().twoFactor`**. Deletes: graphical confirm first (`Notiflix.Confirm` on admin) — never `alert()` / `window.confirm()`. DACore operators **MUST** keep 2FA on; dangerous admin actions **MUST** step-up 2FA (`AIRULES/32-DACORE-RIGHTS.md` §6). AI write tools: `ui_events` + `DACore.AI.UIEvent` on the matching page only (`AIRULES/34-DACORE-AI-TOOLS.md` §5).
 
 ## Scaffolding
@@ -35,7 +36,7 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | Views | `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` |
 | Database | `AIRULES/06-DATABASE.md` |
 | Forms | `AIRULES/08-FORMS-AND-SECURITY.md` |
-| Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays desktop/mobile; §4 = `$dotapp().fn`; §4.C = jQuery ports) |
+| Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays + **AJAX pagination**; §4 = `$dotapp().fn`; §4.C = jQuery ports) |
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
 | Antipatterns | `AIRULES/14-ANTIPATTERNS.md` |
 | Checklists | `AIRULES/17-CHECKLISTS.md` |

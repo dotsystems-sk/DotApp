@@ -49,7 +49,8 @@ If you believe a core bug exists: **stop and ask the user**. Do not patch core.
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
-6. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
+6. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the page is not a pager. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+7. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
 
 ### Dotapper-first rule
 
@@ -108,6 +109,8 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Plain IDs in HTML/JSON (`value="7"`, `data-id="7"`) | **MUST** `{{ enc(Shop.item.id): $id }}` — unique `$key2` per field |
 | `<fo-rm>` around every row button / D&D | `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)) |
 | List/form still clickable during `load()` | Cover the region with **your module preloaders** until done — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Logs / users / items dumped with `->all()`, no pager, or “few rows now so skip” | **MUST** `paginate()` + interactive AJAX on **first ship** ([06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| `<a href="?page=2">` for an in-app list | Forbidden — that reloads the site |
 | Custom OTP digit widget / jQuery 2FA plugin | **MUST** `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `alert()` / `window.confirm()` to delete | Graphical dialog first, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo UI copy (“this user can hide the icon…”) | Product copy a software company would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
@@ -133,6 +136,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 5. Never interpolate user input into SQL — use QueryBuilder bindings or `raw($sql, $bindings)`.
 6. On new apps, generate real `app.c_enc_key` / `rm_key` / `rmrcm_key` (see [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md)).
 7. Module settings must have **fallbacks** if the user did not fill `app/config.php`.
+8. **MUST paginate accumulating lists** (users, logs, items, …) with an **interactive** pager (`$dotapp().load()`). Shipping the list with no pager, or changing pages by reloading the document, is incomplete. [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
 ---
 
@@ -149,6 +153,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-* (not fo-rm)
  * - FE ids: {{ enc(Shop.item.id): $id }} unique $key2 per field; Auth::can still required
  * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST module preloaders until request ends (desktop+mobile)
+ * - Lists: accumulating records (users/logs/items) MUST paginate() on first ship + AJAX pager — NOT all() dump, NOT ?page= / location.reload()
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
  * - UI copy: product language — never prompt-echo / “this user can…”
@@ -188,6 +193,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | Route / middleware | 03, 04 | EX-03 |
 | Template / CSS / JS page | 05 (incl. §8 product copy), 09 | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
+| Paginated list (users, logs, items) | **06**, **09 §3** “Paginate accumulating lists” — **MUST** ship, **MUST** be AJAX | [EX-04](examples/EX-04-database-crud.md), **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Custom `$dotapp` library / jQuery port | **09 §4** (esp. §4.C) | **[EX-15](examples/EX-15-dotapp-js-library.md)** |
 | Database query | 06, 18 | [EX-04](examples/EX-04-database-crud.md) |

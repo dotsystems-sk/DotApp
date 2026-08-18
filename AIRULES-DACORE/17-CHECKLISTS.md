@@ -44,6 +44,7 @@
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items`, `dotapp_*`, or `dacore_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
+- [ ] Growing lists (users, logs, items, orders) use `paginate()` on **first ship** — not `->all()` into the view; “few rows now” is not a skip ([06](06-DATABASE.md))
 
 ## Error-handling checklist (see 18)
 
@@ -72,6 +73,7 @@
 - [ ] New / ported `$dotapp` libraries follow [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 / [EX-15](examples/EX-15-dotapp-js-library.md) (`dotapp-register`, `fn()`, `this.load` — no `$.ajax`)
 - [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
 - [ ] Deletes use a graphical confirm dialog first — never `alert()` / `window.confirm()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] Accumulating lists have an **interactive AJAX** pager (`type="button"` + `$dotapp().load()`, overlay while in flight, patch rows **and** pager) — not missing, not `<a href="?page=">` / `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 
 ## Config / secrets checklist
 
@@ -115,6 +117,7 @@
 - [ ] `--list-routes` or manual route review if routes changed
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)
 - [ ] Checklists above satisfied for touched areas
+- [ ] Users/logs/items (or any accumulating list) shipped with **interactive AJAX** pager — not omitted, not a full-page `?page=` reload
 - [ ] User-facing summary mentions AIRULES docs followed
 
 ## Red flags — stop and fix
@@ -134,6 +137,7 @@
 - Custom OTP digit widget instead of `$dotapp().twoFactor`
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
+- Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
 - Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
 - Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
 - `execute()` called with a single callback

@@ -111,6 +111,27 @@ Row markup — **no** `<fo-rm>` per button:
 
 Drag-and-drop: same — `data-rule="{{ enc(Shop.rule.id): $id }}"` on the token; on drop cover `#listWrap`, then `$dotapp().load(..., { f: "move", id: ..., from: ..., to: ... })`. Never one `<fo-rm>` per arrow. Never start a second drag until the overlay is gone.
 
+**Pager MUST exist and MUST be AJAX** (users, logs, items — any accumulating list, first ship). SQL `paginate()`. Buttons, not `<a href="?page=">` / `location.reload()`:
+
+```javascript
+$dotapp().live("click", ".js-shop-page", function (e) {
+  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+  if (listBusy) return;
+  listBusy = true;
+  $dotapp("#listWrap").addClass("shop_busy");
+  $dotapp().load("/shop/items/list", "POST", { page: page, q: currentQuery },
+    function (raw) {
+      var reply = $dotapp().parseReply(raw);
+      if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
+      listDone();
+    },
+    function () { listDone(); }
+  );
+});
+```
+
+PHP: clamp `page` to `1 … last_page`, return `{ status: 1, html: $rowsAndPager }`. Patch rows **and** the pager. First paint may be page 1 server-rendered.
+
 **Delete MUST confirm first** (graphical dialog — never `alert()` / `window.confirm()`):
 
 ```javascript
@@ -150,3 +171,4 @@ $dotapp().live("click", ".js-delete", function (e) {
 - `alert()` / `window.confirm()` / `prompt()` — use a graphical dialog; deletes **MUST** confirm first
 - One `<fo-rm>` per table-row action (up/down/toggle/delete) or drag-and-drop via forms
 - Leave the list/form clickable during `load()`; skip overlay cleanup on the error path; skip module preloaders
+- Growing list with no pager, or pager that reloads via `<a href="?page=">`

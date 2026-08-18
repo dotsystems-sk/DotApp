@@ -90,7 +90,7 @@ public static function listItems($request)
 }
 ```
 
-Protect with an API key before-hook if public. Full return-value rules: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md), full CRUD: [examples/EX-04](examples/EX-04-database-crud.md).
+Protect with an API key before-hook if public. Full return-value rules: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md), full CRUD: [examples/EX-04](examples/EX-04-database-crud.md). A **UI** list of logs/users/items **MUST** paginate (R13) — do not copy this `->all()` dump into an admin table.
 
 ---
 
@@ -169,10 +169,21 @@ php .\dotapper.php --module=Shop --test
 
 ---
 
+## R13 — Paginated AJAX list (**MUST** — first ship, interactive)
+
+Users, logs, items, orders — any collection that **can accumulate** — **MUST** `->paginate($perPage, $page)` on the **first** version, not `->all()` into the view. **“Few rows now” is not a skip.**
+
+Pager **MUST** be **interactive AJAX**: `type="button"` + `$dotapp().load()`; overlay the list while in flight; patch rows **and** pager. **MUST NOT** `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing. Admin markup: `DACore:Page@paginate!` `$callable` as buttons ([33](33-DACORE-PAGES-AND-UI.md) §3).
+
+Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: [EX-04](examples/EX-04-database-crud.md), [EX-06](examples/EX-06-dotapp-js-boot.md), [EX-D01](examples/EX-D01-dacore-module-skeleton.md).
+
+---
+
 ## R12 — Beyond the basics
 
 | Need | Recipe |
 |------|--------|
+| Paginated UI list (logs, users, items) | R13 + [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Validation + JSON error envelope | [examples/EX-09](examples/EX-09-validation-and-errors.md) |
 | Cache / logging / sessions | [examples/EX-10](examples/EX-10-cache-logger-session.md) |
 | Email, SMS provider, QR | [examples/EX-11](examples/EX-11-email-sms-qr.md) |

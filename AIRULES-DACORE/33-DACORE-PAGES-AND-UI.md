@@ -101,6 +101,10 @@ When `AI.enabled` is true, DACore injects the chat CSS/JS itself; do not add the
 
 ## 3. Pagination
 
+Growing lists (logs, users, items, orders) **MUST** use SQL `paginate()` ([06](06-DATABASE.md)) **and** an **interactive AJAX** pager ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) in the **first** version. Empty table today is not a skip. **MUST NOT** dump `->all()` into the table. **MUST NOT** navigate with `<a href="?page=2">` / `location.reload()` — that reloads the admin shell and is not a pager.
+
+First paint may be server-rendered page 1. Further pages: `$dotapp().load()` POST with `page` (clamp in PHP) plus current filters. Overlay the list while in flight.
+
 ```php
 $page = DB::module('RAW')->q(/* ... */)->paginate(20, $currentPage);
 
@@ -108,7 +112,15 @@ $links = DotApp::call(
     "DACore:Page@paginate!",
     $page['current_page'],
     $page['last_page'],
-    Config::module('DACore', 'prefixUrl') . '/shop-admin/items?page='
+    null,
+    function ($type, $pageNo, $label, $state, $href) {
+        if ($type === 'ellipsis') {
+            return '<li class="page-item disabled"><span class="page-link">…</span></li>';
+        }
+        $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
+        return '<li class="page-item ' . $state . '"><button type="button" class="page-link js-shop-page" data-page="'
+            . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
+    }
 );
 ```
 
@@ -118,7 +130,7 @@ Returns Bootstrap `<li class="page-item">` items — wrap them yourself:
 <ul class="pagination">{{ var: $links }}</ul>
 ```
 
-Signature: `paginate($actual_page, $number_of_pages, $href = null, $callable = null)`. Pass `$callable` to render each link yourself.
+Signature: `paginate($actual_page, $number_of_pages, $href = null, $callable = null)`. Pass **`$callable`** so each control is a **button**. Do **not** pass a `?page=` `$href` for an in-app list.
 
 ---
 
@@ -296,7 +308,9 @@ PHP handler: `crcCheck()` → `form(['POST'], 'saveItem', $ok, $err)` → `ajaxR
 
 **MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, toast with **Notiflix** (`Notify.success` / `failure`). Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
 
-**MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
+**MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
+
+**MUST (paginate growing lists):** logs, users, items **MUST** have an AJAX pager. See this file §3. **MUST NOT** dump `->all()` or reload with `<a href="?page=">`.
 
 **MUST (block while in flight):** while save / toggle / reorder / paginate is running, cover the form or the **whole list** so the user cannot click or drag again. **Notiflix is DACore-admin only** (this shell). **Preferred on admin pages:** `Notiflix.Block`. **Alternative on admin:** equivalent overlay in **your** module. **Public / front-office pages** in the same project **MUST** use **module preloaders** — Notiflix is not loaded there. Skipping Notiflix does **not** skip preloaders. **MUST** remove the overlay on success **and** error. Overlay a stable parent; patch `TBODY` / inner wrap. UX **MUST** be excellent on desktop **and** mobile (visible spinner, intercepts touch, no hover-only). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
@@ -320,6 +334,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | Re-adding `dotgrid.css` / `core.css` / `dotapp.js` | The shell loads them |
 | `$.ajax` for admin saves / lists | `$dotapp().form` / `$dotapp().load` / `dotbridge` (jQuery UI OK) |
 | `location.reload()` after toggle/save on the same page | JSON `html` + patch DOM + Notiflix toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Logs/users/items with no pager, or `<a href="?page=">` | `paginate()` + AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, this file §3) |
 | One `<fo-rm>` per row button / D&D via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
 | List still clickable during reorder / toggle | Overlay the wrapper (Notiflix preferred **or** module preloaders); remove on success **and** error; desktop **and** mobile |
 | Dangerous admin action with no second 2FA prompt | Step-up `$dotapp().twoFactor` + verify in your module ([32](32-DACORE-RIGHTS.md) §6) |

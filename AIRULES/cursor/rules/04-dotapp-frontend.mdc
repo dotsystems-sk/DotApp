@@ -26,6 +26,7 @@ Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (
 - `location.reload()` after `fo-rm` / `load` while staying on the page — patch `reply.html` + toast ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - One `<fo-rm>` per row action — use `$dotapp().load()` + encrypted `data-*` ([08](AIRULES/08-FORMS-AND-SECURITY.md))
 - Leave a list/form clickable during `load()` — overlay with **module preloaders** until success **and** error (desktop **and** mobile) ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- Dump users/logs/items with `->all()`, skip the pager because “few rows now”, or change pages by reloading `<a href="?page=">` / `location.reload()` — interactive AJAX pager + `$dotapp().load()` ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - Delete with `alert()` / `window.confirm()` — graphical dialog first ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
 

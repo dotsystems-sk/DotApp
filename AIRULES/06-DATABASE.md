@@ -76,6 +76,12 @@ foreach ($page['data'] as $row) { /* ... */ }
 $totalPages = $page['last_page'];
 ```
 
+**MUST (accumulating lists):** if the screen lists records that **can grow over time** — users, logs, items, orders, messages, files, events — **MUST** use `paginate()` on the **first** ship (typical `per_page` 20, or a module setting with a fallback). **“There are only three users now” is not an exception.** **MUST NOT** `->all()` the whole table into a view.
+
+Skip a pager **only** when the set is **closed by product design** and will never grow (e.g. four fixed status cards). If you are unsure, paginate.
+
+The pager in the browser is **interactive AJAX** — [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Paginate accumulating lists”. **MUST NOT** reload the site with `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing.
+
 ### Write with callbacks (mandatory pattern)
 
 ```php
