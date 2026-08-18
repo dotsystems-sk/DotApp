@@ -30,6 +30,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `@if` `@foreach` `@extends` `@section` | DotApp directives / layouts |
 | `{{ include 'x' }}` in PHP views | `{{ layout:x }}` |
 | Assume auto-escape | Escape in PHP; `var:` is raw |
+| Prompt-echo labels / help (“this user can…”) | Product copy a vendor would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | Stock `.cursorrules` template examples | Trust AIRULES + Renderer.php |
 
 ## Database

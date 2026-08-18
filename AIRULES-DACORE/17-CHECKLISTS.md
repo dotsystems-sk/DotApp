@@ -31,6 +31,7 @@
 - [ ] Layouts via `{{ layout:... }}` / Renderer setLayout
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
+- [ ] User-visible strings are product copy — not prompt-echo / “this user can…” ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
 
 ## Database checklist
 
@@ -103,6 +104,7 @@
 - [ ] Operators keep at least one 2FA method; your module cannot turn it off
 - [ ] Dangerous admin actions re-prompt 2FA (`$dotapp().twoFactor`) and verify in **your** module — not `Auth::confirmTwoFactor` ([32](32-DACORE-RIGHTS.md) §6)
 - [ ] Deletes use a graphical confirm (`Notiflix.Confirm` or `$dotapp().modal`) — never `alert()` / `window.confirm()`
+- [ ] Menu names, rights name/description, tool `description`, and page copy are product language — not prompt-echo ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
 
 ## Pre-commit / before “done”
 
@@ -130,6 +132,7 @@
 - List/form still clickable during `load()`; overlay not removed on the error path; no preloaders because Notiflix was skipped
 - Custom OTP digit widget instead of `$dotapp().twoFactor`
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
+- Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
 - `execute()` called with a single callback
 - `->first()` used without a guard

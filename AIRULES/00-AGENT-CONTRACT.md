@@ -110,6 +110,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | List/form still clickable during `load()` | Cover the region with **your module preloaders** until done — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Custom OTP digit widget / jQuery 2FA plugin | **MUST** `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `alert()` / `window.confirm()` to delete | Graphical dialog first, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Prompt-echo UI copy (“this user can hide the icon…”) | Product copy a software company would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | `f-form` attribute | **Does not exist** — use `<fo-rm>` |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
@@ -150,6 +151,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST module preloaders until request ends (desktop+mobile)
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
+ * - UI copy: product language — never prompt-echo / “this user can…”
  * - Edit only this module + app/config.php. Never edit app/parts/.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
@@ -184,7 +186,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | **Anything (always)** | **18** error handling / return values | — |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |
 | Route / middleware | 03, 04 | EX-03 |
-| Template / CSS / JS page | 05, 09 | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
+| Template / CSS / JS page | 05 (incl. §8 product copy), 09 | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Custom `$dotapp` library / jQuery port | **09 §4** (esp. §4.C) | **[EX-15](examples/EX-15-dotapp-js-library.md)** |

@@ -28,7 +28,7 @@ DotApp::call("DACore:Menu@register", string $menuid, array $data): bool
 
 | Key | Type | Required | Default | Notes |
 |-----|------|----------|---------|-------|
-| `name` | string | **yes** | — | Visible label; empty ⇒ `register` returns `false` |
+| `name` | string | **yes** | — | Visible label; empty ⇒ `register` returns `false`. **MUST** be product copy ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) — never prompt-echo |
 | `parent` | string | no | `''` | Parent's **`menuid`** (not a numeric id). Max 50 chars. `''` = root |
 | `icon` | string | no | `''` | Remix Icon classes, e.g. `ri ri-time-line`. Plain classes get wrapped into `<i class="menu-icon ...">` automatically; raw `<i ...>` HTML is kept as-is |
 | `url` | string | no | `''` | Route path. Max 100 chars |

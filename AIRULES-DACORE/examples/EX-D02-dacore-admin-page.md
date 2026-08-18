@@ -163,6 +163,8 @@ If the action can **seriously damage** the system (delete an admin, wipe data, g
 
 Every **delete** **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin — never `alert()` / `window.confirm()`). Then `load()`. See [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
+Labels, help, rights descriptions: **MUST** be product copy a software company would ship — never prompt-echo. See [05](../05-VIEWS-TEMPLATES-ASSETS.md) §8.
+
 ## Controller side
 
 ```php

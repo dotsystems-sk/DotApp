@@ -31,6 +31,7 @@
 - [ ] Layouts via `{{ layout:... }}` / Renderer setLayout
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
+- [ ] User-visible strings are product copy — not prompt-echo / “this user can…” ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
 
 ## Database checklist
 
@@ -103,6 +104,7 @@
 - List/form still clickable during `load()`; overlay not removed on the error path; missing module preloaders
 - Custom OTP digit widget instead of `$dotapp().twoFactor`
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
+- Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - `execute()` called with a single callback
 - `->first()` used without a guard
 - A return value is used without checking its failure form

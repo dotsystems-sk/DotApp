@@ -255,7 +255,36 @@ There is no built-in cache-busting helper — append `?v=` manually if needed.
 
 ---
 
-## 8. Translations
+## 8. Product copy (**MUST**)
+
+Every string a person can **see or hear** in the product **MUST** read as if a software company shipped it — not as if an agent answered a developer prompt.
+
+Applies to: button labels, text under buttons, help, placeholders, empty states, toasts, confirm dialogs, page titles, menu names, permission **name** / **description**, translation JSON **values**, and any other UI copy. Code comments may stay technical. Strings meant only for a model (`howtouse` / tool routing) may be technical — if the same field is **shown in the UI**, it still follows this rule.
+
+**Test:** would a product team put this sentence in a released admin panel? If it sounds like a reply to “please let the user hide the AI icon”, **rewrite**.
+
+**MUST:**
+- Neutral, short, feature-named. Imperative or noun phrase: `Hide assistant`, `AI assistant`, `Access the in-app AI assistant`.
+- Describe **the control**, not the ticket. A hide toggle: `Hide the assistant icon.` A right: `Access the in-app AI assistant.`
+- Match the rest of the product (same language as surrounding screens). Translate professionally — do not add chatty extras in `sk_sk.json` that were not in the source.
+
+**MUST NOT:**
+- Echo the prompt or narrate the spec (`This was added so the user can hide the icon`).
+- Third-person about “this user” on a settings/rights row (`This user can use the AI assistant in the corner. They can hide the icon themselves.`).
+- Agent voice (`I added…`, `As requested…`, `You asked to…`).
+- Implementation gossip in the UI (`corner widget`, `localStorage`, `DSM`, `JSON in the module`).
+- Dump every UX detail into a **permission description**. Rights name the capability. Preferences (hide icon, position) belong on the settings screen as their own labelled controls.
+
+| Wrong (prompt-echo) | Right (shipped product) |
+|---------------------|-------------------------|
+| This user can use the AI assistant in the corner. They can hide the icon themselves. | **Right:** Access the in-app AI assistant. **Toggle:** Hide assistant icon. |
+| You can hide the AI icon yourself if you do not want it. | Hide assistant icon |
+| Setting so operators may disable the floating helper. | Show assistant |
+| Saved. The list should now update without reload as required. | Saved |
+
+---
+
+## 9. Translations
 
 ```php
 Translator::loadLocaleFile('Shop:sk_sk.json', 'sk_sk');
@@ -280,7 +309,7 @@ Files: `app/modules/{Module}/translations/{locale}.json`. Keys are the source te
 
 ---
 
-## 9. Blade / Twig trap table
+## 10. Blade / Twig trap table
 
 | Wrong | Right |
 |-------|-------|

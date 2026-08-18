@@ -29,6 +29,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - JS: `$dotapp` + `/assets/dotapp/dotapp.js` — NOT jQuery `$`
 - 2FA code boxes: `$dotapp().twoFactor` — NOT a custom OTP widget (`AIRULES/09` §3, EX-14)
 - Deletes: graphical confirm first — NOT `alert()` / `window.confirm()` (`AIRULES/09` §3)
+- UI copy: product language — NOT prompt-echo / “this user can…” (`AIRULES/05` §8)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list with **module preloaders** until the request ends (desktop **and** mobile). (`AIRULES/09` §3, EX-06)
 
 ## Never ignore return values (AIRULES/18)

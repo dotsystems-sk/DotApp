@@ -65,6 +65,8 @@ $rightId = DotApp::call(
 
 Recommended right set for a module: one `administrator` plus fine-grained `area.action` rights (`items.view`, `items.edit`, `orders.export`).
 
+**MUST (product copy):** `$name` and `$description` are what operators see on the rights screen. Write them as a software company would — capability only (`Shop administrator`, `Full access to the Shop module`). **MUST NOT** echo the ticket (`This user can use the AI assistant in the corner. They can hide the icon themselves.`). Hide-icon and similar preferences are **settings**, not extra sentences on the right. See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8.
+
 ### Assigning and removing
 
 ```php
@@ -319,3 +321,4 @@ Do **not** patch DACore’s own login or user screens to enforce this. Put the p
 | Checking rights only in the UI | Enforce on the route **and** in the handler |
 | `Auth::confirmTwoFactor` for a logged-in dangerous action | TOTP: `TOTP::generate` vs `attributes()['tfa_auth_secret']`; SMS/email: your one-time challenge ([32](32-DACORE-RIGHTS.md) §6) |
 | UI that turns off an operator’s last 2FA method | Forbidden — operators MUST keep at least one method |
+| Right description that echoes the ticket (“this user can hide the icon…”) | Product copy: name the capability only ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |

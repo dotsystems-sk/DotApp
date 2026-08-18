@@ -29,6 +29,7 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 - `{{ endif }}`, `{{ endforeach }}`
 - `{{ include 'x' }}` in PHP templates (JS-only)
 - Assuming auto-escaping on `var:`
+- Prompt-echo UI copy (“this user can hide the icon…”) — product language only (`AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8)
 
 ## Files
 

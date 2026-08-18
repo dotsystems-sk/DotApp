@@ -32,7 +32,7 @@ Register from `Installation.php`, never per request.
 | Key | Type | Required | Default | Notes |
 |-----|------|----------|---------|-------|
 | `creator` | string (≤100) | **yes** | — | Your module name; used for cleanup |
-| `description` | string | **yes** | — | Short routing hint shown in the tool list |
+| `description` | string | **yes** | — | Short routing hint shown in the tool list. **MUST** be product copy if operators see it ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8). `howtouse` may be technical for the model. |
 | `controller` | string | **yes** | — | DotApp callable, e.g. `Shop:AITools@itemsSearch!` |
 | `howtouse` | string or array | no | `'{}'` | Detailed prompt text / JSON schema for the model. Arrays are JSON-encoded |
 | `rights` | array or JSON string | no | `'[]'` | Permission strings, OR logic. **Empty = tool hidden from everyone** |
@@ -247,6 +247,7 @@ foreach (['Shop.Items.Search', 'Shop.Items.Update'] as $toolid) {
 | Returning a plain string / echoing | Return JSON with `result` and `message` |
 | Letting exceptions escape | `try/catch` and return `result: false` |
 | Putting permission names in `howtouse` | Rights belong in `rights` only |
+| Tool `description` that echoes the ticket | Product copy operators can see ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | `INSERT INTO dacore_ai_tools ...` | `DACore:AITools@register` |
 | Registering tools in `module.init.php` | `Installation.php` |
 | Trusting model-supplied ids blindly | Validate ownership and ranges |

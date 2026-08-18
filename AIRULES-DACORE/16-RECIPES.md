@@ -130,7 +130,7 @@ Either way, `install.php` calls `Installation::module('Shop')->install();`.
 }
 ```
 
-Template: `{{_ "welcome" }}` or `{{_ "Welcome" }}` matching keys.
+Template: `{{_ "welcome" }}` or `{{_ "Welcome" }}` matching keys. **MUST:** translation **values** are product copy ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) — never prompt-echo.
 
 ---
 
