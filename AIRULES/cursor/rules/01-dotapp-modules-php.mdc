@@ -33,6 +33,10 @@ class Home extends \Dotsystems\App\Parts\Controller {
 
 With `!` in the route: **no** `Renderer $renderer` type-hints.
 
+## Session
+
+`DSM::use('Shop')->set/get/delete`. **MUST NOT** `$_SESSION` / `session_start()`. See `AIRULES/20`.
+
 ## Config fallbacks (in initialize)
 
 ```php

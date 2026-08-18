@@ -66,10 +66,14 @@ project-root/
 
 ```
 app/modules/MyModule/
-  module.init.php           # Module class + routes + config defaults
-  module.listeners.php      # early hooks (before init)
+  module.init.php           # Module class + routes + config defaults (export: inert stub; live copy in init/)
+  module.listeners.php      # early hooks (before init) (export: inert stub; live copy in init/)
+  init/                     # copies of the two files above — DACore copies them back after dainstall.php succeeds
+    module.init.php
+    module.listeners.php
   Installation.php          # optional versioned migrations
-  install.php               # one-shot; renamed to installed_<hash>_install.php after run
+  dainstall.php             # DACore-bound modules: DACore installer runs this. NOT install.php
+  install.php               # bare framework only; renamed to installed_<hash>_install.php after run
   Api/Api.php               # optional API controller stub
   Controllers/*.php
   Middleware/*.php
@@ -127,7 +131,7 @@ Trailing `!` = skip DI. When using `!`, **do not** type-hint injectable services
 | `Renderer` | Templates |
 | `Translator` | i18n |
 | `Cache` / `Logger` | Cache / logs |
-| `DSM` | Session store |
+| `DSM` | Session store — **MUST** `DSM::use('Shop')`; never `$_SESSION` |
 
 Canonical singleton: `DotApp::dotApp()` / `DotApp::DotApp()`.
 

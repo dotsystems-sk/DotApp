@@ -218,7 +218,9 @@ class Installation extends Installer
 }
 ```
 
-## `install.php` (one-shot trigger)
+## `dainstall.php` (DACore installer trigger)
+
+**MUST:** **Your** modules that work **under** DACore use this name. The framework **never** runs it. **MUST NOT** also ship `install.php`. **MUST NOT** apply this to `app/modules/DACore/` itself. See [35](../35-DACORE-INSTALL.md) §4–§6 (`init/` copies; export blanks the root only when the user asks).
 
 ```php
 <?php
@@ -227,7 +229,7 @@ use Dotsystems\App\Modules\Shop\Installation;
 Installation::module('Shop')->install();
 ```
 
-The framework runs it once and renames it to `installed_<hash>_install.php`. Real idempotency comes from the `Installations@exist!` guards.
+Idempotency comes from the `Installations@exist!` guards, not from a framework rename.
 
 ## Re-running after adding a version
 

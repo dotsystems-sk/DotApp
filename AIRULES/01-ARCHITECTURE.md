@@ -127,7 +127,7 @@ Trailing `!` = skip DI. When using `!`, **do not** type-hint injectable services
 | `Renderer` | Templates |
 | `Translator` | i18n |
 | `Cache` / `Logger` | Cache / logs |
-| `DSM` | Session store |
+| `DSM` | Session store — **MUST** `DSM::use('Shop')`; never `$_SESSION` |
 
 Canonical singleton: `DotApp::dotApp()` / `DotApp::DotApp()`.
 

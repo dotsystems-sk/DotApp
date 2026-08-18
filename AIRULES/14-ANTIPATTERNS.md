@@ -98,6 +98,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Leave `YourSuperSecretKey` | Generate `bin2hex(random_bytes(32))` |
 | Rely on `@AUTOCONFIG` | Empty — set keys yourself |
 | Module settings with no fallback | Always `Config::module ?? Config::module(..., default)` |
+| `$_SESSION` / `session_start()` | `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md)) |
 | Edit core to add config API | Use `Config::module` / `Config::set` |
 
 ## DACore

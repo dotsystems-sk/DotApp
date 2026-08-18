@@ -299,7 +299,7 @@ if (!hash_equals((string) $expected, (string) $code)) {
 // then perform the dangerous action
 ```
 
-SMS/email step-up: issue a new 6-digit code, store it in **your module** session (`DSM::use('shop')`) with a short TTL, one-time; send it; compare with `hash_equals`. Never persist the code in a cookie or in HTML.
+SMS/email step-up: issue a new 6-digit code, store it in **your module** session (`DSM::use('Shop')`) with a short TTL, one-time; send it; compare with `hash_equals`. Never persist the code in a cookie or in HTML. **MUST NOT** `$_SESSION`.
 
 Overlay the confirm UI until the request ends ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3). Still `Auth::can()` / encrypted ids / `crcCheck()`.
 

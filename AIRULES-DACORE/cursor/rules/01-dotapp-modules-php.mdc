@@ -33,6 +33,10 @@ class Home extends \Dotsystems\App\Parts\Controller {
 
 With `!` in the route: **no** `Renderer $renderer` type-hints.
 
+## Session
+
+`DSM::use('Shop')->set/get/delete`. **MUST NOT** `$_SESSION` / `session_start()`. See `AIRULES/20`.
+
 ## Config fallbacks (in initialize)
 
 ```php
@@ -41,7 +45,9 @@ Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
 
 ## Schema
 
-Use versioned `Installation.php` + module-owned installations table. Do **not** call `DB::migrate()`. Do **not** require DACore unless asked.
+Use versioned `Installation.php`. Do **not** call `DB::migrate()`.
+
+**Your** modules that work **under** DACore: **`dainstall.php`** (not `install.php`), plus `init/` copies of `module.init.php` and `module.listeners.php`. See `AIRULES/35-DACORE-INSTALL.md` §4–§6. Blank the root init files only when the user asks to export. **Never** apply this to `app/modules/DACore/` itself.
 
 ## Generate via CLI
 

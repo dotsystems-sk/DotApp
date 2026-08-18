@@ -5,7 +5,9 @@
 | Mechanism | Role |
 |-----------|------|
 | `Installation.php` extending `Installer` | Versioned module migrations — **preferred** |
-| `install.php` → renamed `installed_<hash>_install.php` | One-shot bootstrap, runs once per module |
+| `dainstall.php` | **Your** modules that work **under** DACore — DACore’s installer runs it. Framework does **not**. **Not** for `app/modules/DACore/` itself. See [35](35-DACORE-INSTALL.md) §4 |
+| `init/module.init.php` + `init/module.listeners.php` | Copies DACore activates after a successful `dainstall.php` |
+| `install.php` → renamed `installed_<hash>_install.php` | Bare framework only — **MUST NOT** on DACore-bound modules |
 | `SchemaBuilder` via `createTable` / `alterTable` | Programmatic DDL |
 | `--prepare-database` / `initializedb.php` | Core users/auth SQL bootstrap |
 | `.sql` files | Documentation / DBA — **not** auto-executed |
@@ -132,13 +134,15 @@ Ordering: `install()` sorts keys ascending and stops when `version_compare($ver,
 
 ### One-shot `install.php`
 
+The framework auto-runs `install.php` in a **bare** module (then renames it). **Your** modules that work **under** DACore **MUST NOT use `install.php`.** Use **`dainstall.php`** and the `init/` copies — DACore’s installer runs that file after a logged-in install. **Do not apply this to `app/modules/DACore/` itself.** See [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) §4–§6.
+
 ```php
 <?php
 use Dotsystems\App\Modules\Shop\Installation;
 Installation::module('Shop')->install();
 ```
 
-The framework runs it once (event `dotapp.module.Shop.install`) then renames it to `installed_<md5>_install.php`. **Real idempotency still comes from your installations table** — the rename only prevents repeat execution.
+On a module **without** DACore, the framework runs `install.php` once (event `dotapp.module.Shop.install`) then renames it to `installed_<md5>_install.php`. **Real idempotency still comes from your installations table** — the rename only prevents repeat execution.
 
 ---
 

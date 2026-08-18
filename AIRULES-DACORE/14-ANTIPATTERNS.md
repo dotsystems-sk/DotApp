@@ -98,6 +98,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Leave `YourSuperSecretKey` | Generate `bin2hex(random_bytes(32))` |
 | Rely on `@AUTOCONFIG` | Empty — set keys yourself |
 | Module settings with no fallback | Always `Config::module ?? Config::module(..., default)` |
+| `$_SESSION` / `session_start()` | `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md)) |
 | Edit core to add config API | Use `Config::module` / `Config::set` |
 
 ## DACore
@@ -118,6 +119,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |
+| `install.php` on **your** module that works under DACore | **`dainstall.php`** + `init/` copies ([35](35-DACORE-INSTALL.md) §4–§6) |
+| Applying `dainstall.php` / `init/` / inert stubs to `app/modules/DACore/` | Forbidden — that is the host installer, not a plug-in module |
+| Blank root `module.init.php` without an export request | Keep live root files while developing; inert stubs only when the user asks to pack |
 | Hardcode `/dacore` | `Config::module("DACore","prefixUrl")` |
 | AI tool `rights => []` | Explicit list — empty hides it from everyone |
 | AI tool `rights => ['Mod.*']` | No wildcards for AI tools |

@@ -79,6 +79,7 @@
 
 - [ ] New installs: real `c_enc_key`, `rm_key`, `rmrcm_key`, unique `app.name`
 - [ ] Module settings have fallbacks if unset
+- [ ] App session state uses **`DSM::use('Shop')`** — not `$_SESSION` / `session_start()` ([20](20-CACHE-LOGGER-SESSION.md))
 - [ ] Secrets not committed carelessly
 
 ## Pre-commit / before “done”
@@ -109,6 +110,7 @@
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
+- `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
 - `execute()` called with a single callback
 - `->first()` used without a guard
 - A return value is used without checking its failure form

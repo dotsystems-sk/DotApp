@@ -213,7 +213,7 @@ There is no HMAC facade; use PHP `hash_hmac()` if you need signatures.
 
 ## 9. Sessions
 
-See [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md). Use `DSM::use('YourModule')`, never raw `$_SESSION`. Auth state lives in the reserved key `_request.auth`.
+See [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md). **MUST** `DSM::use('Shop')`. **MUST NOT** raw `$_SESSION` or `session_start()`. Auth state lives in the reserved key `_request.auth`.
 
 ---
 
@@ -227,3 +227,4 @@ See [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md). Use `DSM::use('You
 6. Understand that remember-me bypasses 2FA before enabling `rm_autologin`.
 7. Implement password reset and login throttling yourself (`Limiter` + your own table).
 8. 2FA code boxes: `$dotapp().twoFactor` — do not invent an OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
+9. App session state: **`DSM::use('Shop')`** — never `$_SESSION` / `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).

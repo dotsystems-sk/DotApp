@@ -60,6 +60,8 @@ Config::session("httponly", true);
 Config::session("samesite", "Strict");
 ```
 
+Cookie flags configure the session **driver**. App code still uses **`DSM::use('Shop')`** — never `$_SESSION` ([20](20-CACHE-LOGGER-SESSION.md)).
+
 `app.name_hash` is auto-derived — do not invent it.
 
 ---

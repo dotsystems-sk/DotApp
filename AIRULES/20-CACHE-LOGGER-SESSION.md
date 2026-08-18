@@ -134,7 +134,7 @@ DSM::use('shop')->save();
 | `session_id($new)` | driver result — **throws** if the ID already exists |
 | `status()` | **`$this`** (not the PHP status int — misleading name) |
 
-Do **not** use raw `$_SESSION` for app state.
+**MUST:** application session state goes through **`DSM::use('Shop')`** (module namespace). **MUST NOT** `$_SESSION`, `$_SESSION['…']`, or `session_start()` in module code.
 
 Reserved names used by the framework: `_enc_key`, `_bridge.*`, `_router.*`, `_request.auth`, `_formCSRF`, `_default_limiter`. Pick your own namespace, e.g. `DSM::use('Shop')` or keys prefixed `shop.`.
 
@@ -142,7 +142,7 @@ Reserved names used by the framework: `_enc_key`, `_bridge.*`, `_router.*`, `_re
 
 | | default | file | file2 | db | redis |
 |---|---------|------|-------|----|-------|
-| Storage | `$_SESSION[$sessname]` | one file per session | file per `{id}_{sessname}` | DB row | Redis key |
+| Storage | `$_SESSION[$sessname]` *(driver internals — not app code)* | one file per session | file per `{id}_{sessname}` | DB row | Redis key |
 | Needs | — | writable `session.file_driver_dir` | `file_driver_dir2` | table `session.database_table` | Redis ext + `session.redis_*` |
 | GC | PHP | cron include | cron | SQL delete | TTL scan |
 | Notes | simplest | all names in one file | more files, smaller writes | multi-server | fastest; uses `KEYS` pattern |

@@ -110,8 +110,8 @@ $dotApp->bridge->fn('ping', function ($request) {
 ## R7 — Ship a table via Installation.php
 
 With DACore installed, use its tracking: [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) / [examples/EX-D04](examples/EX-D04-dacore-installer.md).  
-For a module that must also run on a bare framework, use the module-owned pattern in [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md).  
-Either way, `install.php` calls `Installation::module('Shop')->install();`.
+Trigger file is **`dainstall.php`** (not `install.php`) on **your** module under DACore. Keep `init/` copies of `module.init.php` and `module.listeners.php`. **Not** for `app/modules/DACore/` itself.  
+For a module that must also run on a bare framework, use the module-owned pattern in [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) with `install.php`.
 
 ---
 

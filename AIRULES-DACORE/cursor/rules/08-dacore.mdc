@@ -16,6 +16,8 @@ DACore is an admin-UI **module**, not framework core — but its files are **as 
 - Build your own admin HTML shell
 - Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
 - Register menu / rights / AI tools on every request (do it in **your** `Installation.php`)
+- Use `$_SESSION` / `session_start()` — **MUST** `DSM::use('Shop')` (`AIRULES/20`)
+- Use `install.php` on **your** module that works under DACore — use **`dainstall.php`** + `init/` copies (`AIRULES/35-DACORE-INSTALL.md` §4–§6). Do not blank root init files unless the user asked to export. **Never** apply `dainstall.php` / `init/` / inert stubs to `app/modules/DACore/` itself.
 
 ## Call map
 

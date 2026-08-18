@@ -27,7 +27,7 @@ Never copy both into the same project — the agent would have two conflicting s
 | [32-DACORE-RIGHTS.md](32-DACORE-RIGHTS.md) | Permissions + route guards |
 | [33-DACORE-PAGES-AND-UI.md](33-DACORE-PAGES-AND-UI.md) | `Page@withMenu`, dotgrid, UI contract |
 | [34-DACORE-AI-TOOLS.md](34-DACORE-AI-TOOLS.md) | AI tools for the DACore chat |
-| [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | Installer with DACore tracking |
+| [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | `dainstall.php`, `init/`, export, DACore tracking |
 | [36-DACORE-KNOWN-ISSUES.md](36-DACORE-KNOWN-ISSUES.md) | DACore bugs and traps |
 
 Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D04](examples/EX-D04-dacore-installer.md).
@@ -37,7 +37,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 1. **Never edit, patch, or add files in `app/modules/DACore/`.** DACore is updated as a package — every local change is **wiped on the next update**. Use only public `DotApp::call("DACore:…")` APIs. Put all new work in **your own** module (`app/modules/<YourModule>/`).
 2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, or `users_rights*`.
 3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
-4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request.
+4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. **Your** modules that work **under** DACore use **`dainstall.php`** (the framework never runs it) and keep copies of `module.init.php` / `module.listeners.php` in **`init/`**. Blank the root files only when the user asks to export — DACore unpacks, runs `dainstall.php`, then copies `init/` into the root on success. **This does not apply to the DACore module itself** (`app/modules/DACore/`) — never rename, blank, or wrap DACore that way. See [35](35-DACORE-INSTALL.md) §4–§6.
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell.
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
 7. **MUST search DACore first** before a new library or widget (grep `app/modules/DACore/` read-only + your module). The base already has many subpages and libraries — reuse them. **MUST** add your own CSS/JS in the module only when that search finds no equivalent (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI.
@@ -54,6 +54,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** cover the form/list until the request ends. **DACore admin:** Notiflix (preferred) **or** your module preloaders. **Public website:** you **MUST** build preloaders yourself (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin) — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile. User-visible strings **MUST** read as shipped product copy — never prompt-echo.
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items`, `dotapp_*`, or `dacore_*` for your module data.
 7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. No pager, or a pager that reloads the admin shell, is incomplete. “Few rows now” is not a skip. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3.
+8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
 
 ## Quick install
 
@@ -100,7 +101,7 @@ Theory lives in `00`–`22`. **Ready copy-paste patterns** are in [examples/](ex
 | [17-CHECKLISTS.md](17-CHECKLISTS.md) | Pre-flight / pre-commit |
 | **[18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md)** | **Return values + error handling (mandatory)** |
 | [19-VALIDATION-AND-INPUT.md](19-VALIDATION-AND-INPUT.md) | Validator, Input, Request, Response, HttpHelper, Limiter |
-| [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, DSM, Config |
+| [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, **DSM** (never `$_SESSION`) |
 | [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md) | Email/IMAP/POP3, SMS, QR |
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
 | [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |

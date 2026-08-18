@@ -41,3 +41,5 @@ Modules must still define fallbacks in `module.init.php` if unset.
 ## Session hardening
 
 `Config::session("secure", true)` on HTTPS; keep httponly + SameSite Strict.
+
+App session **values** still go through `DSM::use('Shop')` — never `$_SESSION` / `session_start()` (`AIRULES/20`).

@@ -14,7 +14,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-07-bridge.md](EX-07-bridge.md) | Button → PHP via `dotbridge` |
 | [EX-08-config-secrets.md](EX-08-config-secrets.md) | New app keys, module setting fallbacks |
 | [EX-09-validation-and-errors.md](EX-09-validation-and-errors.md) | Validator / Input groups / JSON error envelopes |
-| [EX-10-cache-logger-session.md](EX-10-cache-logger-session.md) | Cache, Logger, DSM sessions |
+| [EX-10-cache-logger-session.md](EX-10-cache-logger-session.md) | Cache, Logger, **DSM** sessions (never `$_SESSION`) |
 | [EX-11-email-sms-qr.md](EX-11-email-sms-qr.md) | Email, SMS provider, QR codes |
 | [EX-12-ai-search-mcp.md](EX-12-ai-search-mcp.md) | AI calls, FastSearch, MCP tools |
 | [EX-13-schema-migrations.md](EX-13-schema-migrations.md) | SchemaBuilder, DDL, introspection |
@@ -27,7 +27,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-D01-dacore-module-skeleton.md](EX-D01-dacore-module-skeleton.md) | New admin module: routes, rights middleware, controller, **AJAX list pager** |
 | [EX-D02-dacore-admin-page.md](EX-D02-dacore-admin-page.md) | Admin page: table, **AJAX pager**, dotgrid form, secure save, page JS |
 | [EX-D03-dacore-ai-tool.md](EX-D03-dacore-ai-tool.md) | AI tool: register, write + `ui_events`, `DACore.AI.UIEvent` page refresh |
-| [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | Installer: tables → rights → menu → AI tools → record |
+| [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | Installer: `dainstall.php` + `init/`, tables → rights → menu → AI tools → record |
 
 Theory lives in `0x`–`2x` (framework) and `3x` (DACore). These files are **executable patterns**.
 

@@ -14,7 +14,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-07-bridge.md](EX-07-bridge.md) | Button → PHP via `dotbridge` |
 | [EX-08-config-secrets.md](EX-08-config-secrets.md) | New app keys, module setting fallbacks |
 | [EX-09-validation-and-errors.md](EX-09-validation-and-errors.md) | Validator / Input groups / JSON error envelopes |
-| [EX-10-cache-logger-session.md](EX-10-cache-logger-session.md) | Cache, Logger, DSM sessions |
+| [EX-10-cache-logger-session.md](EX-10-cache-logger-session.md) | Cache, Logger, **DSM** sessions (never `$_SESSION`) |
 | [EX-11-email-sms-qr.md](EX-11-email-sms-qr.md) | Email, SMS provider, QR codes |
 | [EX-12-ai-search-mcp.md](EX-12-ai-search-mcp.md) | AI calls, FastSearch, MCP tools |
 | [EX-13-schema-migrations.md](EX-13-schema-migrations.md) | SchemaBuilder, DDL, introspection |

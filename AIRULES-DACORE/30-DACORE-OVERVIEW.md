@@ -19,9 +19,10 @@ Treat `app/modules/DACore/` like `app/parts/`. DACore is shipped and updated as 
 | **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations` directly** | Use the registration APIs — they handle upsert, column compatibility and cache invalidation |
 | **Never write into `{prefix}users_rights*` directly** | Use `DACore:Rights@*` |
 | **Never duplicate the admin HTML shell** | Use `DACore:Page@withMenu!` |
-| **Never use `$_SESSION`** | Use `DSM` ([20](20-CACHE-LOGGER-SESSION.md)) |
+| **Never use `$_SESSION` / `session_start()`** | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
 | **Never rely on `#DACore:AuthTest@check!` for permission checks** | It ignores the rights you pass — see [36](36-DACORE-KNOWN-ISSUES.md); create your own `Middleware/Rights.php` |
 | Register menu/rights/tools **from `Installation.php`**, not on every request | Otherwise you write to the DB on each page load |
+| DACore-bound module (**your** module under DACore, **not** `app/modules/DACore/`): **`dainstall.php`** + `init/` copies of init/listeners | Framework `install.php` would auto-run; DACore’s installer must own install + activation ([35](35-DACORE-INSTALL.md) §4–§6). **MUST NOT** change DACore itself this way. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
 | **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — never `Auth::confirmTwoFactor` while already logged in |
 

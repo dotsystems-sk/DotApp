@@ -92,7 +92,7 @@ $sess->delete('cart');
 $sess->save();
 ```
 
-Never use raw `$_SESSION`. Avoid the reserved names `_enc_key`, `_bridge.*`, `_router.*`, `_request.auth`, `_formCSRF`, `_default_limiter`.
+Never use raw `$_SESSION` / `session_start()`. **MUST** `DSM::use('Shop')`. Avoid the reserved names `_enc_key`, `_bridge.*`, `_router.*`, `_request.auth`, `_formCSRF`, `_default_limiter`.
 
 `status()` returns `$this`, not the PHP session status — do not test it. `session_id($new)` **throws** if that ID already exists.
 

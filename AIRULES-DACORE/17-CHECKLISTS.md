@@ -79,6 +79,7 @@
 
 - [ ] New installs: real `c_enc_key`, `rm_key`, `rmrcm_key`, unique `app.name`
 - [ ] Module settings have fallbacks if unset
+- [ ] App session state uses **`DSM::use('Shop')`** — not `$_SESSION` / `session_start()` ([20](20-CACHE-LOGGER-SESSION.md))
 - [ ] Secrets not committed carelessly
 
 ## DACore checklist (when the task touches the admin)
@@ -99,6 +100,9 @@
 - [ ] Port of jQuery libraries: **searched DACore first**; user was **asked**; plugin was **rewritten** as `$dotapp().fn` (not a `$.fn` wrap). Playbook: 09 §4.C / EX-15. DACore widgets reused when they already exist.
 - [ ] Simple forms **prefer** `<dot-col any="12" md="6" ldesktop="6">` and `ri ri-*` icons (custom layout OK when porting)
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
+- [ ] Trigger file is **`dainstall.php`** (not `install.php`) on **your** module under DACore; `init/` has current copies of `module.init.php` and `module.listeners.php` ([35](35-DACORE-INSTALL.md) §4–§6)
+- [ ] Root `module.init.php` / `module.listeners.php` were **not** blanked unless the user asked to export
+- [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs** — those rules are for plug-in modules only
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
 - [ ] AI tool `rights` non-empty and wildcard-free; `controller` ends with `!`
 - [ ] AI handler signature `($data, $aiobj)` returning JSON with `result` + `message`
@@ -139,9 +143,13 @@
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
+- `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
 - Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
 - Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
 - New admin library/widget without grepping DACore (read-only) and the current module first
+- DACore-bound **your-module** still has `install.php`, or no `dainstall.php` / `init/` copies
+- `dainstall.php` / `init/` / inert stubs applied to `app/modules/DACore/` itself
+- Root `module.init.php` blanked without the user asking to export
 - `execute()` called with a single callback
 - `->first()` used without a guard
 - A return value is used without checking its failure form

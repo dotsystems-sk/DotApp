@@ -122,7 +122,7 @@ class ShopFacade extends \Dotsystems\App\Parts\Facade
 | `call($method, ...$args)` | mixed |
 | `loadLibrary($file)` | void — `require_once Libraries/{file}.php` |
 | `setData($k,$v)` / `getData($k)` / `isSetData($k)` | `$this` / mixed\|`false` / `bool` |
-| `installation()` | void — runs `install.php` once |
+| `installation()` | void — runs `install.php` once (bare modules). DACore-bound modules use `dainstall.php` instead ([35](35-DACORE-INSTALL.md) §4) |
 
 ### Module-local persisted settings
 

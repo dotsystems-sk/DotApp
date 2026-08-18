@@ -117,6 +117,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Prompt-echo UI copy (“this user can hide the icon…”) | Product copy a software company would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | New admin library without searching DACore | **MUST** grep `app/modules/DACore/` (read-only) + your module first ([33](33-DACORE-PAGES-AND-UI.md)) |
 | `f-form` attribute | **Does not exist** — use `<fo-rm>` |
+| `$_SESSION` / `session_start()` | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
@@ -139,6 +140,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 6. On new apps, generate real `app.c_enc_key` / `rm_key` / `rmrcm_key` (see [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md)).
 7. Module settings must have **fallbacks** if the user did not fill `app/config.php`.
 8. **MUST paginate accumulating lists** (users, logs, items, …) with an **interactive** pager (`$dotapp().load()`). Shipping the list with no pager, or changing pages by reloading the document, is incomplete. [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+9. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).
 
 ---
 
@@ -159,6 +161,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
  * - UI copy: product language — never prompt-echo / “this user can…”
+ * - Session: DSM::use('Shop') — NEVER $_SESSION / session_start()
+ * - Your module under DACore: dainstall.php (NOT install.php); init/ copies; blank root only on user-asked export. NEVER apply this to app/modules/DACore/
  * - DACore: search DACore (read-only) + this module before writing a new library/widget — do not reinvent
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
  * - DACore AI writes: ui_events (name = tool id) + DACore.AI.UIEvent on the matching page only
@@ -187,6 +191,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 |------|--------|
 | **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `{prefix}users_rights*` | Use the registration APIs |
 | Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
+| **`dainstall.php` + `init/`** | **Your** modules that work **under** DACore (`app/modules/Shop/`, …). **MUST** `dainstall.php` (not `install.php`). Keep copies of `module.init.php` / `module.listeners.php` in `init/`. Blank the root files only when the user asks to **export**. DACore unpacks, runs `dainstall.php`, then copies `init/` into the root on success. **MUST NOT** do any of this to `app/modules/DACore/` itself. [35](35-DACORE-INSTALL.md) §4–§6. |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |
 | Missing widgets / ported UI | **MUST search DACore first** (read-only). Then **MUST** add CSS/JS in **your** module (`$css`/`$js` on `withMenu`) only if nothing fits. Prefix classes `{lowercase_modulename}_*`. Match DACore colors. Never patch DACore. |
 | Admin JS / ports | DACore runs on **`$dotapp`**. jQuery may coexist for **UI only**. **All requests** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library — **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget, use it. |
@@ -253,5 +258,5 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Admin page, dotgrid, tables | 33 (incl. §3 AJAX pager; **search DACore first**) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | New admin library / widget / `$dotapp().fn` | **33** “Search DACore first”, **09 §4** | [EX-15](examples/EX-15-dotapp-js-library.md) |
 | AI tools | 34 (incl. §5 `ui_events`) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
-| Installer wiring | 35 | [EX-D04](examples/EX-D04-dacore-installer.md) |
+| Installer wiring | **35** (`dainstall.php`, `init/`, export) | [EX-D04](examples/EX-D04-dacore-installer.md) |
 | DACore quirks | 36 | — |
