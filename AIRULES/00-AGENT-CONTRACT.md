@@ -51,6 +51,7 @@ If you believe a core bug exists: **stop and ask the user**. Do not patch core.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
 6. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the page is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
+8. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
 
 ### Dotapper-first rule
 
@@ -65,6 +66,28 @@ php .\dotapper.php --module=MyModule --create-model=Item
 ```
 
 `--module=` **must appear before** the create-* flag on the same command line.
+
+### 2b. Cursor credits / subagents (**MUST**)
+
+Users often pick a **cheap** chat model on purpose (Grok 4.6 and similar). AIRULES is written so that model can ship a correct app. Spawning a **premium** subagent (Opus, GPT-5.x, “thinking” / “high” / “xhigh”, cloud agent, best-of-N) **burns a different credit pool**. Doing that unasked is a **bug**.
+
+**When planning programming, ASK in chat** (do not guess, do not skip):
+
+> Stay on this model only, or also use more expensive models for subagents?
+
+If they do not say **yes**: **no expensive models**. Keep working as the parent.
+
+| Work | Model |
+|------|--------|
+| Write / edit PHP, views, JS, CSS, SQL — programming | **Parent only** (`inherit`). Do **not** “upgrade” to a bigger coder. |
+| Hunt a pile of files / broad explore / grep-like | **Composer 2.5** (fast) is OK. |
+| A capability the parent **cannot** do (e.g. **generate an image**) | That **specific** tool/model. **ASK** first if it costs extra. Do **not** spawn a premium **coder** for it. |
+
+**MUST:**
+- Code-writing / planning subagents: **`inherit`** the parent. Omit premium `model` slugs.
+- **MUST NOT** use Composer 2.5 as the programmer that implements the module (too weak for DotApp). File-hunt only.
+- **MUST NOT** launch parallel expensive runners, best-of-N, or cloud agents unless the user said yes **in this plan**.
+- A silent upgrade “to be safe” is forbidden.
 
 ---
 
@@ -109,6 +132,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Plain IDs in HTML/JSON (`value="7"`, `data-id="7"`) | **MUST** `{{ enc(Shop.item.id): $id }}` — unique `$key2` per field |
 | `<fo-rm>` around every row button / D&D | `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)) |
 | List/form still clickable during `load()` | Cover the region with **your module preloaders** until done — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Desktop-only public header / hover menu / no mobile drawer | Overlay drawer L/R; lock page scroll while open; drawer itself scrolls ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Logs / users / items dumped with `->all()`, no pager, or “few rows now so skip” | **MUST** `paginate()` + interactive AJAX on **first ship** ([06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Lookup list with no search / JS-filter of `->all()` | **ASK** in the plan; articles/catalog **MUST** AJAX search unless declined ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `<a href="?page=2">` for an in-app list | Forbidden — that reloads the site |
@@ -119,6 +143,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | `$_SESSION` / `session_start()` | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
 | JS overlay / modal as the only save or 2FA gate | **MUST** re-check in PHP; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | File/ZIP in `FormData` + `load()` / `<fo-rm>` | **MUST** `$dotapp().uploadFile` + `$request->upload()`; PHP rejects `.php` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
@@ -160,6 +185,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-* (not fo-rm)
  * - FE ids: {{ enc(Shop.item.id): $id }} unique $key2 per field; Auth::can still required
  * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST module preloaders until request ends (desktop+mobile)
+ * - Public site nav: mobile drawer slides L/R over the page; lock document scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own mobile section
  * - Lists: accumulating records (users/logs/items) MUST paginate() on first ship + AJAX pager — NOT all() dump, NOT ?page= / location.reload()
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
@@ -168,6 +194,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Session: DSM::use('Shop') — NEVER $_SESSION / session_start()
  * - Save checks: PHP MUST re-verify — FE modal/overlay is UX only
  * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST reject .php (ext+MIME+headers)
+ * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
  * - Edit only this module + app/config.php. Never edit app/parts/.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
@@ -200,9 +227,11 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | Task | Theory | Example (open one) |
 |------|--------|--------------------|
 | **Anything (always)** | **18** error handling / return values | — |
+| Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |
 | Route / middleware | 03, 04 | EX-03 |
-| Template / CSS / JS page | 05 (incl. §8 product copy), 09 | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
+| Template / CSS / JS page | 05 (incl. §8 product copy), **09 §3** public mobile nav | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
+| Public website header / nav | **09 §3** “Public website mobile navigation” — drawer overlay, lock page scroll | [EX-05](examples/EX-05-renderer-page.md) |
 | Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Paginated list (users, logs, items) | **06**, **09 §3** “Paginate accumulating lists” — **MUST** ship, **MUST** be AJAX | [EX-04](examples/EX-04-database-crud.md), **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | List search (articles, catalog, …) | **09 §3** “Interactive AJAX search” — **ASK** in the plan; lookup lists **MUST** unless declined | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |

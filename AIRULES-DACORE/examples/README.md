@@ -8,7 +8,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-02-secure-form-edit-api.md](EX-02-secure-form-edit-api.md) | CRUD/edit form posting to an API route |
 | [EX-03-module-scaffold.md](EX-03-module-scaffold.md) | New module, routes, config fallbacks |
 | [EX-04-database-crud.md](EX-04-database-crud.md) | Select/insert/update/delete, transactions, pagination, **return shapes** |
-| [EX-05-renderer-page.md](EX-05-renderer-page.md) | Page render: view + layout + assets |
+| [EX-05-renderer-page.md](EX-05-renderer-page.md) | Page render: view + layout + assets; **public mobile overlay drawer** |
 | [EX-06-dotapp-js-boot.md](EX-06-dotapp-js-boot.md) | Page JS boot, **block while in flight** (Notiflix or module preloaders), **live DOM** (no reload), **AJAX pager**, **delete confirm** |
 | [EX-15-dotapp-js-library.md](EX-15-dotapp-js-library.md) | New `$dotapp().fn(...)` library **or** jQuery → `$dotapp` port — **search DACore first** |
 | [EX-07-bridge.md](EX-07-bridge.md) | Button → PHP via `dotbridge` |

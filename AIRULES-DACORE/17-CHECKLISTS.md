@@ -7,6 +7,7 @@
 - [ ] Read task-specific AIRULES doc (views/DB/forms/JS)
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
 - [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, other modules
+- [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
 
 ## Scaffold checklist
 
@@ -78,6 +79,7 @@
 - [ ] Lookup lists (articles, products, catalog, …) have **interactive AJAX search** (debounce, 3+ chars, SQL + `paginate()`) unless the user declined; other lists were **asked** in the plan — not JS-filter of `->all()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] List plan **asked** filters / sort / bulk / page size / DSM remember / CSV-if-it-fits; empty state + sticky header + match highlight shipped when required ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
+- [ ] **Public website:** mobile nav is a L/R overlay drawer; page behind does not scroll while open; the drawer list scrolls; contacts + compact search live in the drawer unless large search is its own mobile section ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 
 ## Config / secrets checklist
 

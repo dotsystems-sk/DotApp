@@ -51,3 +51,5 @@ Other valid paths: `setLayout` + `renderLayout()` (fragment; view ignored); or g
 ## Assets
 
 `/assets/modules/{Module}/...` and `/assets/dotapp/dotapp.js`.
+
+**Public website chrome:** overlay mobile drawer (L/R), lock page scroll while open, scrollable nav list, contacts + compact search in the drawer unless large search is its own section. `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3.

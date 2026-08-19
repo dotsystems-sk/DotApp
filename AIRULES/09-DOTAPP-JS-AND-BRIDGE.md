@@ -224,6 +224,54 @@ $dotapp().load(url, "POST", payload, function (raw) {
 
 Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
 
+### Public website mobile navigation (**MUST**)
+
+This is **not** the DACore admin shell. It is for a **public / front-office site** you build in the current module.
+
+A layout that looks finished on a wide monitor and fails on a phone is a **bug**. Desktop-only chrome (inline links, hover dropdowns, search in a wide bar) **MUST** have a matching mobile UX in the **first** version.
+
+**Drawer (MUST):**
+- A control (hamburger) in a **sticky/fixed mobile header** (logo + button) opens a panel that **slides in from the left or the right**.
+- The panel **overlays** the page (scrim). It does **not** squeeze the site into a leftover column and does **not** push the document down as a long stack of links.
+- While the drawer is open, the **page behind MUST NOT scroll** — including iOS. `overflow: hidden` on `html`/`body` **and** `position: fixed; width: 100%` on `body` with saved `scrollY` (restore on close). Touch-move on the scrim must not scroll the site.
+- The drawer itself **MUST scroll** when items do not fit (`overflow-y: auto` on the **nav list**; close control + search stay reachable above the list).
+- Close: icon, tap on the scrim, Escape, and after choosing a link.
+- Touch targets large enough to tap. Nested items: tap to expand — **MUST NOT** hover-only submenus on a phone.
+
+**Search and contacts (MUST unless the user declined):**
+- Phone, email, address, and a **compact** search field belong **inside the mobile drawer** — not only in a desktop header that vanishes on a small screen. Typical order: close, compact search, contacts, then the **scrollable** link list.
+- If the user asked for a **large / faceted / full-page search**, do **not** cram it into the drawer. Ship a **dedicated mobile search section** (own screen or full-width panel). A compact shortcut in the drawer is still fine.
+
+```css
+/* classes: {lowercase_modulename}_* */
+html.shop_navopen { overflow: hidden; }
+body.shop_navopen { overflow: hidden; position: fixed; width: 100%; }
+.shop_scrim { position: fixed; inset: 0; z-index: 40; }
+.shop_drawer {
+  position: fixed; inset: 0 auto 0 0; /* or inset: 0 0 0 auto for the right */
+  width: min(20rem, 86vw); z-index: 41;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.shop_drawer-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+```
+
+```javascript
+function shopNav(open) {
+    if (open) {
+        var y = window.scrollY;
+        document.body.style.top = "-" + y + "px";
+        $dotapp("html,body").addClass("shop_navopen");
+    } else {
+        var y = Math.abs(parseInt(document.body.style.top || "0", 10));
+        $dotapp("html,body").removeClass("shop_navopen");
+        document.body.style.top = "";
+        window.scrollTo(0, y);
+    }
+}
+```
+
+**MUST NOT:** hide the desktop nav on mobile with no drawer; leave the document scrollable under an open menu; a menu taller than the viewport with no inner scroll; drop contacts/search on mobile because “no room in the header”.
+
 ### Paginate accumulating lists (**MUST** — ship it, interactive, no reload)
 
 Two failures, **both bugs**:

@@ -58,6 +58,8 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
 9. **MUST** re-check every persist in **PHP**. Frontend modal/overlay is UX only — skipping it **MUST** still fail on the server. Canonical: [08](08-FORMS-AND-SECURITY.md).
 10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
+11. **Public website (MUST):** mobile nav is an overlay drawer from the left or right; the page behind **MUST NOT** scroll while it is open (including iOS); the drawer list **MUST** scroll; contacts + compact search live in the drawer unless large search is its own mobile section. **Not** the DACore admin shell. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+12. **Cursor credits (MUST):** when **planning** programming, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. Composer 2.5 is **only** for hunting a pile of files — **not** the programmer. Canonical: [00](00-AGENT-CONTRACT.md) §2b.
 
 ## Quick install
 
@@ -127,6 +129,6 @@ The framework uses **four different failure styles**. That is why [18-ERROR-HAND
 ## Version
 
 - **Part:** 1 (Framework) + 2 (DACore)
-- **Target models:** GROK 4.6 and weaker
+- **Target models:** GROK 4.6 and weaker. Subagents **MUST inherit** that chat model unless the user said yes in the plan ([00](00-AGENT-CONTRACT.md) §2b).
 - **IDE:** Cursor (primary), portable to other agents via markdown
 - **Verified against:** DotApp clean install source (`app/parts/*`, `dotapper.php`) and the DACore module

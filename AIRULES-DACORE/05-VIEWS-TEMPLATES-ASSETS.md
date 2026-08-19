@@ -306,6 +306,8 @@ Store under `app/modules/{Module}/assets/...`; serve via:
 
 **Framework JS must come from `/assets/dotapp/dotapp.js`** (router-generated with per-session keys). Never link the raw file under `app/parts/js/` on a page.
 
+**Public website chrome (MUST):** overlay mobile drawer (left or right), lock page scroll while open, scrollable nav list, contacts + compact search in the drawer unless large search is its own mobile section. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. DACore **admin** uses `Page@withMenu!` — do not rebuild that shell.
+
 ### CSS pipeline (optional)
 
 `prepareCss($file, $path, $tagAt, $tagAfter)` concatenates `@import`s, minifies, writes to `{cssDir}/cache/{name}_cache_{md5(layout)}.css` and **echoes** the `<link>` tag. With `useCssCache(true)` it reuses an existing cache file. A missing source produces a cache file containing `/* SOURCE CSS FILE ... NOT FOUND */`.

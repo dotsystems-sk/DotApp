@@ -16,6 +16,8 @@ return \Dotsystems\App\Parts\Renderer::new()
 
 This sample is a **full public page your module owns** ([05](../05-VIEWS-TEMPLATES-ASSETS.md) §1b). **DACore admin pages are different:** render a layout fragment and pass it to `DACore:Page@withMenu!` — [33](../33-DACORE-PAGES-AND-UI.md), [EX-D02](EX-D02-dacore-admin-page.md).
 
+**Public mobile (MUST):** overlay drawer L/R, lock page scroll while open, scrollable item list, contacts + compact search in the drawer unless large search is its own section. [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.
+
 ## views/home.view.php
 
 ```html

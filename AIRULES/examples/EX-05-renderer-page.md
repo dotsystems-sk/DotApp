@@ -16,6 +16,8 @@ return \Dotsystems\App\Parts\Renderer::new()
 
 This sample is a **full public page your module owns**. **VIEW = outer file:** `setLayout` + `renderView()` inserts the layout at `{{ content }}`. Other Renderer paths: `renderLayout()` alone, or generate HTML and inject with `setViewVar` / `str_replace`. Full: [05](../05-VIEWS-TEMPLATES-ASSETS.md) §1b.
 
+**Mobile (MUST):** public chrome needs an overlay drawer (left or right), locked page scroll while open, a scrollable item list, and contacts + compact search in that drawer unless large search is its own mobile section. [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.
+
 ## views/home.view.php
 
 ```html

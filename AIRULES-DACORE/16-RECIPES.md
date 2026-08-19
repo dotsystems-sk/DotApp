@@ -46,6 +46,8 @@ public static function index($request)
 
 If using `renderLayout()` alone, use `setLayoutVar`. You may also generate a layout to a string and inject it (`setViewVar` / `str_replace`). Full composition: [05](05-VIEWS-TEMPLATES-ASSETS.md) §1b.
 
+**Mobile chrome (MUST):** overlay drawer L/R, lock page scroll while open (including iOS), scrollable nav list, contacts + compact search in the drawer unless large search is its own section. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. DACore admin uses `Page@withMenu!` — do not rebuild that shell.
+
 ---
 
 ## R3 — Protected page (framework Auth)
@@ -190,6 +192,7 @@ Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: 
 | AI, FastSearch, MCP tools | [examples/EX-12](examples/EX-12-ai-search-mcp.md) |
 | SchemaBuilder DDL / introspection | [examples/EX-13](examples/EX-13-schema-migrations.md) |
 | Login, permissions, 2FA | [examples/EX-14](examples/EX-14-auth-and-2fa.md) (`$dotapp().twoFactor` for code boxes) |
+| Cursor credits / subagents | [00](00-AGENT-CONTRACT.md) §2b — **ASK** in the plan; inherit parent; Composer 2.5 = file hunt only |
 
 ---
 

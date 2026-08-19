@@ -30,6 +30,7 @@ Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (
 - Ship a catalog/articles list with no search, or filter `->all()` in JS — **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars)
 - Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
 - Delete with `alert()` / `window.confirm()` — graphical dialog first (`Notiflix.Confirm` on admin) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Public site: desktop-only header / hover menu / hide nav on mobile with no overlay drawer — L/R drawer, lock page scroll, scrollable drawer list, contacts+compact search in the drawer (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
 - Skip step-up 2FA on a dangerous DACore action — `AIRULES/32-DACORE-RIGHTS.md` §6
 
 jQuery `$` may coexist **for UI widgets** (ported datepickers, etc.). It must **not** send app requests. Prefer `$dotapp` for new DOM code. Register plugins with `$dotapp().fn(...)` on `dotapp-register`. When porting jQuery libraries, **ask**, then rewrite as `$dotapp().fn` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C.

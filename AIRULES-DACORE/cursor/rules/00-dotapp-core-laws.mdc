@@ -19,6 +19,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 1. Read `AIRULES/00-AGENT-CONTRACT.md`
 2. Use `php dotapper.php` to create modules/controllers/models/middleware
 3. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
+4. **Cursor credits:** when planning programming, **ASK** before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only, not the coder. (`AIRULES/00` §2b)
 
 ## Syntax locks
 
@@ -37,7 +38,9 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - DACore AI writes: `ui_events` (name = tool id) + `DACore.AI.UIEvent` on the matching page only (`AIRULES/34` §5)
 - DACore operators MUST keep 2FA; dangerous admin actions MUST step-up 2FA (`AIRULES/32` §6)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** module preloaders; desktop **and** mobile). (`AIRULES/09` §3, EX-06)
+- Public website: overlay nav drawer L/R; lock page scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own section (`AIRULES/09` §3)
 - Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined; **ASK** on other lists. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
+- Cursor credits: **ASK** in the plan before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only — NOT the programmer. (`AIRULES/00` §2b)
 - Before a new DACore admin library/widget: **MUST** grep `app/modules/DACore/` (read-only) and this module — reuse what exists (`AIRULES/33`)
 
 ## Never ignore return values (AIRULES/18)
