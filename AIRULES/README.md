@@ -20,7 +20,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** ship **your own** form/list preloaders (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile. User-visible strings **MUST** read as shipped product copy — never prompt-echo.
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items` or `dotapp_*` for module data.
-7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. Lookup lists **MUST** ship **AJAX search** unless declined; **ASK** on other lists. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. Lookup lists **MUST** ship **AJAX search** unless declined; **ASK** on other lists. **Cheap I/O (MUST):** `exists()` / `COUNT(*)` / `limit(1)` / only used columns / one `join` — not `all()` then filter, not N+1. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
 9. **MUST** re-check every persist in **PHP**. Frontend modal/overlay is UX only — skipping it **MUST** still fail on the server. Canonical: [08](08-FORMS-AND-SECURITY.md).
 10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
@@ -39,7 +39,7 @@ In short:
 
 ## Code samples (save context)
 
-Theory lives in `00`–`22`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
+Theory lives in `00`–`23`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
 
 - [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md) — **preferred** security: `fo-rm` + `formName` + `dotapp.js`
 - More: module, DB, renderer, JS boot, bridge, secrets — see [examples/README.md](examples/README.md)
@@ -54,10 +54,10 @@ Theory lives in `00`–`22`. **Ready copy-paste patterns** are in [examples/](ex
 | [examples/](examples/) | Short code samples by situation |
 | [01-ARCHITECTURE.md](01-ARCHITECTURE.md) | Lifecycle, module structure |
 | [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
-| [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware |
+| [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()`; English why-comments |
 | [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md) | Controllers, response |
 | [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets |
-| [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder |
+| [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder — `$qb->raw()`: every `?` is a placeholder, including comments |
 | [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, Installation.php |
 | [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md) | fo-rm, CRC, CSRF |
 | [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
@@ -74,6 +74,7 @@ Theory lives in `00`–`22`. **Ready copy-paste patterns** are in [examples/](ex
 | [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, **DSM** (never `$_SESSION`) |
 | [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md) | Email/IMAP/POP3, SMS, QR |
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
+| [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first |
 | [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |
 
 ## Critical: return values
@@ -86,6 +87,7 @@ The framework uses **four different failure styles**. That is why [18-ERROR-HAND
 - `Email::send()` returns an **array of error strings**, not `false`
 - a missing template renders **`""`** with no exception
 - `Auth::login()` returns **`false`** on bad input
+- `$request->data()` is **protected**; passwords/HTML **MUST** use `$request->data(true)` ([19](19-VALIDATION-AND-INPUT.md))
 
 ## What AIRULES is not
 

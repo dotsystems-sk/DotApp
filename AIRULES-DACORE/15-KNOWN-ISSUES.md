@@ -14,9 +14,12 @@ Verified against the framework source. Agents must design around these.
 | `Crypto::decrypt` failure | returns **`false`** | compare `=== false` |
 | `Cache::load` miss | returns **`null`** | compare `!== null` |
 | `Email::send` failure | returns **`string[]`** | compare `!== true` |
-| `Auth::login` malformed input | returns **`false`** | check before array access |
+| `Auth::login` malformed input | returns **`false`** | check before array access; **MUST** show a message (not silent 400) |
+| `$request->data()` for password / HTML | `protect()` rewrites `)`, `=`, `%`, `&`, `'`… | **MUST** `$request->data(true)` ([19](19-VALIDATION-AND-INPUT.md)) |
 | `$request->form` mismatch | `false` (method) / **`null`** (handler) / throws (no error callback) | provide the error callback and guard |
+| `$request->crcCheck()` twice | first call `invalidateCSRF()`; second → used token → **`false`** | **exactly once** per request — not middleware + controller. **Debug hunt:** [23](23-DEBUG-PLAYBOOK.md) |
 | Missing view/layout | renders **`""`**, only a log warning | use the fallback argument, check for `''` |
+| `$qb->raw()` `?` in comments / `COMMENT 'SMS?'` | **every** `?` is a placeholder; count ≠ bindings **throws**; DDL never runs | **MUST NOT** write `?` unless it is a real binding ([06](06-DATABASE.md)) |
 | `Entity::save()/delete()` | return **`void`** | never test the return value |
 | `trigger()` | returns `$result` unchanged, listener returns ignored | do not collect results from events |
 | `Events::on($route, $event, $cb)` | returns **`false` and does not register** on route mismatch | register unconditionally or verify |

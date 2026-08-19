@@ -22,7 +22,7 @@ public static function items($request)
         ->module('Shop')
         ->setLayout('admin/items', 'admin/empty')      // 2nd arg = fallback
         ->setLayoutVar('items', $rows)
-        ->setLayoutVar('baseUrl', Config::module('DACore', 'prefixUrl') . '/shop-admin')
+        ->setLayoutVar('baseUrl', rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop')
         ->renderLayout();                               // layout vars only!
 
     if ($html === '') {
@@ -313,7 +313,7 @@ In `Menu@register` pass just the classes (`ri ri-store-2-line`) — DACore wraps
 Use the framework secure-form stack — it is unchanged by DACore ([08](08-FORMS-AND-SECURITY.md), [examples/EX-01](examples/EX-01-secure-form-complete.md)):
 
 ```html
-<fo-rm action="/dacore/shop-admin/items/save" method="post" id="itemForm">
+<fo-rm action="/api/v1/auth/Shop/items/save" method="post" id="itemForm">
   <dot-grid wrapped="any">
     <dot-col any="12" md="6" ldesktop="6">
       <input type="text" name="title" class="form-control" required />
@@ -327,7 +327,7 @@ Use the framework secure-form stack — it is unchanged by DACore ([08](08-FORMS
 
 **MUST:** `{{ formName(saveItem) }}` sits **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.
 
-PHP handler: `crcCheck()` → `form(['POST'], 'saveItem', $ok, $err)` → `ajaxReply()`. Because `dotapp.js` is already loaded by the shell, your page script only registers the hooks.
+PHP handler: prefix `LoginAndCRC` already burned the token — only `form(['POST'], 'saveItem', $ok, $err)` → `ajaxReply()`. Because `dotapp.js` is already loaded by the shell, your page script only registers the hooks.
 
 **MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, toast with **Notiflix** (`Notify.success` / `failure`). Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
 

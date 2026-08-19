@@ -12,6 +12,8 @@
 
 `DB::migrate()` is declared but **not implemented in any driver** — never call it.
 
+**MUST:** `$qb->raw()` treats **every** `?` as a placeholder, including SQL comments and `COMMENT 'SMS?'`. **MUST NOT** put `?` in CREATE/ALTER strings unless it is a real binding. Canonical: [06-DATABASE.md](06-DATABASE.md) “Raw SQL”.
+
 ---
 
 ## 1. Versioned `Installation.php` (DACore-free)

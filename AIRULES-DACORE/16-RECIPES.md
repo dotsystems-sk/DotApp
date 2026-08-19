@@ -52,16 +52,16 @@ If using `renderLayout()` alone, use `setLayoutVar`. You may also generate a lay
 
 ## R3 — Protected page (framework Auth)
 
-```php
-Router::get('/shop/admin', 'Shop:Home@admin!')
-    ->before(function ($request) {
-        if (!\Dotsystems\App\Parts\Auth::isLogged()) {
-            return new \Dotsystems\App\Parts\Response(403, 'Login required');
-        }
-    });
-```
+Prefix + login `before` returning `Response` 403. Not Laravel. Handlers still only inside `Auth::isLogged()`. Canonical: [03](03-MODULES-AND-ROUTING.md).
 
-Or `#Shop:AuthGate@check!` middleware class created via dotapper.
+```php
+$member = '/Shop/account';
+Router::before([$member, $member . '/*'], '#Shop:Gate@login!');
+
+if (\Dotsystems\App\Parts\Auth::isLogged() === true) {
+    Router::get($member, 'Shop:Account@index!', Router::STATIC_ROUTE);
+}
+```
 
 ---
 

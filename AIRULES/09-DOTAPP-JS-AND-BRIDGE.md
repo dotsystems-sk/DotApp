@@ -470,7 +470,7 @@ Page logic listens to `dotapp`. Libraries listen to **`dotapp-register`**. Mixin
 ```javascript
 (function () {
     var isRegistered = false;
-    var runMe = function ($dotapp) {
+  var runMe = function ($dotapp) {
         if (isRegistered) { return; }
         isRegistered = true;
 
@@ -479,8 +479,8 @@ Page logic listens to `dotapp`. Libraries listen to **`dotapp-register`**. Mixin
             this.getElements().forEach(function (el) {
                 el.style.backgroundColor = color;
             });
-            return this;
-        });
+      return this;
+    });
 
         window.dispatchEvent(new Event('dotapp-shophighlight-ready'));
     };
@@ -532,7 +532,7 @@ One instance per DOM node, cached on the element. Register on `dotapp-register`.
         window.dispatchEvent(new Event('dotapp-shopchart-ready'));
     };
 
-    if (window.$dotapp) runMe(window.$dotapp);
+  if (window.$dotapp) runMe(window.$dotapp);
     else window.addEventListener('dotapp-register', function () { runMe(window.$dotapp); }, { once: true });
 })();
 ```

@@ -126,7 +126,7 @@ $rows = DB::module('RAW')->q(function ($qb) use ($term, $perPage, $offset) {
 })->all();
 ```
 
-`raw()` **throws** when: `?` and `:named` are mixed, a named binding is missing, or the `?` count does not match the bindings count. Wrap dynamic query building in `try/catch`.
+`raw()` **throws** when: `?` and `:named` are mixed, a named binding is missing, or the `?` count does not match the bindings count. **Every** `?` counts — including SQL comments and `COMMENT 'SMS?'`. **MUST NOT** put `?` in the SQL string unless it is a real binding. Wrap dynamic query building in `try/catch`.
 
 ---
 

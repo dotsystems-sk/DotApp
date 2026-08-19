@@ -6,7 +6,7 @@ Page UI posts to an API path. The handler name is a stable string like `saveItem
 
 ```html
 <fo-rm
-  action="/api/v1/shop/items/edit"
+  action="/api/v1/auth/Shop/items/edit"
   method="post"
   id="itemEdit"
 >
@@ -59,14 +59,11 @@ Use `{{ enc(context): $id }}` when IDs must not be forgeable in plain HTML. Decr
 ## PHP
 
 ```php
-Router::post('/api/v1/shop/items/edit', 'Shop:Items@save!', Router::STATIC_ROUTE);
+Router::post('/api/v1/auth/Shop/items/edit', 'Shop:Items@save!', Router::STATIC_ROUTE);
 
 public static function save($request)
 {
-    if (!$request->crcCheck()) {
-        return \Dotsystems\App\DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'crc'], 400);
-    }
-
+    // Prefix #Shop:Gate@loginAndCrc! already burned the token
     $answer = $request->form(['POST'], 'saveItem', function ($request) {
         $data = $request->data(true)['data'] ?? [];
         $id = \Dotsystems\App\DotApp::DotApp()->decrypt($data['id'] ?? '', 'Shop.item.id');

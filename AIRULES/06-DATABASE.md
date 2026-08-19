@@ -2,7 +2,7 @@
 
 **Not Eloquent.** Default for new module code: **RAW** via `DB::module("RAW")`.
 
-Read [18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md) first — the DB layer has the strictest error contract in the framework.
+Read [18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md) first — the DB layer has the strictest error contract in the framework. **MUST:** `execute($ok, $err)` with **both** callbacks; persist handlers in `try/catch`. Omitting `$err` **throws**.
 
 Architecture: `DB` (facade) → `Databaser` → driver (`pdo` / `mysqli`) → `q()` returns a `QueryObject` wrapping a `QueryBuilder`.
 
@@ -83,6 +83,21 @@ Skip a pager **only** when the set is **closed by product design** and will neve
 The pager in the browser is **interactive AJAX** — [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Paginate accumulating lists”. **MUST NOT** reload the site with `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing.
 
 **MUST (search):** lookup lists (articles, products, catalog, …) **MUST** ship **interactive AJAX search** (SQL `LIKE` + `paginate()`, debounce, from 3 characters) unless the user declined. Other lists: **ASK** in the plan. **MUST NOT** `->all()` and filter in JS. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Interactive AJAX search”.
+
+### Cheap queries / I/O (**MUST**)
+
+Write **CPU- and memory-cheap** code. Pick the **smallest** I/O that answers the question. Disk/DB/network round-trips cost more than a tight `if`.
+
+| Need | Do | **MUST NOT** |
+|------|-----|----------------|
+| One row | `where` + `limit(1)` + `all()` + `[0] ?? null` | Load the table and scan in PHP |
+| Exists? | `exists()` | `all()` then `count($rows)` |
+| How many? | `select('COUNT(*) as total')` or `paginate()['total']` | Fetch every row to count |
+| List | `select` **only used columns** + `paginate()` | `select('*')` + `->all()` |
+| Related names | **one** `join` / extra `IN (...)` | Query inside `foreach` (N+1) |
+| Search | SQL `WHERE` + `paginate()` | Load all, filter in PHP or JS |
+
+**MUST NOT** turn on `Config::db('cache')` “for speed” — it breaks `Entity::save()` ([§8](#8-query-cache)). **MUST NOT** invent a second cache stack. Repeat reads in one request: a local variable, not another query.
 
 ### Write with callbacks (mandatory pattern)
 
@@ -188,6 +203,18 @@ Rules enforced by code (**they throw**):
 - Mixing `?` and `:named` in one statement → `\Exception`
 - `?` count ≠ bindings count → `\Exception`
 - Missing named binding → `\Exception`
+
+**MUST (`?` is always a placeholder):** `$qb->raw($sql, $bindings)` counts **every** `?` in the string — including SQL comments (`-- …`, `/* … */`) and MySQL `COMMENT '…'`. This is how the binder works, not a skippable edge case. Four `?` in comments (`SMS?`, `AUTH?`, …) with `$bindings = []` **throws** and **CREATE TABLE never runs**.
+
+**MUST NOT** put `?` in `raw()` SQL unless it is a real bound parameter. In table/column comments write “optional”, “yes/no”, “SMS or not” — never `SMS?`. Same for installer DDL and any other `raw()`.
+
+```php
+// WRONG — two placeholders, zero bindings → throws; table is not created
+$qb->raw("CREATE TABLE `shop_x` ( `id` INT COMMENT 'SMS?' )", []);
+
+// RIGHT — no ?
+$qb->raw("CREATE TABLE `shop_x` ( `id` INT COMMENT 'SMS optional' )", []);
+```
 
 ### Not implemented (do not use)
 
@@ -325,6 +352,7 @@ Also avoid `DB::migrate()` — **no driver implements it**.
 | `$entity->validate()` | private; runs in `save()` |
 | `if ($entity->save())` | `save()` is **void** — use callbacks |
 | Laravel migrations | `Installation.php` — see [07](07-SCHEMA-AND-INSTALL.md) |
+| `COMMENT 'SMS?'` / `?` in `--` comments inside `raw()` | Every `?` is a placeholder — write “SMS optional” |
 | `DB::transaction(fn)` | `transaction()/commit()/rollback()` or `transact()` |
 
 **MUST:** Every table owned by a module is named `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never create unprefixed tables (`items`) or put module data under `dotapp_*`. Core auth tables use `Config::db('prefix')` only. See [07](07-SCHEMA-AND-INSTALL.md) §3.

@@ -11,13 +11,17 @@ See `AIRULES/03-MODULES-AND-ROUTING.md`, `04-CONTROLLERS-AND-RESPONSES.md`, `07-
 ## Routes (in module.init.php)
 
 ```php
-Router::get('/shop/', 'Shop:Home@index!', Router::STATIC_ROUTE);
-Router::post('/shop/save', 'Shop:Home@save!')->before('#Shop:Gate@check!');
+Router::get('/Shop/', 'Shop:Home@index!', Router::STATIC_ROUTE);
+Router::before(['/Shop/account', '/Shop/account/*'], '#Shop:Gate@login!');
+Router::before(['POST'], ['/api/v1/auth/Shop', '/api/v1/auth/Shop/*'], '#DACore:AuthTest@LoginAndCRC!');
+Router::before(['POST'], ['/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'], '#DACore:AuthTest@CRC!');
 ```
 
 - Prefixes: `#` Middleware, `*` Models, trailing `!` skips DI
 - Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`
-- No named routes, no Laravel `Route::prefix()->group()`
+- No named routes, no Laravel `Route::prefix()->group()` — cover an area with `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`)
+- **MUST:** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login` (no CRC). **POST API** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — action **MUST NOT** `crcCheck()` again. Wrap login-only handlers in `if (Auth::isLogged() === true)`. `AIRULES/03`, `AIRULES/32`
+- **Comments:** English, short **why** at traps — not every line
 
 ## Controllers
 
@@ -33,6 +37,10 @@ class Home extends \Dotsystems\App\Parts\Controller {
 
 With `!` in the route: **no** `Renderer $renderer` type-hints.
 
+## Request input
+
+`$request->data()` is **protected**. `$request->data(true)` is **original**. **MUST** use `true` for passwords, HTML, hashes (`Auth::login` / `createUser`). See `AIRULES/19`.
+
 ## Session
 
 `DSM::use('Shop')->set/get/delete`. **MUST NOT** `$_SESSION` / `session_start()`. See `AIRULES/20`.
@@ -45,7 +53,7 @@ Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
 
 ## Schema
 
-Use versioned `Installation.php`. Do **not** call `DB::migrate()`.
+Use versioned `Installation.php`. Do **not** call `DB::migrate()`. `$qb->raw()`: **every** `?` is a placeholder, including comments — **MUST NOT** write `SMS?` in `COMMENT`. See `AIRULES/06-DATABASE.md`.
 
 **Your** modules: while coding **`install.php`** + live root init files. After a new version, rename `installed_*_install.php` → `install.php`. Pack `dainstall.php` + `init/` only for a **DACore-bound** module and only when the user asks. Non-DACore: copy the folder with `install.php`. See `AIRULES/35-DACORE-INSTALL.md` §4–§5. **Never** pack `app/modules/DACore/`.
 

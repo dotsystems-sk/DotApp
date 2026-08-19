@@ -144,13 +144,32 @@ Failure shapes:
 
 **There is no `headers()` method.**
 
+### Protected vs original input (**MUST**)
+
+DotApp **always** runs incoming GET/POST-like values through `DotApp::protect()` (replaces `# $ " ' , ; % * < = > ( ) & ^ \` ~ ! { }` with HTML entities, then `addslashes`). That is an old **programmer-guard** against naive SQL/XSS mistakes. It is **not** a substitute for QueryBuilder bindings.
+
+The switch is the boolean on `data()` / `query()`:
+
+| Call | What you get |
+|------|----------------|
+| `$request->data()` / `$request->query()` | **Protected** copy (`$orig = false`, default) |
+| `$request->data(true)` / `$request->query(true)` | **Original** payload (`$orig = true`) |
+
+**MUST** use `true` (original) when you hash or compare a **password** (`Auth::login`, `Auth::createUser`, installer admin), persist **HTML**, signatures, tokens, or any value that must round-trip unchanged.
+
+**MUST NOT** take a password or HTML from `$request->data()` without `true`. Characters like `)`, `=`, `%`, `&`, `'` become a **different string**. The stored hash then never matches login — or the installer hashed the *escaped* password.
+
+Secure `<fo-rm>` fields after unwrap: `$request->data(true)['data']`.
+
+Login / install handlers **MUST** also **show** every failure (`crcCheck` fail, `form()` `null`/`false`, `Auth::login === false`, codes 1–5 / 99). A 400 “Bad request” with no toast/message is incomplete. Canonical forms: [08](08-FORMS-AND-SECURITY.md). Sample: [EX-14](examples/EX-14-auth-and-2fa.md).
+
 ### Data access
 
 | Call | Returns |
 |------|---------|
 | `data()` | **by reference** protected array (escaped) |
 | `data(true)` | unprotected/original array |
-| `query()` / `query(true)` | GET array |
+| `query()` / `query(true)` | GET array (same `true` = original) |
 | `matchData()` | array of route params |
 | `matchData($arr)` | setter — **throws `\InvalidArgumentException`** if request is locked |
 | `getMethod()` | lowercase method; disallowed method → **405 + exit** |
@@ -183,7 +202,7 @@ Returns `$this`. Non-callable argument → `\InvalidArgumentException`; exceptio
 
 | Call | Returns | Notes |
 |------|---------|-------|
-| `crcCheck()` | `bool` | fails on: missing `data`/`crc`, non-array payload, used CSRF token, referer mismatch, CRC mismatch |
+| `crcCheck()` | `bool` | **One-shot:** first success calls `invalidateCSRF()`. Second call → used token → **`false`**. Also fails on missing `data`/`crc`, non-array payload, referer mismatch, CRC mismatch. **MUST NOT** middleware + controller. [08](08-FORMS-AND-SECURITY.md) |
 | `formSignatureCheck()` | `bool` | |
 | `isValidCSRF($token)` | `bool` | **`true` = token NOT yet used** (i.e. valid) |
 | `invalidateCSRF($token)` | void | |

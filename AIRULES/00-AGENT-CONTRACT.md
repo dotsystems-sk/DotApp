@@ -53,6 +53,7 @@ If you believe a core bug exists: **stop and ask the user**. Do not patch core.
 7. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the page is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 8. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
 9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
+10. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core bug.
 
 ### Dotapper-first rule
 
@@ -126,6 +127,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | `DB::table('x')`, Eloquent models | `DB::module("RAW")->q(fn($qb)=>...)->all()` |
 | Blade `{{ $x }}`, `@if`, `@extends` | `{{ var: $x }}`, `{{ if }}` … `{{ /if }}` |
 | `Route::prefix()->group()`, named routes | Imperative `Router::get(...)` in `module.init.php` |
+| Register all login-required URLs then login-middleware only | Prefix + `Router::before([$area, $area.'/*'], login 403)` **and** `if (Auth::isLogged())` — page **MUST NEVER** show ([03](03-MODULES-AND-ROUTING.md)) |
 | Instance controllers + `$this->` | `public static function` controllers |
 | `$`, `jQuery`, `$.ajax` | `$dotapp`, `$dotapp().load(...)` |
 | `<form>` + manual CSRF only | Prefer `<fo-rm>` + `{{ formName(handler) }}` |
@@ -135,8 +137,9 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | List/form still clickable during `load()` | Cover the region with **your module preloaders** until done — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Desktop-only public header / hover menu / no mobile drawer | Overlay drawer L/R; lock page scroll while open; drawer itself scrolls ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Logs / users / items dumped with `->all()`, no pager, or “few rows now so skip” | **MUST** `paginate()` + interactive AJAX on **first ship** ([06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Load the whole table / N+1 in `foreach` / `select('*')` for a list | Smallest I/O: `exists()` / `COUNT(*)` / needed columns / one `join` ([06](06-DATABASE.md)) |
 | Lookup list with no search / JS-filter of `->all()` | **ASK** in the plan; articles/catalog **MUST** AJAX search unless declined ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
-| `<a href="?page=2">` for an in-app list | Forbidden — that reloads the site |
+| `$request->data()` for password / HTML / `Auth::login` | **MUST** `$request->data(true)` — `protect()` rewrites `)`, `=`, `%` ([19](19-VALIDATION-AND-INPUT.md)) |
 | Custom OTP digit widget / jQuery 2FA plugin | **MUST** `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `alert()` / `window.confirm()` to delete | Graphical dialog first, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo UI copy (“this user can hide the icon…”) | Product copy a software company would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
@@ -144,6 +147,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | `$_SESSION` / `session_start()` | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
 | JS overlay / modal as the only save or 2FA gate | **MUST** re-check in PHP; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | File/ZIP in `FormData` + `load()` / `<fo-rm>` | **MUST** `$dotapp().uploadFile` + `$request->upload()`; PHP rejects `.php` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| `crcCheck()` in middleware **and** in the action | **MUST** once — first call **burns** the token ([08](08-FORMS-AND-SECURITY.md)) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
@@ -158,18 +162,23 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
    - Script: **`/assets/dotapp/dotapp.js` first** (injects random per-session keys — without it secure forms fail)
    - JS: `$dotapp().form(...).before().after()` + `parseReply` + **MUST** block while in flight (**your module preloaders** — desktop **and** mobile)
    - **MUST:** after success, patch the DOM (`reply.html` / data) and a short toast. `<fo-rm>` does **not** reload. No `location.reload()`. `redirectTo` only when leaving the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
-   - PHP: `$request->crcCheck()` then `$request->form([...], "handler", ...)` then `ajaxReply`
+   - PHP: `$request->crcCheck()` **once** then `$request->form([...], "handler", ...)` then `ajaxReply`
    - Full sample: [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md)
 2. This stack is **stronger than plain CSRF** (binds handler + action + method, CRC, one-time tokens, JS key material). Use it **only for real HTML forms** (several fields + submit). **MUST NOT** wrap row actions (toggle, delete, reorder, drag-and-drop, paginate) in `<fo-rm>` — those are `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)).
-3. Never skip CRC/CSRF for endpoints that receive `$dotapp().load()` / secure forms.
+3. Never skip CRC/CSRF for endpoints that receive `$dotapp().load()` / secure forms. **MUST** `crcCheck()` **once** per request — API prefix **or** action, **never both** (first call **burns** the token). Canonical: [08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md).
 4. **MUST encrypt every identifier sent to the browser** (`<option value>`, `data-*`, hidden, JSON). Use `{{ enc(Shop.user.id): $id }}` / `Crypto::encrypt($id, 'Shop.user.id')` with a **different `$key2` per field**. Never `value="7"` / `data-id="7"`. Decrypt with the **same** `$key2`; `false` → reject. **MUST still** `Auth::can()` / ownership — encryption is not a substitute for rights ([11](11-AUTH-AND-CRYPTO.md) §8).
-5. Never interpolate user input into SQL — use QueryBuilder bindings or `raw($sql, $bindings)`.
+5. Never interpolate user input into SQL — use QueryBuilder bindings or `raw($sql, $bindings)`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments and `COMMENT 'SMS?'` count too ([06](06-DATABASE.md)).
 6. On new apps, generate real `app.c_enc_key` / `rm_key` / `rmrcm_key` (see [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md)).
 7. Module settings must have **fallbacks** if the user did not fill `app/config.php`.
 8. **MUST paginate accumulating lists** (users, logs, items, …) with an **interactive** pager (`$dotapp().load()`). Shipping the list with no pager, or changing pages by reloading the document, is incomplete. Lookup lists **MUST** ship **interactive AJAX search** unless the user declined; other lists: **ASK** in the plan. [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 9. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).
-10. **MUST** re-check every persist in **PHP** (`crcCheck`, `Auth::can`, 2FA code, ownership, validation). Frontend modal/overlay/disabled control is **UX only**. Removing the overlay **MUST** still fail on the server ([08](08-FORMS-AND-SECURITY.md)).
+10. **MUST** re-check every persist in **PHP** (`Auth::can`, 2FA code, ownership, validation). `crcCheck()` is transport — **once** per request, not again. Frontend modal/overlay/disabled control is **UX only**. Removing the overlay **MUST** still fail on the server ([08](08-FORMS-AND-SECURITY.md)).
 11. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP: `$request->upload()` — not `crcCheck()` on that endpoint. **MUST** reject `.php` and other executables (extension + `finfo` MIME + headers); FE `accept=` is UX only ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
+12. **MUST** take passwords, HTML, and other round-trip values from `$request->data(true)` / `$request->query(true)` (original). `$request->data()` is the **protected** copy (`protect()`). Login/createUser/installer **MUST NOT** hash the protected string. **MUST** show every login failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`). Canonical: [19](19-VALIDATION-AND-INPUT.md).
+13. **Login-required / admin routes (MUST):** prefix `/{ModuleName}/…` (or a subtree). Cover HTML with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` returning `Response` 403. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the **start** of `initialize()`; handlers **MUST NOT** `crcCheck()` again. Register login-only handlers **only** inside `if (Auth::isLogged() === true)`. Those pages **MUST NEVER** render for anonymous users. Canonical: [03](03-MODULES-AND-ROUTING.md).
+14. **Comments:** English, short, **why** at trap-prone spots (`crcCheck` once, `data(true)`, logged-in route wrap). **MUST NOT** narrate every line or prompt-echo. Canonical: [03](03-MODULES-AND-ROUTING.md).
+15. **Errors (MUST):** persist handlers in `try/catch` (`\Throwable`) — log, structured `ajaxReply`, **never** leak `$e->getMessage()`, **never** empty `catch`. `execute()` **MUST** get **both** callbacks (`$ok` and `$err`); omitting `$err` **throws**. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md).
+16. **Cheap I/O (MUST):** pick the smallest load — `exists()` / `COUNT(*)` / `limit(1)` / `select` only used columns / `paginate()` / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` “for speed”. Canonical: [06](06-DATABASE.md).
 
 ---
 
@@ -180,14 +189,15 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 /**
  * DOTAPP MODULE FILE
  * - Controllers: Module:Controller@method!  (! = no DI params)
- * - Database: DB::module("RAW")->q(...)->all()|first()|execute()
+ * - Database: DB::module("RAW")->q(...)->all()|first()|execute() — execute MUST both callbacks; persist try/catch; raw() every ? is a placeholder (not in comments)
  * - Tables: {lowercase_modulename}_*  (Shop → shop_items) — NEVER items or dotapp_*
  * - Templates: {{ var: $x }}  — NOT {{ $x }}. VIEW = outer file; setLayout+renderView fills {{ content }} in that view (or renderLayout / str_replace)
- * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-* (not fo-rm)
+ * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-*; crcCheck() once (API prefix XOR action)
  * - FE ids: {{ enc(Shop.item.id): $id }} unique $key2 per field; Auth::can still required
  * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST module preloaders until request ends (desktop+mobile)
  * - Public site nav: mobile drawer slides L/R over the page; lock document scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own mobile section
  * - Lists: accumulating records (users/logs/items) MUST paginate() on first ship + AJAX pager — NOT all() dump, NOT ?page= / location.reload()
+ * - Cheap I/O: exists/COUNT/limit(1)/needed columns/paginate/one join — NOT all() then filter, NOT N+1
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
@@ -196,6 +206,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Session: DSM::use('Shop') — NEVER $_SESSION / session_start()
  * - Save checks: PHP MUST re-verify — FE modal/overlay is UX only
  * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST reject .php (ext+MIME+headers)
+ * - Request: data() = protected; data(true) = original — MUST true for passwords/HTML/hashes
+ * - Login-required routes: prefix /{Module}/… + Gate@login 403 Response; MUST register handlers inside Auth::isLogged()
+ * - Comments: English, short, why at traps — not every line
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
  * - Edit only this module + app/config.php. Never edit app/parts/.
  * See AIRULES/00-AGENT-CONTRACT.md
@@ -231,7 +244,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | **Anything (always)** | **18** error handling / return values | — |
 | Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |
-| Route / middleware | 03, 04 | EX-03 |
+| Route / middleware | 03, 04 | EX-03 — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | Template / CSS / JS page | 05 (incl. §8 product copy), **09 §3** public mobile nav | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Public website header / nav | **09 §3** “Public website mobile navigation” — drawer overlay, lock page scroll | [EX-05](examples/EX-05-renderer-page.md) |
 | Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
@@ -240,18 +253,19 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | List UX (filters, sort, empty, bulk, …) | **09 §3** “List UX” — **ASK** / **MUST** table | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Custom `$dotapp` library / jQuery port | **09 §4** (esp. §4.C) | **[EX-15](examples/EX-15-dotapp-js-library.md)** |
-| Database query | 06, 18 | [EX-04](examples/EX-04-database-crud.md) |
+| Database query | 06, 18 | [EX-04](examples/EX-04-database-crud.md) — `raw()`: every `?` is a placeholder, including comments |
 | Tables / migrations | 07 (rename `installed_*` → `install.php` after a new version) | [EX-13](examples/EX-13-schema-migrations.md) |
 | **Secure form (HTML fields + submit)** | **08, 09** | **[EX-01](examples/EX-01-secure-form-complete.md)**, [EX-02](examples/EX-02-secure-form-edit-api.md) |
 | AJAX without a form (`load` only) | **08, 09** | [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 |
 | Encrypt IDs / unique `$key2` | **11 §8, 05, 08** | [EX-02](examples/EX-02-secure-form-edit-api.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
-| Validation / error responses | 19 | [EX-09](examples/EX-09-validation-and-errors.md) |
+| Validation / error responses | 19 | [EX-09](examples/EX-09-validation-and-errors.md) — **`data(true)`** = original; `data()` = protected |
 | Config / keys | 10 | [EX-08](examples/EX-08-config-secrets.md) |
 | Bridge click | 09 | [EX-07](examples/EX-07-bridge.md) |
-| Auth / 2FA / permissions | **11**, **09** (`twoFactor`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
+| Auth / 2FA / permissions | **11**, **09** (`twoFactor`), **19** (`data(true)`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |
 | AI / search / MCP | 22 | [EX-12](examples/EX-12-ai-search-mcp.md) |
 | Services index | 12 | — |
 | Tests | 13 | — |
-| Anything uncertain | 14, 15, then `app/parts/` | examples/README.md |
+| Anything uncertain | 14, 15, **23**, then `app/parts/` | examples/README.md |
+| **Debug / “it doesn’t work”** | **23** (grep middleware + `crcCheck` count first) | [EX-01](examples/EX-01-secure-form-complete.md) |

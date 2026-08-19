@@ -13,6 +13,7 @@ Set-Location "path\to\project-root"
 php dotapper.php --create-module=Shop
 php dotapper.php --module=Shop --create-controller=Admin
 php dotapper.php --module=Shop --create-controller=AITools
+php dotapper.php --module=Shop --create-middleware=Gate
 php dotapper.php --module=Shop --create-middleware=Rights
 ```
 
@@ -39,9 +40,15 @@ class Module extends \Dotsystems\App\Parts\Module
 
         Translator::loadLocaleFile('Shop:sk_sk.json', 'sk_sk');
 
-        $admin = Config::module('DACore', 'prefixUrl') . '/shop-admin';
+        $admin = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
+        $authApi = '/api/v1/auth/Shop';
+        $openApi = '/api/v1/noauth/Shop';
 
-        // Admin routes only make sense for a logged-in user.
+        Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!');
+        Router::before(['POST'], [$authApi, $authApi . '/*'], '#DACore:AuthTest@LoginAndCRC!');
+        Router::before(['POST'], [$openApi, $openApi . '/*'], '#DACore:AuthTest@CRC!');
+
+        // Admin URLs MUST NOT stay registered for anonymous users — the page must never render
         if (Auth::isLogged() === true) {
             $viewRights = ['dotapp.root', 'Shop.administrator', 'Shop.items.view'];
             $editRights = ['dotapp.root', 'Shop.administrator', 'Shop.items.edit'];
@@ -56,19 +63,13 @@ class Module extends \Dotsystems\App\Parts\Module
                     return DotApp::call('#Shop:Rights@check!', $request, $editRights);
                 });
 
-            Router::post($admin . '/items/save', 'Shop:Admin@itemSave!', Router::STATIC_ROUTE)
+            Router::post($authApi . '/items/save', 'Shop:Admin@itemSave!', Router::STATIC_ROUTE)
                 ->before(function ($request) use ($editRights) {
-                    if ($request->crcCheck() === false) {
-                        return new Response(403, DotApp::call(Config::module('DACore', 'error403Page')));
-                    }
                     return DotApp::call('#Shop:Rights@check!', $request, $editRights);
                 });
 
-            Router::post($admin . '/items/list', 'Shop:Admin@itemsList!', Router::STATIC_ROUTE)
+            Router::post($authApi . '/items/list', 'Shop:Admin@itemsList!', Router::STATIC_ROUTE)
                 ->before(function ($request) use ($viewRights) {
-                    if ($request->crcCheck() === false) {
-                        return new Response(403, DotApp::call(Config::module('DACore', 'error403Page')));
-                    }
                     return DotApp::call('#Shop:Rights@check!', $request, $viewRights);
                 });
         }
@@ -77,7 +78,12 @@ class Module extends \Dotsystems\App\Parts\Module
     public function initializeRoutes()
     {
         // Lazy-load this module only for its own admin URLs.
-        return [Config::module('DACore', 'prefixUrl') . '/shop-admin', Config::module('DACore', 'prefixUrl') . '/shop-admin/*'];
+        $admin = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
+        return [
+            $admin, $admin . '/*',
+            '/api/v1/auth/Shop', '/api/v1/auth/Shop/*',
+            '/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*',
+        ];
     }
 
     public function initializeCondition($routeMatch)
@@ -112,9 +118,11 @@ new Listeners($dotApp);
 
 **MUST** also keep identical copies at `init/module.init.php` and `init/module.listeners.php` ([35](../35-DACORE-INSTALL.md) §5). Update those copies whenever you change the live files.
 
-## 4. `Middleware/Rights.php`
+## 4. `Middleware/Gate.php` + `Middleware/Rights.php`
 
-Copy the class verbatim from [32-DACORE-RIGHTS.md](../32-DACORE-RIGHTS.md) section 3 — it adds the wildcard support that `Auth::can()` lacks and returns the DACore 403 page.
+`Gate@login` is **login only** (403 `Response`). Copy it from [32](../32-DACORE-RIGHTS.md) §3. **MUST NOT** `crcCheck()` there.
+
+`Rights@check` is permissions. Copy that class from the same section — it adds wildcard support that `Auth::can()` lacks and returns the DACore 403 page.
 
 ## 5. `Controllers/Admin.php` (page + save)
 
@@ -143,7 +151,7 @@ class Admin extends \Dotsystems\App\Parts\Controller
                ->orderBy('id', 'DESC');
         })->paginate($perPage, $page);
 
-        $baseUrl = Config::module('DACore', 'prefixUrl') . '/shop-admin';
+        $baseUrl = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
 
         $links = DotApp::call(
             'DACore:Page@paginate!',
@@ -167,6 +175,7 @@ class Admin extends \Dotsystems\App\Parts\Controller
             ->setLayoutVar('links', $links)
             ->setLayoutVar('total', $result['total'])
             ->setLayoutVar('baseUrl', $baseUrl)
+            ->setLayoutVar('apiAuth', '/api/v1/auth/Shop')
             ->renderLayout();
 
         if ($html === '') {
@@ -283,7 +292,7 @@ class Admin extends \Dotsystems\App\Parts\Controller
 }
 ```
 
-`crcCheck()` already ran in the route hook, so the handler starts with `form()`. Full error-handling rationale: [18](../18-ERROR-HANDLING-AND-RETURN-VALUES.md).
+`LoginAndCRC` already burned the token on `/api/v1/auth/Shop/…` — the handler starts with `form()`. Full error-handling rationale: [18](../18-ERROR-HANDLING-AND-RETURN-VALUES.md).
 
 ## 6. Installer
 
@@ -301,6 +310,7 @@ app/modules/Shop/
   AI_RULES.md                      (generated by dotapper)
   Controllers/Admin.php
   Controllers/AITools.php
+  Middleware/Gate.php
   Middleware/Rights.php
   views/layouts/admin/items.layout.php
   views/layouts/admin/items-inner.layout.php

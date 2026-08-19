@@ -26,6 +26,8 @@ DB::module('RAW')->q(function ($qb) use ($data) {
 );
 ```
 
+Persist the whole handler in `try/catch`. The `$err` callback is **not** a substitute for that.
+
 `$exec` keys: `affected_rows, insert_id, num_rows, result, query, bindings` — **empty on cache hit**.
 `paginate()` keys: `data, current_page, per_page, total, last_page, from, to, has_more_pages, prev_page, next_page`.
 
@@ -45,7 +47,7 @@ $qb->join('users u', 'p.user_id', '=', 'u.id');
 
 `DB::table`, `DB::getConnection`, `selectRaw`, `whereExists`, `whereColumn`, `count()`, chain `->find(123)`, Eloquent models, working `DB::migrate()`. `whereHas`/`withCount`/`with()` are stubs that never reach SQL.
 
-Counting: `select('COUNT(*) as total')` + `all()`, or `paginate()['total']`, or `exists()`.
+Counting: `select('COUNT(*) as total')` + `all()`, or `paginate()['total']`, or `exists()`. **MUST** smallest I/O: needed columns, no N+1, no `all()` then filter. `AIRULES/06`.
 
 ## Transactions
 
@@ -53,7 +55,7 @@ Counting: `select('COUNT(*) as total')` + `all()`, or `paginate()['total']`, or 
 
 ## Schema
 
-`Installation.php` + SchemaBuilder (`createTableIfNotExist`). **No `timestamps()`** helper. DDL throws — wrap in `try/catch`. Keep `Config::db('cache')` **off** (breaks `Entity::save()`).
+`Installation.php` + SchemaBuilder (`createTableIfNotExist`). **No `timestamps()`** helper. DDL throws — wrap in `try/catch`. `$qb->raw()` counts **every** `?` (including comments / `COMMENT 'SMS?'`) — **MUST NOT** put `?` unless it is a real binding. Keep `Config::db('cache')` **off** (breaks `Entity::save()`).
 
 ## Models / ORM
 

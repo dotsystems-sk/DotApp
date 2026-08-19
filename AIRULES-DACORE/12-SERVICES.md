@@ -47,7 +47,7 @@ $dotApp = DotApp::dotApp();     // throws if not booted
 | `generateStrongPassword()` | `string` |
 | `formatBytes($bytes, $precision = 2)` | `string` |
 | `normalize_string`, `create_alias`, `repair_url`, `is_json` | utilities |
-| `post($name)` / `get($name)` | **unprotected** raw superglobal values |
+| `post($name)` / `get($name)` | **unprotected** raw superglobal values (same idea as `$request->data(true)` — not the protected copy) |
 | `consumption()` | memory/time stats array |
 | `isDebugMode()` | `bool` |
 | `trustProxy(array $proxies)` | void |

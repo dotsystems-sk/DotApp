@@ -80,6 +80,8 @@ Invalid identifiers, unsupported types for the engine (`json`, `set`), `unsigned
 
 ## Raw DDL alternative (portable, explicit)
 
+**MUST NOT** put `?` in `$qb->raw()` unless it is a real binding. Comments and `COMMENT 'SMS?'` count as placeholders — the CREATE never runs. Write “SMS optional”. Canonical: [06](../06-DATABASE.md).
+
 ```php
 DB::module('RAW')->q(function ($qb) {
     $qb->raw(

@@ -23,6 +23,8 @@
 - [ ] No DI type-hints when using `!`
 - [ ] Methods are `public static`
 - [ ] Params via `$request->matchData()`
+- [ ] Login-required / admin routes: `{prefixUrl}/{ModuleName}/…` + `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`); handlers **only** inside `if (Auth::isLogged() === true)` — those pages **MUST NEVER** show to anonymous users ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
+- [ ] Trap-prone spots have a short **English why** comment — not every line
 - [ ] No named routes / Laravel group APIs invented
 
 ## Template checklist
@@ -44,10 +46,12 @@
 - [ ] Bindings for all user values (`?` xor `:named`, never mixed)
 - [ ] No `DB::table`, Eloquent, `getConnection`, `selectRaw`, chain `find`, `count()`
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
+- [ ] `$qb->raw()` has no `?` except real bindings (not in comments / `COMMENT '…'`) ([06](06-DATABASE.md))
 - [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items`, `dotapp_*`, or `dacore_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 - [ ] Growing lists (users, logs, items, orders) use `paginate()` on **first ship** — not `->all()` into the view; “few rows now” is not a skip ([06](06-DATABASE.md))
+- [ ] Cheap I/O: `exists()` / `COUNT(*)` / `limit(1)` / only needed columns / no N+1 in `foreach` ([06](06-DATABASE.md))
 
 ## Error-handling checklist (see 18)
 
@@ -57,8 +61,10 @@
 - [ ] `Validator::validate` checked with `=== true`
 - [ ] `$request->form(...)` has an error callback and `null`/`false` guards
 - [ ] `Email::send` checked with `!== true` (returns an array of errors)
-- [ ] `Auth::login` checked for `false` before array access
+- [ ] `Auth::login` checked for `false` before array access; login/install **shows** every failure (`crcCheck`, `form()` `null`/`false`, `false` login)
+- [ ] Passwords / HTML / hashes from `$request->data(true)` — not `$request->data()` ([19](19-VALIDATION-AND-INPUT.md))
 - [ ] AI / SchemaBuilder / raw DDL wrapped in `try/catch`
+- [ ] Persist / save handlers wrapped in `try/catch` (`\Throwable`) — log + structured reply, never leak `$e->getMessage()`
 - [ ] Renderer output checked for `''` (missing view fails silently)
 - [ ] No empty `catch {}` — failures are logged via `Logger::use()->error(...)`
 - [ ] Client receives a structured error, never a raw exception message
@@ -71,7 +77,9 @@
 - [ ] JS: `$dotapp().form` + `parseReply` + **MUST** block while in flight (Notiflix preferred **or** module preloaders; desktop **and** mobile; remove overlay on success **and** error)
 - [ ] Success **MUST** patch the DOM (`reply.html` / data) + short toast — no `location.reload()` while staying on the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md))
 - [ ] Row actions (toggle/delete/reorder/drag-and-drop) use `$dotapp().load()` + encrypted `data-*` — **not** one `<fo-rm>` per button
-- [ ] PHP: `crcCheck()` then `form([...], "handler", ...)` then `ajaxReply`
+- [ ] PHP: `crcCheck()` **once** (API prefix **or** action) then `form([...], "handler", ...)` then `ajaxReply` — **never both** ([08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md))
+- [ ] Passwords / HTML from `$request->data(true)` — not `$request->data()` ([19](19-VALIDATION-AND-INPUT.md))
+- [ ] Failures show `reply.message` (including `crcCheck` / `form()` reject / `Auth::login === false`)
 - [ ] Followed `AIRULES/examples/EX-01-secure-form-complete.md` when implementing
 - [ ] New / ported `$dotapp` libraries follow [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 / [EX-15](examples/EX-15-dotapp-js-library.md) (`dotapp-register`, `fn()`, `this.load` — no `$.ajax`)
 - [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
@@ -127,6 +135,19 @@
 - [ ] Deletes use a graphical confirm (`Notiflix.Confirm` or `$dotapp().modal`) — never `alert()` / `window.confirm()`
 - [ ] Menu names, rights name/description, tool `description`, and page copy are product language — not prompt-echo ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
 
+## Debug checklist (user: “it doesn’t work”)
+
+Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
+
+- [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::`), Controllers, listeners
+- [ ] Counted `crcCheck()` on the failing route — **not** middleware + controller (first call burns the token)
+- [ ] If this module’s middleware calls `crcCheck()`, the action does **not**
+- [ ] Passwords/HTML from `$request->data(true)`
+- [ ] `form()` error callback + `null`/`false` guarded; JS shows `reply.message`
+- [ ] Upload endpoints do **not** `crcCheck()`
+- [ ] Admin routes use `#Shop:Rights@check!` — not `#DACore:AuthTest@check!` as a rights guard
+- [ ] Did **not** “fix” it by editing `app/modules/DACore/`
+
 ## Pre-commit / before “done”
 
 - [ ] No core file modifications in the diff
@@ -151,7 +172,9 @@
 - Frontend wraps `$.fn.plugin` instead of rewriting as `$dotapp().fn`
 - Form uses invented `f-form`
 - `{{ formName }}` placed after `</fo-rm>` or before `<fo-rm>`
-- Handler skips `crcCheck` for DotApp JS POST
+- Handler skips `crcCheck` for DotApp JS POST, **or** calls `crcCheck()` twice (middleware + controller)
+- Login-only / admin page reachable while anonymous (route registered outside `Auth::isLogged()`, or no prefix `Gate@login` 403)
+- `crcCheck()` on a **GET**/HTML `Gate@login` `before` (GET has no CRC); **or** `crcCheck()` **again** after `#DACore:AuthTest@CRC!` / `LoginAndCRC!` / `check`
 - Success path is `location.reload()` / empty `.after()` while staying on the page
 - One `<fo-rm>` per row button (up/down/toggle/delete) or drag-and-drop via forms
 - List/form still clickable during `load()`; overlay not removed on the error path; no preloaders because Notiflix was skipped

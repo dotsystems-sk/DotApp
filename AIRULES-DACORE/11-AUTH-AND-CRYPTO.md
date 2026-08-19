@@ -4,6 +4,10 @@
 
 ## 1. Login
 
+**MUST** read email/password from `$request->data(true)` (original). `$request->data()` is the **protected** copy — `)`, `=`, `%`, `&`, `'` etc. are rewritten, so `Auth::login` / `Auth::createUser` hash a **different** password. Same for the installer admin form. Canonical: [19](19-VALIDATION-AND-INPUT.md).
+
+**MUST** handle **every** outcome and **show** it: `crcCheck` fail, `form()` `null`/`false`, `Auth::login === false` (malformed), and `$result['error']` 1–5 / 99. A 400 “Bad request” with no toast is incomplete. Sample: [EX-14](examples/EX-14-auth-and-2fa.md).
+
 ```php
 use Dotsystems\App\Parts\Auth;
 
@@ -107,7 +111,7 @@ try {
 }
 ```
 
-Passwords are hashed internally (bcrypt via `DotApp::generatePasswordHash`). Never store plaintext.
+Passwords are hashed internally (bcrypt via `DotApp::generatePasswordHash`). Never store plaintext. The `$password` argument **MUST** be the original string (`$request->data(true)`), not the protected copy.
 
 ---
 

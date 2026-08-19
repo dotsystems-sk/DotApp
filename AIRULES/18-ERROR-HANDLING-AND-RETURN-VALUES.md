@@ -104,12 +104,12 @@ Full detail: [06-DATABASE.md](06-DATABASE.md).
 | `Config::get($section,$key)` | `null` if unset | same |
 | `Validator::validate(...)` | `true` on success, **array** on failure | `if ($r === true)` — do **not** use truthiness |
 | `Input::validate()` | `bool` | Read `getErrors()` on false |
-| `$request->crcCheck()` | `bool` | Never skip |
+| `$request->crcCheck()` | `bool` | Never skip; **once** per request (second call burns → `false`) |
 | `$request->form(...)` | callback return, or `false`, or **`null`**, or throws | Guard all three |
 | `Limiter::isAllowed($route)` | `bool` | — |
 | `Renderer::loadView()` / missing layout | **`""`** + warning log (no exception) | Blank page with no error |
 | `Renderer::getViewVar($k)` | `""` if missing | Silent empty output |
-| `Auth::login($data)` | array, or **`false`** on malformed input | `$r['error']` on false → error |
+| `Auth::login($data)` | array, or **`false`** on malformed input | `$r['error']` on false → error. Password **MUST** come from `$request->data(true)` ([19](19-VALIDATION-AND-INPUT.md)) |
 | `MCP::addTool(...)` | `bool` | Silent registration failure |
 
 ### Correct decrypt pattern
@@ -156,7 +156,7 @@ $hits = $r['data'];
 | Library | Exception | Typical trigger |
 |---------|-----------|-----------------|
 | AI | `AIException` | missing `api_key`/`model`, HTTP failure, unparseable reply |
-| QueryBuilder | `\Exception`, `\InvalidArgumentException` | mixing `?` and `:named`, binding count mismatch, unsupported feature per DB engine |
+| QueryBuilder | `\Exception`, `\InvalidArgumentException` | mixing `?` and `:named`, binding count mismatch (**every** `?` counts, including comments / `COMMENT 'SMS?'`), unsupported feature per DB engine |
 | SchemaBuilder | `\InvalidArgumentException` | invalid name, unsupported type for DB engine, `unsigned()` on non-MySQL |
 | Database `execute()` | `\Exception` | error without `$onError`, or no connection |
 | Entity | `\Exception` | validation failure, delete without primary key, cache driver missing `deleteKeys` |
@@ -237,12 +237,14 @@ Also: `Events::on($route, $event, $cb)` and `on($method, $route, $event, $cb)` r
 2. **Always pass the error callback** to `execute()` — otherwise failures throw.
 3. **Always check `=== false`** after `Crypto::decrypt`.
 4. **Always check `['success']`** for `HttpHelper` and `FastSearch`.
-5. **Always `try/catch`** around AI, SchemaBuilder, and raw QueryBuilder construction.
+5. **Always `try/catch` (`\Throwable`)** around persist handlers, AI, SchemaBuilder, and QueryBuilder construction. Log in `catch`. Return a structured client error — **never** leak `$e->getMessage()`. **MUST NOT** empty `catch {}`.
 6. **Never test the return value** of `Entity::save()`.
 7. **Never rely on `trigger()`** to collect listener results.
 8. **Log failures** with `Logger::use()->error(...)` (enable `Config::logger('core_log_enabled', true)` if the app wants files).
 9. **Return a structured error to the client** — never leak exception messages to end users.
 10. **Never silently swallow** an error with an empty `catch {}`.
+
+`execute($ok, $err)` is the DB error path — **MUST** pass both callbacks (item 2). That is **not** a substitute for the outer `try/catch` on the handler (unexpected throwables). Do **not** omit `$err` and “just catch” — omitting `$err` still throws inside `execute()`.
 
 ---
 

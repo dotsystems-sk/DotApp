@@ -103,7 +103,7 @@ Read them; never assume. Defaults come from DACore's `module.init.php`.
 | `allowPasswordReset` | `true` |
 | `passwordResetUrl` | `/forgot-password` |
 
-**Always build your admin routes as `Config::module("DACore","prefixUrl") . "/your-path"`.**
+**Always build HTML admin routes as `rtrim(Config::module("DACore","prefixUrl"), "/") . "/" . {ModuleName} . "/…"`** (e.g. `/dacore/Shop/items`) + `Gate@login`. **POST** `fo-rm` / `load()`: `/api/v1/auth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!`. Canonical: [32](32-DACORE-RIGHTS.md), [03](03-MODULES-AND-ROUTING.md).
 
 ### Error pages
 

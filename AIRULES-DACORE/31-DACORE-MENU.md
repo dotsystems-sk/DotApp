@@ -87,7 +87,7 @@ DotApp::call("DACore:Menu@register", "Shop.main", [ /* type 0, parent '' */ ]);
 DotApp::call("DACore:Menu@register", "Shop.main.home", [
     'name' => 'Shop',
     'parent' => 'Shop.main',
-    'url' => '/shop-admin/',
+    'url' => '/Shop/',
     'urlprefix' => 1,
     'type' => 1,
     // …
@@ -97,7 +97,7 @@ DotApp::call("DACore:Menu@register", "Shop.main.home", [
 DotApp::call("DACore:Menu@register", "Shop.nav.items", [
     'name' => 'Items',
     'parent' => 'Shop.nav',
-    'url' => '/shop-admin/items',
+    'url' => '/Shop/items',
     'urlprefix' => 1,
     'type' => 1,
     // …
@@ -176,7 +176,7 @@ DotApp::call("DACore:Menu@register", "Shop.main.catalog.items", [
     'name' => 'Items',
     'parent' => 'Shop.main.catalog',
     'icon' => '',
-    'url' => '/shop-admin/items',          // urlprefix=1 -> /dacore/shop-admin/items
+    'url' => '/Shop/items',          // urlprefix=1 -> /dacore/Shop/items
     'urlprefix' => 1,
     'rights' => json_encode($rights),
     'type' => 1,
@@ -187,7 +187,7 @@ DotApp::call("DACore:Menu@register", "Shop.main.catalog.items", [
 The `url` must match the route you registered in `module.init.php`:
 
 ```php
-Router::get(Config::module("DACore", "prefixUrl") . "/shop-admin/items", "Shop:Admin@items!");
+Router::get(rtrim((string) Config::module("DACore", "prefixUrl"), "/") . "/Shop/items", "Shop:Admin@items!");
 ```
 
 ---

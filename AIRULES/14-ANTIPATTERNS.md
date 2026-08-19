@@ -18,10 +18,12 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 |-------|-------|
 | `HomeController@index` | `Shop:Home@index!` |
 | Instance methods + `$this->` | `public static function` |
-| `Route::prefix('x')->group(...)` | Manual prefix / `onPath` / Middleware group |
+| `Route::prefix('x')->group(...)` | `Router::before([$prefix, $prefix.'/*'], login 403)` + `onPath` / config prefix ([03](03-MODULES-AND-ROUTING.md)) |
 | Named `route('home')` | Hardcode paths or config prefixes |
 | DI params with trailing `!` | No DI params when using `!` |
-| Middleware string without `#` for Middleware class | `#Shop:Gate@check!` |
+| Middleware string without `#` for Middleware class | `#Shop:Gate@login!` |
+| Register all admin/member routes, then login middleware only | Prefix login `before` **and** `if (Auth::isLogged() === true)` — page **MUST NEVER** show ([03](03-MODULES-AND-ROUTING.md)) |
+| Prompt-echo / every-line comments | English **why** at traps only ([03](03-MODULES-AND-ROUTING.md)) |
 
 ## Templates
 
@@ -50,7 +52,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `join('users','u', col, '=', col2)` myth | `join('users u', 'p.user_id', '=', 'u.id')` |
 | Eloquent models | Optional Entity ORM or plain RAW |
 | String-built SQL with user input | Bindings only (`?` xor `:named`) |
+| `COMMENT 'SMS?'` / `?` inside `--` comments in `$qb->raw()` | Every `?` is a placeholder — write “SMS optional”; [06](06-DATABASE.md) |
 | Logs / users / items via `->all()` into the view / no pager because “few rows now” | `->paginate($perPage, $page)` on first ship ([06](06-DATABASE.md)) |
+| `all()` then filter in PHP; query inside `foreach`; `select('*')` for a 3-column list | `exists()` / `COUNT(*)` / needed columns / one `join` ([06](06-DATABASE.md)) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Inventing a DACore `dainstall.php` zip for a bare module | Rename to `install.php` and copy the module folder |
@@ -67,6 +71,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `if (Validator::validate(...))` | `if (Validator::validate(...) === true)` |
 | `if (!Email::send(...))` | `if (Email::send(...) !== true)` (returns an array) |
 | `$r = Auth::login(...); $r['error']` | check `$r === false` first |
+| `$request->data()` then `Auth::login` / `createUser` / store HTML | `$request->data(true)` — `protect()` rewrites `)`, `=`, `%` ([19](19-VALIDATION-AND-INPUT.md)) |
+| Login `ajaxReply` 400 with no toast | **MUST** show `reply.message` (`crcCheck`, `form()` `null`/`false`, `login === false`) |
 | `$request->form($n, $ok)` only | add the error callback, guard `null`/`false` |
 | Trusting a rendered view is non-empty | missing view returns `""` |
 | Using `HttpHelper`/`FastSearch` data directly | check `['success']` first |
@@ -81,7 +87,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | jQuery `$` / `$.ajax` | `$dotapp` / `$dotapp().load` |
 | Plain `<form>` without formName for DotApp JS | `<fo-rm>` + `{{ formName(x) }}` |
 | `{{ formName }}` after `</fo-rm>` or before `<fo-rm>` | **MUST** put it **between** `<fo-rm>` and `</fo-rm>` |
-| Skip `crcCheck` | Always for DotApp transport |
+| Skip `crcCheck` | Always for DotApp transport — **once** (API prefix **or** action) ([08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md)) |
+| `crcCheck()` in prefix **and** again in the controller | First call **burns** the token; second returns `false` |
 | Static `/app/parts/js/dotapp.js` on pages | `/assets/dotapp/dotapp.js` |
 | Edit `app/parts/js/` to add a plugin | Your module `assets/js` + `$dotapp().fn` on `dotapp-register` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4, [EX-15](examples/EX-15-dotapp-js-library.md)) |
 | Wrap `$.fn.plugin` / `$(el).plugin()` and call it a `$dotapp` port | Rewrite vanilla + `$dotapp().fn` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md)) |

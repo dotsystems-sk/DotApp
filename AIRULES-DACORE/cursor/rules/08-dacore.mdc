@@ -15,6 +15,7 @@ DACore is an admin-UI **module**, not framework core — by default its files ar
 - `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `{prefix}users_rights*`
 - Build your own admin HTML shell
 - Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
+- Register admin routes when `Auth::isLogged()` is false — those pages **MUST NEVER** render for anonymous users. **MUST** prefix `{prefixUrl}/{ModuleName}` + `Gate@login` 403 (`AIRULES/03`, `AIRULES/32`)
 - Register menu / rights / AI tools on every request (do it in **your** `Installation.php`)
 - Push inbox notifications from the installer or every request — `DACore:Notifications@push` on the event only (`AIRULES/37`)
 - Steal another module’s `menuid` prefix or uninstall with `DELETE … LIKE 'Host.%'` — your `menuid` starts with **your** module; own sidebar gets a `type => 0` header. **ASK** shared vs module-own menu before scaffolding (`AIRULES/31`). Do not dump 10 leaves under a header. Do not register “Return back”.
@@ -38,11 +39,19 @@ Check every return value: `bool` helpers never throw and never log.
 
 ## Admin route pattern
 
+**MUST:** `{prefixUrl}/{ModuleName}/…` for HTML (e.g. `/dacore/Shop/items`) + `Gate@login`. **POST:** `/api/v1/auth|noauth/Shop/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — then **MUST NOT** `crcCheck()` in the action. Register handlers only when `Auth::isLogged() === true`. Still `#Shop:Rights@check!`. `AIRULES/03`, `AIRULES/32`.
+
 ```php
-Router::get(Config::module("DACore", "prefixUrl") . "/shop-admin/items", "Shop:Admin@items!")
-    ->before(function ($request) {
-        return DotApp::call("#Shop:Rights@check!", $request, ['dotapp.root', 'Shop.items.view']);
-    });
+$admin = rtrim((string) Config::module("DACore", "prefixUrl"), "/") . "/Shop";
+$authApi = "/api/v1/auth/Shop";
+Router::before([$admin, $admin . "/*"], "#Shop:Gate@login!");
+Router::before(["POST"], [$authApi, $authApi . "/*"], "#DACore:AuthTest@LoginAndCRC!");
+if (Auth::isLogged() === true) {
+    Router::get($admin . "/items", "Shop:Admin@items!")
+        ->before(function ($request) {
+            return DotApp::call("#Shop:Rights@check!", $request, ['dotapp.root', 'Shop.items.view']);
+        });
+}
 ```
 
 Permissions are `"{module}.{rightname}"`. Always include `dotapp.root`.
@@ -70,3 +79,7 @@ Growing lists (logs, users, items) **MUST** use `paginate()` and an **interactiv
 `rights` must be non-empty and **wildcard-free** (empty = hidden from everyone). Handler signature `($data, $aiobj)`, returns JSON with `result` + `message`. `controller` string ends with `!`. Write tools that change a live admin view **MUST** return `ui_events` (`name` = tool id). Page JS listens for `DACore.AI.UIEvent`, filters by name, AJAX-refreshes — **MUST NOT** `location.reload()`. Other screens ignore. No secrets in `payload`. See `AIRULES/34-DACORE-AI-TOOLS.md` §5.
 
 Examples: `AIRULES/examples/EX-D01` … `EX-D05`.
+
+## Debug (user: it doesn’t work)
+
+Read `AIRULES/23-DEBUG-PLAYBOOK.md` §7. Grep `crcCheck` in **this module** (middleware + `->before` + controller). Two calls burn the token. Grep `AuthTest` — it ignores passed rights. **MUST NOT** patch `app/modules/DACore/` to fix a module POST.

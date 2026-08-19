@@ -322,7 +322,7 @@ There is no built-in cache-busting helper — append `?v=` manually if needed.
 
 Every string a person can **see or hear** in the product **MUST** read as if a software company shipped it — not as if an agent answered a developer prompt.
 
-Applies to: button labels, text under buttons, help, placeholders, empty states, toasts, confirm dialogs, page titles, menu names, permission **name** / **description**, translation JSON **values**, and any other UI copy. Code comments may stay technical. Strings meant only for a model (`howtouse` / tool routing) may be technical — if the same field is **shown in the UI**, it still follows this rule.
+Applies to: button labels, text under buttons, help, placeholders, empty states, toasts, confirm dialogs, page titles, menu names, permission **name** / **description**, translation JSON **values**, and any other UI copy. Code comments **MUST** be English and explain **why** at trap-prone spots — not every line, not prompt-echo ([03](03-MODULES-AND-ROUTING.md)). Strings meant only for a model (`howtouse` / tool routing) may be technical — if the same field is **shown in the UI**, it still follows this rule.
 
 **Test:** would a product team put this sentence in a released admin panel? If it sounds like a reply to “please let the user hide the AI icon”, **rewrite**.
 

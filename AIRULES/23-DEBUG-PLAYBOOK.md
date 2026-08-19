@@ -1,0 +1,83 @@
+# 23 — Debug playbook (“it doesn’t work”)
+
+This file is **extra hunt rules**, not a replacement for [08](08-FORMS-AND-SECURITY.md) / [19](19-VALIDATION-AND-INPUT.md). Use it when the user asks **why** a form, login, AJAX save, installer, or list request fails.
+
+**MUST** search before inventing a core bug. **MUST NOT** patch `app/parts/` or `DotApp.php`.
+
+---
+
+## 1. Trigger
+
+Read this file when the user says: doesn’t work, 400, Bad request, empty error, login fails, installer fails, “I clicked Save and nothing”, CRC / CSRF, middleware.
+
+Open **one** sample after the hunt: [EX-01](examples/EX-01-secure-form-complete.md) (forms), [EX-14](examples/EX-14-auth-and-2fa.md) (login).
+
+---
+
+## 2. Grep first (**MUST**)
+
+Count every `$request->crcCheck()` / `crcCheck(` on the **failing route’s pipeline** — not only the controller.
+
+| Where | What to open |
+|-------|----------------|
+| Module middleware | `app/modules/<Module>/Middleware/*.php` |
+| Route hooks | `module.init.php` — `->before(`, `->middleware(`, `Middleware::use`, `Middleware::register` |
+| Listeners | `module.listeners.php`, `app/listeners.php` (ask before editing listeners) |
+| The action | `Controllers/*.php` of the POST URL |
+| Shared “security” helpers | any `Crc` / `Secure` / `Gate` class in **this** module |
+
+**Two or more `crcCheck()` on one request = the first call burned the one-time token; the second returns `false`.** That is the usual “Bad request” after a generic CRC middleware.
+
+Canonical: [08](08-FORMS-AND-SECURITY.md) “`crcCheck()` burns the token”.
+
+---
+
+## 3. If you write middleware
+
+**MUST:** `crcCheck()` lives in **one** place.
+
+| Middleware does | Controller / action |
+|-----------------|---------------------|
+| Prefix already called `crcCheck()` (`#Shop:Gate@crc!` / `@loginAndCrc!`) | **MUST NOT** call `crcCheck()` again — only `form()` / persist |
+| HTML `Gate@login` only (no CRC) | **MUST** `crcCheck()` **once** in the action if that POST has no API prefix |
+| No prefix CRC on that POST | **MUST** `crcCheck()` **once** in the action |
+
+**MUST NOT** CRC-`before` on GET or on `*`. The intended catch-all is **POST** `/api/v1/auth|noauth/{Module}/*` ([03](03-MODULES-AND-ROUTING.md)). HTML `Gate@login` stays CRC-free.
+
+`$request->form()` does **not** run `crcCheck()`.
+
+---
+
+## 4. Hunt order (POST / AJAX)
+
+Work top-down. Stop when you find a match.
+
+1. **`crcCheck()` count** (section 2). Middleware + controller is guilty until proven otherwise.
+2. **`formName` placement** — must sit **between** `<fo-rm>` and `</fo-rm>`. Outside the pair the tag is left unchanged (silent fail).
+3. **`/assets/dotapp/dotapp.js`** loaded **before** module JS (session keys). Missing → CRC/CSRF fields wrong.
+4. **`$request->form(...)`** — missing error callback throws; method mismatch → `false`; wrong handler name → `null`. Guard all three and **show** `reply.message`.
+5. **Original vs protected input** — passwords / HTML / hashes **MUST** be `$request->data(true)` (secure fields: `['data']`). `$request->data()` runs `protect()` (`)`, `=`, `%`, … become a different string). Login/installer then “never matches”. [19](19-VALIDATION-AND-INPUT.md).
+6. **`Auth::login` === `false`** (malformed) vs `['error']` 1–5 / 99. **MUST** map every branch to a visible message — silent 400 is a frontend/handler bug. [11](11-AUTH-AND-CRYPTO.md), [EX-14](examples/EX-14-auth-and-2fa.md).
+7. **File/ZIP** — `FormData` + `load()` / `<fo-rm>` cannot carry CRC. **MUST** `$dotapp().uploadFile` + `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint. [09](09-DOTAPP-JS-AND-BRIDGE.md).
+8. **JS** — `$dotapp().form` / `load` + `parseReply`. Raw `fetch` / `$.ajax` fails `crcCheck()`. `.after()` **MUST** show `reply.message` on `status != 1` and on HTTP 400.
+9. **DDL / installer** — `$qb->raw()` treats **every** `?` as a placeholder, including `COMMENT 'SMS?'`. [06](06-DATABASE.md).
+
+---
+
+## 5. Symptom → look here
+
+| User sees | Hunt |
+|-----------|------|
+| 400 / “Bad request” / empty toast on Save | `crcCheck()` twice; `crcCheck()` on GET; `form()` `null`/`false`; JS ignores `reply.message` |
+| Login always wrong password | `$request->data()` instead of `data(true)`; installer hashed the protected password |
+| Works once, second click fails | Token already burned (double submit without new token, or double `crcCheck`) |
+| Upload “Request failed” | `crcCheck()` on upload endpoint, or file stuffed into `load()` `FormData` |
+| CREATE TABLE never appears | `?` in `$qb->raw()` comments |
+| Blank page / empty body | missing view → `""`; check Renderer fallback |
+| `formName` visible as text | tag **outside** `<fo-rm>…</fo-rm>` |
+
+---
+
+## 6. After you find it
+
+Fix **in the current module** only. Remove the extra `crcCheck()`, or move CRC to the controller and leave middleware as Auth/rights. Do not add a “CRC cache” in core. Do not tell the user to patch `RequestObj.php`.

@@ -127,7 +127,7 @@ Drag-and-drop: same — `data-rule="{{ enc(Shop.rule.id): $id }}"` on the token;
 $dotapp().live("click", ".js-shop-page", function (e) {
   var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
   Notiflix.Block.standard("#listWrap", "Loading…");
-  $dotapp().load("/shop/items/list", "POST", { page: page, q: currentQuery },
+  $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: page, q: currentQuery },
     function (raw) {
       var reply = $dotapp().parseReply(raw);
       if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);

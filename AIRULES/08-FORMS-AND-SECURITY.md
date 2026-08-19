@@ -4,7 +4,7 @@
 
 When building a **real HTML form** (user fills fields and submits — CMS name/surname, login, settings, create/edit):
 
-1. **Prefer** `<fo-rm>` + `{{ formName(handler) }}` + `/assets/dotapp/dotapp.js` + `$request->crcCheck()` + `$request->form(...)`.
+1. **Prefer** `<fo-rm>` + `{{ formName(handler) }}` + `/assets/dotapp/dotapp.js` + `crcCheck()` **once** (API prefix **or** action) + `$request->form(...)`.
 2. **MUST:** `{{ formName(handler) }}` is a child **between** `<fo-rm …>` and `</fo-rm>`. Never before `<fo-rm>`, never after `</fo-rm>`. Outside that pair the renderer leaves the tag unchanged (silent failure).
 3. Treat this as the **default** security path for those forms — not optional polish.
 4. Plain CSRF (`{{ CSRF }}` alone), Laravel-style `_token`, or raw `fetch`/`$_POST` are **inferior** and must not replace formName for app forms.
@@ -25,7 +25,27 @@ Edit/API sample: [examples/EX-02-secure-form-edit-api.md](examples/EX-02-secure-
 | `$dotapp().load(url, method, data, ok, err)` | One-shot action: click, toggle, delete, paginate, filter, **reorder / drag-and-drop**. |
 | `$dotapp().uploadFile(file, url, progress)` | **Files / ZIP.** Never `FormData` on `load()` / `<fo-rm>` — CRC cannot wrap a file. |
 
-`load()` **automatically** adds CSRF, CRC, the `dotapp: load` header and posts `{ data, crc }`. PHP **MUST** still `crcCheck()`. A `<fo-rm>` submit uses this same pipeline. **`fo-rm` does not make a click “more secure” than `load()`.**
+`load()` **automatically** adds CSRF, CRC, the `dotapp: load` header and posts `{ data, crc }`. PHP **MUST** still `crcCheck()` — **once**. A `<fo-rm>` submit uses this same pipeline. **`fo-rm` does not make a click “more secure” than `load()`.**
+
+### `crcCheck()` burns the token (**MUST once**)
+
+`$request->crcCheck()` is **one-shot**. On a valid token it calls `invalidateCSRF()` (stores `md5(token)` in DSM `_CSRF`). A **second** `crcCheck()` in the same request sees a used token and returns **`false`**. `$request->form()` does **not** run `crcCheck()`.
+
+**MUST** call `crcCheck()` **exactly once** per DotApp POST (`<fo-rm>` / `load()`). `$request->form()` does **not** run `crcCheck()`.
+
+**One place**, decided at the top of `initialize()` ([03](03-MODULES-AND-ROUTING.md) “Versioned POST API”):
+
+| Where CRC runs | Action |
+|----------------|--------|
+| `Router::before(['POST'], '/api/v1/auth\|noauth/{Module}/*', …)` already called `crcCheck()` | **MUST NOT** `crcCheck()` again — only `form()` / persist |
+| That POST has **no** prefix CRC | **MUST** `crcCheck()` **once** in the action (EX-01) |
+
+**MUST NOT:**
+- prefix CRC **and** `crcCheck()` in the controller (first call **burns** the token)
+- CRC `before` on GET or on `*` (GET has no `{ data, crc }`)
+- hang `$dotapp().uploadFile` under a CRC prefix ([09](09-DOTAPP-JS-AND-BRIDGE.md))
+
+When the user asks **why** a POST fails: hunt with [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware first.
 
 ### One-shot actions are not forms (**MUST**)
 
@@ -190,12 +210,19 @@ For standard UX forms, **formName remains preferred**.
 
 ---
 
-## Request data
+## Request data (**MUST**)
+
+Incoming values are **auto-protected** (`DotApp::protect()`). Ask for the original with `true`.
 
 | Call | Use |
 |------|-----|
-| `$request->data(true)['data']` | Secure form field values after DotApp unwrap |
-| `$request->data()` | Protected/escaped copy — not for crypto/password compare |
+| `$request->data(true)['data']` | Secure form fields after unwrap — **MUST** for passwords, HTML, hashes |
+| `$request->data()` / `$request->query()` | Protected copy — **MUST NOT** hash, `Auth::login`, or store HTML from this |
+| `$request->query(true)` | Original GET |
+
+A password with `)`, `=`, `%` (and similar) is a **different string** after `protect()`. Login then fails or the installer stored the wrong hash. Full rule: [19](19-VALIDATION-AND-INPUT.md) “Protected vs original input”.
+
+**MUST** return a user-visible `message` on every login/install failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`). JS **MUST** show `reply.message` — silent “Bad request” is incomplete.
 
 ---
 
@@ -203,7 +230,7 @@ For standard UX forms, **formName remains preferred**.
 
 Frontend checks (modal, overlay covering Save, disabled toggle, `$dotapp().twoFactor` complete) are **UX only**. They MAY run so the user understands what is required.
 
-**MUST:** the PHP handler that **persists** the change repeats the same check (`crcCheck`, `Auth::can`, 2FA code, ownership, validation). Missing or wrong proof → refuse and **leave the previous state**.
+**MUST:** the PHP handler that **persists** the change repeats **authorization** (`Auth::can`, 2FA code, ownership, validation). `crcCheck()` runs **once** per request — do not repeat it if middleware already did. Missing or wrong proof → refuse and **leave the previous state**.
 
 **MUST NOT:** treat a JS overlay, hidden button, or skipped modal as authorization. Removing the overlay or posting the form from DevTools **MUST** still fail on the server.
 
@@ -215,7 +242,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 
 1. `<fo-rm>` + `{{ formName(...) }}` **only** for real HTML forms (several fields + submit). **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>`. One-shot row actions (toggle, delete, reorder, drag-and-drop, paginate): `$dotapp().load()` — **MUST NOT** wrap them in `<fo-rm>`.
 2. `/assets/dotapp/dotapp.js` on every page that uses secure forms/bridge/load.
-3. `crcCheck()` before trusting `form()` or `load()` bodies. File uploads: `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint ([09](09-DOTAPP-JS-AND-BRIDGE.md) file uploads).
+3. `crcCheck()` **once** — API prefix **or** action, never both. File uploads: `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint ([09](09-DOTAPP-JS-AND-BRIDGE.md) file uploads).
 4. Encrypt every FE identifier with a **unique `$key2` per field**; decrypt with the same key; reject `false`. **MUST still** `Auth::can()` / ownership.
 5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; **your module preloaders** covering the list/form until `load()` ends (success **and** error). Notiflix is DACore-only — not available here. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.

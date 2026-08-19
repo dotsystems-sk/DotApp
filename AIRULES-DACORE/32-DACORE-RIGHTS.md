@@ -109,7 +109,81 @@ Auth::permissions();                                        // array of strings
 
 ## 3. Your own route-guard middleware (required)
 
-**Do not use `#DACore:AuthTest@check!` for permission checks** — it ignores the rights you pass (see [36](36-DACORE-KNOWN-ISSUES.md)). Generate your own middleware:
+**Do not use `#DACore:AuthTest@check!` for permission checks** — it ignores the rights you pass (see [36](36-DACORE-KNOWN-ISSUES.md)). **Do not** copy `#DACore:AuthTest@loginRouter!` into your module (`header` + `exit()`). Your login gate **MUST** return a `Response`.
+
+### Admin URL prefix + login `before` (**MUST**)
+
+Path = `{DACore prefixUrl}/{ModuleName}/…` (module name `Shop`, not a kebab slug). Cover the whole tree with **one** login middleware. This is **not** Laravel: `Router::before($pattern, $fn)` binds only if the **current** request already matches ([03](03-MODULES-AND-ROUTING.md)).
+
+```powershell
+php dotapper.php --module=Shop --create-middleware=Gate
+php dotapper.php --module=Shop --create-middleware=Rights
+```
+
+```php
+<?php
+namespace Dotsystems\App\Modules\Shop\Middleware;
+
+use Dotsystems\App\DotApp;
+use Dotsystems\App\Parts\Auth;
+use Dotsystems\App\Parts\Config;
+use Dotsystems\App\Parts\Response;
+
+class Gate extends \Dotsystems\App\Parts\ModuleMiddleware
+{
+    /** HTML / GET area. MUST NOT crcCheck() — GET has no CRC. */
+    public static function login($request)
+    {
+        if (!Auth::isLogged()) {
+            return new Response(403, DotApp::call(Config::module('DACore', 'error403Page')));
+        }
+    }
+}
+```
+
+```php
+$admin = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
+
+Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!');
+
+if (Auth::isLogged() === true) {
+    Router::get($admin . '/items', 'Shop:Admin@items!')
+        ->before(function ($request) {
+            return DotApp::call('#Shop:Rights@check!', $request, [
+                'dotapp.root',
+                'Shop.administrator',
+                'Shop.items.view',
+            ]);
+        });
+}
+```
+
+`/dacore/Shop/*` matches URLs that **start with** `/dacore/Shop/`. Exact `/dacore/Shop` does not — that is why the array includes `$admin`. **MUST NOT** put `crcCheck()` on this HTML hook.
+
+### Versioned POST API (**MUST**)
+
+Put JSON / `fo-rm` / `$dotapp().load()` POSTs under `/api/v{n}/auth|noauth/{Module}/…`, **not** under `{prefixUrl}/Shop/…`. DACore already CRC’s `POST /dacore/*` (`#DACore:AuthTest@check!`) — a second `crcCheck()` there **burns** and fails. Wire `<fo-rm action>` and JS `load()` to the API URL. Keep v1 when you add v2.
+
+**Use DACore’s methods** (they exist — do not invent `@CRCcheck` / `@LoginAndCRCcheck`, do not copy them into Shop):
+
+| Hook | What it does |
+|------|----------------|
+| `#DACore:AuthTest@LoginAndCRC!` | `crcCheck()` + `Auth::isLogged()` — token **burned** |
+| `#DACore:AuthTest@CRC!` | `crcCheck()` only — token **burned** |
+| `#DACore:AuthTest@check!` | CRC on **DACore’s** `POST /dacore/*` — **not** a rights guard ([36](36-DACORE-KNOWN-ISSUES.md)) |
+
+```php
+$authApi = '/api/v1/auth/Shop';
+$openApi = '/api/v1/noauth/Shop';
+Router::before(['POST'], [$authApi, $authApi . '/*'], '#DACore:AuthTest@LoginAndCRC!');
+Router::before(['POST'], [$openApi, $openApi . '/*'], '#DACore:AuthTest@CRC!');
+```
+
+The action **MUST NOT** `crcCheck()` again. `formName` → only `form()`. Rights stay `#Shop:Rights@check!`. **MUST NOT** hang `uploadFile` under these prefixes.
+
+### Rights middleware
+
+Generate `Rights` and attach **per route** inside the `isLogged` block (logged in ≠ this right):
 
 ```powershell
 php dotapper.php --module=Shop --create-middleware=Rights
@@ -180,14 +254,16 @@ class Rights extends \Dotsystems\App\Parts\ModuleMiddleware
 }
 ```
 
-### Attaching it — GET page route
+### Attaching rights — GET page route
+
+Put GET/POST handlers **inside** `if (Auth::isLogged() === true)` (**MUST**). The prefix `Gate@login` already 403s; rights `before` still runs: logged in ≠ this right.
 
 ```php
 Router::get(
-    Config::module("DACore", "prefixUrl") . "/shop-admin/items",
-    "Shop:Admin@items!"
+    $admin . '/items',
+    'Shop:Admin@items!'
 )->before(function ($request) {
-    return DotApp::call("#Shop:Rights@check!", $request, [
+    return DotApp::call('#Shop:Rights@check!', $request, [
         'dotapp.root',
         'Shop.administrator',
         'Shop.items.view',
@@ -195,23 +271,23 @@ Router::get(
 });
 ```
 
-### Attaching it — POST endpoint (CRC first, then rights)
+### Attaching rights — POST endpoint (CRC already on the API prefix)
 
 ```php
 Router::post(
-    Config::module("DACore", "prefixUrl") . "/shop-admin/items/save",
-    "Shop:Admin@save!"
+    $authApi . '/items/save',
+    'Shop:Admin@save!',
+    Router::STATIC_ROUTE
 )->before(function ($request) {
-    if ($request->crcCheck() === false) {
-        return new Response(403, DotApp::call(Config::module("DACore", "error403Page")));
-    }
-    return DotApp::call("#Shop:Rights@check!", $request, [
+    return DotApp::call('#Shop:Rights@check!', $request, [
         'dotapp.root',
         'Shop.administrator',
         'Shop.items.edit',
     ]);
 });
 ```
+
+**MUST NOT** `crcCheck()` here — `LoginAndCRC` already burned the token. Then `form()` in the controller.
 
 Returning a `Response` from a `before` hook short-circuits the route ([03](03-MODULES-AND-ROUTING.md)).
 
@@ -223,17 +299,29 @@ DACore already registers globally in its own `module.init.php`:
 
 | Middleware | Purpose |
 |------------|---------|
-| `#DACore:AuthTest@loginRouter!` | Redirects anonymous users to the login or 2FA URL using `header()` + `exit()` |
+| `#DACore:AuthTest@loginRouter!` | On **DACore’s own** routes: redirects anonymous users to login/2FA with `header()` + `exit()` — **not** a `Response` |
+| `#DACore:AuthTest@sessionGuard!` | Session enforcement on `{prefixUrl}` — DACore registers it **only when already logged in** |
 | `#DACore:AuthTest@permissionRefresh!` | Re-reads permissions every `permissionsAutorefreshTime` seconds and triggers `DACore.permissions.refresh` |
-| `#DACore:AuthTest@check!` | CRC validation for `POST /dacore/*` |
+| `#DACore:AuthTest@check!` | CRC on `POST /dacore/*` (token burned) — **not** a permission guard |
+| `#DACore:AuthTest@CRC!` | CRC only — attach on **your** `POST /api/v1/noauth/{Module}/*` |
+| `#DACore:AuthTest@LoginAndCRC!` | CRC + logged in — attach on **your** `POST /api/v1/auth/{Module}/*` |
 
-You normally do **not** re-register these. Register your admin routes only when logged in if you want to keep the router small:
+You normally do **not** re-register `check` / `sessionGuard` / `loginRouter`. **Your** module **MUST** still: HTML `Gate@login` on `{prefixUrl}/Shop`, POST `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` on `/api/v1/auth|noauth/Shop`, handlers only when `Auth::isLogged()` (auth API + HTML). Admin pages **MUST NEVER** render for an anonymous user.
 
 ```php
+$admin = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
+$authApi = '/api/v1/auth/Shop';
+$openApi = '/api/v1/noauth/Shop';
+Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!');
+Router::before(['POST'], [$authApi, $authApi . '/*'], '#DACore:AuthTest@LoginAndCRC!');
+Router::before(['POST'], [$openApi, $openApi . '/*'], '#DACore:AuthTest@CRC!');
+
 if (Auth::isLogged() === true) {
-    // routes for the authenticated admin area
+    // GET pages + auth API routes + Rights@check!
 }
 ```
+
+Rights middleware **inside** that block is still required: logged in ≠ `Shop.items.edit`. Canonical: [03](03-MODULES-AND-ROUTING.md). Sample: [EX-D01](examples/EX-D01-dacore-module-skeleton.md).
 
 To react to permission changes (e.g. rebuild a cached AI context):
 

@@ -299,7 +299,7 @@ First paint may be server-rendered page 1. Further pages: POST with `page` (clam
 $dotapp().live("click", ".js-shop-page", function (e) {
   var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
   Notiflix.Block.standard("#listWrap", "Loading…");
-  $dotapp().load("/dacore/shop-admin/items/list", "POST", { page: page, q: currentQuery },
+  $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: page, q: currentQuery },
     function (raw) {
       var reply = $dotapp().parseReply(raw);
       if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
@@ -344,7 +344,7 @@ $dotapp().live("input", "#shopSearch", function () {
   searchTimer = setTimeout(function () {
     currentQuery = q.length >= 3 ? q : "";
     Notiflix.Block.standard("#listWrap", "Searching…");
-    $dotapp().load("/dacore/shop-admin/items/list", "POST", { page: 1, q: currentQuery },
+    $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: 1, q: currentQuery },
       function (raw) {
         var reply = $dotapp().parseReply(raw);
         if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);

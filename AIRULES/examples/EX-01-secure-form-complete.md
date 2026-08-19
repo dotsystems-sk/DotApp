@@ -3,6 +3,8 @@
 **Use this for any login/contact/settings form.**  
 Security level: **formName encrypted binding + CRC + one-time CSRF + referer tab** ≫ plain CSRF hidden field.
 
+**MUST** read fields with `$request->data(true)` (original). `$request->data()` is `protect()`-escaped — passwords/HTML will not match. **MUST** show `reply.message` on every failure, including `crcCheck` / `form()` reject (“Bad request”). Canonical: [19](../19-VALIDATION-AND-INPUT.md).
+
 ## Why `dotapp.js` is mandatory
 
 `/assets/dotapp/dotapp.js` is **not** a static library copy. The framework Bridge route generates it per client and injects random key material (CSRF tab token + key exchange). Without that script:
@@ -105,7 +107,9 @@ Router::post('/shop/contact', 'Shop:Contact@save!', Router::STATIC_ROUTE);
 Router::get('/shop/contact', 'Shop:Contact@page!', Router::STATIC_ROUTE);
 ```
 
-## 4) Controller — crcCheck → form → ajaxReply
+## 4) Controller — crcCheck **once** → form → ajaxReply
+
+`crcCheck()` **burns** the CSRF token. **MUST NOT** call it in middleware **and** here. If `initialize()` already attached `#Shop:Gate@crc!` on this POST prefix, **skip** `crcCheck()` below — only `form()`. This sample is the isolated-POST path.
 
 ```php
 <?php

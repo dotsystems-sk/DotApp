@@ -119,7 +119,7 @@ $dotapp().live("click", ".js-shop-page", function (e) {
   if (listBusy) return;
   listBusy = true;
   $dotapp("#listWrap").addClass("shop_busy");
-  $dotapp().load("/shop/items/list", "POST", { page: page, q: currentQuery },
+  $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: page, q: currentQuery },
     function (raw) {
       var reply = $dotapp().parseReply(raw);
       if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
@@ -145,7 +145,7 @@ $dotapp().live("input", "#shopSearch", function () {
     if (listBusy) return;
     listBusy = true;
     $dotapp("#listWrap").addClass("shop_busy");
-    $dotapp().load("/shop/items/list", "POST", { page: 1, q: currentQuery },
+    $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: 1, q: currentQuery },
       function (raw) {
         var reply = $dotapp().parseReply(raw);
         if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);

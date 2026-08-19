@@ -7,6 +7,7 @@
 3. Methods are **`public static function`** — there is no `$this`
 4. First argument is usually `$request` (RequestObj)
 5. Route string: `"Module:Controller@method!"`
+6. Comments: English, short **why** at traps — not every line ([03](03-MODULES-AND-ROUTING.md))
 
 ### With DI (no trailing `!`)
 
@@ -59,14 +60,15 @@ Prefixes: `#` Middleware, `*` Models.
 ## Reading the request
 
 ```php
-$data = $request->data();           // protected/escaped copy (by reference)
-$raw  = $request->data(true);       // unprotected (needed for crypto / secure form payloads)
-$get  = $request->query();
+$data = $request->data();           // protected/escaped copy (by reference) — default
+$raw  = $request->data(true);       // original bytes — MUST for passwords, HTML, hashes
+$get  = $request->query();          // protected GET
+$getRaw = $request->query(true);    // original GET
 $id   = $request->matchData()['id'] ?? null;
 $method = $request->getMethod();
 ```
 
-Automatic `protect()` escapes GET/POST-like data. Use `data(true)` when you need raw values (password compare, decrypt). There is **no `headers()` method**. Full request/response API and return shapes: [19-VALIDATION-AND-INPUT.md](19-VALIDATION-AND-INPUT.md).
+**MUST:** `data()` / `query()` run `protect()` (old injection/XSS guard). **MUST** pass `true` for passwords, HTML, anything stored or compared as-is. `data()` on a password with `)`, `=`, `%` hashes the **wrong** string. Canonical: [19](19-VALIDATION-AND-INPUT.md). There is **no `headers()` method**.
 
 Uploads: `$request->upload(function ($files) { ... });` — each entry has `field, name, type, size, tmp_name, error, extension`. Always check `$f['error'] !== UPLOAD_ERR_OK`.
 
@@ -179,6 +181,7 @@ class Home extends \Dotsystems\App\Parts\Controller
     public static function save($request)
     {
         try {
+            // Isolated POST: crcCheck here. Under /api/v1/… CRC prefix: skip — only form().
             if (!$request->crcCheck()) {
                 return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 400);
             }

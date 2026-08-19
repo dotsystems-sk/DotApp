@@ -66,6 +66,7 @@ class Installation extends Installer
                 $notes = [];
 
                 // ---- 1. tables ----
+                // $qb->raw() counts every ? as a placeholder — including COMMENT 'SMS?'. Never put ? in comments.
                 DB::module('RAW')->q(function ($qb) {
                     $qb->raw(
                         "CREATE TABLE IF NOT EXISTS `shop_items` (
@@ -136,7 +137,7 @@ class Installation extends Installer
                     ]],
                     ['Shop.main.catalog.items', [
                         'name' => 'Items', 'parent' => 'Shop.main.catalog', 'icon' => '',
-                        'url' => '/shop-admin/items', 'urlprefix' => 1, 'rights' => $menuRights,
+                        'url' => '/Shop/items', 'urlprefix' => 1, 'rights' => $menuRights,
                         'type' => 1, 'ordering' => 1,
                     ]],
                 ];

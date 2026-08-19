@@ -1,6 +1,6 @@
 # 36 — DACore Known Issues
 
-DACore-specific traps. Framework-level issues are in [15](15-KNOWN-ISSUES.md).
+DACore-specific traps. Framework-level issues are in [15](15-KNOWN-ISSUES.md). When the user asks **why** an admin POST fails, hunt with [23](23-DEBUG-PLAYBOOK.md) §7 **before** blaming DACore.
 
 ---
 
@@ -8,7 +8,9 @@ DACore-specific traps. Framework-level issues are in [15](15-KNOWN-ISSUES.md).
 
 When called with a non-null array it does **not** evaluate your argument — it checks a hardcoded built-in permission list. It is only reliable for its registered purpose: CRC validation of `POST /dacore/*`.
 
-**Consequence:** never use it as your permission guard.
+**Consequence:** never use it as your permission guard. `CRC` / `LoginAndCRC` also ignore a `$rights` argument — they only CRC (and login). After any of these, the token is **burned**: **MUST NOT** `crcCheck()` again in the action.
+
+`#DACore:AuthTest@CRC!` and `#DACore:AuthTest@LoginAndCRC!` **do exist** — attach them on **your** `POST /api/v1/noauth|auth/{Module}/*`. Do not invent `@CRCcheck` / `@LoginAndCRCcheck`. Do not copy the class into Shop.
 
 ```php
 // WRONG - your rights are discarded

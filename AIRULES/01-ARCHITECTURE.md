@@ -153,7 +153,7 @@ Event names are lowercased on register/trigger.
 - No `routes/web.php` files.
 - No Eloquent ActiveRecord by default.
 - No Blade/Twig.
-- No global automatic CSRF middleware on every POST (use `crcCheck` + secure forms / Input groups).
+- No global automatic CSRF middleware on every POST (use `crcCheck` **once** in the handler + secure forms / Input groups — **MUST NOT** middleware `crcCheck` + controller `crcCheck`).
 - No named routes / `route('name')`.
 
 Continue: [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md), [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md).

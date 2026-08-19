@@ -1,6 +1,8 @@
 # EX-14 — Auth, permissions, 2FA
 
-Rules: [11-AUTH-AND-CRYPTO.md](../11-AUTH-AND-CRYPTO.md).
+Rules: [11](../11-AUTH-AND-CRYPTO.md), [19](../19-VALIDATION-AND-INPUT.md) (`data(true)` = original).
+
+**MUST** take the password from `$request->data(true)['data']`. `$request->data()` is `protect()`-escaped — `)`, `=`, `%` become a **different** password. **MUST** show `reply.message` on every failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`, error codes). Silent 400 is incomplete.
 
 `$dotapp().twoFactor` is **input UX only**. Completing the boxes or covering Save with a modal does **not** authorize. The PHP handler **MUST** verify the code before persist ([08](../08-FORMS-AND-SECURITY.md)).
 

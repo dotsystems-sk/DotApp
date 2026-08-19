@@ -11,7 +11,7 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
 ## Layout: `views/layouts/admin/items.layout.php`
 
 ```html
-<div class="card mb-6" id="listWrap" data-list-url="{{ var: $baseUrl }}/items/list">
+<div class="card mb-6" id="listWrap" data-list-url="{{ var: $apiAuth }}/items/list">
   <h5 class="card-header d-flex justify-content-between align-items-center">
     <span>{{_ "Items" }} <span class="badge bg-label-primary">{{ var: $total }}</span></span>
     <a href="{{ var: $baseUrl }}/items/0" class="btn btn-primary btn-sm">
@@ -64,7 +64,7 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
 </div>
 ```
 
-Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — not `<a href="?page=">` ([33](../33-DACORE-PAGES-AND-UI.md) §3). `#listInner` is the fragment AJAX replaces (rows **and** pager).
+Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. `$baseUrl` is the HTML page prefix (`/dacore/Shop`). `$apiAuth` is `/api/v1/auth/Shop` — **MUST** pass it from the controller for `fo-rm` / list `load()`. Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — not `<a href="?page=">` ([33](../33-DACORE-PAGES-AND-UI.md) §3). `#listInner` is the fragment AJAX replaces (rows **and** pager).
 
 ## Edit form with dotgrid + secure form
 
@@ -73,7 +73,7 @@ Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplie
   <h5 class="card-header">{{_ "Edit item" }}</h5>
   <div class="card-body">
 
-    <fo-rm action="{{ var: $baseUrl }}/items/save" method="post" id="itemForm">
+    <fo-rm action="{{ var: $apiAuth }}/items/save" method="post" id="itemForm">
       <input type="hidden" name="id" value="{{ enc(Shop.item.id): $itemId }}" />
 
       <dot-grid dg-marginb20="any" wrapped="any" stretch="any" any="12" class="mb-4">

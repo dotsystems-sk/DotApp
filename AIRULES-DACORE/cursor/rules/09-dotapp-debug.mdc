@@ -1,0 +1,19 @@
+---
+description: Debug hunt when a DotApp/DACore form, login, or AJAX call fails — grep middleware and crcCheck first
+alwaysApply: true
+---
+
+# DotApp debug (user: it doesn’t work)
+
+This is **hunt** guidance. Programming rules stay in `AIRULES/08`, `19`. Full playbook: `AIRULES/23-DEBUG-PLAYBOOK.md` (DACore hunts = §7). Quirks: `AIRULES/36`.
+
+When the user asks **why** Save / login / AJAX / installer / admin POST fails (400, Bad request, empty error, “nothing happens”):
+
+1. **Read** `AIRULES/23-DEBUG-PLAYBOOK.md`.
+2. **Grep** `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before`, `Middleware::`), `Controllers/`, listeners.
+3. **Count** `crcCheck()` on that route. First call **burns** the one-time CSRF token (`invalidateCSRF`). A second call returns `false`. Middleware + controller is the usual bug.
+4. If **you** add middleware that calls `crcCheck()`, the action **MUST NOT** call it again.
+5. Then check: `data(true)` for passwords/HTML; `form()` `null`/`false`; `reply.message` shown; no `crcCheck()` on `$request->upload()`.
+6. **DACore:** grep `AuthTest` — it **ignores** passed rights. Do **not** patch `app/modules/DACore/` to “fix” it (`AIRULES/00` §1).
+
+**MUST NOT** invent a core/DACore bug or edit `app/parts/` / `DotApp.php`.

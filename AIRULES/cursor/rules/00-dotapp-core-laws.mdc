@@ -19,13 +19,17 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 2. Use `php dotapper.php` to create modules/controllers/models/middleware
 3. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
 4. **Cursor credits:** when planning programming, **ASK** before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only, not the coder. (`AIRULES/00` §2b)
+5. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core bug.
 
 ## Syntax locks
 
 - Controllers: `public static`; route `"Mod:Ctrl@method!"` (`!` ⇒ no DI params)
-- DB: `DB::module("RAW")->q(fn($qb)=>...)->all()` + `[0] ?? null` (never bare `first()`)
+- Login-required routes: **MUST** prefix + `Gate@login` 403 `Response` + wrap handlers in `Auth::isLogged()` in `initialize()`. Those pages **MUST NEVER** render for anonymous users. `AIRULES/03`
+- Comments: English **why** at traps — not every line
+- DB: `DB::module("RAW")->q(fn($qb)=>...)->all()` + `[0] ?? null` (never bare `first()`). **MUST** `execute($ok,$err)` both callbacks. Persist `try/catch`. `AIRULES/18`
 - Views: `{{ var: $x }}`, `{{ /if }}`, `{{ /foreach }}` — NOT `{{ $x }}` / `endif`. VIEW = outer file; `setLayout`+`renderView()` fills `{{ content }}` in that view (or `renderLayout()` / inject a string). `AIRULES/05` §1b
-- Forms: `<fo-rm>` + `{{ formName(x) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit + `/assets/dotapp/dotapp.js` + `crcCheck()` + `form()`. Row actions (toggle/delete/reorder/D&D) = `$dotapp().load()` + encrypted `data-*` — NOT one `<fo-rm>` per button
+- Forms: `<fo-rm>` + `{{ formName(x) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit + `/assets/dotapp/dotapp.js` + `crcCheck()` **once** (API prefix **or** action) + `form()`. Row actions (toggle/delete/reorder/D&D) = `$dotapp().load()` + encrypted `data-*` — NOT one `<fo-rm>` per button
+- Request: `data()` = protected (`protect()`); `data(true)` = original — **MUST** `true` for passwords, HTML, hashes. Show every login failure. `AIRULES/19`
 - Sample: `AIRULES/examples/EX-01-secure-form-complete.md`
 - JS: `$dotapp` + `/assets/dotapp/dotapp.js` — NOT jQuery `$`
 - 2FA code boxes: `$dotapp().twoFactor` — NOT a custom OTP widget (`AIRULES/09` §3, EX-14)
@@ -37,6 +41,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list with **module preloaders** until the request ends (desktop **and** mobile). (`AIRULES/09` §3, EX-06)
 - Public website: overlay nav drawer L/R; lock page scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own section (`AIRULES/09` §3)
 - Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined; **ASK** on other lists. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
+- Cheap I/O: `exists()` / `COUNT(*)` / needed columns / one `join` — NOT `all()` then filter, NOT N+1. `AIRULES/06`
 - Cursor credits: **ASK** in the plan before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only — NOT the programmer. (`AIRULES/00` §2b)
 
 ## Never ignore return values (AIRULES/18)
@@ -50,6 +55,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - missing view/layout → **`""`**, no exception
 - `Validator::validate` → `true` or error array (compare `=== true`)
 - wrap AI / SchemaBuilder / raw DDL in `try/catch`; never empty `catch {}`
+- `$qb->raw()`: every `?` is a placeholder (including comments / `COMMENT 'SMS?'`) — do not put `?` unless it is a real binding
 
 ## Docs
 

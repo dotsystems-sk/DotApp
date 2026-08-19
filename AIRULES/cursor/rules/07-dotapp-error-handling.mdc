@@ -14,11 +14,11 @@ Full contract: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 | Callback pair | `execute()`, `Entity::save()/delete()`, `DB::schema()` | pass **both** callbacks |
 | `false` / `null` | `Crypto::decrypt`→`false`, `Cache::load`→`null`, `Auth::login`→`false`, `Config` getters→`null` | compare explicitly |
 | Envelope array | `HttpHelper::request`, `FastSearch::*` | check `['success']` |
-| Exceptions | AI (`AIException`), QueryBuilder build, SchemaBuilder, `Auth::createUser`, `DI::resolve` | `try/catch` |
+| Exceptions | AI (`AIException`), QueryBuilder build, SchemaBuilder, `Auth::createUser`, `DI::resolve` | `try/catch` — `raw()` `?` in comments counts as a placeholder |
 
 ## Hard rules
 
-1. `execute()` **without** an error callback **throws** — always pass both.
+1. `execute()` **without** an error callback **throws** — always pass both. Persist handlers **MUST** also sit in `try/catch` (`\Throwable`).
 2. Never bare `->first()`: RAW warns on empty, ORM is fatal. Use `all()` + `[0] ?? null` or `exists()`.
 3. `$execution_data` is **empty on a cache hit** → `$exec['insert_id'] ?? $db->inserted_id()`.
 4. `Crypto::decrypt()` → `=== false` check.
@@ -26,10 +26,11 @@ Full contract: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 6. `Email::send()` returns **`string[]`** on failure → `!== true` check.
 7. `Validator::validate()` → `=== true` check (failure array is truthy).
 8. `$request->form()` may return your value, `false`, `null`, or **throw** → give it an error callback and guard.
-9. Missing view/layout renders **`""`** with only a log warning → use the fallback argument and check for `''`.
-10. `Entity::save()` returns **void** — never test it.
-11. `trigger()` ignores listener return values; listener exceptions propagate.
-12. Never write an empty `catch {}`. Log with `Logger::use()->error(...)` and return a structured error.
+9. Passwords/HTML: `$request->data(true)` — never `$request->data()`. Show login `reply.message` on every failure.
+10. Missing view/layout renders **`""`** with only a log warning → use the fallback argument and check for `''`.
+11. `Entity::save()` returns **void** — never test it.
+12. `trigger()` ignores listener return values; listener exceptions propagate.
+13. Never write an empty `catch {}`. Log with `Logger::use()->error(...)` and return a structured error.
 
 ## Template
 
