@@ -47,7 +47,7 @@ Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
 
 Use versioned `Installation.php`. Do **not** call `DB::migrate()`.
 
-**Your** modules that work **under** DACore: **`dainstall.php`** (not `install.php`), plus `init/` copies of `module.init.php` and `module.listeners.php`. See `AIRULES/35-DACORE-INSTALL.md` §4–§6. Blank the root init files only when the user asks to export. **Never** apply this to `app/modules/DACore/` itself.
+**Your** modules: while coding **`install.php`** + live root init files. After a new version, rename `installed_*_install.php` → `install.php`. Pack `dainstall.php` + `init/` only for a **DACore-bound** module and only when the user asks. Non-DACore: copy the folder with `install.php`. See `AIRULES/35-DACORE-INSTALL.md` §4–§5. **Never** pack `app/modules/DACore/`.
 
 ## Generate via CLI
 

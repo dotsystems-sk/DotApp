@@ -44,6 +44,7 @@
 - [ ] Bindings for all user values (`?` xor `:named`, never mixed)
 - [ ] No `DB::table`, Eloquent, `getConnection`, `selectRaw`, chain `find`, `count()`
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
+- [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items` or `dotapp_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 - [ ] Growing lists (users, logs, items, orders) use `paginate()` on **first ship** — not `->all()` into the view; “few rows now” is not a skip ([06](06-DATABASE.md))

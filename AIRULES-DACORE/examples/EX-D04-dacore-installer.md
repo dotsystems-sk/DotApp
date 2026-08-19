@@ -220,9 +220,11 @@ class Installation extends Installer
 }
 ```
 
-## `dainstall.php` (DACore installer trigger)
+## `install.php` (development) / `dainstall.php` (packed zip only)
 
-**MUST:** **Your** modules that work **under** DACore use this name. The framework **never** runs it. **MUST NOT** also ship `install.php`. **MUST NOT** apply this to `app/modules/DACore/` itself. See [35](../35-DACORE-INSTALL.md) §4–§6 (`init/` copies; export blanks the root only when the user asks).
+**While coding:** name it **`install.php`**. The framework runs it, then renames it to `installed_*_install.php`. After a new version, rename that file back to `install.php`.
+
+**Packed zip only** (user asked, **and** this module is for DACore): rename to **`dainstall.php`**, copy live init files into `init/`, inert root stubs. **MUST NOT** pack a module that is not for DACore.
 
 ```php
 <?php
@@ -235,11 +237,7 @@ Idempotency comes from the `Installations@exist!` guards, not from a framework r
 
 ## Re-running after adding a version
 
-```php
-Installation::module('Shop')->install();          // guarded, safe
-Installation::module('Shop')->install('1.0.1');   // up to 1.0.1
-Installation::module('Shop')->uninstall();
-```
+Rename `installed_*_install.php` back to `install.php` (agent does it). Next page load runs `Installation::module('Shop')->install();`. Already-applied versions stay skipped by `Installations@exist!`.
 
 ## Why each guard is here
 

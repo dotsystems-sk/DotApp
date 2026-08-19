@@ -236,20 +236,21 @@ Deleting `dacore_menu` rows directly is acceptable **only in an uninstaller**, b
 
 ---
 
-## 4. `dainstall.php` — DACore runs it, the framework does not (**MUST**)
+## 4. Development vs DACore zip (**MUST**)
 
-**This is not about the DACore module.** Do **not** rename, move, blank, or wrap `app/modules/DACore/` with `dainstall.php` / `init/`. DACore is the installer host. These rules apply **only** to **your** modules that **run under DACore** (`app/modules/<YourModule>/` — Shop, etc.). Never apply them to `app/modules/DACore/` itself.
+**This is not about the DACore module.** Do **not** rename, move, blank, or wrap `app/modules/DACore/` with `dainstall.php` / `init/`. The zip rules below apply **only** to **your** modules that **plug into DACore** (`app/modules/Shop/` with admin pages, menu, rights). A module that is **not** for DACore is never packed this way.
 
-A **bare** DotApp module uses `install.php` in the module root. The framework finds it (unless the autoloader is already optimized) and runs it once. That is correct for modules that do **not** depend on DACore.
+### While you are programming (default)
 
-A **your-module** written to work **under** DACore (admin pages, `DACore:Page@withMenu!`, menu, rights) **MUST** use **`dainstall.php`** instead. **MUST NOT** ship `install.php` in **that** module — the framework would auto-run it.
+Work like a normal DotApp module:
 
-| File | Who runs it |
-|------|-------------|
-| `install.php` | The **framework**, on first load of a module (then it renames the file). **Not** for DACore-bound modules. |
-| `dainstall.php` | **DACore’s installer only**, after a logged-in operator installs the module through DACore. The framework **never** executes this file. |
+| In the module root | Do |
+|--------------------|----|
+| `module.init.php` / `module.listeners.php` | **Live** files — routes, listeners, config. **MUST NOT** blank them |
+| `install.php` | **MUST** — the framework runs it on the next page load, then renames it to `installed_<md5>_install.php` |
+| `dainstall.php` / `init/` | **MUST NOT** create these while coding |
 
-`dainstall.php` still calls the same `Installation` class:
+`install.php` still calls the same `Installation` class:
 
 ```php
 <?php
@@ -257,51 +258,38 @@ use Dotsystems\App\Modules\Shop\Installation;
 Installation::module('Shop')->install();
 ```
 
-**What DACore does** (operator is logged in → install this module):
+Idempotency is `Installations@exist!` / `insert!`, not the filename.
 
-1. Unpacks the module zip into `app/modules/<Module>/`.
-2. Runs `dainstall.php` (tables, rights, menu, AI tools — this file’s `Installation.php`).
-3. **On success**, copies `init/module.init.php` and `init/module.listeners.php` over the module root. Routes and listeners become live; the module starts working.
-4. If `dainstall.php` fails, those copies **do not** run. The root files stay inert. Correct — a half-installed module must not register routes.
+**MUST (new version):** after you add or change a version in `Installation.php`, rename `installed_*_install.php` back to `install.php` so the next web load runs the new migration. The agent does this — **MUST NOT** leave it for the user. See [07](07-SCHEMA-AND-INSTALL.md).
 
-DACore’s own plugin installer (ZIP upload, installer logs, `dacore_modules` / `dacore_plugin_logs` / `dacore_settings`) is **DACore-owned**. **MUST NOT** write those tables or reimplement that UI in your module.
+### What DACore does with a **packed** zip
 
-Idempotency stays in `Installations@exist!` / `insert!`, not in a framework rename of `dainstall.php`.
+1. Unpacks into `app/modules/<Module>/`.
+2. Runs **`dainstall.php`** (tables, rights, menu, AI tools).
+3. **On success**, copies `init/module.init.php` and `init/module.listeners.php` over the module root. Routes become live.
+4. If `dainstall.php` fails, those copies **do not** run. The root files stay inert.
 
-Manual re-run on a machine where the module is already live (e.g. you added version `1.0.1`):
+The framework **never** executes `dainstall.php`. That is why the zip must not contain `install.php` (the framework would auto-run it on unpack).
 
-```php
-Installation::module('Shop')->install();          // all versions, guarded by exist!
-Installation::module('Shop')->install('1.0.1');   // up to 1.0.1
-Installation::module('Shop')->uninstall();
-```
+DACore’s own plugin installer (ZIP upload, installer logs, `dacore_modules` / …) is **DACore-owned**. **MUST NOT** write those tables or reimplement that UI.
 
 ---
 
-## 5. `init/` — live copies of init and listeners (**MUST**)
+## 5. Pack an installable zip (**DACore modules only**, and only when the user asks)
 
-Still **your** module only (`app/modules/Shop/init/`, …). **MUST NOT** create `init/` under `app/modules/DACore/`.
+This zip exists **only** so DACore’s plugin installer can install **your** admin module. **MUST NOT** pack if the module is not for DACore. For a bare-framework module the user copies the folder themselves after renaming `installed_*_install.php` → `install.php` ([07](07-SCHEMA-AND-INSTALL.md)).
 
-Create `app/modules/<Module>/init/` and **keep it in sync** whenever you edit the live files:
+Do **not** pack, blank root init files, or create `dainstall.php` on your own. Only when the user **explicitly** asks to export / zip **your DACore-bound** module. **MUST NOT** pack `app/modules/DACore/` this way.
 
-| Live (you code here) | Copy (always identical while developing) |
-|----------------------|------------------------------------------|
-| `module.init.php` | `init/module.init.php` |
-| `module.listeners.php` | `init/module.listeners.php` |
+**Working tree stays a normal module** (`install.php` + live init). Transform a **copy** (or transform → zip → **restore**). **MUST NOT** leave the working module packed.
 
-During local development the **root** files stay fully working (routes, listeners) so you can build and test. The copies in `init/` are what DACore will activate after a successful `dainstall.php`.
+On the copy / before zip:
 
-**MUST** copy into `init/` after every change to those two files. A stale `init/` copy means a production install boots old routes.
-
----
-
-## 6. Export for the DACore installer (**MUST ask the user**)
-
-Do **not** blank the root files on your own. Only when the user **explicitly** asks to export / pack **your** module for DACore install (production zip). **MUST NOT** export or blank `app/modules/DACore/` this way.
-
-1. Confirm `init/module.init.php` and `init/module.listeners.php` are the current working copies.
-2. Replace the **root** `module.init.php` and `module.listeners.php` with **inert stubs** — no routes, no listeners, they do nothing. The packed zip ships those stubs in the root.
-3. The zip still contains `dainstall.php`, `Installation.php`, `init/`, and the rest of the module. **MUST NOT** include `install.php`.
+1. Copy live `module.init.php` → `init/module.init.php` and live `module.listeners.php` → `init/module.listeners.php` (create `init/` if needed).
+2. Replace the **root** `module.init.php` and `module.listeners.php` with **inert stubs** (below).
+3. Rename `install.php` **or** `installed_*_install.php` to **`dainstall.php`**. Same PHP body (`Installation::module('Shop')->install();`).
+4. Zip so unpack lands in `app/modules/Shop/` with `dainstall.php`, `Installation.php`, `init/`, inert root init files, and the rest of the module. **MUST NOT** include `install.php` or `installed_*_install.php`.
+5. Restore the working tree: live init files from `init/`, `dainstall.php` → `install.php`.
 
 Inert root `module.init.php` (Shop example):
 
@@ -349,12 +337,12 @@ After DACore’s installer succeeds, it overwrites these stubs from `init/`. Unt
 
 ---
 
-## 7. Checklist
+## 6. Checklist
 
-- [ ] These `dainstall.php` / `init/` rules were applied to **your** module under DACore — **not** to `app/modules/DACore/` itself
-- [ ] DACore-bound module uses **`dainstall.php`**, not `install.php` (framework must not auto-run it)
-- [ ] `init/module.init.php` and `init/module.listeners.php` exist and match the live root files while developing
-- [ ] Export / production zip only when the user asked: root init files inert, real copies stay in `init/`
+- [ ] These pack rules were applied to **your** module — **not** to `app/modules/DACore/` itself
+- [ ] **While coding:** live root `module.init.php` / `module.listeners.php`, trigger is **`install.php`**, no `dainstall.php` / no inert stubs
+- [ ] After a new `Installation.php` version: `installed_*_install.php` renamed back to `install.php` (agent did it)
+- [ ] Zip **only** for a DACore-bound module and only when the user asked: `init/` copies, inert root, `dainstall.php`, **no** `install.php` in the zip; working tree restored
 - [ ] Every version callback starts with `Installations@exist!` and ends with `Installations@insert!`
 - [ ] `exist!` / `insert!` use the `!` suffix (instance methods)
 - [ ] Rights created before the menu that references them

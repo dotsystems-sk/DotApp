@@ -5,9 +5,8 @@
 | Mechanism | Role |
 |-----------|------|
 | `Installation.php` extending `Installer` | Versioned module migrations — **preferred** |
-| `dainstall.php` | **Your** modules that work **under** DACore — DACore’s installer runs it. Framework does **not**. **Not** for `app/modules/DACore/` itself. See [35](35-DACORE-INSTALL.md) §4 |
-| `init/module.init.php` + `init/module.listeners.php` | Copies DACore activates after a successful `dainstall.php` |
-| `install.php` → renamed `installed_<hash>_install.php` | Bare framework only — **MUST NOT** on DACore-bound modules |
+| `install.php` → renamed `installed_<hash>_install.php` | **Development** trigger. After a **new** version, rename back to `install.php`. DACore zip (`dainstall.php`) only if the module is **for DACore** and the user asks ([35](35-DACORE-INSTALL.md) §4–§5) |
+| `dainstall.php` | **Packed DACore zip only** — and only if this module is **for DACore**. Not while coding. Not for a bare-framework module. **Not** for `app/modules/DACore/` itself |
 | `SchemaBuilder` via `createTable` / `alterTable` | Programmatic DDL |
 | `--prepare-database` / `initializedb.php` | Core users/auth SQL bootstrap |
 | `.sql` files | Documentation / DBA — **not** auto-executed |
@@ -134,15 +133,25 @@ Ordering: `install()` sorts keys ascending and stops when `version_compare($ver,
 
 ### One-shot `install.php`
 
-The framework auto-runs `install.php` in a **bare** module (then renames it). **Your** modules that work **under** DACore **MUST NOT use `install.php`.** Use **`dainstall.php`** and the `init/` copies — DACore’s installer runs that file after a logged-in install. **Do not apply this to `app/modules/DACore/` itself.** See [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) §4–§6.
-
 ```php
 <?php
 use Dotsystems\App\Modules\Shop\Installation;
 Installation::module('Shop')->install();
 ```
 
-On a module **without** DACore, the framework runs `install.php` once (event `dotapp.module.Shop.install`) then renames it to `installed_<md5>_install.php`. **Real idempotency still comes from your installations table** — the rename only prevents repeat execution.
+The framework runs `install.php` once (event `dotapp.module.Shop.install`) then renames it to `installed_<md5>_install.php`. **Real idempotency still comes from `Installations@exist!` / your version table** — the rename only prevents repeat execution.
+
+**Develop with `install.php`.** Do **not** use `dainstall.php` while coding.
+
+**DACore zip is only for modules built for DACore.** If this module is **not** for DACore: **MUST NOT** create `dainstall.php`, `init/`, or a pack zip. To take it to another project: rename `installed_*_install.php` → `install.php` and copy the module folder. The other project’s next page load runs it.
+
+If the module **is** for DACore: pack `dainstall.php` **only** when the user asks for an installable zip ([35](35-DACORE-INSTALL.md) §4–§5). **MUST NOT** apply that pack step to `app/modules/DACore/` itself.
+
+**MUST (new version / migration):** after you add or change a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php`. The agent does this — **MUST NOT** leave it for the user. If `install.php` is already in the root, leave it.
+
+```powershell
+Rename-Item -Path .\installed_*_install.php -NewName install.php
+```
 
 ---
 

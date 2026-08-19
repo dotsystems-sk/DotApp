@@ -69,7 +69,7 @@ app/modules/MyModule/
   module.init.php           # Module class + routes + config defaults
   module.listeners.php      # early hooks (before init)
   Installation.php          # optional versioned migrations
-  install.php               # one-shot; renamed to installed_<hash>_install.php after run
+  install.php               # one-shot; renamed to installed_<hash>_install.php after run — rename BACK after a new version
   Api/Api.php               # optional API controller stub
   Controllers/*.php
   Middleware/*.php

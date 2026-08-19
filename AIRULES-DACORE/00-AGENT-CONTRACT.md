@@ -65,9 +65,10 @@ See [§7](#7-dacore-is-sacred-same-rank-as-framework-core).
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
-6. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the admin shell is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
-7. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
-8. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
+6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. Develop with **`install.php`** and **live** root init files. Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when the user asks ([35](35-DACORE-INSTALL.md) §4–§5). A non-DACore module: no zip — `install.php` and copy the folder.
+7. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the admin shell is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+8. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
+9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
 
 ### Dotapper-first rule
 
@@ -212,7 +213,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Save checks: PHP MUST re-verify — FE modal/overlay is UX only
  * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST reject .php (ext+MIME+headers)
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
- * - Your module under DACore: dainstall.php (NOT install.php); init/ copies; blank root only on user-asked export. NEVER apply this to app/modules/DACore/
+ * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
+ * - DACore pack zip only for a DACore-bound module and only when asked. Non-DACore: install.php + copy the folder. NEVER pack app/modules/DACore/
  * - DACore: search DACore (read-only) + this module before writing a new library/widget — do not reinvent
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
  * - DACore AI writes: ui_events (name = tool id) + DACore.AI.UIEvent on the matching page only
@@ -247,7 +249,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 |------|--------|
 | **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `{prefix}users_rights*` | Use the registration / push APIs |
 | Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
-| **`dainstall.php` + `init/`** | **Your** modules that work **under** DACore (`app/modules/Shop/`, …). **MUST** `dainstall.php` (not `install.php`). Keep copies of `module.init.php` / `module.listeners.php` in `init/`. Blank the root files only when the user asks to **export**. DACore unpacks, runs `dainstall.php`, then copies `init/` into the root on success. **MUST NOT** do any of this to `app/modules/DACore/` itself. [35](35-DACORE-INSTALL.md) §4–§6. |
+| **Develop vs pack** | While coding: **`install.php`** + **live** root init files. After a new version: rename `installed_*` → `install.php`. **`dainstall.php` + `init/` zip** only for a **DACore-bound** module and only when the user **asks** to pack. Not a DACore module: no zip — rename to `install.php` and copy the folder. Restore the working tree after a zip. **MUST NOT** pack `app/modules/DACore/`. [35](35-DACORE-INSTALL.md) §4–§5. |
 | **New module menu** | **ASK** before scaffolding: shared sidebar vs module-own (`withMenu` `$menuId`). Group `type => 2` when many items stay in the global tree; large modules: header + **one** entry, inner pages pass the branch id. Do not register “Return back”. [31](31-DACORE-MENU.md) |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |
 | Missing widgets / ported UI | **MUST search DACore first** (read-only). Then **MUST** add CSS/JS in **your** module (`$css`/`$js` on `withMenu`) only if nothing fits. Prefix classes `{lowercase_modulename}_*`. Match DACore colors. Never patch DACore. |
@@ -292,7 +294,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Custom `$dotapp` library / jQuery port | **09 §4** (esp. §4.C) | **[EX-15](examples/EX-15-dotapp-js-library.md)** |
 | Database query | 06, 18 | [EX-04](examples/EX-04-database-crud.md) |
-| Tables / migrations | 07 | [EX-13](examples/EX-13-schema-migrations.md) |
+| Tables / migrations | 07 (rename `installed_*` → `install.php` after a new version) | [EX-13](examples/EX-13-schema-migrations.md) |
 | **Secure form (HTML fields + submit)** | **08, 09** | **[EX-01](examples/EX-01-secure-form-complete.md)**, [EX-02](examples/EX-02-secure-form-edit-api.md) |
 | AJAX without a form (`load` only) | **08, 09** | [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 |
 | Encrypt IDs / unique `$key2` | **11 §8, 05, 08** | [EX-02](examples/EX-02-secure-form-edit-api.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
@@ -319,6 +321,6 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Admin page, dotgrid, tables | 33 (incl. §3 AJAX pager; **search DACore first**) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | New admin library / widget / `$dotapp().fn` | **33** “Search DACore first”, **09 §4** | [EX-15](examples/EX-15-dotapp-js-library.md) |
 | AI tools | 34 (incl. §5 `ui_events`) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
-| Installer wiring | **35** (`dainstall.php`, `init/`, export) | [EX-D04](examples/EX-D04-dacore-installer.md) |
+| Installer wiring | **35** (`install.php` while coding; DACore zip only if the module is for DACore and the user asks) | [EX-D04](examples/EX-D04-dacore-installer.md) |
 | Inbox notifications | **37** | [EX-D05](examples/EX-D05-dacore-notifications.md) |
 | DACore quirks | 36 | — |

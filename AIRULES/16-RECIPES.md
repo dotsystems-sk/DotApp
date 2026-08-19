@@ -110,7 +110,7 @@ $dotApp->bridge->fn('ping', function ($request) {
 ## R7 — Ship a table via Installation.php
 
 Copy the DACore-free pattern from [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md).  
-Create `install.php` that calls `Installation::module('Shop')->install();`.
+Create `install.php` that calls `Installation::module('Shop')->install();`. After a new version, rename `installed_*_install.php` back to `install.php`. To take the module to another project: keep that name and copy the folder — there is no DACore zip.
 
 ---
 

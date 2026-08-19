@@ -66,14 +66,11 @@ project-root/
 
 ```
 app/modules/MyModule/
-  module.init.php           # Module class + routes + config defaults (export: inert stub; live copy in init/)
-  module.listeners.php      # early hooks (before init) (export: inert stub; live copy in init/)
-  init/                     # copies of the two files above — DACore copies them back after dainstall.php succeeds
-    module.init.php
-    module.listeners.php
-  Installation.php          # optional versioned migrations
-  dainstall.php             # DACore-bound modules: DACore installer runs this. NOT install.php
-  install.php               # bare framework only; renamed to installed_<hash>_install.php after run
+  module.init.php           # Module class + routes + config defaults (live while coding)
+  module.listeners.php      # early hooks (live while coding)
+  Installation.php          # versioned migrations
+  install.php               # development trigger; rename installed_* back after a new version
+  # Pack zip only when asked AND the module is for DACore: dainstall.php + init/ + inert root init (see 35)
   Api/Api.php               # optional API controller stub
   Controllers/*.php
   Middleware/*.php

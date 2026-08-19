@@ -27,7 +27,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-D01-dacore-module-skeleton.md](EX-D01-dacore-module-skeleton.md) | New admin module: routes, rights middleware, controller, **AJAX list pager**. **ASK** shared vs module-own menu first ([31](../31-DACORE-MENU.md)) |
 | [EX-D02-dacore-admin-page.md](EX-D02-dacore-admin-page.md) | Admin page: table, **AJAX pager**, dotgrid form, secure save, page JS |
 | [EX-D03-dacore-ai-tool.md](EX-D03-dacore-ai-tool.md) | AI tool: register, write + `ui_events`, `DACore.AI.UIEvent` page refresh |
-| [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | Installer: `dainstall.php` + `init/`, tables → rights → menu → AI tools → record |
+| [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | `Installation.php`; develop with `install.php`; pack `dainstall.php` + `init/` only when asked |
 | [EX-D05-dacore-notifications.md](EX-D05-dacore-notifications.md) | Inbox: `DACore:Notifications@push` on an event ([37](../37-DACORE-NOTIFICATIONS.md)) |
 
 Theory lives in `0x`–`2x` (framework) and `3x` (DACore). These files are **executable patterns**.

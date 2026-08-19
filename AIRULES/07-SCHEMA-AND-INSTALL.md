@@ -5,7 +5,7 @@
 | Mechanism | Role |
 |-----------|------|
 | `Installation.php` extending `Installer` | Versioned module migrations — **preferred** |
-| `install.php` → renamed `installed_<hash>_install.php` | One-shot bootstrap, runs once per module |
+| `install.php` → renamed `installed_<hash>_install.php` | One-shot bootstrap. After a **new** version, rename back to `install.php` so the next load runs it |
 | `SchemaBuilder` via `createTable` / `alterTable` | Programmatic DDL |
 | `--prepare-database` / `initializedb.php` | Core users/auth SQL bootstrap |
 | `.sql` files | Documentation / DBA — **not** auto-executed |
@@ -137,6 +137,15 @@ Installation::module('Shop')->install();
 ```
 
 The framework runs it once (event `dotapp.module.Shop.install`) then renames it to `installed_<md5>_install.php`. **Real idempotency still comes from your installations table** — the rename only prevents repeat execution.
+
+**MUST (new version / migration):** after you add or change a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php` so the next web load runs it. The agent does this — **MUST NOT** leave it for the user. Already-applied versions stay skipped by `exist()` / your installations table. If `install.php` is already in the root, leave it.
+
+```powershell
+# module root, e.g. app/modules/Shop/
+Rename-Item -Path .\installed_*_install.php -NewName install.php
+```
+
+**Copying to another project (no DACore zip).** There is **no** `dainstall.php` pack for a bare-framework module. The user copies `app/modules/Shop/` themselves. Before copy, the trigger file **MUST** be named `install.php` (rename `installed_*_install.php` if needed). The other project’s next page load runs it. Do **not** invent a DACore installer zip.
 
 ---
 

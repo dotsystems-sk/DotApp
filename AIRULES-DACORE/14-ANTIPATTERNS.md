@@ -137,7 +137,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |
-| `install.php` on **your** module that works under DACore | **`dainstall.php`** + `init/` copies ([35](35-DACORE-INSTALL.md) §4–§6) |
+| `dainstall.php` / inert root **while coding** | Live `install.php` + live init files until the user asks to pack a **DACore** module ([35](35-DACORE-INSTALL.md) §4–§5) |
+| `dainstall.php` zip for a module that is not for DACore | Rename `installed_*` → `install.php` and copy the folder ([07](07-SCHEMA-AND-INSTALL.md)) |
+| Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Applying `dainstall.php` / `init/` / inert stubs to `app/modules/DACore/` | Forbidden — that is the host installer, not a plug-in module |
 | Blank root `module.init.php` without an export request | Keep live root files while developing; inert stubs only when the user asks to pack |
 | Hardcode `/dacore` | `Config::module("DACore","prefixUrl")` |

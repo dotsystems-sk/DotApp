@@ -52,6 +52,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | String-built SQL with user input | Bindings only (`?` xor `:named`) |
 | Logs / users / items via `->all()` into the view / no pager because “few rows now” | `->paginate($perPage, $page)` on first ship ([06](06-DATABASE.md)) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
+| Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |
+| Inventing a DACore `dainstall.php` zip for a bare module | Rename to `install.php` and copy the module folder |
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
 | `CREATE TABLE items` / `dotapp_items` for a module | `{lowercase_modulename}_items` (Shop → `shop_items`) |

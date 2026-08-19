@@ -122,7 +122,7 @@ class ShopFacade extends \Dotsystems\App\Parts\Facade
 | `call($method, ...$args)` | mixed |
 | `loadLibrary($file)` | void — `require_once Libraries/{file}.php` |
 | `setData($k,$v)` / `getData($k)` / `isSetData($k)` | `$this` / mixed\|`false` / `bool` |
-| `installation()` | void — runs `install.php` once |
+| `installation()` | void — runs `install.php` once. After a new version, rename `installed_*` back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md)) |
 
 ### Module-local persisted settings
 

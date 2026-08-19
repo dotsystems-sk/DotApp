@@ -44,6 +44,7 @@
 - [ ] Bindings for all user values (`?` xor `:named`, never mixed)
 - [ ] No `DB::table`, Eloquent, `getConnection`, `selectRaw`, chain `find`, `count()`
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
+- [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items`, `dotapp_*`, or `dacore_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 - [ ] Growing lists (users, logs, items, orders) use `paginate()` on **first ship** — not `->all()` into the view; “few rows now” is not a skip ([06](06-DATABASE.md))
@@ -110,9 +111,10 @@
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
 - [ ] If this module has a sidebar: own `type => 0` header (one is ideal; more only if needed). **Asked** shared vs module-own before a new module. Many items: `type => 2` groups **or** header + one entry + `withMenu` `$menuId`. `menuid` starts with **this** module. Uninstall deletes only that prefix — not a host module’s menu ([31](31-DACORE-MENU.md))
 - [ ] Did **not** register a “Return back” row (DACore appends it on a branch `$menuId`)
-- [ ] Trigger file is **`dainstall.php`** (not `install.php`) on **your** module under DACore; `init/` has current copies of `module.init.php` and `module.listeners.php` ([35](35-DACORE-INSTALL.md) §4–§6)
-- [ ] Root `module.init.php` / `module.listeners.php` were **not** blanked unless the user asked to export
-- [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs** — those rules are for plug-in modules only
+- [ ] Trigger while coding is **`install.php`** + live root init files; `installed_*` renamed back after a new version ([07](07-SCHEMA-AND-INSTALL.md), [35](35-DACORE-INSTALL.md) §4)
+- [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack; working tree restored ([35](35-DACORE-INSTALL.md) §4–§5)
+- [ ] Root init files were **not** blanked unless packing a zip
+- [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs**
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
 - [ ] Inbox events use `DACore:Notifications@push` on the event (`!== true` checked) — not installer, not every request, not `INSERT` into `dacore_notifications*` ([37](37-DACORE-NOTIFICATIONS.md))
 - [ ] AI tool `rights` non-empty and wildcard-free; `controller` ends with `!`
@@ -165,7 +167,8 @@
 - Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
 - Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
 - New admin library/widget without grepping DACore (read-only) and the current module first
-- DACore-bound **your-module** still has `install.php`, or no `dainstall.php` / `init/` copies
+- DACore-bound **your-module** uses `dainstall.php` / inert root **while still coding** (that is zip-only)
+- New `Installation.php` version left as `installed_*_install.php` (next load will not run it)
 - `dainstall.php` / `init/` / inert stubs applied to `app/modules/DACore/` itself
 - Root `module.init.php` blanked without the user asking to export
 - `execute()` called with a single callback

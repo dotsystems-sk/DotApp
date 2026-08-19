@@ -19,7 +19,7 @@ DACore is an admin-UI **module**, not framework core — by default its files ar
 - Push inbox notifications from the installer or every request — `DACore:Notifications@push` on the event only (`AIRULES/37`)
 - Steal another module’s `menuid` prefix or uninstall with `DELETE … LIKE 'Host.%'` — your `menuid` starts with **your** module; own sidebar gets a `type => 0` header. **ASK** shared vs module-own menu before scaffolding (`AIRULES/31`). Do not dump 10 leaves under a header. Do not register “Return back”.
 - Use `$_SESSION` / `session_start()` — **MUST** `DSM::use('Shop')` (`AIRULES/20`)
-- Use `install.php` on **your** module that works under DACore — use **`dainstall.php`** + `init/` copies (`AIRULES/35-DACORE-INSTALL.md` §4–§6). Do not blank root init files unless the user asked to export. **Never** apply `dainstall.php` / `init/` / inert stubs to `app/modules/DACore/` itself.
+- Use `dainstall.php` / blank root init / `init/` **while coding**, or pack a zip for a module that is **not** for DACore — develop with **`install.php`**. Pack `dainstall.php` + `init/` **only** for a DACore-bound module when the user asks (`AIRULES/35` §4–§5). After a new version, rename `installed_*` → `install.php`. **Never** pack `app/modules/DACore/`.
 
 ## Call map
 

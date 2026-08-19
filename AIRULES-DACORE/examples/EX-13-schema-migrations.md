@@ -4,6 +4,8 @@ Rules: [07-SCHEMA-AND-INSTALL.md](../07-SCHEMA-AND-INSTALL.md).
 
 **MUST:** module tables `{lowercase_modulename}_*` (Shop → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*`.
 
+After you add a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave that step for the user. A non-DACore module is copied as a folder with `install.php` — no `dainstall.php` zip.
+
 ## SchemaBuilder — wrap DDL in try/catch (it throws)
 
 ```php
