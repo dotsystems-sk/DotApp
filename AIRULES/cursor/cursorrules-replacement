@@ -82,7 +82,13 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   whitelist sort + writable columns; no input in header()/redirect/HttpHelper URL; no eval/exec/unserialize/include $x;
   random_bytes tokens + hash_equals secrets; throttle() public POST; no getMessage()/var_dump in the reply;
   upload = extension + finfo MIME + headers; warn about bots on public noauth endpoints
-Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md
+- Perf pass (AIRULES/25 §8): no ->all() on a growing table; no query/HTTP/log inside foreach (whereIn prefetch + keyed map);
+  no select('*') on a list; no in_array()/array_merge per iteration; every new WHERE/JOIN/ORDER BY column indexed
+  (composite = equality -> range -> sort, leftmost prefix, no duplicate prefix); one comment line per index naming its query;
+  realistic column types (decimal money, FK bigInteger unsigned to match id()); new index = new Installation.php version + indexExists()
+- Docs (AIRULES/25 §7): docblock on file/class + every public method (@param/@return/@throws)
+  and a short WHY line above every logical step — never narration of the code, never prompt-echo, no dead code / bare TODO
+Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md, AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
 
 ## VISIBLE OUTCOME (LAW)
 Every save/toggle/delete MUST show success and fail on the FE.
@@ -104,4 +110,5 @@ AIRULES/14-ANTIPATTERNS.md
 AIRULES/15-KNOWN-ISSUES.md
 AIRULES/17-CHECKLISTS.md
 AIRULES/24-ATTACK-VECTORS.md
+AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
 AIRULES/cursor/AGENTS.md

@@ -15,7 +15,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-08-config-secrets.md](EX-08-config-secrets.md) | New app keys, module setting fallbacks |
 | [EX-09-validation-and-errors.md](EX-09-validation-and-errors.md) | Validator / Input groups / JSON error envelopes |
 | [EX-10-cache-logger-session.md](EX-10-cache-logger-session.md) | Cache, Logger, **DSM** sessions (never `$_SESSION`) |
-| [EX-11-email-sms-qr.md](EX-11-email-sms-qr.md) | Email, SMS provider, QR codes |
+| [EX-11-email-sms-qr.md](EX-11-email-sms-qr.md) | Email, SMS provider, QR codes — **not** the default for a DACore module ([38](../38-DACORE-EMAIL.md), [39](../39-DACORE-SMS.md)) |
 | [EX-12-ai-search-mcp.md](EX-12-ai-search-mcp.md) | AI calls, FastSearch, MCP tools |
 | [EX-13-schema-migrations.md](EX-13-schema-migrations.md) | SchemaBuilder, DDL, introspection; no `?` in `raw()` comments |
 | [EX-14-auth-and-2fa.md](EX-14-auth-and-2fa.md) | Login, permissions, 2FA (`$dotapp().twoFactor`), user creation; **`data(true)`** for password |
@@ -29,6 +29,8 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-D03-dacore-ai-tool.md](EX-D03-dacore-ai-tool.md) | AI tool: register, write + `ui_events`, `DACore.AI.UIEvent` page refresh |
 | [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | `Installation.php`; develop with `install.php`; pack `dainstall.php` + `init/` only when asked; no `?` in `raw()` comments |
 | [EX-D05-dacore-notifications.md](EX-D05-dacore-notifications.md) | Inbox: `DACore:Notifications@push` on an event ([37](../37-DACORE-NOTIFICATIONS.md)) |
+| [EX-D06-dacore-email.md](EX-D06-dacore-email.md) | Outgoing mail — open with [38](../38-DACORE-EMAIL.md) |
+| [EX-D07-dacore-sms.md](EX-D07-dacore-sms.md) | Outgoing SMS — open with [39](../39-DACORE-SMS.md) |
 
 Theory lives in `0x`–`2x` (framework) and `3x` (DACore). These files are **executable patterns**.
 

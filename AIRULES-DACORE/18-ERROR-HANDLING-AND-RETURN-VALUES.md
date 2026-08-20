@@ -108,6 +108,7 @@ Full detail: [06-DATABASE.md](06-DATABASE.md).
 | `$request->form(...)` | callback return, or `false`, or **`null`**, or throws | Guard all three |
 | `Limiter::isAllowed($route)` | `bool` | — |
 | `Renderer::loadView()` / missing layout | **`""`** + warning log (no exception) | Blank page with no error |
+| `setLayoutVar` / `setViewVar` with `is_callable` string (`time`, `copy`, …) | **var never extracted** (siblings still work) | Heading + empty `foreach` — [05](05-VIEWS-TEMPLATES-ASSETS.md) §5 |
 | `Renderer::getViewVar($k)` | `""` if missing | Silent empty output |
 | `Auth::login($data)` | array, or **`false`** on malformed input | `$r['error']` on false → error. Password **MUST** come from `$request->data(true)` ([19](19-VALIDATION-AND-INPUT.md)) |
 | `MCP::addTool(...)` | `bool` | Silent registration failure |

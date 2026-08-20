@@ -2,6 +2,8 @@
 
 Rules: [21-EMAIL-SMS-QR.md](../21-EMAIL-SMS-QR.md).
 
+**DACore module:** skip this file unless the user declined DACore senders. Mail: [EX-D06](EX-D06-dacore-email.md). SMS: [EX-D07](EX-D07-dacore-sms.md).
+
 ## Email — returns `true` OR an array of error strings
 
 ```php

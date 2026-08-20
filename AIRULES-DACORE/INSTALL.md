@@ -80,6 +80,8 @@ your-project/
     08-dacore.mdc
     09-dotapp-debug.mdc          (alwaysApply: true)
     10-dotapp-finish-gate.mdc    (alwaysApply: true — LAW after every chunk)
+    11-dacore-email.mdc          (on demand — sending mail)
+    12-dacore-sms.mdc            (on demand — sending SMS)
   AIRULES/
     ...
 ```

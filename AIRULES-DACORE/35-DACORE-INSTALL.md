@@ -270,13 +270,15 @@ Idempotency is `Installations@exist!` / `insert!`, not the filename.
 3. **On success**, copies `init/module.init.php` and `init/module.listeners.php` over the module root. Routes become live.
 4. If `dainstall.php` fails, those copies **do not** run. The root files stay inert.
 
-The framework **never** executes `dainstall.php`. That is why the zip must not contain `install.php` (the framework would auto-run it on unpack).
+The framework **never** executes `dainstall.php`. That is why the zip **MUST NOT** contain `install.php`: DACore **rejects** that package, and if it slipped through, the framework would auto-run `install.php` on unpack **before** the plugin installer finished.
 
 DACore’s own plugin installer (ZIP upload, installer logs, `dacore_modules` / …) is **DACore-owned**. **MUST NOT** write those tables or reimplement that UI.
 
 ---
 
 ## 5. Pack an installable zip (**DACore modules only**, and only when the user asks)
+
+**LAW ([00](00-AGENT-CONTRACT.md) §2e):** `install.php` is for the **framework**. `dainstall.php` is for the **DACore installer**. A zip that still contains `install.php` is **rejected** (DACore will not treat it as a plugin). A zip that has no `dainstall.php` **never runs** `Installation` (tables, rights, menu stay missing). Live `module.init.php` / `module.listeners.php` **MUST** sit in **`init/`** — DACore copies them to the root only **after** `dainstall.php` succeeds.
 
 This zip exists **only** so DACore’s plugin installer can install **your** admin module. **MUST NOT** pack if the module is not for DACore. For a bare-framework module the user copies the folder themselves after renaming `installed_*_install.php` → `install.php` ([07](07-SCHEMA-AND-INSTALL.md)).
 
@@ -343,7 +345,7 @@ After DACore’s installer succeeds, it overwrites these stubs from `init/`. Unt
 - [ ] These pack rules were applied to **your** module — **not** to `app/modules/DACore/` itself
 - [ ] **While coding:** live root `module.init.php` / `module.listeners.php`, trigger is **`install.php`**, no `dainstall.php` / no inert stubs
 - [ ] After a new `Installation.php` version: `installed_*_install.php` renamed back to `install.php` (agent did it)
-- [ ] Zip **only** for a DACore-bound module and only when the user asked: `init/` copies, inert root, `dainstall.php`, **no** `install.php` in the zip; working tree restored
+- [ ] Zip **only** for a DACore-bound module and only when the user asked: `install.php` **renamed** to `dainstall.php`, `init/` copies, inert root, **no** `install.php` in the zip (DACore rejects it / will not run Installation); working tree restored ([00](00-AGENT-CONTRACT.md) §2e)
 - [ ] Every version callback starts with `Installations@exist!` and ends with `Installations@insert!`
 - [ ] `exist!` / `insert!` use the `!` suffix (instance methods)
 - [ ] Rights created before the menu that references them

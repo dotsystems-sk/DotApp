@@ -1,6 +1,6 @@
 # 37 — DACore Notifications
 
-In-app inbox owned by DACore. **One system.** Modules only **push**. Operators read in the DACore navbar / history page. Read state is **per user**.
+In-app inbox owned by DACore. **One system.** Modules only **push**. Operators read in the DACore navbar / history page. Read state is **per user**. This is **not** SMTP mail — outgoing mail is [38](38-DACORE-EMAIL.md).
 
 Sample: [EX-D05](examples/EX-D05-dacore-notifications.md).
 

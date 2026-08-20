@@ -57,6 +57,11 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `COMMENT 'SMS?'` / `?` inside `--` comments in `$qb->raw()` | Every `?` is a placeholder — write “SMS optional”; [06](06-DATABASE.md) |
 | Logs / users / items via `->all()` into the view / no pager because “few rows now” | `->paginate($perPage, $page)` on first ship ([06](06-DATABASE.md)) |
 | `all()` then filter in PHP; query inside `foreach`; `select('*')` for a 3-column list | `exists()` / `COUNT(*)` / needed columns / one `join` ([06](06-DATABASE.md)) |
+| N+1: one lookup query per row | one `whereIn` prefetch + a **keyed map** (`$byId[$id]`) ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2) |
+| `in_array()` / nested `foreach` over data that scales; `array_merge` per iteration | key the array once, `isset()`; `$out[] =` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §1) |
+| New `WHERE` / `ORDER BY` column with no index; three single-column indexes | index designed for the query; composite equality → range → sort ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3) |
+| `string()` (255) for a status, `float` for money, FK type ≠ `id()` (BIGINT) | realistic length, `decimal(10,2)`, `bigInteger()->unsigned()` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4) |
+| Public method with no docblock; a body of undocumented steps | docblock + a short **why** per logical step ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Inventing a DACore `dainstall.php` zip for a bare module | Rename to `install.php` and copy the module folder |

@@ -142,6 +142,8 @@ There is **no** `setViewVars()` plural, and no public `getView()`/`getLayout()`.
 
 `renderView()` evaluates with **view vars**. `setLayoutVar()` values **do not reach** the final output in that path. When you use `renderView()` with a layout, pass everything through `setViewVar()`.
 
+A second silent miss: the sandbox can **drop a whole var** (heading stays, `foreach` is empty). See §5 **Sandbox**.
+
 ---
 
 ## 4. Complete directive reference
@@ -262,11 +264,51 @@ renderView / renderLayout / renderCode
   → RenderingIsolator (sandbox + eval)
 ```
 
-### Sandbox
+### Sandbox (**MUST** — silent empty lists)
 
-Dangerous functions (`eval`, `exec`, `system`, `file_*`, `curl_*`, `mail`, `header`, `extract`, `call_user_func*`, …) are **silently stripped** from template PHP. If a template call "does nothing", that is why. Put logic in controllers.
+`RenderingIsolator` (and `PrivateBlock::set`) is a security sandbox. **MUST NOT** patch `app/parts/Renderer.php` to “fix” it. Work around in the module.
+
+Two separate behaviours:
+
+#### A. Template PHP calls are stripped
+
+Dangerous calls (`eval(`, `exec(`, `system(`, `file_*`, `curl_*`, `mail(`, `header(`, `extract(`, `call_user_func*`, `copy(`, `unlink(`, … — see `RenderingIsolator::phpsandbox_disabled()`) are **silently removed** from compiled template PHP. The call does nothing. Put logic in controllers.
 
 Eval failure prints `ERROR WHILE EVAL: ...` into the output.
+
+#### B. Whole vars are dropped before eval (**MUST** design around this)
+
+Before extract, every **var name** and every **nested value** (arrays and object properties, recursive) must pass `is_callable($x) === false`. One hit → that **entire** `setViewVar` / `setLayoutVar` / `PrivateBlock::set` is skipped. No warning. Sibling vars still extract.
+
+PHP `is_callable('time')` is **true** because `time()` exists. The same trap hits many short names used as feature keys, column aliases, or var names, including:
+
+`time`, `date`, `key`, `count`, `sort`, `reset`, `end`, `current`, `next`, `min`, `max`, `round`, `log`, `copy`, `file`, `dir`, `link`, `header`, `mail`, `system`, `exec`, `glob`, `touch`, `chmod`, `unlink`, `strlen`, `trim`, `explode`, `implode`, `printf`, `print_r`, `extract`, closures, and arrays that look like callables (`['ClassName', 'method']`).
+
+**Symptom:** card title / `{{ if ($hasRows == 1) }}` shows (the integer extracted) but `{{ foreach $rows as $row }}` prints nothing — `$rows` never existed in the sandbox.
+
+**MUST NOT** put PHP function names in the bag:
+
+```php
+// WRONG — 'time' is callable → entire $featureRows dropped
+->setLayoutVar('featureRows', [['key' => 'time', 'on' => 1]])
+->setLayoutVar('time', 1)          // var NAME is also checked
+->setLayoutVar('copy', $html)
+$row->set('sort', 'name')          // PrivateBlock::set — same drop
+```
+
+**MUST** instead:
+
+1. Prefix keys the template never sees as a bare PHP name: `elapsed`, `feat_time`, `show_date`.
+2. Or build the markup in PHP, escape text with `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')`, and pass **one HTML string** (`featuresHtml`, DACore’s `nameHtml` pattern). A long HTML string is not callable; `{{ var: $featuresHtml }}` is raw echo.
+3. Keep flags as `0`/`1` integers in their own vars (`hasFeatures`), not inside an array that also holds `'time'`.
+
+```php
+// RIGHT — no callable strings in the bag
+->setLayoutVar('featuresHtml', $escapedHtml)
+->setLayoutVar('hasFeatures', $escapedHtml !== '' ? 1 : 0)
+```
+
+**MUST NOT** “fix” an empty foreach by editing the Renderer. If a heading without rows appears after a `foreach` of controller data, grep the bag for `time` / `copy` / `count` / `key` / `header` first.
 
 ### Debugging templates
 

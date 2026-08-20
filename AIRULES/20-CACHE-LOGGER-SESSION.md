@@ -6,6 +6,8 @@ Return values and driver matrices. See [18-ERROR-HANDLING-AND-RETURN-VALUES.md](
 
 ## 1. Cache
 
+**MUST:** cache only what is **expensive and shared across requests**, always with a TTL **and** invalidation on write. A `WHERE id = ?` lookup, a `COUNT(*)`, or anything an index already answers **MUST NOT** be cached — a stale row costs more than the query saved ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2).
+
 ```php
 use Dotsystems\App\Parts\Cache;
 

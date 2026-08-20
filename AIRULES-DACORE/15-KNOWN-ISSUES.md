@@ -77,7 +77,8 @@ Verified against the framework source. Agents must design around these.
 | Email 2FA code generation | gated on `tfa_auth` instead of `tfa_email` |
 | `Module::di()` / `Controller::di()` | no return value — use `call()` |
 | `Api.php` legacy dispatch | invokes the handler method twice |
-| Template sandbox | dangerous functions are **silently stripped** — a call simply does nothing |
+| Template sandbox (calls) | Dangerous functions in template PHP are **silently stripped** — put logic in the controller ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
+| Template sandbox (vars) | `is_callable('time')` is true → **entire** `setLayoutVar` / `setViewVar` / `PrivateBlock::set` is skipped (siblings still extract). Never put PHP function names in the bag. **MUST NOT** patch Renderer ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
 | `removeUnusedCss(true)` | deletes rules for JS-added/dynamic classes and overwrites cache CSS |
 | `dotapper.php` | universal `exit(1)` after commands; `--create-example-module` references a missing template |
 | Bridge storage limit | `Config::bridge('storage_limit')` (200) evicts oldest listeners FIFO — many bridge buttons on one page can stop working |

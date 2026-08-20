@@ -2,6 +2,8 @@
 
 These libraries are **not** used by the example modules. Everything below comes from the core source. Do not invent methods.
 
+**DACore-bound module:** do **not** start here. Open [38](38-DACORE-EMAIL.md) / [EX-D06](examples/EX-D06-dacore-email.md) for mail and [39](39-DACORE-SMS.md) / [EX-D07](examples/EX-D07-dacore-sms.md) for SMS. `Config::email` / `Parts\Email::send` / `Parts\Sms` only if they declined DACore senders.
+
 ---
 
 ## 1. Email
@@ -118,6 +120,8 @@ Requirements: raw sockets + `stream_socket_enable_crypto` for TLS. The PHP `imap
 ---
 
 ## 2. SMS
+
+**DACore-bound module:** open [39](39-DACORE-SMS.md) first. Driver modules register with `DACore:Sms@registerSender!`; every other module sends with `DACore:Sms@send!`. The rest of this section is the framework `SmsProvider` facade — only if they declined DACore drivers.
 
 **No concrete provider ships with the framework** — only the `SmsProvider` interface. You must implement one.
 

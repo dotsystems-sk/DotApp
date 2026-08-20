@@ -55,7 +55,7 @@ Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
 
 Use versioned `Installation.php`. Do **not** call `DB::migrate()`. `$qb->raw()`: **every** `?` is a placeholder, including comments — **MUST NOT** write `SMS?` in `COMMENT`. See `AIRULES/06-DATABASE.md`.
 
-**Your** modules: while coding **`install.php`** + live root init files. After a new version, rename `installed_*_install.php` → `install.php`. Pack `dainstall.php` + `init/` only for a **DACore-bound** module and only when the user asks. Non-DACore: copy the folder with `install.php`. See `AIRULES/35-DACORE-INSTALL.md` §4–§5. **Never** pack `app/modules/DACore/`.
+**Your** modules: while coding **`install.php`** + live root init files. After a new version, rename `installed_*_install.php` → `install.php`. User asks to zip a **DACore-bound** module: **MUST** rename `install.php` → **`dainstall.php` in the zip**, copy live init into **`init/`**, inert root; **MUST NOT** ship `install.php` in the zip (DACore rejects it / Installation never runs). Non-DACore: copy the folder with `install.php`. See `AIRULES/00` §2e and `AIRULES/35-DACORE-INSTALL.md` §4–§5. **Never** pack `app/modules/DACore/`.
 
 ## Generate via CLI
 

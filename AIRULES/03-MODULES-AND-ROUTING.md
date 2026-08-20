@@ -143,9 +143,13 @@ Router::before(['POST'], [$openApi, $openApi . '/*'], '#Shop:Gate@crc!');
 
 ### Comments in module code (**MUST**)
 
-Write **English** comments. Keep them **short**. Explain **why** at spots that will confuse a later reader (logged-in route wrap, `crcCheck()` once, `$request->data(true)`, no `?` in `$qb->raw()` comments, unique `$key2`).
+Write **English** comments in three layers — canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
 
-**MUST NOT** comment every line, restate the code, or prompt-echo (“as requested…”). UI strings stay product copy ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8); comments are for the programmer.
+1. A **docblock** on the file/class (what it owns) and on every public/static method (purpose, `@param`, `@return`, `@throws`).
+2. A short **why** line above every **logical step** in the body: guards, decisions, formulas, named constants, the query shape, and the traps of this framework (logged-in route wrap, `crcCheck()` once, `$request->data(true)`, no `?` in `$qb->raw()` comments, unique `$key2`, owner predicate in SQL).
+3. Nothing else.
+
+**MUST NOT** restate the code (`// increment i`, `// return the response`), prompt-echo (“as requested…”), or leave dead code / commented-out blocks / a bare `TODO`. UI strings stay product copy ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8); comments are for the programmer.
 
 ---
 

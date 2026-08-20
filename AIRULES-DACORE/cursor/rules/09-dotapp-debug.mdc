@@ -18,4 +18,6 @@ When the user asks **why** Save / login / AJAX / installer / admin POST fails (4
 
 **MUST NOT** invent a core/DACore bug or edit `app/parts/` / `DotApp.php`.
 
+**Empty `foreach` / missing switches while the card title shows:** Renderer sandbox dropped the var (`is_callable('time')` etc.). Fix in the module — `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §5, hunt table in `AIRULES/23-DEBUG-PLAYBOOK.md`.
+
 After **writing** code (not only when it fails): **MUST** run the finish gate `AIRULES/00` §2c before claiming done.

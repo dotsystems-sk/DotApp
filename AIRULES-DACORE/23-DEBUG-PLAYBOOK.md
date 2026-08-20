@@ -81,6 +81,7 @@ Work top-down. Stop when you find a match.
 | Upload “Request failed” | `crcCheck()` on upload endpoint, or file stuffed into `load()` `FormData` |
 | CREATE TABLE never appears | `?` in `$qb->raw()` comments |
 | Blank page / empty body | missing view → `""`; check Renderer fallback |
+| Card/title shows, `foreach` empty / one var missing | Renderer sandbox **dropped** the bag: a string value or var name is `is_callable` (`time`, `copy`, `count`, `key`, `header`, …). Prefix keys or pass escaped HTML. **MUST NOT** patch Renderer ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
 | `formName` visible as text | tag **outside** `<fo-rm>…</fo-rm>` |
 | Admin 403 / rights ignored | `#DACore:AuthTest@check!` used as the guard ([36](36-DACORE-KNOWN-ISSUES.md) §1) |
 | “Fix it in DACore” | Implement in **this** module. Do not patch DACore ([00](00-AGENT-CONTRACT.md) §1) |

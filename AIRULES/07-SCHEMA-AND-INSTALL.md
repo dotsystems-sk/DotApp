@@ -184,6 +184,8 @@ DB::module('RAW')->schema(
 
 ### Keys / indexes / constraints
 
+**MUST:** design the indexes for the queries you wrote — every FK plus every `WHERE` / `JOIN` / `ORDER BY` column on a table that grows; composite order **equality → range → sort**; one comment line above each index naming the query it serves. `index()` / `unique()` accept an **array** for composite keys. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3–§4.
+
 `primaryKey($columns, $name = null)`, `dropPrimaryKey()`, `foreign($column, $name = null)` → `->references($col)->on($table)->onDelete($action)->onUpdate($action)`, `dropForeign($name)`, `index($columns, $name = null)`, `unique($columns, $name = null)`, `fullTextIndex($columns, $name = null)` (mysql/pgsql), `dropIndex($name)`, `addConstraint`, `dropConstraint`
 
 ### Alter helpers

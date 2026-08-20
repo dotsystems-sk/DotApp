@@ -225,7 +225,7 @@ class Installation extends Installer
 
 **While coding:** name it **`install.php`**. The framework runs it, then renames it to `installed_*_install.php`. After a new version, rename that file back to `install.php`.
 
-**Packed zip only** (user asked, **and** this module is for DACore): rename to **`dainstall.php`**, copy live init files into `init/`, inert root stubs. **MUST NOT** pack a module that is not for DACore.
+**Packed zip only** (user asked, **and** this module is for DACore) — **LAW** ([00](../00-AGENT-CONTRACT.md) §2e): **MUST** rename `install.php` → **`dainstall.php`**, copy live init files into **`init/`**, inert root stubs. **MUST NOT** leave `install.php` in the zip — DACore **rejects** that package and **will not run** `Installation`. **MUST NOT** pack a module that is not for DACore.
 
 ```php
 <?php

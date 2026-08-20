@@ -61,6 +61,7 @@ WRONG:
   {{ include }} in PHP templates (JS-only)
 
 renderView → setViewVar; renderLayout → setLayoutVar.
+Sandbox DROPS a whole var if the name or any nested string is a PHP function (`time`, `copy`, `count`, `header`, …). Prefix keys or pass escaped HTML. Do not patch Renderer. AIRULES/05 §5.
 
 ## FORMS / SECURITY (PREFERRED PATH — USE BY DEFAULT)
 - Tag is <fo-rm> (NOT f-form). Prefer over plain <form> + CSRF alone.
@@ -84,7 +85,14 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   random_bytes tokens + hash_equals secrets; throttle() public POST; no getMessage()/var_dump in the reply;
   upload = extension + finfo MIME + headers; warn about bots on public noauth endpoints;
   never write dacore_* / users_rights* directly; nothing under app/modules/DACore/
-Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md
+- Perf pass (AIRULES/25 §8): no ->all() on a growing table; no query/HTTP/rights check/log inside foreach (whereIn prefetch + keyed map);
+  no select('*') on a list; no in_array()/array_merge per iteration; every new WHERE/JOIN/ORDER BY column indexed
+  (composite = equality -> range -> sort, leftmost prefix, no duplicate prefix); one comment line per index naming its query;
+  realistic column types (decimal money, FK bigInteger unsigned to match id()); new index = new Installation.php version + indexExists();
+  never index or query dacore_* ; search DACore assets before adding a library
+- Docs (AIRULES/25 §7): docblock on file/class + every public method (@param/@return/@throws)
+  and a short WHY line above every logical step — never narration of the code, never prompt-echo, no dead code / bare TODO
+Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md, AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
 
 ## VISIBLE OUTCOME (LAW)
 Every save/toggle/delete MUST show success and fail on the FE.
@@ -110,4 +118,5 @@ AIRULES/14-ANTIPATTERNS.md
 AIRULES/15-KNOWN-ISSUES.md
 AIRULES/17-CHECKLISTS.md
 AIRULES/24-ATTACK-VECTORS.md
+AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
 AIRULES/cursor/AGENTS.md

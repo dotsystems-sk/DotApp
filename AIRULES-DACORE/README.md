@@ -7,7 +7,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 `AIRULES-DACORE/` is the DACore overlay. Use it in a project where **the DACore admin module is installed**.
 
 - **Language:** English
-- **Contents:** docs `00`–`23` = framework · `30`–`37` = DACore layer
+- **Contents:** docs `00`–`23` = framework · `30`–`39` = DACore layer
 
 ### Which variant to use
 
@@ -18,7 +18,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 
 Never copy both into the same project — the agent would have two conflicting sources. Copy this folder into the project **as `AIRULES/`**.
 
-## DACore layer (`30`–`37`)
+## DACore layer (`30`–`39`)
 
 | File | Contents |
 |------|----------|
@@ -27,18 +27,20 @@ Never copy both into the same project — the agent would have two conflicting s
 | [32-DACORE-RIGHTS.md](32-DACORE-RIGHTS.md) | Permissions + `{prefixUrl}/{Module}/…` + `Gate@login` 403 |
 | [33-DACORE-PAGES-AND-UI.md](33-DACORE-PAGES-AND-UI.md) | `Page@withMenu`, dotgrid, UI contract |
 | [34-DACORE-AI-TOOLS.md](34-DACORE-AI-TOOLS.md) | AI tools for the DACore chat |
-| [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | Develop with `install.php`; pack `dainstall.php` + `init/` only when asked |
+| [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | Develop with `install.php`; zip **MUST** rename to `dainstall.php` + `init/` (installer rejects `install.php`) |
 | [36-DACORE-KNOWN-ISSUES.md](36-DACORE-KNOWN-ISSUES.md) | DACore bugs and traps |
 | [37-DACORE-NOTIFICATIONS.md](37-DACORE-NOTIFICATIONS.md) | Inbox `Notifications@push` |
+| [38-DACORE-EMAIL.md](38-DACORE-EMAIL.md) | Outgoing mail API — **open only when the module sends email** |
+| [39-DACORE-SMS.md](39-DACORE-SMS.md) | SMS driver registry — **open only when the module sends SMS** |
 
-Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D05](examples/EX-D05-dacore-notifications.md).
+Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D07](examples/EX-D07-dacore-sms.md).
 
 ### Most important DACore rules
 
 1. **Never edit, patch, or add files in `app/modules/DACore/` by default** (including DACore assets). **MUST NOT propose** a DACore edit. Put all new work in **the current module**. Touch DACore **only** if the user **themselves** asks **and** confirms the next update wipes it ([00](00-AGENT-CONTRACT.md) §1). Otherwise **strict ban**. Use `DotApp::call("DACore:…")`.
-2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, or `users_rights*`.
+2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders`, or `users_rights*`.
 3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
-4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. Push inbox notifications with **`DACore:Notifications@push` on the event** — not from the installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)). **While coding:** **`install.php`** + live root init files; after a new version rename `installed_*` → `install.php`. A **DACore** install zip (`dainstall.php` + `init/`) **only** when the user asks to pack a DACore-bound module. A non-DACore module: no zip — `install.php` and copy. See [35](35-DACORE-INSTALL.md) §4–§5.
+4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. Push inbox notifications with **`DACore:Notifications@push` on the event** — not from the installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)). **Outgoing mail:** open [38](38-DACORE-EMAIL.md) (do not invent SMTP). **Outgoing SMS:** open [39](39-DACORE-SMS.md) (do not invent a gateway). **While coding:** **`install.php`** + live root init files; after a new version rename `installed_*` → `install.php`. A **DACore** install zip **MUST** contain **`dainstall.php`** (renamed from `install.php`) + **`init/`** — a zip that still has `install.php` is **rejected** and Installation **never runs** ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5). A non-DACore module: no zip — `install.php` and copy.
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell. **ASK** shared vs module-own menu before a new DACore module. Many items: group with `type => 2`, or header + one entry and pass `$menuId`. Edit/detail: 7th `$currentFile` = registered list URL when the path is not under that leaf ([31](31-DACORE-MENU.md)).
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
 7. **MUST search DACore first** before a new library or widget (grep `app/modules/DACore/` read-only + your module). The base already has many subpages and libraries — reuse them. **MUST** add your own CSS/JS in the **current** module only when that search finds no equivalent (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI (unless the informed exception in [00](00-AGENT-CONTRACT.md) §1).
@@ -63,6 +65,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 13. **Finish gate (LAW):** after **every** code chunk **and** before claiming done, **MUST** grep this module — double `crcCheck`, plain IDs, unbound SQL, wrong `data()`, middleware / AuthTest conflicts. **MUST NOT** skip. Canonical: [00](00-AGENT-CONTRACT.md) §2c, [17](17-CHECKLISTS.md).
 14. **Visible outcome (LAW):** the user **MUST** see save success **and** failure. **DACore admin:** grep DACore first, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong input (red + message on the field). Canonical: [00](00-AGENT-CONTRACT.md) §2d.
 15. **Attack vectors (LAW):** the known vectors in [24](24-ATTACK-VECTORS.md) **MUST NOT** be shippable — injection (SQL, XSS, command, template, deserialization), headers / redirect / SSRF, mass assignment, CSRF / brute force / enumeration, IDOR and escalation, files and paths, missing rate limit, leaks, weak crypto, prompt injection. Open the section for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix it in **your** module — never by patching DACore. A vector not listed is still forbidden — apply the nearest rule and **say it in chat**.
+16. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column, composite order equality → range → sort, leftmost prefix, no duplicate prefixes), sane column types, DACore assets reused instead of a second library, and code a human can read: file/class/method docblocks + a short **why** line above every logical step. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md).
 
 ## Quick install
 
@@ -77,7 +80,7 @@ In short:
 
 ## Code samples (save context)
 
-Theory lives in `00`–`24`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
+Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
 
 - [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md) — **preferred** security: `fo-rm` + `formName` + `dotapp.js`
 - More: module, DB, renderer, JS boot, bridge, secrets — see [examples/README.md](examples/README.md)
@@ -114,6 +117,7 @@ Theory lives in `00`–`24`. **Ready copy-paste patterns** are in [examples/](ex
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
 | [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first; DACore = §7 |
 | **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
+| **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost (reuse DACore assets), docblock & why-comment standard, §8 perf pass |
 | [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |
 
 ## Critical: return values

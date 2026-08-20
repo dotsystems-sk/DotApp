@@ -105,6 +105,8 @@ return Renderer::new()
 `renderView()` eval uses **view vars only** (`setViewVar`).  
 Do not assume layout vars bleed into view vars. **VIEW = outer file:** `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b).
 
+**Sandbox:** do not pass PHP function names as var names or nested string values (`time`, `copy`, `count`, `header`, …) — the isolator **drops the whole var**. Details: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5.
+
 ### JSON API
 
 ```php

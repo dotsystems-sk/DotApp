@@ -36,6 +36,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `@if` `@foreach` `@extends` `@section` | DotApp directives / layouts |
 | `{{ include 'x' }}` in PHP views | `{{ layout:x }}` |
 | Assume auto-escape | Escape in PHP; `var:` is raw |
+| `setLayoutVar('featureRows', [['key' => 'time', …]])` / var named `copy` / `count` / `header` | Sandbox **drops** any bag value (or var name) that `is_callable()` — `time()` exists. Prefix keys or pass escaped HTML ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
+| Empty `foreach` → patch `app/parts/Renderer.php` | Work around in the module. Heading with no rows is almost always a dropped var |
+| `date(` / `header(` / `file_get_contents(` inside a `.layout.php` | Sandbox **strips** those calls; logic belongs in the controller ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
 | Prompt-echo labels / help (“this user can…”) | Product copy a vendor would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | Stock `.cursorrules` template examples | Trust AIRULES + Renderer.php |
 
@@ -57,6 +60,11 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `COMMENT 'SMS?'` / `?` inside `--` comments in `$qb->raw()` | Every `?` is a placeholder — write “SMS optional”; [06](06-DATABASE.md) |
 | Logs / users / items via `->all()` into the view / no pager because “few rows now” | `->paginate($perPage, $page)` on first ship ([06](06-DATABASE.md)) |
 | `all()` then filter in PHP; query inside `foreach`; `select('*')` for a 3-column list | `exists()` / `COUNT(*)` / needed columns / one `join` ([06](06-DATABASE.md)) |
+| N+1: one lookup (or rights) query per row | one `whereIn` prefetch + a **keyed map** (`$byId[$id]`) ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2) |
+| `in_array()` / nested `foreach` over data that scales; `array_merge` per iteration | key the array once, `isset()`; `$out[] =` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §1) |
+| New `WHERE` / `ORDER BY` column with no index; three single-column indexes | index designed for the query; composite equality → range → sort ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3) |
+| `string()` (255) for a status, `float` for money, FK type ≠ `id()` (BIGINT) | realistic length, `decimal(10,2)`, `bigInteger()->unsigned()` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4) |
+| Public method with no docblock; a body of undocumented steps | docblock + a short **why** per logical step ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
@@ -139,6 +147,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | “Quick-fix” a DACore bug in place without an informed ask | Warn (update wipe); proceed **only** if they still insist on editing DACore ([00](00-AGENT-CONTRACT.md) §1) |
 | `INSERT INTO dacore_menu ...` | `DACore:Menu@register` |
 | `INSERT INTO dacore_notifications ...` | `DACore:Notifications@push` ([37](37-DACORE-NOTIFICATIONS.md)) |
+| `Parts\Email::send` / `Config::email` as the default in a DACore module | **ASK** first; then `DACore:Email@send` ([38](38-DACORE-EMAIL.md)) |
+| `Parts\Sms` / `SmsProvider` as the default in a DACore module | **ASK** first; then `DACore:Sms@send` ([39](39-DACORE-SMS.md)) |
+| Clone SMTP admin pages in your module | Operators use DACore Email senders; your module only **picks** sender/template ids |
 | Module-owned inbox table / second bell UI | DACore navbar + `{prefix}/dacore/notifications` |
 | `Notifications@push` in `Installation.php` or every request | Call on the event in **your** controller/service |
 | Own sidebar with no header (`type => 0`) | One header per module; more only if you need more sections ([31](31-DACORE-MENU.md)) |
@@ -159,6 +170,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |
+| Shipping a DACore zip that still has `install.php`, or that lacks `dainstall.php` / `init/` | Rename `install.php` → `dainstall.php` on a **copy**; copy live init into `init/`; inert root stubs. DACore **rejects** `install.php` and **never runs** Installation without `dainstall.php` ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5) |
 | `dainstall.php` / inert root **while coding** | Live `install.php` + live init files until the user asks to pack a **DACore** module ([35](35-DACORE-INSTALL.md) §4–§5) |
 | `dainstall.php` zip for a module that is not for DACore | Rename `installed_*` → `install.php` and copy the folder ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |
@@ -177,4 +189,4 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Write AI tool with no page refresh / `location.reload()` after chat write | `ui_events` + `DACore.AI.UIEvent` listener; filter by tool id ([34](34-DACORE-AI-TOOLS.md) §5) |
 | Secrets in `ui_events` payload | Ids and view hints only |
 
-Details: [30](30-DACORE-OVERVIEW.md)–[37](37-DACORE-NOTIFICATIONS.md).
+Details: [30](30-DACORE-OVERVIEW.md)–[39](39-DACORE-SMS.md).

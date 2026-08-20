@@ -29,6 +29,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 13. **Finish gate (LAW):** after **every** code chunk **and** before claiming done, **MUST** grep this module — double `crcCheck`, plain IDs, unbound SQL, wrong `data()`, middleware vs action. **MUST NOT** skip. Canonical: [00](00-AGENT-CONTRACT.md) §2c, [17](17-CHECKLISTS.md).
 14. **Visible outcome (LAW):** the user **MUST** see save success **and** failure. **Preferred** on public FE+BE: mark the wrong input (red + message on the field). **You MUST build** your own toast/status (Notiflix is DACore-only). Canonical: [00](00-AGENT-CONTRACT.md) §2d.
 15. **Attack vectors (LAW):** the known vectors in [24](24-ATTACK-VECTORS.md) **MUST NOT** be shippable — injection (SQL, XSS, command, template, deserialization), headers / redirect / SSRF, mass assignment, CSRF / brute force / enumeration, IDOR and escalation, files and paths, missing rate limit, leaks, weak crypto, prompt injection. Open the section for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. A vector not listed is still forbidden — apply the nearest rule and **say it in chat**.
+16. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column, composite order equality → range → sort, leftmost prefix, no duplicate prefixes), sane column types, and code a human can read: file/class/method docblocks + a short **why** line above every logical step. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md).
 
 ## Quick install
 
@@ -42,7 +43,7 @@ In short:
 
 ## Code samples (save context)
 
-Theory lives in `00`–`24`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
+Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
 
 - [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md) — **preferred** security: `fo-rm` + `formName` + `dotapp.js`
 - More: module, DB, renderer, JS boot, bridge, secrets — see [examples/README.md](examples/README.md)
@@ -79,6 +80,7 @@ Theory lives in `00`–`24`. **Ready copy-paste patterns** are in [examples/](ex
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
 | [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first |
 | **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
+| **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost, docblock & why-comment standard, §8 perf pass |
 | [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |
 
 ## Critical: return values

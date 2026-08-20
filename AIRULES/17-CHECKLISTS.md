@@ -100,6 +100,19 @@
 - [ ] Privilege / records: no secret in read-only views; no escalate; SQL owner scope; own password needs current; public noauth **warned** for bots ([11](11-AUTH-AND-CRYPTO.md) §11)
 - [ ] Secrets not committed carelessly
 
+## Performance / readability checklist (canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md))
+
+- [ ] **I/O budget:** list = one query (`paginate()`); no query / HTTP call / `Logger` **inside** a `foreach` (prefetch with `whereIn` + a keyed map)
+- [ ] **Columns:** `select` only what the screen prints; `exists()` / `COUNT(*)` / `limit(1)` where that answers the question
+- [ ] **Memory:** big sets processed page by page; keyed map instead of `in_array()` in a loop; no `array_merge` per iteration; raw copy `unset` after mapping; files streamed
+- [ ] **Indexes:** every FK and every new `WHERE` / `JOIN` / `ORDER BY` column is indexed; composite order equality → range → sort; no index duplicating a composite prefix; one comment line per index naming its query ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3)
+- [ ] **Schema:** realistic types (`DECIMAL` money, right `VARCHAR` length, FK matches `id()` = `bigInteger()->unsigned()`), `NOT NULL` + defaults, nothing filterable hidden in a JSON blob ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4)
+- [ ] **Migration:** a new index / column shipped as a **new version** in `Installation.php`, guarded by `indexExists()` / `columnExists()`, then `installed_*_install.php` renamed back to `install.php`
+- [ ] **Cache:** used only for expensive cross-request data, with TTL **and** invalidation on write; `Config::db('cache')` untouched
+- [ ] **Frontend:** one CSS + one JS, delegated handlers, one DOM write per batch, debounced search, lazy images ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §6)
+- [ ] **Docs:** file/class docblock; every public method has purpose + `@param` + `@return` (+ `@throws`); every logical step has a short **why** comment ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
+- [ ] **No noise:** no comment that restates the code, no prompt-echo, no dead code / commented-out blocks, no bare `TODO`, no `$tmp` / 200-line method
+
 ## Attack-surface checklist (canonical: [24](24-ATTACK-VECTORS.md))
 
 Tick only the rows for the surface you touched.
@@ -128,6 +141,7 @@ Tick only the rows for the surface you touched.
 - [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md))
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate ([03](03-MODULES-AND-ROUTING.md))
 - [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. Field errors: PHP `errors` + mark the input (red + message on the field). Your own toast/status — never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
+- [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, missing docblock, comments that restate the code)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, …)
 - [ ] No core file modifications in the diff

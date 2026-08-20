@@ -147,7 +147,7 @@ The framework runs `install.php` once (event `dotapp.module.Shop.install`) then 
 
 **DACore zip is only for modules built for DACore.** If this module is **not** for DACore: **MUST NOT** create `dainstall.php`, `init/`, or a pack zip. To take it to another project: rename `installed_*_install.php` → `install.php` and copy the module folder. The other project’s next page load runs it.
 
-If the module **is** for DACore: pack `dainstall.php` **only** when the user asks for an installable zip ([35](35-DACORE-INSTALL.md) §4–§5). **MUST NOT** apply that pack step to `app/modules/DACore/` itself.
+If the module **is** for DACore: pack `dainstall.php` **only** when the user asks for an installable zip ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5). **MUST** rename `install.php` → `dainstall.php` in that zip and put live init in `init/` — a zip that still has `install.php` is **rejected** and Installation **never runs**. **MUST NOT** apply that pack step to `app/modules/DACore/` itself.
 
 **MUST (new version / migration):** after you add or change a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php`. The agent does this — **MUST NOT** leave it for the user. If `install.php` is already in the root, leave it.
 
@@ -189,6 +189,8 @@ DB::module('RAW')->schema(
 `nullable($bool = true)`, `default($value)`, `comment($text)`, `autoIncrement()`, `unsigned()` (MySQL only), `length($n)`, `precision($n)`, `scale($n)`, `onUpdateCurrentTimestamp()`
 
 ### Keys / indexes / constraints
+
+**MUST:** design the indexes for the queries you wrote — every FK plus every `WHERE` / `JOIN` / `ORDER BY` column on a table that grows; composite order **equality → range → sort**; one comment line above each index naming the query it serves. `index()` / `unique()` accept an **array** for composite keys. **Your** tables only — never `dacore_*`. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3–§4.
 
 `primaryKey($columns, $name = null)`, `dropPrimaryKey()`, `foreign($column, $name = null)` → `->references($col)->on($table)->onDelete($action)->onUpdate($action)`, `dropForeign($name)`, `index($columns, $name = null)`, `unique($columns, $name = null)`, `fullTextIndex($columns, $name = null)` (mysql/pgsql), `dropIndex($name)`, `addConstraint`, `dropConstraint`
 

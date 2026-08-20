@@ -18,6 +18,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers |
 | **Visible outcome** | Silent `.after()`; success with no toast/status; field errors without marking the input (`AIRULES/00` §2d) |
 | **Privilege / records** | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password with no current-password check (`AIRULES/11` §11) |
+| **Perf / readability** | `->all()` on a growing table; query/HTTP/log inside `foreach`; `select('*')` on a list; O(n²) or array copy per row; a new `WHERE`/`ORDER BY` column with no index; an index with no comment naming its query; a public method with no docblock; comments that restate the code (`AIRULES/25` §8) |
 | **Threat pass** | Unescaped user string in a view or `.html()`; sort/insert column from the request; input in `header()` / redirect / `HttpHelper` URL; `eval`/`exec`/`unserialize`; public POST with no `throttle()`; `getMessage()` / `var_dump` in the reply; upload without ext + `finfo` + headers (`AIRULES/24` §11) |
 
 Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.

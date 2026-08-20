@@ -37,6 +37,7 @@
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
 - [ ] User-visible strings are product copy — not prompt-echo / “this user can…” ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
+- [ ] No PHP function names in `setViewVar` / `setLayoutVar` / `PrivateBlock::set` (`time`, `copy`, `count`, `key`, `header`, `date`, `sort`, `file`, …) — sandbox **drops the whole var**; empty `foreach` with a visible heading is this, not a broken template ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
 
 ## Database checklist
 
@@ -123,11 +124,13 @@
 - [ ] Did **not** register a “Return back” row (DACore appends it on a branch `$menuId`)
 - [ ] Edit/detail admin pages keep the list/section leaf active: `withMenu` 7th `$currentFile` when the URL is not under that leaf — no extra menu row per edit URL ([31](31-DACORE-MENU.md))
 - [ ] Trigger while coding is **`install.php`** + live root init files; `installed_*` renamed back after a new version ([07](07-SCHEMA-AND-INSTALL.md), [35](35-DACORE-INSTALL.md) §4)
-- [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack; working tree restored ([35](35-DACORE-INSTALL.md) §4–§5)
+- [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack: zip **MUST** contain `dainstall.php` (renamed from `install.php`) + `init/` live copies + inert root init; **MUST NOT** contain `install.php` (DACore rejects it / Installation never runs); working tree restored ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5)
 - [ ] Root init files were **not** blanked unless packing a zip
 - [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs**
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
 - [ ] Inbox events use `DACore:Notifications@push` on the event (`!== true` checked) — not installer, not every request, not `INSERT` into `dacore_notifications*` ([37](37-DACORE-NOTIFICATIONS.md))
+- [ ] Outgoing mail uses `DACore:Email@send` with an **encrypted** sender id (`!== true` checked) unless the user declined DACore senders — **asked** at plan time ([38](38-DACORE-EMAIL.md))
+- [ ] Outgoing SMS uses `DACore:Sms@send` with a **sender_key** (`ok === true` checked) unless the user declined DACore drivers — **asked** at plan time ([39](39-DACORE-SMS.md))
 - [ ] AI tool `rights` non-empty and wildcard-free; `controller` ends with `!`
 - [ ] AI handler signature `($data, $aiobj)` returning JSON with `result` + `message`
 - [ ] Write AI tools that change on-screen data return `ui_events` (`name` = tool id); matching page listens `DACore.AI.UIEvent` and AJAX-refreshes — other pages ignore ([34](34-DACORE-AI-TOOLS.md) §5)
@@ -150,6 +153,19 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - [ ] Upload endpoints do **not** `crcCheck()`
 - [ ] Admin routes use `#Shop:Rights@check!` — not `#DACore:AuthTest@check!` as a rights guard
 - [ ] Did **not** “fix” it by editing `app/modules/DACore/`
+
+## Performance / readability checklist (canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md))
+
+- [ ] **I/O budget:** list = one query (`paginate()`); no query / HTTP call / rights check / `Logger` **inside** a `foreach` (prefetch with `whereIn` + a keyed map)
+- [ ] **Columns:** `select` only what the screen prints; `exists()` / `COUNT(*)` / `limit(1)` where that answers the question
+- [ ] **Memory:** big sets processed page by page; keyed map instead of `in_array()` in a loop; no `array_merge` per iteration; raw copy `unset` after mapping; files streamed
+- [ ] **Indexes:** every FK and every new `WHERE` / `JOIN` / `ORDER BY` column is indexed; composite order equality → range → sort; no index duplicating a composite prefix; one comment line per index naming its query; **nothing** on `dacore_*` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3)
+- [ ] **Schema:** realistic types (`DECIMAL` money, right `VARCHAR` length, FK matches `id()` = `bigInteger()->unsigned()`), `NOT NULL` + defaults, nothing filterable hidden in a JSON blob ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4)
+- [ ] **Migration:** a new index / column shipped as a **new version** in `Installation.php`, guarded by `indexExists()` / `columnExists()`, then `installed_*_install.php` renamed back to `install.php`
+- [ ] **Cache:** used only for expensive cross-request data, with TTL **and** invalidation on write; `Config::db('cache')` untouched
+- [ ] **Frontend:** DACore searched first (no duplicate library), then one CSS + one JS in your module, delegated handlers, one DOM write per batch, debounced search, lazy images ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §6)
+- [ ] **Docs:** file/class docblock; every public method has purpose + `@param` + `@return` (+ `@throws`); every logical step has a short **why** comment ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
+- [ ] **No noise:** no comment that restates the code, no prompt-echo, no dead code / commented-out blocks, no bare `TODO`, no `$tmp` / 200-line method
 
 ## Attack-surface checklist (canonical: [24](24-ATTACK-VECTORS.md))
 
@@ -180,6 +196,7 @@ Tick only the rows for the surface you touched.
 - [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, step-up 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate; rights via `#YourModule:Rights@check!` — **not** `#DACore:AuthTest@check!` ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
 - [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. **Admin:** grepped DACore, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
+- [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, duplicated DACore library, missing docblock, comments that restate the code)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning, no `dacore_*` write)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
@@ -197,6 +214,7 @@ Tick only the rows for the surface you touched.
 - Diff touches `app/modules/DACore/` without an informed, user-initiated ask ([00](00-AGENT-CONTRACT.md) §1)
 - Agent proposed a DACore patch instead of implementing in the current module
 - Template contains `{{ $var }}` or `@if`
+- Empty `foreach` / missing switches while the heading shows — sandbox dropped a callable string (`time`, `copy`, `count`, …); **MUST NOT** patch Renderer ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
 - Code contains `DB::table` / Eloquent / `$this->db`
 - Module table not prefixed `{lowercase_modulename}_*`
 - Frontend uses `$('#...')` or `$.ajax`
@@ -221,6 +239,7 @@ Tick only the rows for the surface you touched.
 - Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
 - Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
 - New admin library/widget without grepping DACore (read-only) and the current module first
+- DACore zip still contains `install.php`, or is missing `dainstall.php` / `init/` — installer rejects it / Installation never runs ([00](00-AGENT-CONTRACT.md) §2e)
 - DACore-bound **your-module** uses `dainstall.php` / inert root **while still coding** (that is zip-only)
 - New `Installation.php` version left as `installed_*_install.php` (next load will not run it)
 - `dainstall.php` / `init/` / inert stubs applied to `app/modules/DACore/` itself

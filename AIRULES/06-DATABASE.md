@@ -100,6 +100,8 @@ Write **CPU- and memory-cheap** code. Pick the **smallest** I/O that answers the
 | Sort / filter chosen by the user | map the request value through a **whitelist array** to a real column + `ASC`/`DESC` | the request string in `orderBy` / `raw()` ([24](24-ATTACK-VECTORS.md) §1) |
 | Insert / update from a form | list the writable columns explicitly | spreading `$request->data()` — a posted `user_id`, `role`, `price`, `status` would be written ([24](24-ATTACK-VECTORS.md) §2) |
 
+**MUST (indexes):** a cheap query still scans the table if the column is not indexed. Every FK and every column you filter, join, or order by on a growing table **MUST** be covered by an index — composite order **equality → range → sort**, leftmost prefix counts, no second index duplicating a composite prefix. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3. Memory rules (paging, keyed maps, no full-array copies): [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §1.
+
 **MUST NOT** turn on `Config::db('cache')` “for speed” — it breaks `Entity::save()` ([§8](#8-query-cache)). **MUST NOT** invent a second cache stack. Repeat reads in one request: a local variable, not another query.
 
 ### Write with callbacks (mandatory pattern)

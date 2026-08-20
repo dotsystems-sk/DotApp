@@ -1,0 +1,10 @@
+---
+description: Sending email, SMTP, DACore senders or mail templates in a module
+alwaysApply: false
+---
+
+# DACore email (on demand)
+
+If this task sends mail, seeds templates, or picks an SMTP sender: **read** `AIRULES/38-DACORE-EMAIL.md` and `AIRULES/examples/EX-D06-dacore-email.md` before writing code.
+
+Do not invent SMTP. Call `DotApp::call("DACore:Email@…!")`. Inbox bell is `AIRULES/37`.

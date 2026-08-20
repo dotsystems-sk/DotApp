@@ -60,12 +60,12 @@ See [§7](#7-dacore-is-sacred-same-rank-as-framework-core).
 
 ## 2. Mandatory workflow
 
-1. **Identify the target module** (or create one). If it is a **new DACore-bound module**, **ASK in chat first**: shared full sidebar vs **module-own** menu (`Page@withMenu` `$menuId`). Do not guess. From about five items, do not dump leaves under a header. [31](31-DACORE-MENU.md).
+1. **Identify the target module** (or create one). If it is a **new DACore-bound module**, **ASK in chat first**: shared full sidebar vs **module-own** menu (`Page@withMenu` `$menuId`). Do not guess. From about five items, do not dump leaves under a header. [31](31-DACORE-MENU.md). **Sending mail, inbox notifications, or SMS?** Open [38](38-DACORE-EMAIL.md) / [37](37-DACORE-NOTIFICATIONS.md) / [39](39-DACORE-SMS.md) — do not invent SMTP or a gateway.
 2. **Read** the relevant AIRULES docs for the task (routing / views / DB / forms / JS).
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
-6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. Develop with **`install.php`** and **live** root init files. Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when the user asks ([35](35-DACORE-INSTALL.md) §4–§5). A non-DACore module: no zip — `install.php` and copy the folder.
+6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. Develop with **`install.php`** and **live** root init files. Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when the user asks ([35](35-DACORE-INSTALL.md) §4–§5). A non-DACore module: no zip — `install.php` and copy the folder. **Create + zip in one ask:** [§2e](#2e-dacore-installable-zip-must--law).
 7. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the admin shell is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 8. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
 9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
@@ -130,6 +130,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **DACore files** | The diff | Any edit/add/delete under `app/modules/DACore/` unless the informed exception in [§1](#dacore-files--strict-default-informed-exception-only) |
 | **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; admin save without a DACore toast; public field errors without marking the input ([§2d](#2d-visible-outcome-must--law)) |
 | **Privilege / records** | Persist + GET view vars + SQL | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password without current; public noauth shipped with no bot warning ([11](11-AUTH-AND-CRYPTO.md) §11) |
+| **Perf / readability pass** | The greps in [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 | `->all()` on a growing table, a query/HTTP/rights check/log **inside** `foreach`, `select('*')` on a list, O(n²) lookup or array copy per row, a new `WHERE`/`ORDER BY` column with **no index**, an index with no comment naming its query, a duplicate of a library DACore ships, a public method with no docblock, comments that restate the code |
 | **Threat pass** | The 12 greps in [24](24-ATTACK-VECTORS.md) §11 on this chunk | Injection (SQL/XSS/command/deserialize), input in a header or redirect, unbounded public POST, `getMessage()` / `var_dump` in the reply, upload without ext+MIME+header check, weak randomness for a token, a direct write to `dacore_*` / `users_rights*` |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
@@ -162,6 +163,28 @@ Notiflix is **not** there. **You MUST build** feedback in **your** module.
 | Success / non-field failure | **Your** module toast / status node + `reply.message`. Never `alert()`. |
 
 Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Visible outcome”, [19](19-VALIDATION-AND-INPUT.md), [33](33-DACORE-PAGES-AND-UI.md), [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md).
+
+### 2e. DACore installable zip (MUST — law)
+
+When the user asks to **pack / zip / export** a DACore-bound module for the DACore plugin installer — including **“create the module and zip it”** — this is a **law**, not a reminder.
+
+Two different files, two different runners. Mixing them **ships a zip that will not install**.
+
+| File | Who runs it | When |
+|------|-------------|------|
+| **`install.php`** | **Framework** (`Module::installation()` on the next page load), then it **renames** the file to `installed_*_install.php` | **While coding** in the working tree. **MUST NOT** be inside a DACore zip. |
+| **`dainstall.php`** | **DACore plugin installer only** (tables, rights, menu). The framework **never** runs this name. | **Inside the zip only.** Same PHP body as `install.php` (`Installation::module('Shop')->install();`). |
+
+**MUST in the zip (copy / transform / restore — do not leave the working tree packed):**
+
+1. Rename `install.php` (or `installed_*_install.php`) → **`dainstall.php`**. Skipping this rename means DACore **does not run** `Installation` — the zip is not an installer package.
+2. **MUST NOT** include `install.php` or `installed_*_install.php`. DACore **rejects** a package that still has `install.php` (it treats it as a framework-only drop).
+3. Copy live `module.init.php` → **`init/module.init.php`** and live `module.listeners.php` → **`init/module.listeners.php`**. After a successful `dainstall.php`, DACore copies these over the root. Missing `init/` = routes never go live.
+4. Root `module.init.php` / `module.listeners.php` in the zip are **inert stubs** (empty `initialize` / `register`, `initializeRoutes` → `[]`).
+
+**MUST NOT:** zip the working tree as-is with `install.php`; leave `dainstall.php` / inert stubs in the working module after packing; pack a module that is not for DACore; pack `app/modules/DACore/`.
+
+Canonical steps: [35](35-DACORE-INSTALL.md) §4–§5.
 
 ---
 
@@ -198,6 +221,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 |-----------------|----------------|
 | `DB::table('x')`, Eloquent models | `DB::module("RAW")->q(fn($qb)=>...)->all()` |
 | Blade `{{ $x }}`, `@if`, `@extends` | `{{ var: $x }}`, `{{ if }}` … `{{ /if }}` |
+| Feature/row arrays with `'key' => 'time'` / var named `copy` | Renderer sandbox **drops** callable PHP names; prefix keys or pass escaped HTML ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
 | `Route::prefix()->group()`, named routes | Imperative `Router::get(...)` in `module.init.php` |
 | Register all login-required URLs then login-middleware only | Prefix + `Router::before([$admin, $admin.'/*'], login 403)` **and** `if (Auth::isLogged())` — page **MUST NEVER** show ([03](03-MODULES-AND-ROUTING.md)) |
 | Instance controllers + `$this->` | `public static function` controllers |
@@ -227,6 +251,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Shipping a chunk / claiming done without the finish gate | **MUST** [§2c](#2c-finish-gate-must--law) after every chunk — grep, do not imagine |
 | Silent save / empty `.after()` / admin without DACore toast / public field error without marking the input | **MUST** [§2d](#2d-visible-outcome-must--law) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
+| DACore zip still containing `install.php`, or missing `dainstall.php` / `init/` | **MUST** [§2e](#2e-dacore-installable-zip-must--law) — installer **rejects** `install.php` and **never runs** Installation without `dainstall.php` |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
@@ -254,12 +279,13 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 11. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP: `$request->upload()` — not `crcCheck()` on that endpoint. **MUST** reject `.php` and other executables (extension + `finfo` MIME + headers); FE `accept=` is UX only ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
 12. **MUST** take passwords, HTML, and other round-trip values from `$request->data(true)` / `$request->query(true)` (original). `$request->data()` is the **protected** copy (`protect()`). Login/createUser/installer **MUST NOT** hash the protected string. **MUST** show every login failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`). Canonical: [19](19-VALIDATION-AND-INPUT.md).
 13. **Login-required / admin routes (MUST):** HTML `{DACore prefixUrl}/{ModuleName}/…` + `Gate@login`. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the **start** of `initialize()`; handlers **MUST NOT** `crcCheck()` again. Register login-only handlers **only** inside `if (Auth::isLogged() === true)`. Those pages **MUST NEVER** render for anonymous users. Canonical: [03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md).
-14. **Comments:** English, short, **why** at trap-prone spots (`crcCheck` once, `data(true)`, logged-in route wrap). **MUST NOT** narrate every line or prompt-echo. Canonical: [03](03-MODULES-AND-ROUTING.md).
+14. **Documentation (MUST):** English. Every file/class gets a docblock; every public/static method gets a docblock (purpose, `@param`, `@return`, `@throws`); every **logical step** in the body gets a short **why** line (guard, decision, formula, magic value, query shape, trap). **MUST NOT** restate the code (`// increment i`), prompt-echo, or leave dead code / bare `TODO`. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [03](03-MODULES-AND-ROUTING.md).
 15. **Errors (MUST):** persist handlers in `try/catch` (`\Throwable`) — log, structured `ajaxReply`, **never** leak `$e->getMessage()`, **never** empty `catch`. `execute()` **MUST** get **both** callbacks (`$ok` and `$err`); omitting `$err` **throws**. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md).
-16. **Cheap I/O (MUST):** pick the smallest load — `exists()` / `COUNT(*)` / `limit(1)` / `select` only used columns / `paginate()` / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` “for speed”. Canonical: [06](06-DATABASE.md).
+16. **Cheap I/O (MUST):** pick the smallest load — `exists()` / `COUNT(*)` / `limit(1)` / `select` only used columns / `paginate()` / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` “for speed”. Canonical: [06](06-DATABASE.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2.
 17. **Visible outcome (MUST):** the user always sees success and failure. **DACore admin:** search DACore first, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Canonical: [§2d](#2d-visible-outcome-must--law).
 18. **Privilege and records (MUST):** no secret in a read-only view; no grant/mutate above the actor; SQL scoped to owner; own password needs current password; live routes; lockout covers 2FA if you built lockout. Public noauth that bots can hammer: **MUST warn** in chat (CAPTCHA optional — not MUST). Canonical: [11](11-AUTH-AND-CRYPTO.md) §11.
 19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, wrong guard, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI/prompt injection. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix a vector in **your** module — **never** by patching `app/modules/DACore/`. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
+20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend (**reuse DACore assets** instead of a second library), and the documentation standard (§7: file + method docblocks, a **why** line per logical step). Index and query **your** tables only — never `dacore_*`. Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
 
 ---
 
@@ -281,6 +307,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Public site nav: mobile drawer slides L/R over the page; lock document scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own mobile section
  * - Lists: accumulating records (users/logs/items) MUST paginate() on first ship + AJAX pager — NOT all() dump, NOT ?page= / location.reload()
  * - Cheap I/O: exists/COUNT/limit(1)/needed columns/paginate/one join — NOT all() then filter, NOT N+1
+ * - Memory: page big sets, keyed map instead of in_array in a loop, unset the raw copy, stream files — NOT load-all-then-filter
+ * - Indexes (25 §3): FK + every WHERE/JOIN/ORDER BY column; composite = equality → range → sort; leftmost prefix; one comment line per index naming its query; never touch dacore_*
+ * - Docs (25 §7): file + class + method docblock (@param/@return/@throws) and a short WHY line above every logical step — NOT narration of the code
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
@@ -295,7 +324,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action — 00 §2c
  * - Visible outcome (LAW): user always sees save/fail; DACore admin = search DACore then toast; public = mark the wrong field — 00 §2d
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
- * - DACore pack zip only for a DACore-bound module and only when asked. Non-DACore: install.php + copy the folder. NEVER pack app/modules/DACore/
+ * - DACore zip (LAW, 00 §2e): in the zip MUST be dainstall.php (renamed from install.php) + init/ live copies + inert root init. MUST NOT leave install.php in the zip — DACore rejects it and never runs Installation. Working tree stays install.php. NEVER pack app/modules/DACore/. Non-DACore: no zip.
  * - DACore: search DACore (read-only) + this module before writing a new library/widget — do not reinvent
  * - DACore menu: edit/detail MUST withMenu 7th $currentFile = registered list URL when the path is not under that leaf — NOT a menu row per edit URL
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
@@ -329,9 +358,9 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 
 | Rule | Detail |
 |------|--------|
-| **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `{prefix}users_rights*` | Use the registration / push APIs |
+| **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders`, `{prefix}users_rights*` | Use the registration / push / `Email@send` / `Sms@send` APIs |
 | Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
-| **Develop vs pack** | While coding: **`install.php`** + **live** root init files. After a new version: rename `installed_*` → `install.php`. **`dainstall.php` + `init/` zip** only for a **DACore-bound** module and only when the user **asks** to pack. Not a DACore module: no zip — rename to `install.php` and copy the folder. Restore the working tree after a zip. **MUST NOT** pack `app/modules/DACore/`. [35](35-DACORE-INSTALL.md) §4–§5. |
+| **Develop vs pack** | While coding: **`install.php`** + **live** root init files. After a new version: rename `installed_*` → `install.php`. User asks to zip a **DACore-bound** module (**including create+zip**): **MUST** [§2e](#2e-dacore-installable-zip-must--law) — zip has **`dainstall.php`** (rename from `install.php`), **`init/`** live copies, **inert** root init, **no** `install.php`. Working tree restored. Not a DACore module: no zip. **MUST NOT** pack `app/modules/DACore/`. [35](35-DACORE-INSTALL.md) §4–§5. |
 | **New module menu** | **ASK** before scaffolding: shared sidebar vs module-own (`withMenu` `$menuId`). Group `type => 2` when many items stay in the global tree; large modules: header + **one** entry, inner pages pass the branch id. Do not register “Return back”. [31](31-DACORE-MENU.md) |
 | **Active sidebar on subpages** | Edit/detail **MUST** keep the list/section leaf highlighted. `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). **MUST NOT** register a menu row per edit URL. [31](31-DACORE-MENU.md) Active sidebar |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |
@@ -380,6 +409,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Custom `$dotapp` library / jQuery port | **09 §4** (esp. §4.C) | **[EX-15](examples/EX-15-dotapp-js-library.md)** |
 | Database query | 06, 18 | [EX-04](examples/EX-04-database-crud.md) — `raw()`: every `?` is a placeholder, including comments |
 | Tables / migrations | 07 (rename `installed_*` → `install.php` after a new version) | [EX-13](examples/EX-13-schema-migrations.md) |
+| **DACore zip / “create module and pack it”** | **00 §2e** — zip **MUST** have `dainstall.php` (renamed from `install.php`) + `init/`; **MUST NOT** ship `install.php` | [EX-D04](examples/EX-D04-dacore-installer.md), [35](35-DACORE-INSTALL.md) |
 | **Secure form (HTML fields + submit)** | **08, 09** | **[EX-01](examples/EX-01-secure-form-complete.md)**, [EX-02](examples/EX-02-secure-form-edit-api.md) |
 | AJAX without a form (`load` only) | **08, 09** | [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 |
 | Encrypt IDs / unique `$key2` | **11 §8, 05, 08** | [EX-02](examples/EX-02-secure-form-edit-api.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
@@ -388,6 +418,8 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Bridge click | 09 | [EX-07](examples/EX-07-bridge.md) |
 | Auth / 2FA / permissions | **11** (incl. §11 privilege / secrets / SQL owner / bot **warn**), **09** (`twoFactor`), **19** (`data(true)`), **32** | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | **Any attack surface (input, auth, output, upload, public endpoint)** | **24** attack vectors — open the matching section, then §11 threat pass | [EX-01](examples/EX-01-secure-form-complete.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
+| **New table / migration / any loop or query you care about** | **25** performance — §1 memory, §2 I/O, **§3 indexes**, §4 column types, §5 big lists, §6 frontend | [EX-13](examples/EX-13-schema-migrations.md), [EX-04](examples/EX-04-database-crud.md) |
+| **Every file you write (docblocks + why comments)** | **25 §7** | [EX-01](examples/EX-01-secure-form-complete.md) |
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |
 | AI / search / MCP | 22 | [EX-12](examples/EX-12-ai-search-mcp.md) |
@@ -409,6 +441,6 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Admin edit/detail sidebar | **31** Active sidebar — `withMenu` 7th `$currentFile` | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | New admin library / widget / `$dotapp().fn` | **33** “Search DACore first”, **09 §4** | [EX-15](examples/EX-15-dotapp-js-library.md) |
 | AI tools | 34 (incl. §5 `ui_events`) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
-| Installer wiring | **35** (`install.php` while coding; DACore zip only if the module is for DACore and the user asks) | [EX-D04](examples/EX-D04-dacore-installer.md) |
+| Installer wiring | **35** + **00 §2e** (`install.php` while coding; zip **MUST** rename to `dainstall.php` + `init/` or DACore will not install) | [EX-D04](examples/EX-D04-dacore-installer.md) |
 | Inbox notifications | **37** | [EX-D05](examples/EX-D05-dacore-notifications.md) |
 | DACore quirks | 36 | — |

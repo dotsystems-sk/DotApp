@@ -2,7 +2,7 @@
 
 These recipes use **framework APIs only**, so they work with or without DACore. Replace `Shop` with your module name.
 
-For admin-area work (menu, rights, admin pages, AI tools, inbox) use the DACore recipes instead: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md)–[EX-D05](examples/EX-D05-dacore-notifications.md) and docs [30](30-DACORE-OVERVIEW.md)–[37](37-DACORE-NOTIFICATIONS.md).
+For admin-area work (menu, rights, admin pages, AI tools, inbox, mail, SMS) use the DACore recipes instead: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md)–[EX-D07](examples/EX-D07-dacore-sms.md) and docs [30](30-DACORE-OVERVIEW.md)–[39](39-DACORE-SMS.md).
 
 ---
 

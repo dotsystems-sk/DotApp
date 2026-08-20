@@ -48,6 +48,10 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 - `renderView()` → `setViewVar` only
 - `renderLayout()` → `setLayoutVar` only
 
+## Sandbox (MUST)
+
+`RenderingIsolator` **silently skips** a whole var if the name **or any nested value** is `is_callable()` — `time`, `copy`, `count`, `key`, `header`, `date`, `sort`, `file`, `['Class','method']`, closures. Symptom: heading/`if` shows, `foreach` is empty. Prefix keys (`feat_time`) or pass one escaped HTML string. Dangerous calls in template PHP are stripped. **MUST NOT** patch `app/parts/Renderer.php`. Full: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §5.
+
 ## Assets
 
 `/assets/modules/{Module}/...` and `/assets/dotapp/dotapp.js`.

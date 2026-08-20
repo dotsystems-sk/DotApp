@@ -374,6 +374,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | New select/table/modal/toast/date library without grepping DACore | Search `app/modules/DACore/` (read-only) + your module first (this file §4) |
 | Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` — **MUST NOT propose** a DACore patch ([00](00-AGENT-CONTRACT.md) §1) |
 | `setViewVar` with `renderLayout()` | Use `setLayoutVar` |
+| `setLayoutVar('rows', [['key' => 'time', …]])` then empty `foreach` | Sandbox dropped the array (`is_callable('time')`). Prefix keys or pass escaped HTML ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
 | Guess shared vs module-own menu / ten leaves under a header | **ASK**; grouping and `$menuId`: [31](31-DACORE-MENU.md) |
 | Edit/detail URL leaves the sidebar with no active item | `$currentFile` = registered list URL ([31](31-DACORE-MENU.md) Active sidebar) |
 | Register “Return back” | DACore appends it on a non-empty `$menuId` |
