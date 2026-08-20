@@ -42,6 +42,7 @@ From project root:
 
 ## DATABASE
 DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute($ok,$err)
+$err branch and every catch MUST report dotapp.catch + dotapp.catch.error|info (AIRULES/18 §9)
 Bindings: ? OR :named — never mix. No DB::table, Eloquent, getConnection, selectRaw, chain find().
 Schema: Installation.php — not DB::migrate().
 
@@ -85,6 +86,12 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   random_bytes tokens + hash_equals secrets; throttle() public POST; no getMessage()/var_dump in the reply;
   upload = extension + finfo MIME + headers; warn about bots on public noauth endpoints;
   never write dacore_* / users_rights* directly; nothing under app/modules/DACore/
+- Catch bus (AIRULES/18 §9): every catch AND every execute() $err -> one report helper in YOUR module ->
+  Events::trigger('dotapp.catch', $p) then 'dotapp.catch.error' (aborted) | 'dotapp.catch.info' (recovered);
+  fixed payload = severity, module, source (Shop:Items@save), operation (shop.item.update), message, exception,
+  code, file, line, time + context (ids/counts), user_id; NO passwords/tokens/2FA codes/rights/request bodies;
+  reporting is EXTRA — the user still sees the toast; helper wraps its own trigger() (listener exceptions propagate);
+  nothing for this under app/modules/DACore/; no DACore notification per failure (flood)
 - Perf pass (AIRULES/25 §8): no ->all() on a growing table; no query/HTTP/rights check/log inside foreach (whereIn prefetch + keyed map);
   no select('*') on a list; no in_array()/array_merge per iteration; every new WHERE/JOIN/ORDER BY column indexed
   (composite = equality -> range -> sort, leftmost prefix, no duplicate prefix); one comment line per index naming its query;

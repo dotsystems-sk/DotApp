@@ -18,6 +18,31 @@ Open **one** sample after the hunt: [EX-01](examples/EX-01-secure-form-complete.
 
 ---
 
+## 1b. Read the catch trail first (**MUST** when the code already ships it)
+
+Every `catch` and every `execute()` `$err` in this project reports to the catch bus ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9). Read that trail **before** guessing: it names the failing `operation`, the `source`, and the real `message`.
+
+```php
+// Temporary, in YOUR module's module.listeners.php — remove when done.
+// Never add a debug file under app/modules/DACore/.
+Events::on('dotapp.catch', function ($payload) {
+    Logger::use('debug')->error($payload['operation'] ?? 'unknown', $payload);
+});
+```
+
+| Signal in the payload | Read it as |
+|-----------------------|------------|
+| `severity => 'error'`, `source` = the action | The handler aborted — start at `file`/`line` |
+| `severity => 'info'` repeated many times | A “recovered” path is firing constantly — usually the real bug |
+| no event at all for a failing click | The failure is **before** your handler (CRC / `AuthTest` prefix / rights / route) → §2 |
+| `operation` present but the user saw nothing | Visible outcome is missing ([00](00-AGENT-CONTRACT.md) §2d — admin = toast) — a second bug, fix both |
+
+If the module has `catch` blocks that do **not** report, add the report helper first — that is the fix, not a detour. DACore’s own internals do not report to this bus and **MUST NOT** be patched to do so.
+
+Log files need `Config::logger('core_log_enabled', true)` ([20](20-CACHE-LOGGER-SESSION.md) §2); the bus itself fires regardless.
+
+---
+
 ## 2. Grep first (**MUST**)
 
 Count every `$request->crcCheck()` / `crcCheck(` on the **failing route’s pipeline** — not only the controller.

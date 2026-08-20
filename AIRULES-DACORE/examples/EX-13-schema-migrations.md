@@ -38,7 +38,7 @@ try {
         function ($error) { Logger::use()->error('schema failed', (array) $error); }
     );
 } catch (\Throwable $e) {
-    Logger::use()->error('schema exception', ['msg' => $e->getMessage()]);
+    Diag::reportCatch('Shop:Installation@v3', 'shop.schema.migrate', $e, 'error', ['version' => 3]);
 }
 ```
 

@@ -178,7 +178,8 @@ try {
     DB::module('RAW')->commit();
 } catch (\Throwable $e) {
     DB::module('RAW')->rollback();
-    Logger::use()->error('order transaction rolled back', ['msg' => $e->getMessage()]);
+    // Report before answering: this is the trail a debugger reads later (18 §9).
+    Diag::reportCatch('Shop:Orders@create', 'shop.order.create', $e, 'error', ['items' => count($items)]);
     return Response::json(['status' => 0, 'message' => 'Could not create order'], 500);
 }
 ```

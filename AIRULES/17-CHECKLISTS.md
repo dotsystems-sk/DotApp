@@ -69,6 +69,11 @@
 - [ ] Renderer output checked for `''` (missing view fails silently)
 - [ ] No empty `catch {}` — failures are logged via `Logger::use()->error(...)`
 - [ ] Client receives a structured error, never a raw exception message
+- [ ] **Catch bus:** every `catch` **and** every `execute()` `$err` calls the module’s report helper → `dotapp.catch` then `dotapp.catch.error|info` ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
+- [ ] Payload uses the **fixed** keys (`severity, module, source, operation, message, exception, code, file, line, time`, + `context`, `user_id`) — not ad-hoc names per file
+- [ ] Payload has **no** password, token, 2FA/reset code, decrypted secret, request body or personal data
+- [ ] `severity` is honest: `error` = the operation aborted, `info` = expected/recovered (fallback, retry, ignored duplicate)
+- [ ] The report is **in addition to** the user-visible outcome — reporting does not replace the toast / field error
 
 ## Secure form checklist (PREFERRED path)
 
@@ -141,6 +146,7 @@ Tick only the rows for the surface you touched.
 - [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md))
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate ([03](03-MODULES-AND-ROUTING.md))
 - [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. Field errors: PHP `errors` + mark the input (red + message on the field). Your own toast/status — never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
+- [ ] **Catch reported:** grepped `catch (` and `execute(` in this chunk — each one reports `dotapp.catch` + `dotapp.catch.error|info` with the fixed payload and no secrets ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 - [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, missing docblock, comments that restate the code)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, …)
@@ -162,6 +168,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md).
 - [ ] Passwords/HTML from `$request->data(true)`
 - [ ] `form()` error callback + `null`/`false` guarded; JS shows `reply.message`
 - [ ] Upload endpoints do **not** `crcCheck()`
+- [ ] Read the catch trail: temporarily `Events::on('dotapp.catch', …)` (or check the log) to see `operation`, `source`, `message` of the real failure instead of guessing ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 
 ## Red flags — stop and fix
 
@@ -189,6 +196,8 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md).
 - File/ZIP in `FormData` + `load()` / `<fo-rm>` — use `$dotapp().uploadFile`
 - Upload accepts `.php` or trusts client MIME — reject in PHP (`finfo` + extension)
 - `execute()` called with a single callback
+- A `catch` (or `execute()` `$err`) that does not report `dotapp.catch` — the failure is invisible to any future debugger
+- A secret, token, or whole request body inside a `dotapp.catch` payload
 - `->first()` used without a guard
 - A return value is used without checking its failure form
 - Claiming done / shipping a chunk without running the finish gate ([00](00-AGENT-CONTRACT.md) §2c)

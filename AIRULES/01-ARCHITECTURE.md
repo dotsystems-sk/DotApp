@@ -146,6 +146,8 @@ Canonical singleton: `DotApp::dotApp()` / `DotApp::DotApp()`.
 
 Event names are lowercased on register/trigger.
 
+**Project convention (MUST):** `dotapp.catch` + `dotapp.catch.error` / `dotapp.catch.info` are **not** fired by the core — **your** modules fire them from every `catch` and every `execute()` error callback, so a debugger can subscribe later. Payload contract: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
+
 ---
 
 ## What this framework is not

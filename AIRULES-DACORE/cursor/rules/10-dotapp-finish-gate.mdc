@@ -19,6 +19,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **DACore files** | Diff touches `app/modules/DACore/` without the informed exception (`AIRULES/00` §1) |
 | **Visible outcome** | Silent `.after()`; admin save without a DACore toast; public field errors without marking the input (`AIRULES/00` §2d) |
 | **Privilege / records** | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged operator; `WHERE id` only after decrypt; own password with no current-password check (`AIRULES/11` §11) |
+| **Catch reported** | A `catch` or `execute()` `$err` that does not call the module report helper → `dotapp.catch` + `dotapp.catch.error|info`; ad-hoc payload keys; a secret/token/rights blob/request body in the payload; the helper or listener placed under `app/modules/DACore/` (`AIRULES/18` §9) |
 | **Perf / readability** | `->all()` on a growing table; query/HTTP/rights check/log inside `foreach`; `select('*')` on a list; O(n²) or array copy per row; a new `WHERE`/`ORDER BY` column with no index; an index with no comment naming its query; a duplicate of a library DACore ships; a public method with no docblock; comments that restate the code (`AIRULES/25` §8) |
 | **Threat pass** | Unescaped user string in a view or `.html()`; sort/insert column from the request; input in `header()` / redirect / `HttpHelper` URL; `eval`/`exec`/`unserialize`; public POST with no `throttle()`; `getMessage()` / `var_dump` in the reply; upload without ext + `finfo` + headers; a write to `dacore_*` / `users_rights*` (`AIRULES/24` §11) |
 

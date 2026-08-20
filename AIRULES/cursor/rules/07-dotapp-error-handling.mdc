@@ -31,6 +31,19 @@ Full contract: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 11. `Entity::save()` returns **void** — never test it.
 12. `trigger()` ignores listener return values; listener exceptions propagate.
 13. Never write an empty `catch {}`. Log with `Logger::use()->error(...)` and return a structured error.
+14. **Catch bus (MUST):** every `catch` **and** every `execute()` `$err` reports `dotapp.catch` then `dotapp.catch.error|info`. Reporting is **extra** — the user still gets the visible outcome.
+
+## Catch bus (`AIRULES/18` §9)
+
+| Event | When |
+|-------|------|
+| `dotapp.catch` | always — the funnel a debugger subscribes to |
+| `dotapp.catch.error` | the operation aborted |
+| `dotapp.catch.info` | expected / recovered (fallback, retry, ignored duplicate) |
+
+Fixed payload keys: `severity`, `module`, `source` (`Shop:Items@save`), `operation` (`shop.item.update`), `message`, `exception`, `code`, `file`, `line`, `time` + `context` (ids/counts), `user_id`. **No** passwords, tokens, 2FA codes, decrypted secrets, request bodies or personal data. `trace` only for `error`, only if wanted.
+
+Write **one** report helper per module and call it from every `catch` / `$err` — listener exceptions propagate, so wrap the two `trigger()` calls in the helper’s own `try/catch` and log a broken listener instead of losing the real error.
 
 ## Template
 
@@ -45,10 +58,13 @@ try {
     }
     return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
 } catch (\Throwable $e) {
-    Logger::use()->error('failed', ['msg' => $e->getMessage()]);
-    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Server error'], 500);
+    // Report first (debugger trail), then answer the user — never leak $e.
+    self::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error', ['item_id' => $id]);
+    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Could not save the item.'], 500);
 }
 ```
+
+`reportCatch()` = your module helper: builds the payload, `Events::trigger('dotapp.catch', $p)`, `Events::trigger('dotapp.catch.' . $severity, $p)`, then `Logger::use()->error(...)` (`info` → `warning`, because `info` is dropped by default).
 
 ## Broken — do not enable
 

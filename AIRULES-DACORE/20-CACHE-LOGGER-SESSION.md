@@ -93,6 +93,8 @@ Config::loggerDriver('file', LoggerDriverFile::driver());
 Config::logger('driver', 'file');
 ```
 
+**MUST** pair the log with the catch bus: every `catch` and every `execute()` `$err` also fires `dotapp.catch` + `dotapp.catch.error|info` ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9). `Logger` alone is not the report — `core_log_enabled` is `false` by default, so a log-only failure can vanish entirely. `info`-severity reports are logged as `warning` because `info`/`debug` levels are dropped by default (gotcha 1).
+
 ### `dotapp.log` hook
 
 ```php

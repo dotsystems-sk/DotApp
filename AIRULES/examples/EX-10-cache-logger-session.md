@@ -80,6 +80,84 @@ $dotApp->on('dotapp.log', function ($level, $message, $context, $loggerName, $dr
 
 ---
 
+## Catch bus — the report helper every module needs
+
+Law: every `catch` and every `execute()` `$err` reports it. Canonical contract: [18](../18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
+
+```php
+namespace Dotsystems\App\Modules\Shop\Libraries;
+
+use Dotsystems\App\Parts\Auth;
+use Dotsystems\App\Parts\Events;
+use Dotsystems\App\Parts\Logger;
+
+/**
+ * Single reporting point for caught failures in the Shop module.
+ *
+ * Why a class: the payload keys are a contract for the debugger, and the
+ * trigger() calls must be wrapped once — listener exceptions propagate.
+ */
+class Diag
+{
+    /**
+     * @param  string          $source    'Shop:Items@save'
+     * @param  string          $operation Stable slug, e.g. 'shop.item.update'
+     * @param  \Throwable|null $e         Caught throwable, or null for a failure branch
+     * @param  string          $severity  'error' (aborted) or 'info' (recovered)
+     * @param  array           $context   Ids and counts only — never secrets or PII
+     * @param  string          $message   Used when there is no throwable (DB error text)
+     * @return void
+     */
+    public static function reportCatch($source, $operation, $e = null, $severity = 'error', $context = [], $message = '')
+    {
+        $payload = [
+            'severity'  => $severity,
+            'module'    => 'Shop',
+            'source'    => $source,
+            'operation' => $operation,
+            'message'   => $e instanceof \Throwable ? $e->getMessage() : (string) $message,
+            'exception' => $e instanceof \Throwable ? get_class($e) : null,
+            'code'      => $e instanceof \Throwable ? $e->getCode() : 0,
+            'file'      => $e instanceof \Throwable ? $e->getFile() : __FILE__,
+            'line'      => $e instanceof \Throwable ? $e->getLine() : __LINE__,
+            'time'      => microtime(true),
+            'context'   => $context,
+            'user_id'   => Auth::isLogged() ? Auth::userId() : null,
+        ];
+
+        try {
+            Events::trigger('dotapp.catch', $payload);              // funnel for a future debugger
+            Events::trigger('dotapp.catch.' . $severity, $payload); // severity channel
+        } catch (\Throwable $busError) {
+            // A broken listener must not replace the real error.
+            Logger::use('shop')->error('catch bus listener failed', ['msg' => $busError->getMessage()]);
+        }
+
+        // 'info' is logged as warning because info/debug levels are dropped by default.
+        Logger::use('shop')->{$severity === 'info' ? 'warning' : 'error'}($operation, $payload);
+    }
+}
+```
+
+Usage in a controller — report, then tell the user:
+
+```php
+} catch (\Throwable $e) {
+    Diag::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error', ['item_id' => $id]);
+    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Could not save the item.'], 500);
+}
+```
+
+Read the trail while debugging (temporary, in your `module.listeners.php`):
+
+```php
+Events::on('dotapp.catch', function ($payload) {
+    Logger::use('debug')->error($payload['operation'] ?? 'unknown', $payload);
+});
+```
+
+---
+
 ## Session (DSM)
 
 ```php

@@ -85,6 +85,14 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Trusting a rendered view is non-empty | missing view returns `""` |
 | Using `HttpHelper`/`FastSearch` data directly | check `['success']` first |
 | Empty `catch {}` | log via `Logger::use()->error(...)` |
+| `catch` that only logs | log **and** report the catch bus **and** show the user the outcome (admin = toast) ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9) |
+| `execute()` `$err` that only returns a message | it is a failure like any other — report `dotapp.catch` + `dotapp.catch.error` |
+| Different payload keys in every file (`err`, `msg`, `where`) | the **fixed** keys from [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9 (`severity, module, source, operation, message, …`) |
+| `'trace' => $e->getTraceAsString()` on every `info` event | `error` only, and only if the project wants it (payload size) |
+| `$payload['context'] = $request->data(true)` | ids and counts only — never the request body, tokens, rights or passwords |
+| `Events::trigger('dotapp.catch', …)` inline in 20 `catch` blocks | **one** report helper per module — listener exceptions propagate |
+| A `dotapp.catch` listener that pushes a DACore notification every time | rate-limited threshold, or notify on the real business event ([37](37-DACORE-NOTIFICATIONS.md)) |
+| Adding the report helper / listener inside `app/modules/DACore/` | **your** module only — DACore is wiped on update |
 | Collecting results from `trigger()` | returns `$result` unchanged |
 
 ## Forms / frontend

@@ -50,3 +50,7 @@ DotApp has **four** failure styles — callback pairs, `false`/`null`, envelope 
 - `$request->form()` can return your callback value, `false`, `null`, or throw.
 
 Full contract: [18-ERROR-HANDLING-AND-RETURN-VALUES.md](../18-ERROR-HANDLING-AND-RETURN-VALUES.md).
+
+### 3. Every `catch` reports to the catch bus
+
+Wherever an example shows `catch (\Throwable $e)` or an `execute()` error callback, the module’s report helper **MUST** run there: `dotapp.catch` + `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered), with the fixed payload. That trail is what a debugger reads later — and it is **in addition to** the user-visible outcome, never instead of it. Helper to copy: [EX-10](EX-10-cache-logger-session.md) “Catch bus”. Contract: [18](../18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.

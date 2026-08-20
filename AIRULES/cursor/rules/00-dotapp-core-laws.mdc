@@ -65,6 +65,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - missing view/layout → **`""`**, no exception
 - `Validator::validate` → `true` or error array (compare `=== true`)
 - wrap AI / SchemaBuilder / raw DDL in `try/catch`; never empty `catch {}`
+- **Catch bus (LAW, `AIRULES/18` §9):** every `catch` **and** every `execute()` `$err` → one module report helper → `Events::trigger('dotapp.catch', $p)` then `dotapp.catch.error` (aborted) / `dotapp.catch.info` (recovered). Fixed payload: `severity, module, source, operation, message, exception, code, file, line, time` + `context` (ids/counts), `user_id` — NO passwords/tokens/2FA codes/request bodies. Reporting is **extra**, the user still sees the outcome
 - `$qb->raw()`: every `?` is a placeholder (including comments / `COMMENT 'SMS?'`) — do not put `?` unless it is a real binding
 
 ## Docs

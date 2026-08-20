@@ -243,12 +243,136 @@ Also: `Events::on($route, $event, $cb)` and `on($method, $route, $event, $cb)` r
 8. **Log failures** with `Logger::use()->error(...)` (enable `Config::logger('core_log_enabled', true)` if the app wants files).
 9. **Return a structured error to the client** — never leak exception messages to end users.
 10. **Never silently swallow** an error with an empty `catch {}`.
+11. **Always emit the catch event** — every `catch` and every `execute()` `$err` calls your module’s report helper: `dotapp.catch` + `dotapp.catch.error|info` with the fixed payload ([§9](#9-catch-telemetry--dotappcatch-must)).
 
 `execute($ok, $err)` is the DB error path — **MUST** pass both callbacks (item 2). That is **not** a substitute for the outer `try/catch` on the handler (unexpected throwables). Do **not** omit `$err` and “just catch” — omitting `$err` still throws inside `execute()`.
 
 ---
 
-## 9. Quick reference table
+## 9. Catch telemetry — `dotapp.catch` (**MUST**)
+
+A failure nobody can see later is a failure you will debug twice. **Every** `catch` block and **every** `execute()` error callback **MUST** emit a catch event, so a debugger / audit page can be built later without touching any of this code.
+
+### The three event names
+
+| Event | When (**MUST**) |
+|-------|-----------------|
+| `dotapp.catch` | **Always** — the single funnel a debugger subscribes to. Emitted for every caught failure. |
+| `dotapp.catch.error` | The operation **failed**: nothing was saved, the request is aborted, the user sees a failure. |
+| `dotapp.catch.info` | The exception was **expected / recovered**: a fallback ran, an optional feature is missing, a retry succeeded, a duplicate was ignored. |
+
+**Order:** emit `dotapp.catch` **first**, then the severity channel. Both carry the **same** payload. `severity` inside the payload matches the second event, so one listener on `dotapp.catch` is enough for a full log.
+
+### Payload contract
+
+One flat array. Keys are fixed — a later debugger relies on them.
+
+| Key | **MUST** | Value |
+|-----|----------|-------|
+| `severity` | yes | `'error'` or `'info'` (matches the second event) |
+| `module` | yes | owning module, e.g. `'Shop'` |
+| `source` | yes | where it happened: `'Shop:Items@save'`, `'Shop:Gate@login'`, `'Shop:Installation@v3'` |
+| `operation` | yes | stable slug of the attempt: `'shop.item.update'` — group by this in the debugger |
+| `message` | yes | technical text (`$e->getMessage()` / the DB `error` string). **Never** shown to the user |
+| `exception` | yes | `get_class($e)`, or `null` for a non-throwable failure branch |
+| `code` | yes | `$e->getCode()` / driver errno / `0` |
+| `file`, `line` | yes | `$e->getFile()`, `$e->getLine()` (own values for a non-throwable branch) |
+| `time` | yes | `microtime(true)` |
+| `context` | recommended | ids, counts, flags — `['item_id' => $id, 'rows' => count($rows)]` |
+| `user_id` | recommended | `Auth::isLogged() ? Auth::userId() : null` |
+| `route` | recommended | `$request->getPath()` when a request exists |
+| `trace` | optional | `$e->getTraceAsString()` — big; only for `error`, and only if the project wants it |
+
+**MUST NOT** put passwords, tokens, 2FA/reset codes, decrypted secrets, whole request bodies, card data, or personal data into the payload — it will end up in a log ([24](24-ATTACK-VECTORS.md) §8).
+
+### The helper you write once per module
+
+`trigger()` calls listeners **synchronously** and listener exceptions **propagate** ([§7](#7-events-do-not-propagate-return-values)) — a future debugger listener **MUST NOT** be able to break the user’s error path. So funnel everything through one helper (module `Libraries/`, or a `private static` in the controller) and call **that** from every `catch`.
+
+```php
+/**
+ * Reports one caught failure to the catch bus and the log.
+ *
+ * @param  string     $source    'Shop:Items@save'
+ * @param  string     $operation Stable slug, e.g. 'shop.item.update'
+ * @param  \Throwable|null $e    The caught throwable, or null for a failure branch
+ * @param  string     $severity  'error' (aborted) or 'info' (recovered/expected)
+ * @param  array      $context   Ids and counts only — never secrets or PII
+ * @return void
+ *
+ * Why one helper: listener exceptions propagate, so a future debugger listener
+ * must not be able to kill the reply the user is waiting for.
+ */
+private static function reportCatch($source, $operation, $e = null, $severity = 'error', $context = [], $message = '')
+{
+    $payload = [
+        'severity'  => $severity,
+        'module'    => 'Shop',
+        'source'    => $source,
+        'operation' => $operation,
+        'message'   => $e instanceof \Throwable ? $e->getMessage() : (string) $message,
+        'exception' => $e instanceof \Throwable ? get_class($e) : null,
+        'code'      => $e instanceof \Throwable ? $e->getCode() : 0,
+        'file'      => $e instanceof \Throwable ? $e->getFile() : __FILE__,
+        'line'      => $e instanceof \Throwable ? $e->getLine() : __LINE__,
+        'time'      => microtime(true),
+        'context'   => $context,
+        'user_id'   => Auth::isLogged() ? Auth::userId() : null,
+    ];
+
+    // Generic funnel first, then the severity channel — same payload in both.
+    try {
+        Events::trigger('dotapp.catch', $payload);
+        Events::trigger('dotapp.catch.' . $severity, $payload);
+    } catch (\Throwable $busError) {
+        // A broken listener must not replace the real error: log it and move on.
+        Logger::use()->error('catch bus listener failed', ['msg' => $busError->getMessage()]);
+    }
+
+    Logger::use()->{$severity === 'info' ? 'warning' : 'error'}($operation, $payload);
+}
+```
+
+`info` is logged as `warning` on purpose: `info` / `debug` levels are **dropped** by default ([20](20-CACHE-LOGGER-SESSION.md) §2).
+
+### Using it
+
+```php
+} catch (\Throwable $e) {
+    // Telemetry first, then the user-visible outcome (00 §2d).
+    self::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error', ['item_id' => $id]);
+    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Could not save the item.'], 500);
+}
+```
+
+```php
+// The DB error path is not a throwable — it still MUST be reported.
+->execute(function ($rows) { /* ok */ }, function ($error) use ($id) {
+    self::reportCatch('Shop:Items@save', 'shop.item.update', null, 'error',
+        ['item_id' => $id, 'errno' => $error['errno'] ?? 0], $error['error'] ?? 'db error');
+});
+```
+
+**MUST:** every `catch` and every `execute()` `$err` calls the helper. **Recommended** for the other silent failure branches (`HttpHelper` `success => false`, `Email::send` error array, `Crypto::decrypt === false` on a path that should have worked, `Validator` rejecting server-generated data) — use `info` when the code recovers.
+
+**MUST NOT:** an empty `catch`, a `catch` that only logs, a `catch` that only triggers (the user still needs the visible outcome), or a payload built ad-hoc with different key names in each file.
+
+### Subscribing later (this is the point)
+
+```php
+// In a debug/audit module's module.listeners.php — no change to any reporting code.
+Events::on('dotapp.catch', function ($payload) {
+    // persist to your own table, show it on an admin page, ship it out
+});
+```
+
+Listener bodies **MUST** be defensive (own `try/catch`) and cheap — they run inside a failing request ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2). The core `dotapp.log` hook stays available for log-level shipping ([20](20-CACHE-LOGGER-SESSION.md) §2).
+
+**Frontend:** a JS `catch` (or a failed `load()` / `form()` reply) **MUST** show the outcome to the user ([00](00-AGENT-CONTRACT.md) §2d); `console.error` alone is not a report. If the project wants browser telemetry, POST the **same** payload shape to your own module endpoint — do not invent a second format.
+
+---
+
+## 10. Quick reference table
 
 | API | Success | Failure |
 |-----|---------|---------|

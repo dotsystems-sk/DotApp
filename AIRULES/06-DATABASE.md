@@ -2,7 +2,7 @@
 
 **Not Eloquent.** Default for new module code: **RAW** via `DB::module("RAW")`.
 
-Read [18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md) first — the DB layer has the strictest error contract in the framework. **MUST:** `execute($ok, $err)` with **both** callbacks; persist handlers in `try/catch`. Omitting `$err` **throws**.
+Read [18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md) first — the DB layer has the strictest error contract in the framework. **MUST:** `execute($ok, $err)` with **both** callbacks; persist handlers in `try/catch`. Omitting `$err` **throws**. The `$err` branch and every `catch` **MUST** also report `dotapp.catch` + `dotapp.catch.error|info` ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9) — a DB failure that only returns a message is invisible later.
 
 Architecture: `DB` (facade) → `Databaser` → driver (`pdo` / `mysqli`) → `q()` returns a `QueryObject` wrapping a `QueryBuilder`.
 

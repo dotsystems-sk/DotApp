@@ -72,7 +72,8 @@ function searchItems(string $query, int $limit = 10, int $offset = 0): array
     try {
         $fs = FastSearch::use('catalog', 'meili');
     } catch (\Throwable $e) {
-        Logger::use()->error('search driver missing', ['msg' => $e->getMessage()]);
+        // Recovered path (empty result, page still renders) → severity 'info' (18 §9).
+        Diag::reportCatch('Shop:Search@query', 'shop.search.driver_missing', $e, 'info', ['q_len' => strlen($q)]);
         return [];
     }
 
