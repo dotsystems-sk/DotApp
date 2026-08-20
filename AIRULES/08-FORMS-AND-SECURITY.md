@@ -230,9 +230,9 @@ A password with `)`, `=`, `%` (and similar) is a **different string** after `pro
 
 Frontend checks (modal, overlay covering Save, disabled toggle, `$dotapp().twoFactor` complete) are **UX only**. They MAY run so the user understands what is required.
 
-**MUST:** the PHP handler that **persists** the change repeats **authorization** (`Auth::can`, 2FA code, ownership, validation). `crcCheck()` runs **once** per request — do not repeat it if middleware already did. Missing or wrong proof → refuse and **leave the previous state**.
+**MUST:** the PHP handler that **persists** the change repeats **authorization** (`Auth::can`, 2FA code, ownership, validation). `crcCheck()` runs **once** per request — do not repeat it if middleware already did. Missing or wrong proof → refuse and **leave the previous state**. **MUST** also [11](11-AUTH-AND-CRYPTO.md) §11: no privilege escalation, SQL owner scope, secrets not in read-only views, current password on own password change.
 
-**MUST NOT:** treat a JS overlay, hidden button, or skipped modal as authorization. Removing the overlay or posting the form from DevTools **MUST** still fail on the server.
+**MUST NOT:** treat a JS overlay, hidden button, or skipped modal as authorization. Removing the overlay or posting the form from DevTools **MUST** still fail on the server. Values the client sent (price, quantity limit, owner, role, workflow step) are re-read from **your** DB — never trusted from the post, even encrypted ([24](24-ATTACK-VECTORS.md) §4).
 
 Applies to every save, toggle, delete, and settings write — not only 2FA.
 
@@ -244,7 +244,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 2. `/assets/dotapp/dotapp.js` on every page that uses secure forms/bridge/load.
 3. `crcCheck()` **once** — API prefix **or** action, never both. File uploads: `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint ([09](09-DOTAPP-JS-AND-BRIDGE.md) file uploads).
 4. Encrypt every FE identifier with a **unique `$key2` per field**; decrypt with the same key; reject `false`. **MUST still** `Auth::can()` / ownership.
-5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. **MUST** show every outcome ([00](00-AGENT-CONTRACT.md) §2d). Field errors: PHP `errors` + mark the input. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; **your module preloaders** covering the list/form until `load()` ends (success **and** error). Notiflix is DACore-only — not available here. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **MUST** confirm deletes in a graphical dialog (module modal) — never `alert()` / `window.confirm()`.
 8. **MUST** paginate accumulating lists on **first ship** (`paginate()` + interactive AJAX buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()`. Lookup lists **MUST** ship AJAX search unless declined; **ASK** on other lists. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
@@ -259,7 +259,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 4. Rely on `{{ CSRF }}` alone as the full security story.
 5. Put `{{ formName(...) }}` after `</fo-rm>` or before `<fo-rm>`.
 6. Send raw IDs to the browser (`value="7"`, `data-id="7"`) or reuse one Crypto `$key2` on two fields.
-7. Skip `Auth::can()` / ownership because IDs are encrypted.
+7. Skip `Auth::can()` / ownership because IDs are encrypted; load a TOTP secret / QR / API key into a **read-only** view; grant or edit a more privileged account; `WHERE id = :id` with no owner after decrypt; change own password without the current one ([11](11-AUTH-AND-CRYPTO.md) §11).
 8. `location.reload()` / empty `.after()` after a successful `fo-rm` or `load` while staying on the page.
 9. One `<fo-rm>` per table-row button (up/down/toggle/delete) or drag-and-drop via forms.
 10. Leave a list/form clickable (or start a second `load()`) while the first request is still in flight; forget to remove the overlay on the error path; skip module preloaders.

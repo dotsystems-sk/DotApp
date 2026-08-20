@@ -13,6 +13,28 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter).
 
 When **planning** programming, **ASK** whether more expensive models may be used. If the user does not say yes: stay on **this** chat model. Subagents that write or plan code **MUST inherit** (`inherit`). **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. **Composer 2.5** is OK **only** for hunting a pile of files — **not** as the programmer. A bigger model is for a capability this one lacks (e.g. generate an image) — **ASK** if it costs extra. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2b.
 
+## Finish gate (**MUST** — law)
+
+After **every** code chunk (route, middleware, controller, query, form, view, JS) **and** before saying done: **MUST** grep this module — do not imagine the result. **MUST NOT** claim done if any row fails.
+
+1. **CRC once** — count `crcCheck(` on that POST (middleware + `before` + action). Two calls = first **burns** the token. No CRC on GET. No CRC on `$request->upload()`.
+2. **IDs** — no plain `value="7"` / `data-id="7"` / `{{ var: $id }}` as an id. **MUST** `{{ enc(Shop.item.id): $id }}` unique `$key2`. Decrypt `false` → reject. Still `Auth::can` / ownership in PHP.
+3. **Queries** — bindings only. No user input in SQL. `$qb->raw()`: every `?` is a placeholder (comments count).
+4. **Inputs** — passwords/HTML/hashes from `$request->data(true)`. Persist re-checked in PHP. FE overlay is UX only.
+5. **Middleware** — login `before` + handlers inside `Auth::isLogged()`. CRC prefix **XOR** action `crcCheck()`, never both. No overlapping CRC `before` hooks.
+6. **Privilege / records** — no TOTP/QR/key in a read-only view; no mutate of a more privileged target; SQL owner scope; own password needs current; public noauth: **warn** about bots (CAPTCHA not MUST). Canonical: `AIRULES/11-AUTH-AND-CRYPTO.md` §11.
+7. **Attacks** — `htmlspecialchars` before `{{ var: }}` (it does **not** escape) and `.text()` in JS; whitelist sort + writable columns; no request data in `header()` / redirect / `HttpHelper` URL; no `eval` / `exec` / `unserialize` / `include $x`; `random_bytes` for tokens, `hash_equals` for secrets; `throttle()` on public POST; no `getMessage()` / `var_dump` in the reply. Catalogue + the 12-grep threat pass: `AIRULES/24-ATTACK-VECTORS.md`.
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
+
+## Visible outcome (**MUST** — law)
+
+Every save / toggle / delete / form **MUST** tell the user what happened. Silent success and silent fail are bugs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d.
+
+- **Field errors (preferred on public FE + BE):** PHP returns `errors` keyed by field. JS marks that input (red/invalid) **and** shows the message **on the field** (where + what).
+- **Success / non-field fail:** **your** module toast / status node + `reply.message`. Notiflix does not exist here. Never `alert()`.
+- Empty `.after()` is forbidden.
+
 ## Non-negotiable syntax
 
 - Routes: `Module:Controller@method!` (`!` = no DI parameters in the method).
@@ -54,7 +76,10 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
 | Cache / session | `AIRULES/20-CACHE-LOGGER-SESSION.md` (DSM — never `$_SESSION`) |
 | Antipatterns | `AIRULES/14-ANTIPATTERNS.md` |
-| Checklists | `AIRULES/17-CHECKLISTS.md` |
+| Checklists | `AIRULES/17-CHECKLISTS.md` (**Finish gate** = 00 §2c) |
+| **Finish gate (after every chunk)** | `AIRULES/00-AGENT-CONTRACT.md` §2c |
+| **Visible outcome (save/fail)** | `AIRULES/00-AGENT-CONTRACT.md` §2d |
 | **Debug / “it doesn’t work”** | `AIRULES/23-DEBUG-PLAYBOOK.md` |
+| **Attack vectors (law) + threat pass** | `AIRULES/24-ATTACK-VECTORS.md` (§11 = the 12 greps) |
 
 AIRULES is the single source of truth.

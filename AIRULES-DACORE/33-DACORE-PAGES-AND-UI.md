@@ -2,7 +2,7 @@
 
 Your module renders **only its content**. DACore supplies the shell (head, sidebar, navbar, footer, AI chat).
 
-**MUST:** pass `$title`, `$body`, `$header`, `$css`, `$js` (and `$menuId`) to `DACore:Page@withMenu!`. The Page controller generates the page. Do **not** `setView` a full `<html>` document. Do **not** put `{{ content }}` in your admin fragment and expect DACore to fill it — that slot is the **framework Renderer** on pages **you** own ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b), not the admin shell.
+**MUST:** pass `$title`, `$body`, `$header`, `$css`, `$js` (and `$menuId`) to `DACore:Page@withMenu!`. On edit/detail URLs that are **not** under the registered list path, **MUST** also pass `$currentFile` (7th) so the sidebar stays on that section — [31](31-DACORE-MENU.md) Active sidebar. The Page controller generates the page. Do **not** `setView` a full `<html>` document. Do **not** put `{{ content }}` in your admin fragment and expect DACore to fill it — that slot is the **framework Renderer** on pages **you** own ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b), not the admin shell.
 
 ---
 
@@ -37,7 +37,8 @@ public static function items($request)
         [],                                             // $header
         ['/assets/modules/Shop/css/admin.css'],         // $css
         ['/assets/modules/Shop/js/admin-items.js'],     // $js
-        ''                                              // $menuId: '' = shared; 'Shop.nav' = module-own — ASK ([31])
+        '',                                             // $menuId: '' = shared; 'Shop.nav' = module-own — ASK ([31])
+        ''                                              // $currentFile: omit / '' on the list URL; registered list URL on edit/detail when the path is not under that leaf ([31])
     );
 }
 ```
@@ -56,7 +57,8 @@ DotApp::call(
     array|string $header = [],
     array|string $css = [],
     array|string $js = [],
-    ?string $menuId = null
+    ?string $menuId = null,
+    ?string $currentFile = null
 ): string
 ```
 
@@ -68,6 +70,7 @@ DotApp::call(
 | `$css` | Array of URLs → `<link rel="stylesheet" href="...">`; empty entries skipped |
 | `$js` | Array of URLs → `<script src="..."></script>` before `</body>` |
 | `$menuId` | `''`/`null` = full shared menu; a `menuid` = **direct children of that id** (one level) plus a synthetic **Return back** leaf at the bottom (do not register Return back) |
+| `$currentFile` | Empty / omitted = real `REQUEST_URI`. Non-empty = highlight **as if** this URL were open (`Menu@generate` `current_file`). **MUST** on edit/detail pages whose path is not a longer path under the registered leaf (e.g. `/dacore/users/4` vs `/dacore/users-list`). Canonical: [31](31-DACORE-MENU.md) Active sidebar |
 
 **MUST ASK** when starting a **new** DACore module: shared full sidebar vs module-own menu. Canonical layout, grouping (`type` 0 / 2 / 1), and wiring: [31](31-DACORE-MENU.md).
 
@@ -170,7 +173,7 @@ DACore ships **many admin subpages and libraries** in the base. Agents **MUST NO
 
 **Before any new library or control:**
 
-1. Search `app/modules/DACore/` **read-only** — `assets/js`, `assets/css`, `vendor`, views, controllers — for the same job (select, table, modal, toast, date range, confirm, overlay, pager, icons, cards, …).
+1. Search `app/modules/DACore/` **read-only** — `assets/js`, `assets/css`, `vendor`, views, controllers — for the same job (select, table, modal, toast, **Notiflix.Notify / Confirm / Block**, date range, confirm, overlay, pager, icons, cards, …). **Toasts and alerts:** use the shell’s notify. Do **not** invent a second toast library.
 2. Search **your** module `app/modules/<YourModule>/assets/` — it may already exist from an earlier task.
 3. Check what the shell already loads (this file §4) and named `$dotapp` widgets (including `dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`, `twoFactor`, Notiflix, `Page@paginate!`, dotgrid, Remix). The files on disk are the source of truth — that list is not exhaustive.
 
@@ -329,7 +332,7 @@ Use the framework secure-form stack — it is unchanged by DACore ([08](08-FORMS
 
 PHP handler: prefix `LoginAndCRC` already burned the token — only `form(['POST'], 'saveItem', $ok, $err)` → `ajaxReply()`. Because `dotapp.js` is already loaded by the shell, your page script only registers the hooks.
 
-**MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, toast with **Notiflix** (`Notify.success` / `failure`). Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
+**MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, **toast** with the shell notify (**MUST** grep DACore first — `Notiflix.Notify.success` / `failure` or `$dotapp().toast()`). Never silent `.after()`. Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). Law: [00](00-AGENT-CONTRACT.md) §2d. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
 
 **MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
 
@@ -372,6 +375,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` — **MUST NOT propose** a DACore patch ([00](00-AGENT-CONTRACT.md) §1) |
 | `setViewVar` with `renderLayout()` | Use `setLayoutVar` |
 | Guess shared vs module-own menu / ten leaves under a header | **ASK**; grouping and `$menuId`: [31](31-DACORE-MENU.md) |
+| Edit/detail URL leaves the sidebar with no active item | `$currentFile` = registered list URL ([31](31-DACORE-MENU.md) Active sidebar) |
 | Register “Return back” | DACore appends it on a non-empty `$menuId` |
 | Bootstrap `col-md-6` alone for simple admin forms | `<dot-col any="12" md="6" ldesktop="6">` (prefer; custom layout OK when porting) |
 | Font Awesome / Bootstrap Icons | Remix Icon `ri ri-*` |

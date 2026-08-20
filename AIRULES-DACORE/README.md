@@ -39,7 +39,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, or `users_rights*`.
 3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
 4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. Push inbox notifications with **`DACore:Notifications@push` on the event** — not from the installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)). **While coding:** **`install.php`** + live root init files; after a new version rename `installed_*` → `install.php`. A **DACore** install zip (`dainstall.php` + `init/`) **only** when the user asks to pack a DACore-bound module. A non-DACore module: no zip — `install.php` and copy. See [35](35-DACORE-INSTALL.md) §4–§5.
-5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell. **ASK** shared vs module-own menu before a new DACore module. Many items: group with `type => 2`, or header + one entry and pass `$menuId` ([31](31-DACORE-MENU.md)).
+5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell. **ASK** shared vs module-own menu before a new DACore module. Many items: group with `type => 2`, or header + one entry and pass `$menuId`. Edit/detail: 7th `$currentFile` = registered list URL when the path is not under that leaf ([31](31-DACORE-MENU.md)).
 6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
 7. **MUST search DACore first** before a new library or widget (grep `app/modules/DACore/` read-only + your module). The base already has many subpages and libraries — reuse them. **MUST** add your own CSS/JS in the **current** module only when that search finds no equivalent (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI (unless the informed exception in [00](00-AGENT-CONTRACT.md) §1).
 8. DACore admin runs on **`$dotapp`**. jQuery may sit beside it for UI widgets, but **every request** uses `$dotapp` (`form` / `load` / bridge) — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C and [EX-15](examples/EX-15-dotapp-js-library.md).
@@ -60,6 +60,9 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
 11. **Public website (MUST):** mobile nav is an overlay drawer from the left or right; the page behind **MUST NOT** scroll while it is open (including iOS); the drawer list **MUST** scroll; contacts + compact search live in the drawer unless large search is its own mobile section. **Not** the DACore admin shell. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 12. **Cursor credits (MUST):** when **planning** programming, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. Composer 2.5 is **only** for hunting a pile of files — **not** the programmer. Canonical: [00](00-AGENT-CONTRACT.md) §2b.
+13. **Finish gate (LAW):** after **every** code chunk **and** before claiming done, **MUST** grep this module — double `crcCheck`, plain IDs, unbound SQL, wrong `data()`, middleware / AuthTest conflicts. **MUST NOT** skip. Canonical: [00](00-AGENT-CONTRACT.md) §2c, [17](17-CHECKLISTS.md).
+14. **Visible outcome (LAW):** the user **MUST** see save success **and** failure. **DACore admin:** grep DACore first, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong input (red + message on the field). Canonical: [00](00-AGENT-CONTRACT.md) §2d.
+15. **Attack vectors (LAW):** the known vectors in [24](24-ATTACK-VECTORS.md) **MUST NOT** be shippable — injection (SQL, XSS, command, template, deserialization), headers / redirect / SSRF, mass assignment, CSRF / brute force / enumeration, IDOR and escalation, files and paths, missing rate limit, leaks, weak crypto, prompt injection. Open the section for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix it in **your** module — never by patching DACore. A vector not listed is still forbidden — apply the nearest rule and **say it in chat**.
 
 ## Quick install
 
@@ -74,7 +77,7 @@ In short:
 
 ## Code samples (save context)
 
-Theory lives in `00`–`23`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
+Theory lives in `00`–`24`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
 
 - [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md) — **preferred** security: `fo-rm` + `formName` + `dotapp.js`
 - More: module, DB, renderer, JS boot, bridge, secrets — see [examples/README.md](examples/README.md)
@@ -85,7 +88,7 @@ Theory lives in `00`–`23`. **Ready copy-paste patterns** are in [examples/](ex
 
 | File | Contents |
 |------|----------|
-| [00-AGENT-CONTRACT.md](00-AGENT-CONTRACT.md) | Hard laws — edit boundaries, workflow |
+| [00-AGENT-CONTRACT.md](00-AGENT-CONTRACT.md) | Hard laws — edit boundaries, workflow, **§2c finish gate** |
 | [examples/](examples/) | Short code samples by situation |
 | [01-ARCHITECTURE.md](01-ARCHITECTURE.md) | Lifecycle, module structure |
 | [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
@@ -103,13 +106,14 @@ Theory lives in `00`–`23`. **Ready copy-paste patterns** are in [examples/](ex
 | [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md) | Wrong vs right (Laravel/…) |
 | [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md) | Quirks + leftover-doc corrections |
 | [16-RECIPES.md](16-RECIPES.md) | End-to-end recipes |
-| [17-CHECKLISTS.md](17-CHECKLISTS.md) | Pre-flight / pre-commit |
+| [17-CHECKLISTS.md](17-CHECKLISTS.md) | Pre-flight / **finish gate** (00 §2c) |
 | **[18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md)** | **Return values + error handling (mandatory)** |
 | [19-VALIDATION-AND-INPUT.md](19-VALIDATION-AND-INPUT.md) | Validator, Input, Request, Response, HttpHelper, Limiter |
 | [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, **DSM** (never `$_SESSION`) |
 | [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md) | Email/IMAP/POP3, SMS, QR |
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
 | [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first; DACore = §7 |
+| **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
 | [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |
 
 ## Critical: return values

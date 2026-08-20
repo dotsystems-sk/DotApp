@@ -25,6 +25,7 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | Register menu/rights/tools **from `Installation.php`**, not on every request | Otherwise you write to the DB on each page load |
 | Push inbox notifications **on the event** | `DACore:Notifications@push` — not installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)) |
 | **ASK menu layout** on a new DACore module | Shared full sidebar vs module-own (`withMenu` `$menuId`). Many items: group `type => 2` or header + one entry ([31](31-DACORE-MENU.md)) |
+| **Active sidebar on subpages** | Edit/detail **MUST** pass `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). [31](31-DACORE-MENU.md) |
 | Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when asked | While coding: **`install.php`**. Non-DACore: rename to `install.php` and copy the folder. [35](35-DACORE-INSTALL.md) §4–§5. **MUST NOT** pack `app/modules/DACore/`. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
 | **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — **PHP** verifies the code before persist (overlay is UX only); never `Auth::confirmTwoFactor` while already logged in |

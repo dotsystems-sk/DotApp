@@ -196,6 +196,10 @@ Encrypted ids in the markup are bound to the session — do not persist them.
 ## Wiring the page
 
 ```php
+$prefix = rtrim((string) Config::module('DACore', 'prefixUrl'), '/');
+$listUrl = $prefix . '/Shop/items';   // registered leaf; /Shop/items/4 already matches — 7th can stay ''
+// If the list is /Shop/users-list and this page is /Shop/users/4, 7th MUST be $prefix . '/Shop/users-list'
+
 return static::call(
     'DACore:Page@withMenu!',
     Translator::trans('Edit item'),
@@ -203,8 +207,9 @@ return static::call(
     [],                                              // extra <head> lines
     ['/assets/modules/Shop/css/admin.css'],
     ['/assets/modules/Shop/js/admin-items.js'],
-    ''                                               // full shared menu — or a branch id for module-own ([31](../31-DACORE-MENU.md); ASK)
+    '',                                              // $menuId — full shared, or a branch id ([31](../31-DACORE-MENU.md); ASK)
+    $listUrl                                         // $currentFile — keep that leaf active ([31] Active sidebar)
 );
 ```
 
-Pass a `menuid` as the last argument to show only that branch’s **direct children** plus a generated **Return back** leaf. Do not register Return back. **ASK** shared vs module-own before a new module.
+`$menuId` chooses the tree. `$currentFile` chooses the **active** leaf when this URL is not that leaf and not a longer path under it. Do not register a menu row per edit URL. Pass a `menuid` as `$menuId` to show only that branch’s **direct children** plus a generated **Return back** leaf. Do not register Return back. **ASK** shared vs module-own before a new module.

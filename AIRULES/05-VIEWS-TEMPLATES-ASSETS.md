@@ -152,6 +152,8 @@ There is **no** `setViewVars()` plural, and no public `getView()`/`getLayout()`.
 
 Compiles to `echo` — **no auto-escaping**. No expressions, `??`, `->`, or function calls inside `var:`.
 
+**MUST (XSS):** anything a user could have written — name, title, comment, filename, search term, a column read back from the DB — is escaped in **PHP** before you pass it in: `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`. `protect()` on `$request->data()` is a guard, **not** the escape. Raw HTML only for a field the product needs as HTML, sanitised, and only from a user with the mutate right ([24](24-ATTACK-VECTORS.md) §1).
+
 ### Translation
 
 ```html

@@ -17,3 +17,5 @@ When the user asks **why** Save / login / AJAX / installer / admin POST fails (4
 6. **DACore:** grep `AuthTest` — it **ignores** passed rights. Do **not** patch `app/modules/DACore/` to “fix” it (`AIRULES/00` §1).
 
 **MUST NOT** invent a core/DACore bug or edit `app/parts/` / `DotApp.php`.
+
+After **writing** code (not only when it fails): **MUST** run the finish gate `AIRULES/00` §2c before claiming done.

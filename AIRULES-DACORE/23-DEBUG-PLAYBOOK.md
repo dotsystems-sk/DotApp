@@ -2,6 +2,8 @@
 
 This file is **extra hunt rules**, not a replacement for [08](08-FORMS-AND-SECURITY.md) / [19](19-VALIDATION-AND-INPUT.md). Use it when the user asks **why** a form, login, AJAX save, installer, or list request fails.
 
+**After writing code** (before the user reports a bug): **MUST** run the finish gate — [00](00-AGENT-CONTRACT.md) §2c. This playbook is the **reactive** hunt.
+
 **MUST** search before inventing a core or DACore bug. **MUST NOT** patch `app/parts/`, `DotApp.php`, or `app/modules/DACore/` (unless the informed exception in [00](00-AGENT-CONTRACT.md) §1).
 
 Framework hunts: sections 1–6. DACore extra hunts: section 7. Quirks: [36](36-DACORE-KNOWN-ISSUES.md).
@@ -96,7 +98,7 @@ Fix **in the current module** only. Remove the extra `crcCheck()`, or move CRC t
 Do these **after** the framework list when the failing URL is under the admin shell.
 
 1. **Rights middleware** — grep `AuthTest`. If the route uses `#DACore:AuthTest@check!` with a rights array, those rights are **discarded**. Switch to `#Shop:Rights@check!`.
-2. **Menu / blank admin body** — `withMenu` `$menuId`, `type => 0` header, do not register Return back. [31](31-DACORE-MENU.md), [33](33-DACORE-PAGES-AND-UI.md).
+2. **Menu / blank admin body / no active leaf** — `withMenu` `$menuId`, `type => 0` header, do not register Return back. Edit/detail with nothing highlighted: missing 7th `$currentFile` (registered list URL) when the path is not under that leaf (`/users/4` vs `/users-list`). [31](31-DACORE-MENU.md), [33](33-DACORE-PAGES-AND-UI.md).
 3. **Installer** — live `install.php`; after a new version rename `installed_*` → `install.php`. Admin password from the wizard: `$request->data(true)`. [35](35-DACORE-INSTALL.md).
 4. **2FA** — operators keep 2FA on; dangerous actions need step-up. Boxes: `$dotapp().twoFactor`. [32](32-DACORE-RIGHTS.md) §6.
 5. **Did someone edit `app/modules/DACore/`?** Those changes vanish on update and are the wrong fix. Revert the idea; implement in the current module.

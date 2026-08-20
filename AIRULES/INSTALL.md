@@ -70,6 +70,9 @@ your-project/
     04-dotapp-frontend.mdc
     05-dotapp-config.mdc
     06-dotapp-dotapper.mdc
+    07-dotapp-error-handling.mdc
+    08-dotapp-debug.mdc          (alwaysApply: true)
+    10-dotapp-finish-gate.mdc    (alwaysApply: true — LAW after every chunk)
   AIRULES/
     ...
 ```

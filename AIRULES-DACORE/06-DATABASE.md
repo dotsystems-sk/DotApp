@@ -96,6 +96,9 @@ Write **CPU- and memory-cheap** code. Pick the **smallest** I/O that answers the
 | List | `select` **only used columns** + `paginate()` | `select('*')` + `->all()` |
 | Related names | **one** `join` / extra `IN (...)` | Query inside `foreach` (N+1) |
 | Search | SQL `WHERE` + `paginate()` | Load all, filter in PHP or JS |
+| One record the actor may see | `where('id','=',$id)->where('user_id','=',$uid)` (or `Auth::can` on **that** row) | `WHERE id = :id` after decrypt only ([11](11-AUTH-AND-CRYPTO.md) §11) |
+| Sort / filter chosen by the user | map the request value through a **whitelist array** to a real column + `ASC`/`DESC` | the request string in `orderBy` / `raw()` ([24](24-ATTACK-VECTORS.md) §1) |
+| Insert / update from a form | list the writable columns explicitly | spreading `$request->data()` — a posted `user_id`, `right`, `price`, `status` would be written ([24](24-ATTACK-VECTORS.md) §2) |
 
 **MUST NOT** turn on `Config::db('cache')` “for speed” — it breaks `Entity::save()` ([§8](#8-query-cache)). **MUST NOT** invent a second cache stack. Repeat reads in one request: a local variable, not another query.
 

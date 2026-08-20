@@ -190,6 +190,8 @@ Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: 
 | SchemaBuilder DDL / introspection | [examples/EX-13](examples/EX-13-schema-migrations.md) |
 | Login, permissions, 2FA | [examples/EX-14](examples/EX-14-auth-and-2fa.md) (`$dotapp().twoFactor` for code boxes) |
 | Cursor credits / subagents | [00](00-AGENT-CONTRACT.md) §2b — **ASK** in the plan; inherit parent; Composer 2.5 = file hunt only |
+| Finish gate after every chunk | [00](00-AGENT-CONTRACT.md) §2c — grep CRC, IDs, SQL, inputs, middleware; [17](17-CHECKLISTS.md) |
+| Visible outcome (save/fail) | [00](00-AGENT-CONTRACT.md) §2d — mark the wrong field; your own toast; [EX-09](examples/EX-09-validation-and-errors.md) |
 
 ---
 

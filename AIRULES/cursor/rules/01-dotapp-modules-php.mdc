@@ -58,3 +58,5 @@ Use versioned `Installation.php` + module-owned installations table. Do **not** 
 ## Generate via CLI
 
 `php dotapper.php --module=Shop --create-controller=Home` (module flag first).
+
+After editing PHP in this module: **MUST** `AIRULES/00` §2c finish gate (CRC once vs middleware, enc IDs, bindings, `data(true)`).

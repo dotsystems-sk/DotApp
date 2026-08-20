@@ -15,6 +15,28 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter) th
 
 When **planning** programming, **ASK** whether more expensive models may be used. If the user does not say yes: stay on **this** chat model. Subagents that write or plan code **MUST inherit** (`inherit`). **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. **Composer 2.5** is OK **only** for hunting a pile of files — **not** as the programmer. A bigger model is for a capability this one lacks (e.g. generate an image) — **ASK** if it costs extra. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2b.
 
+## Finish gate (**MUST** — law)
+
+After **every** code chunk (route, middleware, controller, query, form, view, JS) **and** before saying done: **MUST** grep this module — do not imagine the result. **MUST NOT** claim done if any row fails.
+
+1. **CRC once** — count `crcCheck(` on that POST (middleware + `before` + `#DACore:AuthTest@CRC!` / `LoginAndCRC!` + action). Two calls = first **burns** the token. No CRC on GET. No CRC on `$request->upload()`. Action **MUST NOT** `crcCheck()` after a CRC prefix.
+2. **IDs** — no plain `value="7"` / `data-id="7"` / `{{ var: $id }}` as an id. **MUST** `{{ enc(Shop.item.id): $id }}` unique `$key2`. Decrypt `false` → reject. Still `Auth::can` / ownership in PHP.
+3. **Queries** — bindings only. No user input in SQL. `$qb->raw()`: every `?` is a placeholder (comments count).
+4. **Inputs** — passwords/HTML/hashes from `$request->data(true)`. Persist re-checked in PHP (incl. step-up 2FA). FE overlay is UX only.
+5. **Middleware** — login `before` + handlers inside `Auth::isLogged()`. CRC prefix **XOR** action `crcCheck()`, never both. Rights via `#YourModule:Rights@check!` — **not** `#DACore:AuthTest@check!` (it ignores passed rights). Diff **MUST NOT** touch `app/modules/DACore/` unless the informed exception.
+6. **Privilege / records** — no TOTP/QR/key in a read-only view; no mutate of a more privileged target; SQL owner scope; own password needs current; public noauth: **warn** about bots (CAPTCHA not MUST). Canonical: `AIRULES/11-AUTH-AND-CRYPTO.md` §11.
+7. **Attacks** — `htmlspecialchars` before `{{ var: }}` (it does **not** escape) and `.text()` in JS; whitelist sort + writable columns; no request data in `header()` / redirect / `HttpHelper` URL; no `eval` / `exec` / `unserialize` / `include $x`; `random_bytes` for tokens, `hash_equals` for secrets; `throttle()` on public POST; no `getMessage()` / `var_dump` in the reply; no write to `dacore_*` / `users_rights*`. Catalogue + the 12-grep threat pass: `AIRULES/24-ATTACK-VECTORS.md`.
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
+
+## Visible outcome (**MUST** — law)
+
+Every save / toggle / delete / form **MUST** tell the user what happened. Silent success and silent fail are bugs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d.
+
+- **DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Outcome channel = **toast**.
+- **Public site:** **you** build feedback. Field errors **preferred:** red input + message **on that field**. PHP returns `errors`. Persist still in PHP.
+- Empty `.after()` is forbidden.
+
 ## Non-negotiable syntax
 
 - Routes: `Module:Controller@method!` (`!` = no DI parameters in the method).
@@ -56,8 +78,11 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
 | Cache / session | `AIRULES/20-CACHE-LOGGER-SESSION.md` (DSM — never `$_SESSION`) |
 | Antipatterns | `AIRULES/14-ANTIPATTERNS.md` |
-| Checklists | `AIRULES/17-CHECKLISTS.md` |
+| Checklists | `AIRULES/17-CHECKLISTS.md` (**Finish gate** = 00 §2c) |
+| **Finish gate (after every chunk)** | `AIRULES/00-AGENT-CONTRACT.md` §2c |
+| **Visible outcome (save/fail)** | `AIRULES/00-AGENT-CONTRACT.md` §2d |
 | **Debug / “it doesn’t work”** | `AIRULES/23-DEBUG-PLAYBOOK.md` |
+| **Attack vectors (law) + threat pass** | `AIRULES/24-ATTACK-VECTORS.md` (§11 = the 12 greps) |
 | **DACore overview** | `AIRULES/30-DACORE-OVERVIEW.md` |
 | DACore menu | `AIRULES/31-DACORE-MENU.md` |
 | DACore rights | `AIRULES/32-DACORE-RIGHTS.md` |
@@ -76,6 +101,7 @@ DACore is as sacred as framework core **by default**. It is updated as a package
 - Use only what DACore already exposes: `DotApp::call("DACore:…")`
 - Never write directly to `dacore_menu` / `dacore_ai_tools` / `dacore_installations` / `dacore_modules` / `dacore_plugin_logs` / `dacore_settings` / `dacore_notifications` / `dacore_notifications_inbox` / `users_rights*`
 - Render admin pages with `DACore:Page@withMenu!`
+- **Active sidebar (MUST):** edit/detail URLs **MUST** keep the registered list/section leaf highlighted. Pass `withMenu` 7th `$currentFile` (the registered list URL) when the path is not under that leaf (`/Shop/users/4` vs `/Shop/users-list`). Walk-up already covers `/Shop/items/4` if the leaf is `/Shop/items`. **MUST NOT** register a menu row per edit URL. Canonical: `AIRULES/31-DACORE-MENU.md` Active sidebar.
 - **MUST search DACore first** before a new JS/CSS library, `$dotapp().fn` widget, or page chrome: grep `app/modules/DACore/` (read-only: assets, vendor, views) and `app/modules/<YourModule>/assets/`. The base already has many subpages and libraries. If it exists, **use it** — do not fork or copy DACore files into your module. Write new code only when the search finds nothing, and only in **your** module. Canonical: `AIRULES/33-DACORE-PAGES-AND-UI.md` “Search DACore first”.
 - Prefer DACore widgets; **MUST** add module CSS/JS (`$css`/`$js`) when the shell has no equivalent (charts, ported UI). Classes `{lowercase_modulename}_*`. Match admin colors. Never patch DACore (unless the informed exception applies).
 - Admin JS is **`$dotapp`**. jQuery may coexist for UI only. **Requests MUST** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). If DACore already ships the widget, use it. See `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`.

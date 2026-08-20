@@ -26,6 +26,9 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
 11. **Public website (MUST):** mobile nav is an overlay drawer from the left or right; the page behind **MUST NOT** scroll while it is open (including iOS); the drawer list **MUST** scroll; contacts + compact search live in the drawer unless large search is its own mobile section. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 12. **Cursor credits (MUST):** when **planning** programming, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. Composer 2.5 is **only** for hunting a pile of files — **not** the programmer. Canonical: [00](00-AGENT-CONTRACT.md) §2b.
+13. **Finish gate (LAW):** after **every** code chunk **and** before claiming done, **MUST** grep this module — double `crcCheck`, plain IDs, unbound SQL, wrong `data()`, middleware vs action. **MUST NOT** skip. Canonical: [00](00-AGENT-CONTRACT.md) §2c, [17](17-CHECKLISTS.md).
+14. **Visible outcome (LAW):** the user **MUST** see save success **and** failure. **Preferred** on public FE+BE: mark the wrong input (red + message on the field). **You MUST build** your own toast/status (Notiflix is DACore-only). Canonical: [00](00-AGENT-CONTRACT.md) §2d.
+15. **Attack vectors (LAW):** the known vectors in [24](24-ATTACK-VECTORS.md) **MUST NOT** be shippable — injection (SQL, XSS, command, template, deserialization), headers / redirect / SSRF, mass assignment, CSRF / brute force / enumeration, IDOR and escalation, files and paths, missing rate limit, leaks, weak crypto, prompt injection. Open the section for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. A vector not listed is still forbidden — apply the nearest rule and **say it in chat**.
 
 ## Quick install
 
@@ -39,7 +42,7 @@ In short:
 
 ## Code samples (save context)
 
-Theory lives in `00`–`23`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
+Theory lives in `00`–`24`. **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
 
 - [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md) — **preferred** security: `fo-rm` + `formName` + `dotapp.js`
 - More: module, DB, renderer, JS boot, bridge, secrets — see [examples/README.md](examples/README.md)
@@ -50,7 +53,7 @@ Theory lives in `00`–`23`. **Ready copy-paste patterns** are in [examples/](ex
 
 | File | Contents |
 |------|----------|
-| [00-AGENT-CONTRACT.md](00-AGENT-CONTRACT.md) | Hard laws — edit boundaries, workflow |
+| [00-AGENT-CONTRACT.md](00-AGENT-CONTRACT.md) | Hard laws — edit boundaries, workflow, **§2c finish gate** |
 | [examples/](examples/) | Short code samples by situation |
 | [01-ARCHITECTURE.md](01-ARCHITECTURE.md) | Lifecycle, module structure |
 | [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
@@ -68,13 +71,14 @@ Theory lives in `00`–`23`. **Ready copy-paste patterns** are in [examples/](ex
 | [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md) | Wrong vs right (Laravel/…) |
 | [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md) | Quirks + leftover-doc corrections |
 | [16-RECIPES.md](16-RECIPES.md) | End-to-end recipes |
-| [17-CHECKLISTS.md](17-CHECKLISTS.md) | Pre-flight / pre-commit |
+| [17-CHECKLISTS.md](17-CHECKLISTS.md) | Pre-flight / **finish gate** (00 §2c) |
 | **[18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md)** | **Return values + error handling (mandatory)** |
 | [19-VALIDATION-AND-INPUT.md](19-VALIDATION-AND-INPUT.md) | Validator, Input, Request, Response, HttpHelper, Limiter |
 | [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, **DSM** (never `$_SESSION`) |
 | [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md) | Email/IMAP/POP3, SMS, QR |
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
 | [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first |
+| **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
 | [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |
 
 ## Critical: return values

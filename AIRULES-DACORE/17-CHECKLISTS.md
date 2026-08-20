@@ -8,6 +8,7 @@
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
 - [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, other modules
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
+- [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest) — [00](00-AGENT-CONTRACT.md) §2c
 
 ## Scaffold checklist
 
@@ -96,6 +97,7 @@
 - [ ] Module settings have fallbacks if unset
 - [ ] App session state uses **`DSM::use('Shop')`** — not `$_SESSION` / `session_start()` ([20](20-CACHE-LOGGER-SESSION.md))
 - [ ] Persist handlers re-check in **PHP** (2FA, rights, validation) — FE overlay/modal is not the gate ([08](08-FORMS-AND-SECURITY.md))
+- [ ] Privilege / records: no secret in read-only views; no escalate; SQL owner scope; own password needs current; public noauth **warned** for bots ([11](11-AUTH-AND-CRYPTO.md) §11)
 - [ ] Secrets not committed carelessly
 
 ## DACore checklist (when the task touches the admin)
@@ -119,6 +121,7 @@
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
 - [ ] If this module has a sidebar: own `type => 0` header (one is ideal; more only if needed). **Asked** shared vs module-own before a new module. Many items: `type => 2` groups **or** header + one entry + `withMenu` `$menuId`. `menuid` starts with **this** module. Uninstall deletes only that prefix — not a host module’s menu ([31](31-DACORE-MENU.md))
 - [ ] Did **not** register a “Return back” row (DACore appends it on a branch `$menuId`)
+- [ ] Edit/detail admin pages keep the list/section leaf active: `withMenu` 7th `$currentFile` when the URL is not under that leaf — no extra menu row per edit URL ([31](31-DACORE-MENU.md))
 - [ ] Trigger while coding is **`install.php`** + live root init files; `installed_*` renamed back after a new version ([07](07-SCHEMA-AND-INSTALL.md), [35](35-DACORE-INSTALL.md) §4)
 - [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack; working tree restored ([35](35-DACORE-INSTALL.md) §4–§5)
 - [ ] Root init files were **not** blanked unless packing a zip
@@ -148,14 +151,42 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - [ ] Admin routes use `#Shop:Rights@check!` — not `#DACore:AuthTest@check!` as a rights guard
 - [ ] Did **not** “fix” it by editing `app/modules/DACore/`
 
-## Pre-commit / before “done”
+## Attack-surface checklist (canonical: [24](24-ATTACK-VECTORS.md))
 
+Tick only the rows for the surface you touched.
+
+- [ ] **Echo:** every user/DB string escaped in PHP before the view — `{{ var: }}` does **not** escape; JS uses `.text()`, not `.html()` ([24](24-ATTACK-VECTORS.md) §1)
+- [ ] **SQL:** bindings only; sort column + direction from a whitelist; insert/update column whitelist (no posted `right` / `user_id` / `price`) ([24](24-ATTACK-VECTORS.md) §1–§2)
+- [ ] **Channels:** no input in `header()` / `Response::redirect` / mail headers; `HttpHelper` URL not from the request ([24](24-ATTACK-VECTORS.md) §2)
+- [ ] **No interpreters on input:** no `eval` / `exec` / `system` / `unserialize` / `include $x` / user-named callable ([24](24-ATTACK-VECTORS.md) §1)
+- [ ] **Identity:** token rotated after login; secrets via `hash_equals`; failure messages do not enumerate users; reset token `random_bytes` + hashed + single use + TTL; operator 2FA on + step-up on dangerous actions ([24](24-ATTACK-VECTORS.md) §3, [32](32-DACORE-RIGHTS.md) §6)
+- [ ] **Access:** `Auth::can` in the action; rights via **your** `Rights@check` (not `AuthTest@check`); owner predicate in the query; no escalation; no secret behind a read-only right ([24](24-ATTACK-VECTORS.md) §4)
+- [ ] **Headers:** `nosniff`, frame protection, `no-store` on admin pages, `rel="noopener"` on `target="_blank"`, no wildcard CORS with credentials ([24](24-ATTACK-VECTORS.md) §5)
+- [ ] **Files:** extension + `finfo` MIME + header check, no path built from input, size/count caps, non-executing directory ([24](24-ATTACK-VECTORS.md) §6)
+- [ ] **Abuse:** public POST throttled; list paginated with a page-size cap; notifications pushed on the event only; bot **warning** given for public `noauth` ([24](24-ATTACK-VECTORS.md) §7)
+- [ ] **Leaks:** generic error message + log; no `var_dump` / `print_r` / `console.log(payload)`; no secrets, rights, or PII in `ajaxReply` or logs ([24](24-ATTACK-VECTORS.md) §8)
+- [ ] **Crypto:** `Crypto` facade with a unique `$key2`, `random_bytes` for tokens, `hash_hmac` + `hash_equals` for signatures ([24](24-ATTACK-VECTORS.md) §9)
+- [ ] **Third party / AI:** DACore searched first, then self-hosted + pinned in **your** module; model output never executed or echoed raw; AI write tools re-check rights; webhook signature verified ([24](24-ATTACK-VECTORS.md) §10)
+- [ ] **Diff:** nothing under `app/modules/DACore/`; no direct write to `dacore_*` / `users_rights*` ([24](24-ATTACK-VECTORS.md) §0)
+
+## Finish gate (LAW — [00](00-AGENT-CONTRACT.md) §2c)
+
+**MUST** after **every** code chunk. **MUST NOT** claim done until every applicable row was actually grepped — not imagined.
+
+- [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::` / `#DACore:AuthTest@CRC!` / `LoginAndCRC!`), Controllers — **one** call per POST (API prefix **XOR** action). Not on GET/HTML login `before`. Not on `$request->upload()`. Action does **not** `crcCheck()` after a CRC prefix
+- [ ] No plain record IDs in HTML/JSON (`value="7"`, `data-id="7"`, `{{ var: $id }}` as an id) — `{{ enc(Shop.item.id): $id }}` unique `$key2`; decrypt `=== false` rejected; PHP still `Auth::can` / ownership ([11](11-AUTH-AND-CRYPTO.md) §8)
+- [ ] Privilege / records grepped: secrets not in read-only views; SQL has owner (or can on that row); no escalate; public noauth bot **warning** if applicable ([11](11-AUTH-AND-CRYPTO.md) §11)
+- [ ] Queries use bindings; no user input in SQL strings; `$qb->raw()` has no `?` except real bindings ([06](06-DATABASE.md))
+- [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, step-up 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
+- [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate; rights via `#YourModule:Rights@check!` — **not** `#DACore:AuthTest@check!` ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
+- [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. **Admin:** grepped DACore, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
+- [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning, no `dacore_*` write)
+- [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
 - [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)
 - [ ] No Laravel/Blade/jQuery APIs introduced
 - [ ] `--list-routes` or manual route review if routes changed
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)
-- [ ] Checklists above satisfied for touched areas
 - [ ] Users/logs/items (or any accumulating list) shipped with **interactive AJAX** pager — not omitted, not a full-page `?page=` reload
 - [ ] Lookup lists shipped with AJAX search (or the user declined); other lists were asked in the plan
 - [ ] User-facing summary mentions AIRULES docs followed
@@ -197,5 +228,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - `execute()` called with a single callback
 - `->first()` used without a guard
 - A return value is used without checking its failure form
+- Claiming done / shipping a chunk without running the finish gate ([00](00-AGENT-CONTRACT.md) §2c)
+- Silent save / empty `.after()` / admin without a DACore toast / public field error without marking the input ([00](00-AGENT-CONTRACT.md) §2d)
 - `Renderer::useCache(true)` or `Config::db('cache', true)` enabled (both broken)
 - `Auth::hasRole()` / `Auth::logged()` used (non-functional)

@@ -16,3 +16,5 @@ When the user asks **why** Save / login / AJAX / installer fails (400, Bad reque
 5. Then check: `data(true)` for passwords/HTML; `form()` `null`/`false`; `reply.message` shown; no `crcCheck()` on `$request->upload()`.
 
 **MUST NOT** invent a core bug or edit `app/parts/` / `DotApp.php`.
+
+After **writing** code (not only when it fails): **MUST** run the finish gate `AIRULES/00` §2c before claiming done.

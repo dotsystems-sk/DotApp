@@ -343,6 +343,16 @@ Auth::loggedStage();     // 1 = full, 2 = awaiting 2FA
 
 Do **not** use `Auth::hasRole()` — core never populates roles ([11](11-AUTH-AND-CRYPTO.md)).
 
+### Elevated targets and secrets (**MUST**)
+
+Same laws as [11](11-AUTH-AND-CRYPTO.md) §11. On DACore, the highest role is `dotapp.root`:
+
+- **MUST NOT** let a non-root mutate an elevated operator (password, 2FA, rights, groups), except the actor’s **own** ordinary profile.
+- **MUST NOT** put a TOTP secret / QR into a users page the actor may only **read** (`users.list` ≠ `users.edit`).
+- Assigning a group that **is** or **would become** elevated **MUST** require `dotapp.root`.
+
+Do not copy DACore `Users.php` internals. Implement the check in **your** module.
+
 ---
 
 ## 6. Operator 2FA and step-up (**MUST** — DACore admin only)
@@ -407,6 +417,7 @@ Do **not** patch DACore’s own login or user screens to enforce this. Put the p
 | Wrong parameter order in `createRight` | `($groupId, $name, $description, $module, $rightname, $creator)` |
 | Ignoring `null` returns | Check and log |
 | `#DACore:AuthTest@check!` with a rights array | Your own `#Shop:Rights@check!` |
+| Non-root edits another operator’s password / 2FA / groups | [11](11-AUTH-AND-CRYPTO.md) §11 + this file §5 — only `dotapp.root` mutates elevated targets |
 | Omitting `dotapp.root` | Superuser loses access |
 | `Auth::can('Shop.*')` | Wildcards need your middleware helper |
 | Registering rights on every request | Do it in `Installation.php` |

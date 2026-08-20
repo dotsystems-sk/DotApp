@@ -6,6 +6,8 @@ Rules: [11](../11-AUTH-AND-CRYPTO.md), [19](../19-VALIDATION-AND-INPUT.md) (`dat
 
 `$dotapp().twoFactor` is **input UX only**. Completing the boxes or covering Save with a modal does **not** authorize. The PHP handler **MUST** verify the code before persist ([08](../08-FORMS-AND-SECURITY.md)).
 
+Privilege, secrets, lockout, SQL ownership, own-password proof: [11](../11-AUTH-AND-CRYPTO.md) §11. A public login/register **MUST** be mentioned to the user as bot-exposed (CAPTCHA is optional).
+
 ## Login handler (secure form + all error codes)
 
 ```php

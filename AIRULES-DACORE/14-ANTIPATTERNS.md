@@ -11,6 +11,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Edit `app/parts` to “fix” something | Ask user; edit module + `config.php` only |
 | Premium Cursor subagent without asking (Opus / GPT-5 / xhigh / cloud / best-of-N) | Inherit the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Composer 2.5 as the programmer | Composer 2.5 only for a pile of files; programming = parent model ([00](00-AGENT-CONTRACT.md) §2b) |
+| Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
+| Silent save / empty `.after()` / invent a second toast instead of grepping DACore | Admin: search DACore then **toast**. Public: mark the wrong field ([00](00-AGENT-CONTRACT.md) §2d) |
 
 ## Controllers / routing
 
@@ -114,6 +116,17 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Module settings with no fallback | Always `Config::module ?? Config::module(..., default)` |
 | `$_SESSION` / `session_start()` | `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md)) |
 | JS overlay / modal as the only save or 2FA gate | PHP re-checks; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
+| TOTP secret / QR in a read-only page; edit a more privileged user; `WHERE id` only | Mutate right + SQL owner scope; [11](11-AUTH-AND-CRYPTO.md) §11 |
+| Own password change with no current-password check | Verify current password in PHP (`data(true)`) |
+| Public register/login/contact shipped with no bot mention | **MUST warn** in chat; CAPTCHA is optional, not MUST |
+| `{{ var: $comment }}` straight from input / `.html(reply.name)` | Escape in PHP (`htmlspecialchars`), `.text()` in JS ([24](24-ATTACK-VECTORS.md) §1) |
+| `ORDER BY {$_GET['sort']}` / spread `$request->data()` into insert | Whitelist the sort column **and** the writable columns ([24](24-ATTACK-VECTORS.md) §1–§2) |
+| `header('Location: ' . $next)` / `HttpHelper::request('GET', $url)` from input | Allowlist the target/host; no `\r\n` from input ([24](24-ATTACK-VECTORS.md) §2) |
+| `unserialize($request…)`, `eval`, `exec`, `include $page` | `json_decode(..., true)`; whitelist; no interpreter on input ([24](24-ATTACK-VECTORS.md) §1) |
+| `uniqid()` / `md5(time())` as a reset token; `$a == $b` on secrets | `random_bytes()` + `hash_equals()` ([24](24-ATTACK-VECTORS.md) §9) |
+| “User not found” vs “wrong password”; unlimited code tries | One message; wrong codes share the lockout ([24](24-ATTACK-VECTORS.md) §3) |
+| `$e->getMessage()` / `var_dump` in the reply | Generic message + `Logger` ([24](24-ATTACK-VECTORS.md) §8) |
+| AI / webhook output executed, echoed raw, or trusted unsigned | Treat as input: escape, whitelist, `hash_hmac` + `hash_equals` ([24](24-ATTACK-VECTORS.md) §10) |
 | Edit core to add config API | Use `Config::module` / `Config::set` |
 
 ## DACore
@@ -133,6 +146,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Guess the menu layout on a new DACore module | Ask in chat first — do not scaffold until the user picks |
 | Nest groups under a `withMenu` `$menuId` | Branch is one level; inner items are direct children of that id |
 | Register a “Return back” menu row | DACore appends it when `$menuId !== ''` |
+| Edit/detail admin URL with no active sidebar item | `withMenu` 7th `$currentFile` = registered list URL ([31](31-DACORE-MENU.md)) |
+| Menu row per edit/detail URL | One leaf; subpages pass `$currentFile` |
 | Extension uninstall `DELETE … LIKE 'Host.%'` | Delete only **your** `menuid` prefix ([31](31-DACORE-MENU.md), [36](36-DACORE-KNOWN-ISSUES.md)) |
 | `INSERT INTO dacore_ai_tools ...` | `DACore:AITools@register` |
 | Write to `{prefix}users_rights_list` | `DACore:Rights@createRight!` |

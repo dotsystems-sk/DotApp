@@ -20,6 +20,8 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 3. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
 4. **Cursor credits:** when planning programming, **ASK** before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only, not the coder. (`AIRULES/00` §2b)
 5. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core bug.
+6. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware (`AIRULES/00` §2c). Do not claim done without it.
+7. **Visible outcome (LAW):** user always sees save/fail. Public: mark the wrong field. Build your own toast. (`AIRULES/00` §2d)
 
 ## Syntax locks
 
@@ -37,12 +39,16 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - UI copy: product language — NOT prompt-echo / “this user can…” (`AIRULES/05` §8)
 - Session: `DSM::use('Shop')` — NOT `$_SESSION` / `session_start()` (`AIRULES/20`)
 - Persist: PHP re-checks — NOT a JS overlay/modal as the only gate (`AIRULES/08`)
+- Privilege: no secret in read-only views; no escalate; SQL owner scope; own password needs current; **warn** if public noauth is bot-bait — CAPTCHA not MUST (`AIRULES/11` §11)
+- Attacks (LAW, `AIRULES/24`): `{{ var: }}` does **NOT** escape → `htmlspecialchars` in PHP, `.text()` in JS; whitelist sort + writable columns (no `$request->data()` spread); no input in `header()` / `redirect` / `HttpHelper` URL; no `eval` / `exec` / `unserialize` / `include $x`; `random_bytes` tokens + `hash_equals` secrets; `throttle()` public POST; no `getMessage()` / `var_dump` in the reply; upload = ext + `finfo` + headers
 - Files: `$dotapp().uploadFile` — NOT `FormData` + `load()` / `<fo-rm>`. PHP rejects `.php` (ext + `finfo` MIME + headers) (`AIRULES/09`)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list with **module preloaders** until the request ends (desktop **and** mobile). (`AIRULES/09` §3, EX-06)
 - Public website: overlay nav drawer L/R; lock page scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own section (`AIRULES/09` §3)
 - Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined; **ASK** on other lists. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
 - Cheap I/O: `exists()` / `COUNT(*)` / needed columns / one `join` — NOT `all()` then filter, NOT N+1. `AIRULES/06`
 - Cursor credits: **ASK** in the plan before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only — NOT the programmer. (`AIRULES/00` §2b)
+- Finish gate (LAW): after every chunk grep `crcCheck` once, enc IDs, bound SQL, `data(true)`, middleware vs action — then claim done. (`AIRULES/00` §2c)
+- Visible outcome (LAW): user always sees save/fail; public = mark the wrong field; build your own toast. (`AIRULES/00` §2d)
 
 ## Never ignore return values (AIRULES/18)
 

@@ -107,20 +107,35 @@ Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `
 
 ## Client side
 
+**MUST** show the outcome ([00](../00-AGENT-CONTRACT.md) §2d). **Public:** mark the **wrong field** (where + what). Success uses **your** module toast/status — never `alert()`, never empty `.after()`.
+
 ```javascript
 .after(function (data, response, form) {
   var reply = $dotapp().parseReply(response);
   if (!reply) { return; }
+  $dotapp(form).find(".shop_invalid").removeClass("shop_invalid");
+  $dotapp(form).find(".shop_field_err").html("");
   if (reply.status == 1) {
     if (reply.html) { $dotapp('#listWrap').html(reply.html); }
+    // your module toast / #status — "Saved"
+    if (reply.message) { $dotapp("#status").attr("hide", "false").html(reply.message); }
     else if (reply.redirectTo) { window.location = reply.redirectTo; }
     return;
   }
   if (reply.errors) {
     Object.keys(reply.errors).forEach(function (field) {
-      $dotapp('[name="' + field + '"]').addClass('danger');
+      var msgs = reply.errors[field];
+      var text = Array.isArray(msgs) ? msgs[0] : msgs;
+      var $el = $dotapp('[name="' + field + '"]');
+      $el.addClass("shop_invalid");
+      var $hint = $el.parent().find(".shop_field_err");
+      if ($hint.length) { $hint.html(text); }
     });
   }
-  $dotapp('#error-message').attr('hide', 'false').html(reply.message || 'Error');
+  if (reply.message && !reply.errors) {
+    $dotapp('#error-message').attr('hide', 'false').html(reply.message);
+  }
 });
 ```
+
+Markup next to each input: `<span class="shop_field_err"></span>`. CSS: `.shop_invalid { outline: 2px solid … }` (module prefix). PHP still re-validates.

@@ -183,6 +183,21 @@ JS:
 
 Same rule for `$dotapp().load(...)` (toggles, delete, “add rule”). Bind row actions with `.live()` so they still work after the HTML is replaced. Toast: **DACore admin** → Notiflix (shell). **Public website** → your module notify. Never `alert()`.
 
+### Visible outcome (**MUST**)
+
+The user **MUST** see what happened. Silent save / silent fail is a bug. Law: [00](00-AGENT-CONTRACT.md) §2d.
+
+**DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Success and failure = **toast**.
+
+**Public website:** Notiflix is not there. **You MUST build** feedback. Field validation **preferred:** mark the wrong input (red) + message **on that field**. PHP returns `errors` keyed by field.
+
+| Surface | Success / fail | Field errors |
+|---------|----------------|--------------|
+| `Page@withMenu!` | `Notiflix.Notify.success` / `failure` (or `$dotapp().toast()` if that is what DACore has) | Toast `reply.message` (field mark optional extra) |
+| Public / front-office | Your module toast / status | **Preferred:** red input + text on the field |
+
+Copy-paste: [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md). Search DACore: [33](33-DACORE-PAGES-AND-UI.md).
+
 **MUST NOT** wrap row actions in `<fo-rm>` (move up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `load()`. `<fo-rm>` is only for a real multi-field submit. See [08](08-FORMS-AND-SECURITY.md) “One-shot actions are not forms”.
 
 ### Block while in flight (**MUST** — desktop and mobile)

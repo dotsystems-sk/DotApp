@@ -104,10 +104,11 @@ DotApp::call("DACore:Menu@register", "Shop.nav.items", [
 ]);
 ```
 
-Every inner admin page (same `$menuId` on all of them):
+Every inner admin page (same `$menuId` on all of them). Edit/detail URLs that are **not** under the registered leaf **MUST** also pass `$currentFile` — [§ Active sidebar](#active-sidebar-on-subpages-must):
 
 ```php
 return static::call("DACore:Page@withMenu!", $title, $html, [], $css, $js, 'Shop.nav');
+return static::call("DACore:Page@withMenu!", $title, $html, [], $css, $js, 'Shop.nav', $listUrl);
 ```
 
 `''` / `null` = full shared menu. A `menuid` = that branch’s direct children + Return back. See [33](33-DACORE-PAGES-AND-UI.md).
@@ -212,7 +213,56 @@ Each node:
 
 Passing a non-empty `$menuId` selects `menuid = X OR parent = X` (**one level**), then appends a synthetic **"Return back"** leaf pointing at `prefixUrl + defaultUrl` (last — do not register it). Results are cached under key `DACore.menu` with context `{menuid, user}` for 600 s when `useCache` is on.
 
-Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — returns `<li>` fragments without a wrapping `<ul>`. `$options` accepts `current_file` and `base_href`. Normally `Page@withMenu` does this for you.
+Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — returns `<li>` fragments without a wrapping `<ul>`. `$options` accepts `current_file` and `base_href`. Admin pages **MUST** go through `Page@withMenu!` (7th argument `$currentFile` → `current_file`). Do not rebuild the sidebar.
+
+---
+
+## Active sidebar on subpages (**MUST**)
+
+The left menu highlights **one registered leaf** (`menu-item active`) and opens its parents. That is **not** “whatever URL is in the browser”.
+
+`Menu@generate` (via `Menu::bestMenuMatch`) compares the request path — after stripping `Config::module('DACore','prefixUrl')` — to each leaf `url` (also after prefix). **Exact path wins.** If there is no exact hit, it walks **up** one segment at a time (`/Shop/items/4` → `/Shop/items`).
+
+| Browser URL | Registered leaf (`urlprefix` 1) | Sidebar |
+|-------------|----------------------------------|---------|
+| `/admin/dacore/Shop/items` | `/Shop/items` | **Items** active — exact |
+| `/admin/dacore/Shop/items/4` | `/Shop/items` | **Items** still active — walk-up |
+| `/admin/dacore/users-list` | `/dacore/users-list` | **Users list** active — exact |
+| `/admin/dacore/users/4` | `/dacore/users-list` | **Nothing** — `/dacore/users` is not a registered url |
+
+`$menuId` only chooses **which tree** to render (full vs module-own). It does **not** pick the highlighted leaf.
+
+When this screen belongs to a menu section but its URL is **not** that leaf and **not** a longer path under it (edit, profile, `/users/{id}`, `/users/{id}/devices`), **MUST** pass `Page@withMenu` 7th argument `$currentFile` = the registered list/section URL. DACore forwards it to `Menu@generate` as `current_file` (pretend the request is that path). Empty / omitted = real `REQUEST_URI`.
+
+```php
+$prefix = rtrim((string) Config::module('DACore', 'prefixUrl'), '/');
+$listUrl = $prefix . '/Shop/users-list';   // same as Menu@register url + prefixUrl
+
+return static::call(
+    'DACore:Page@withMenu!',
+    Translator::trans('Edit user'),
+    $html,
+    [],
+    $css,
+    $js,
+    '',                 // $menuId — which tree
+    $listUrl            // $currentFile — which leaf stays active
+);
+```
+
+Pass `prefixUrl + registered url` (what DACore Users does: `prefixUrl . '/dacore/users-list'`) **or** the registered `url` alone — generate strips `prefixUrl` from both sides. Query strings are ignored.
+
+When the list URL **is** a prefix of the detail (`/Shop/items` + `/Shop/items/4`), omit `$currentFile` — walk-up already lights the leaf.
+
+A page that belongs to a **different** leaf (e.g. My account, not Users list) **MUST** pass **that** leaf’s URL, or `''` if the request URL already matches it.
+
+**MUST NOT**
+
+- Register a menu row for every edit/detail URL
+- Leave a section page with **no** active leaf
+- Use `$menuId` to fake the highlight
+- Patch DACore CSS/JS / overwrite `$_SERVER['REQUEST_URI']`
+- Call `Menu@generate` yourself to “fix” the sidebar — use `withMenu` `$currentFile`
 
 ---
 
@@ -233,4 +283,7 @@ Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — r
 | Guess the layout / skip the chat question | Stop and ask: shared full menu or module-own menu |
 | Nest `type => 2` groups under a branch `$menuId` | Branch is one level — inner items are direct `type => 1` children of that id |
 | Invent a “Return back” menu row | DACore appends it when `$menuId !== ''` |
+| Edit `/Shop/users/4` with no `$currentFile` (list is `/Shop/users-list`) | `withMenu` 7th `$currentFile` = registered list URL |
+| Register a menu row per edit/detail URL | One leaf; subpages pass `$currentFile` |
+| Use `$menuId` to fake the active item | `$menuId` = tree; `$currentFile` = highlight |
 | Extension `menuid` `Shop.extra…` / uninstall `LIKE 'Shop.%'` | Your prefix (`Reports.…`); delete only `Reports.%` ([31](31-DACORE-MENU.md)) |

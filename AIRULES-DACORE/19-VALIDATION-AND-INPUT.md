@@ -28,6 +28,8 @@ $r = Validator::validate($email, 'required|email');
 
 **Check with `=== true`.** A failure array is truthy.
 
+**MUST (visible outcome — [00](00-AGENT-CONTRACT.md) §2d):** return that array to the browser as `errors` (field → messages). **Public FE:** mark each named input (invalid/red) **and** show the message **on that field**. **DACore admin:** toast `message` (search DACore / Notiflix first) — field mark is extra. Persist still re-checked in PHP. Sample: [EX-09](examples/EX-09-validation-and-errors.md).
+
 Throws `\InvalidArgumentException` for: parameter type mismatch, unknown rule, malformed rule parameters.
 
 ### Complete rule list

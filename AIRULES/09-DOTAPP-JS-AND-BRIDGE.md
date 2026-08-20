@@ -179,6 +179,20 @@ JS:
 
 Same rule for `$dotapp().load(...)` (toggles, delete, “add rule”). Bind row actions with `.live()` so they still work after the HTML is replaced.
 
+### Visible outcome (**MUST**)
+
+The user **MUST** see what happened. Silent save / silent fail is a bug. Law: [00](00-AGENT-CONTRACT.md) §2d.
+
+**Notiflix does not exist here.** Build toast / status in **your** module. Never `alert()`.
+
+| Kind | **MUST** |
+|------|----------|
+| Field validation | PHP returns `errors` keyed by field (`Validator` shape). JS marks that input (invalid/red class) **and** shows the message **on the field** (where + what). A generic banner alone is not enough when the error is a named field. FE mark without PHP re-check is UX only. |
+| Success (“Saved”, “Enabled”) | Your module toast / status node + `reply.message`. |
+| Non-field failure (CRC, rights, server) | Same channel + `reply.message`. |
+
+Copy-paste field errors: [EX-09](examples/EX-09-validation-and-errors.md).
+
 **MUST NOT** wrap row actions in `<fo-rm>` (move up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `load()`. `<fo-rm>` is only for a real multi-field submit. See [08](08-FORMS-AND-SECURITY.md) “One-shot actions are not forms”.
 
 ### Block while in flight (**MUST** — desktop and mobile)

@@ -1,0 +1,23 @@
+---
+description: LAW — after every code chunk grep CRC, IDs, SQL, inputs, middleware before claiming done
+alwaysApply: true
+---
+
+# Finish gate (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
+
+After **every** code chunk **and** before saying done: **MUST** grep this module. **MUST NOT** imagine the result. **MUST NOT** claim done if any row fails. Fail = fix **now**.
+
+| Check | Fail if |
+|-------|---------|
+| **CRC once** | `crcCheck()` in middleware/`before` **and** in the action; CRC on GET; CRC on `$request->upload()` |
+| **IDs** | Plain `value="7"` / `data-id="7"` / `{{ var: $id }}` sent to the browser — need `{{ enc(Shop.item.id): $id }}` unique `$key2` |
+| **Queries** | User input in SQL; `$qb->raw()` `?` that is not a binding (comments count) |
+| **Inputs** | Password/HTML/hash from `$request->data()` not `data(true)`; persist only gated in JS |
+| **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers |
+| **Visible outcome** | Silent `.after()`; success with no toast/status; field errors without marking the input (`AIRULES/00` §2d) |
+| **Privilege / records** | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password with no current-password check (`AIRULES/11` §11) |
+| **Threat pass** | Unescaped user string in a view or `.html()`; sort/insert column from the request; input in `header()` / redirect / `HttpHelper` URL; `eval`/`exec`/`unserialize`; public POST with no `throttle()`; `getMessage()` / `var_dump` in the reply; upload without ext + `finfo` + headers (`AIRULES/24` §11) |
+
+Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.

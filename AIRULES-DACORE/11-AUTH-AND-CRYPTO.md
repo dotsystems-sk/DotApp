@@ -180,7 +180,7 @@ Config: `session.rm_always_use`, `session.rm_autologin`, `session.rm_lifetime` (
 | `{prefix}users_sessions` | used only by the DB session driver |
 | `{prefix}users_url_firewall` | not used by core |
 
-**Not implemented in core (build it in your module if needed):** password reset flow, max-login-attempt lockout, role loading.
+**Not implemented in core (build it in your module if needed):** password reset flow, max-login-attempt lockout, role loading. If you build lockout, **MUST** [§11](#11-privilege-and-record-safety-must).
 
 ---
 
@@ -233,3 +233,51 @@ See [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md). **MUST** `DSM::use
 8. 2FA code boxes: `$dotapp().twoFactor` — do not invent an OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
 9. App session state: **`DSM::use('Shop')`** — never `$_SESSION` / `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).
 10. Persist in **PHP**: re-check 2FA / rights / validation. A frontend overlay is UX only ([08](08-FORMS-AND-SECURITY.md)).
+11. Privilege, secrets, lockout, SQL ownership, own-password proof, live routes: [§11](#11-privilege-and-record-safety-must).
+12. Every other known vector (injection, XSS, SSRF, open redirect, mass assignment, enumeration, headers, upload, rate limit, weak randomness, prompt injection): [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) — law, plus the §11 threat pass on your diff.
+
+---
+
+## 11. Privilege and record safety (**MUST**)
+
+General module law — not one admin screen. Encryption of IDs is **not** enough ([08](08-FORMS-AND-SECURITY.md)).
+
+### Secrets vs read rights
+
+**MUST NOT** put TOTP secrets, otpauth/QR payloads, backup/recovery codes, password hashes, API keys, or reset tokens into a view, JSON, or layout var unless the actor **may mutate** that factor (enrol, rotate, reveal). A **read** right on the page is not that permission. Hiding the value in HTML is **not** enough — do not load it in PHP. The tab/link to that screen **MUST** be omitted unless they have the mutate right.
+
+### Guessable secrets share lockout
+
+Core has **no** lockout. If **your** module has login throttling / `recordFailure` / IP lock: a wrong **2FA / OTP / reset / recovery** code **MUST** increment the **same** counter as a wrong password. **MUST** refuse while locked **before** verifying the code. A 6-digit guess with no limit is a bug.
+
+Compare secrets **you** store in the module with `hash_equals()` (not `==`). Do not patch `app/parts/` because core TOTP uses `==`.
+
+### No privilege escalation
+
+The actor **MUST NOT**:
+
+- grant a right, group, or role they **do not** hold;
+- mutate an account / role / group that is **more privileged** than they are (admin, root, “elevated”);
+- turn a target **into** that higher tier unless they already are that tier.
+
+Own **ordinary** profile (display name, own password with current-password proof) is allowed. Someone else’s password, 2FA, rights, or group membership **MUST** pass a mutate check on **that target** — not merely “logged in” or a blanket `Shop.users.edit`. The product’s highest role (`dotapp.root` on DACore; your module’s equivalent otherwise) is who may touch elevated targets.
+
+### Record scope in SQL
+
+After decrypt, **MUST** load/update/delete with an owner (or permission) predicate in the **query**: `WHERE id = :id AND user_id = :uid` (or `Auth::can` on **that** row). `WHERE id = :id` alone after decrypt lets a swapped ciphertext steal another user’s chat, file, order, or message.
+
+### Own password vs takeover
+
+Changing **own** password **MUST** verify the **current** password in PHP (`$request->data(true)` + the same verify path as login). Changing password / email / 2FA **for another user** is the elevated mutate in “No privilege escalation”. A hidden current-password field is UX only.
+
+### Logout and dead routes
+
+Logout **MUST** use the project’s signed logout URL (session token). A token-less GET that only redirects **leaves the session**. Every registered route **MUST** hit an existing handler that returns a `Response` (feature off → redirect or 404). **MUST NOT** register a URL whose method is missing (500). Public links **MUST** include `prefixUrl` when the app is mounted under one.
+
+### State-changing POST still needs a gate
+
+**MUST NOT** skip `crcCheck` because a widget cannot sign. Use the module CRC prefix **or** action ([08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md)). Upload already uses `$request->upload()` instead. A public POST with no CRC and no other documented gate is a bug.
+
+### Public endpoints vs bots (**warn** — not MUST captcha)
+
+When you plan or ship a **public** (`noauth` / anonymous) endpoint that bots can hammer (register, login, contact, comments, password reset, public create), **MUST tell the user in chat** that CAPTCHA or an equivalent (server-side rate limit, proof token) would reduce abuse. **MUST NOT** ship that endpoint silently without the warning. **MUST NOT** add CAPTCHA unless they ask. If they decline, continue. A frontend-only honeypot is not protection unless PHP also checks it.

@@ -60,3 +60,5 @@ Use versioned `Installation.php`. Do **not** call `DB::migrate()`. `$qb->raw()`:
 ## Generate via CLI
 
 `php dotapper.php --module=Shop --create-controller=Home` (module flag first).
+
+After editing PHP in this module: **MUST** `AIRULES/00` §2c finish gate (CRC once vs middleware/AuthTest, enc IDs, bindings, `data(true)`).

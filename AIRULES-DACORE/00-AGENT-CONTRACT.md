@@ -67,7 +67,7 @@ See [§7](#7-dacore-is-sacred-same-rank-as-framework-core).
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
 6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. Develop with **`install.php`** and **live** root init files. Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when the user asks ([35](35-DACORE-INSTALL.md) §4–§5). A non-DACore module: no zip — `install.php` and copy the folder.
 7. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the admin shell is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
-8. **Verify** against [17-CHECKLISTS.md](17-CHECKLISTS.md) before claiming done.
+8. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
 9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
 10. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core/DACore bug.
 
@@ -106,6 +106,62 @@ If they do not say **yes**: **no expensive models**. Keep working as the parent.
 - **MUST NOT** use Composer 2.5 as the programmer that implements the module (too weak for DotApp). File-hunt only.
 - **MUST NOT** launch parallel expensive runners, best-of-N, or cloud agents unless the user said yes **in this plan**.
 - A silent upgrade “to be safe” is forbidden.
+
+### 2c. Finish gate (MUST — law)
+
+This is a **law**, not a reminder. Skipping it is a **bug**.
+
+**When:** after **every** code chunk you write (route, middleware, controller method, query, form, view, JS handler) **and** again before you tell the user the work is done.
+
+**MUST NOT:**
+- Say it works / is ready / is finished until this gate **passed** on the files you just wrote
+- Start the next feature with a known miss
+- “Looks fine”, “I’ll check later”, or tick boxes from memory
+
+**MUST:** actually **grep and read** this module — `Middleware/`, `module.init.php` (`Router::before`, `Middleware::`), Controllers, views, JS — **plus the diff**. Then tick [17-CHECKLISTS.md](17-CHECKLISTS.md) **Finish gate**.
+
+| Check | How | Fail = stop and fix **now** |
+|-------|-----|-----------------------------|
+| **CRC once** | Count `crcCheck(` on **this POST’s** pipeline (middleware + `before` + `#DACore:AuthTest@CRC!` / `LoginAndCRC!` + action) | Two calls (first **burns** the token); CRC on GET/HTML login `before`; CRC on `$request->upload()`; action `crcCheck()` after a CRC API prefix |
+| **IDs encrypted** | Views / JS / JSON: `value=`, `data-*`, hidden, payload | Plain `7` / `{{ var: $id }}` as an id sent to the browser. **MUST** `{{ enc(Shop.item.id): $id }}` with a unique `$key2`. Decrypt `=== false` → reject. Still `Auth::can` / ownership in PHP |
+| **Queries bound** | Every SQL in the chunk | User input concatenated into SQL; `$qb->raw()` `?` that is not a binding (comments / `COMMENT` count); mix `?` and `:named` |
+| **Inputs** | Request + persist | Password / HTML / hash from `$request->data()` not `data(true)`; missing `form()` / `Validator` where required; persist with only an FE overlay — PHP **MUST** still refuse (incl. step-up 2FA on dangerous admin actions) |
+| **Middleware / route conflicts** | `module.init.php` + Middleware vs the action | Login `before` missing **or** handlers outside `Auth::isLogged()`; CRC layer **and** action `crcCheck()`; CRC on a GET gate; `#DACore:AuthTest@check!` used as a rights guard (it **ignores** passed rights — use `#YourModule:Rights@check!`) |
+| **DACore files** | The diff | Any edit/add/delete under `app/modules/DACore/` unless the informed exception in [§1](#dacore-files--strict-default-informed-exception-only) |
+| **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; admin save without a DACore toast; public field errors without marking the input ([§2d](#2d-visible-outcome-must--law)) |
+| **Privilege / records** | Persist + GET view vars + SQL | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password without current; public noauth shipped with no bot warning ([11](11-AUTH-AND-CRYPTO.md) §11) |
+| **Threat pass** | The 12 greps in [24](24-ATTACK-VECTORS.md) §11 on this chunk | Injection (SQL/XSS/command/deserialize), input in a header or redirect, unbounded public POST, `getMessage()` / `var_dump` in the reply, upload without ext+MIME+header check, weak randomness for a token, a direct write to `dacore_*` / `users_rights*` |
+| **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
+
+**Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
+
+User reports a failure **after** ship: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (same CRC / middleware hunt; DACore = §7).
+
+### 2d. Visible outcome (MUST — law)
+
+The user **MUST** always see what happened. Silent save and silent fail are **bugs**.
+
+**Every** stay-on-page action (save, toggle, delete, upload, login, form): PHP returns `status` + `message` (and `errors` when the problem is a **field**). JS **MUST** show it. Empty `.after()` is forbidden.
+
+#### DACore admin (`Page@withMenu!`)
+
+**MUST** grep `app/modules/DACore/` **read-only** first — Notiflix (`Notify`, `Confirm`, `Block`), `$dotapp().toast()`, `$dotapp().modal()`, `assets/js/dotapp.toasts.js`, vendor notify. **Use what the shell already loads.** Do **not** invent a second toast library. Disk is the source of truth ([33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”).
+
+| Kind | Channel (**MUST**) |
+|------|-------------------|
+| Success / failure / CRC / rights | **Toast** — `Notiflix.Notify.success` / `failure` (or `$dotapp().toast()` if that is what you found in DACore). |
+| Field validation | Toast with `reply.message` is the admin outcome. Marking the input is optional extra — **do not skip the toast**. |
+
+#### Public / front-office (no admin shell)
+
+Notiflix is **not** there. **You MUST build** feedback in **your** module.
+
+| Kind | Channel (**MUST**) |
+|------|-------------------|
+| Field validation | **Preferred (FE + BE):** mark the **wrong input** (invalid/red class) **and** the message **on that field** (where + what). PHP **MUST** return `errors` keyed by field. Persist still re-checked in PHP. |
+| Success / non-field failure | **Your** module toast / status node + `reply.message`. Never `alert()`. |
+
+Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Visible outcome”, [19](19-VALIDATION-AND-INPUT.md), [33](33-DACORE-PAGES-AND-UI.md), [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md).
 
 ---
 
@@ -153,10 +209,12 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | List/form still clickable during `load()` | Cover the region — **DACore admin:** Notiflix or module preloaders; **public site:** module preloaders ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Desktop-only public header / hover menu / no mobile drawer | Overlay drawer L/R; lock page scroll while open; drawer itself scrolls ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Logs / users / items dumped with `->all()`, no pager, or “few rows now so skip” | **MUST** `paginate()` + interactive AJAX on **first ship** ([06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Admin edit URL leaves the sidebar with no active item | `withMenu` 7th `$currentFile` = registered list URL ([31](31-DACORE-MENU.md)) |
 | Load the whole table / N+1 in `foreach` / `select('*')` for a list | Smallest I/O: `exists()` / `COUNT(*)` / needed columns / one `join` ([06](06-DATABASE.md)) |
 | Lookup list with no search / JS-filter of `->all()` | **ASK** in the plan; articles/catalog **MUST** AJAX search unless declined ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `<a href="?page=2">` for an in-app list | Forbidden — that reloads the admin shell. Use `DACore:Page@paginate!` **`$callable`** ([33](33-DACORE-PAGES-AND-UI.md) §3) |
 | `$request->data()` for password / HTML / `Auth::login` | **MUST** `$request->data(true)` — `protect()` rewrites `)`, `=`, `%` ([19](19-VALIDATION-AND-INPUT.md)) |
+| TOTP/QR in a read-only view; edit a more privileged user; `WHERE id` only | [11](11-AUTH-AND-CRYPTO.md) §11 — mutate right + SQL owner; **warn** if public noauth is bot-bait |
 | Custom OTP digit widget / jQuery 2FA plugin | **MUST** `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | `alert()` / `window.confirm()` to delete | Graphical dialog first (`Notiflix.Confirm` on admin, module modal on the public site) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo UI copy (“this user can hide the icon…”) | Product copy a software company would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
@@ -166,6 +224,8 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | JS overlay / modal as the only save or 2FA gate | **MUST** re-check in PHP; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | File/ZIP in `FormData` + `load()` / `<fo-rm>` | **MUST** `$dotapp().uploadFile` + `$request->upload()`; PHP rejects `.php` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 | `crcCheck()` in middleware **and** in the action | **MUST** once — first call **burns** the token ([08](08-FORMS-AND-SECURITY.md)) |
+| Shipping a chunk / claiming done without the finish gate | **MUST** [§2c](#2c-finish-gate-must--law) after every chunk — grep, do not imagine |
+| Silent save / empty `.after()` / admin without DACore toast / public field error without marking the input | **MUST** [§2d](#2d-visible-outcome-must--law) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
@@ -197,6 +257,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 14. **Comments:** English, short, **why** at trap-prone spots (`crcCheck` once, `data(true)`, logged-in route wrap). **MUST NOT** narrate every line or prompt-echo. Canonical: [03](03-MODULES-AND-ROUTING.md).
 15. **Errors (MUST):** persist handlers in `try/catch` (`\Throwable`) — log, structured `ajaxReply`, **never** leak `$e->getMessage()`, **never** empty `catch`. `execute()` **MUST** get **both** callbacks (`$ok` and `$err`); omitting `$err` **throws**. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md).
 16. **Cheap I/O (MUST):** pick the smallest load — `exists()` / `COUNT(*)` / `limit(1)` / `select` only used columns / `paginate()` / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` “for speed”. Canonical: [06](06-DATABASE.md).
+17. **Visible outcome (MUST):** the user always sees success and failure. **DACore admin:** search DACore first, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Canonical: [§2d](#2d-visible-outcome-must--law).
+18. **Privilege and records (MUST):** no secret in a read-only view; no grant/mutate above the actor; SQL scoped to owner; own password needs current password; live routes; lockout covers 2FA if you built lockout. Public noauth that bots can hammer: **MUST warn** in chat (CAPTCHA optional — not MUST). Canonical: [11](11-AUTH-AND-CRYPTO.md) §11.
+19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, wrong guard, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI/prompt injection. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix a vector in **your** module — **never** by patching `app/modules/DACore/`. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
 
 ---
 
@@ -212,6 +275,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Templates: {{ var: $x }}  — NOT {{ $x }}. VIEW = outer file; setLayout+renderView fills {{ content }} in that view (or renderLayout / str_replace)
  * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-*; crcCheck() once (API prefix XOR action)
  * - FE ids: {{ enc(Shop.item.id): $id }} unique $key2 per field; Auth::can still required
+ * - Privilege: no secret in read-only views; no escalate; SQL owner scope; own password needs current; warn user if public noauth is bot-bait (11 §11)
+ * - Attacks (24): escape before echo ({{ var: }} does NOT escape); whitelist sort columns + insert columns; no input in header()/redirect/HttpHelper URL; no eval/exec/unserialize on input; random_bytes for tokens; hash_equals for secrets; throttle public POST; rights via YourModule:Rights@check
  * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST overlay until request ends (DACore admin: Notiflix or module; public site: module preloaders; desktop+mobile)
  * - Public site nav: mobile drawer slides L/R over the page; lock document scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own mobile section
  * - Lists: accumulating records (users/logs/items) MUST paginate() on first ship + AJAX pager — NOT all() dump, NOT ?page= / location.reload()
@@ -227,9 +292,12 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Login-required / admin: {prefixUrl}/{Module}/… + Gate@login 403 Response; MUST register handlers inside Auth::isLogged()
  * - Comments: English, short, why at traps — not every line
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
+ * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action — 00 §2c
+ * - Visible outcome (LAW): user always sees save/fail; DACore admin = search DACore then toast; public = mark the wrong field — 00 §2d
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
  * - DACore pack zip only for a DACore-bound module and only when asked. Non-DACore: install.php + copy the folder. NEVER pack app/modules/DACore/
  * - DACore: search DACore (read-only) + this module before writing a new library/widget — do not reinvent
+ * - DACore menu: edit/detail MUST withMenu 7th $currentFile = registered list URL when the path is not under that leaf — NOT a menu row per edit URL
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
  * - DACore AI writes: ui_events (name = tool id) + DACore.AI.UIEvent on the matching page only
  * - Edit only this module + app/config.php (this module’s assets too). Do not edit other modules.
@@ -265,6 +333,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 | Register menu / rights / AI tools | In **your** `Installation.php`, not per request |
 | **Develop vs pack** | While coding: **`install.php`** + **live** root init files. After a new version: rename `installed_*` → `install.php`. **`dainstall.php` + `init/` zip** only for a **DACore-bound** module and only when the user **asks** to pack. Not a DACore module: no zip — rename to `install.php` and copy the folder. Restore the working tree after a zip. **MUST NOT** pack `app/modules/DACore/`. [35](35-DACORE-INSTALL.md) §4–§5. |
 | **New module menu** | **ASK** before scaffolding: shared sidebar vs module-own (`withMenu` `$menuId`). Group `type => 2` when many items stay in the global tree; large modules: header + **one** entry, inner pages pass the branch id. Do not register “Return back”. [31](31-DACORE-MENU.md) |
+| **Active sidebar on subpages** | Edit/detail **MUST** keep the list/section leaf highlighted. `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). **MUST NOT** register a menu row per edit URL. [31](31-DACORE-MENU.md) Active sidebar |
 | Render admin pages | `DACore:Page@withMenu!` — never build your own HTML shell |
 | Missing widgets / ported UI | **MUST search DACore first** (read-only). Then **MUST** add CSS/JS in **your** module (`$css`/`$js` on `withMenu`) only if nothing fits. Prefix classes `{lowercase_modulename}_*`. Match DACore colors. Never patch DACore. |
 | Admin JS / ports | DACore runs on **`$dotapp`**. jQuery may coexist for **UI only**. **All requests** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library — **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget, use it. |
@@ -297,6 +366,8 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 |------|--------|--------------------|
 | **Anything (always)** | **18** error handling / return values | — |
 | Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
+| **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest conflicts | [17](17-CHECKLISTS.md) Finish gate |
+| Stay-on-page save / errors | **00 §2d** visible outcome — DACore toast (search first); public = mark the wrong field | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |
 | Route / middleware | 03, 04, 32 | EX-03 / EX-D01 — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | Template / CSS / JS page | 05 (incl. §8 product copy), **09 §3** public mobile nav | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
@@ -315,7 +386,8 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Validation / error responses | 19 | [EX-09](examples/EX-09-validation-and-errors.md) — **`data(true)`** = original; `data()` = protected |
 | Config / keys | 10 | [EX-08](examples/EX-08-config-secrets.md) |
 | Bridge click | 09 | [EX-07](examples/EX-07-bridge.md) |
-| Auth / 2FA / permissions | **11**, **09** (`twoFactor`), **19** (`data(true)`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
+| Auth / 2FA / permissions | **11** (incl. §11 privilege / secrets / SQL owner / bot **warn**), **09** (`twoFactor`), **19** (`data(true)`), **32** | [EX-14](examples/EX-14-auth-and-2fa.md) |
+| **Any attack surface (input, auth, output, upload, public endpoint)** | **24** attack vectors — open the matching section, then §11 threat pass | [EX-01](examples/EX-01-secure-form-complete.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |
 | AI / search / MCP | 22 | [EX-12](examples/EX-12-ai-search-mcp.md) |
@@ -334,6 +406,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Permissions / route guards | 32 | EX-D01 |
 | Operator 2FA / dangerous admin actions | **32 §6**, **09** (`twoFactor`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | Admin page, dotgrid, tables | 33 (incl. §3 AJAX pager; **search DACore first**) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
+| Admin edit/detail sidebar | **31** Active sidebar — `withMenu` 7th `$currentFile` | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | New admin library / widget / `$dotapp().fn` | **33** “Search DACore first”, **09 §4** | [EX-15](examples/EX-15-dotapp-js-library.md) |
 | AI tools | 34 (incl. §5 `ui_events`) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
 | Installer wiring | **35** (`install.php` while coding; DACore zip only if the module is for DACore and the user asks) | [EX-D04](examples/EX-D04-dacore-installer.md) |

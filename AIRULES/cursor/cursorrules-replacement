@@ -66,9 +66,29 @@ renderView → setViewVar; renderLayout → setLayoutVar.
 - {{ formName(handler) }} inside fo-rm — binds handler+action+method (≫ plain CSRF)
 - MUST load /assets/dotapp/dotapp.js first (router injects random encryption keys)
 - JS: $dotapp().form().before/after + parseReply + loading/loader attrs
-- PHP: crcCheck() then form(['POST'],'handler',fn) then ajaxReply
+- PHP: crcCheck() **once** (API prefix XOR action) then form(['POST'],'handler',fn) then ajaxReply
 - Full sample: AIRULES/examples/EX-01-secure-form-complete.md
 - JS global: $dotapp — NOT jQuery $
+
+## FINISH GATE (LAW)
+After EVERY code chunk and before claiming done, grep this module (do not imagine):
+- crcCheck() once per POST (not middleware AND action; not on GET; not on upload)
+- No plain IDs in HTML/JSON — enc() unique key2
+- SQL bindings only; raw() every ? is a placeholder
+- Passwords/HTML from data(true); persist re-checked in PHP
+- Middleware vs action: login before + handlers inside Auth::isLogged(); no double CRC
+- Privilege: no secret in a read-only view; no escalate; SQL owner scope; own password needs current
+- Threat pass (AIRULES/24 §11): htmlspecialchars before {{ var: }} ({{ var: }} does NOT escape) and .text() in JS;
+  whitelist sort + writable columns; no input in header()/redirect/HttpHelper URL; no eval/exec/unserialize/include $x;
+  random_bytes tokens + hash_equals secrets; throttle() public POST; no getMessage()/var_dump in the reply;
+  upload = extension + finfo MIME + headers; warn about bots on public noauth endpoints
+Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md
+
+## VISIBLE OUTCOME (LAW)
+Every save/toggle/delete MUST show success and fail on the FE.
+Public: mark the wrong input (red + message on the field). Build your own toast/status.
+Never empty .after(), never alert().
+Canonical: AIRULES/00-AGENT-CONTRACT.md §2d
 
 ## CONFIG / SECRETS
 On new apps, generate c_enc_key, rm_key, rmrcm_key with bin2hex(random_bytes(32)).
@@ -83,4 +103,5 @@ Optional admin module — NOT required for Part 1. Do not call DACore:* unless u
 AIRULES/14-ANTIPATTERNS.md
 AIRULES/15-KNOWN-ISSUES.md
 AIRULES/17-CHECKLISTS.md
+AIRULES/24-ATTACK-VECTORS.md
 AIRULES/cursor/AGENTS.md

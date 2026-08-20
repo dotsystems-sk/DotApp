@@ -2,6 +2,8 @@
 
 This file is **extra hunt rules**, not a replacement for [08](08-FORMS-AND-SECURITY.md) / [19](19-VALIDATION-AND-INPUT.md). Use it when the user asks **why** a form, login, AJAX save, installer, or list request fails.
 
+**After writing code** (before the user reports a bug): **MUST** run the finish gate — [00](00-AGENT-CONTRACT.md) §2c. This playbook is the **reactive** hunt.
+
 **MUST** search before inventing a core bug. **MUST NOT** patch `app/parts/` or `DotApp.php`.
 
 ---
