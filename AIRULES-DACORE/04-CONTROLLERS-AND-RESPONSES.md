@@ -7,7 +7,7 @@
 3. Methods are **`public static function`** — there is no `$this`
 4. First argument is usually `$request` (RequestObj)
 5. Route string: `"Module:Controller@method!"`
-6. Comments: English, short **why** at traps — not every line ([03](03-MODULES-AND-ROUTING.md))
+6. Comments: English. Public controller/middleware PHPDoc **MUST** start with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`); then a **purpose sentence** then `@param`/`@return` (not tags-only); labeled **`// Why:`** / **`// About:`** / **`// Section:`** — not every line ([03](03-MODULES-AND-ROUTING.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md))
 
 ### With DI (no trailing `!`)
 

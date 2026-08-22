@@ -21,7 +21,7 @@ DotApp::call("DACore:Notifications@push", array $data): bool
 | Idempotency | **not** an upsert. Optional `dedupe` → second call returns `true` and writes nothing |
 | HTTP | **no** public push route — in-process `DotApp::call` only |
 
-**When:** a real event (order created, lockout). **MUST NOT** from `Installation.php`. **MUST NOT** every request.
+**When:** a real event (order created, lockout). Prefer listening to the owner’s `module.{mod}.{name}.hook` from **your** `module.listeners.php` ([41](41-MODULE-HOOKS.md)) then `Notifications@push` — **MUST NOT** from `Installation.php`. **MUST NOT** every request.
 
 ---
 

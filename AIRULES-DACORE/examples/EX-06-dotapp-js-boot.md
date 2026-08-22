@@ -80,11 +80,11 @@ function listDone() {
   listBusy = false;
   Notiflix.Block.remove("#listWrap");
 }
-$dotapp().live("click", ".js-toggle", function (e) {
+$dotapp().live("click", ".js-toggle", function (el, e) {
   if (listBusy) return;
   listBusy = true;
   Notiflix.Block.standard("#listWrap", "Loading…");
-  $dotapp().load("/shop/rules/toggle", "POST", { id: $dotapp(e.currentTarget).attr("data-id") },
+  $dotapp().load("/shop/rules/toggle", "POST", { id: $dotapp(el).attr("data-id") },
     function (raw) {
       var reply = $dotapp().parseReply(raw);
       if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
@@ -121,11 +121,14 @@ Row markup — **no** `<fo-rm>` per button:
 
 Drag-and-drop: same — `data-rule="{{ enc(Shop.rule.id): $id }}"` on the token; on drop cover `#listWrap`, then `$dotapp().load(..., { f: "move", id: ..., from: ..., to: ... })`. Never one `<fo-rm>` per arrow. Never start a second drag until the overlay is gone.
 
-**Pager MUST exist and MUST be AJAX** (users, logs, items — any accumulating list, first ship). SQL `paginate()`. Buttons, not `<a href="?page=">` / `location.reload()`:
+**Pager MUST exist and MUST be AJAX.** Law: [40](../40-DACORE-LIST-PAGER.md). Copy-paste: [EX-D08](EX-D08-list-pager.md). `$dotapp().live` calls **`handler(el, e)`** — first arg is the **element**.
 
 ```javascript
-$dotapp().live("click", ".js-shop-page", function (e) {
-  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+$dotapp().live("click", ".shop-page", function (el, e) {
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  if (!el || el.disabled) return;
+  var page = el.getAttribute("data-page") || "";
+  if (!page) return;
   Notiflix.Block.standard("#listWrap", "Loading…");
   $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: page, q: currentQuery },
     function (raw) {
@@ -138,15 +141,15 @@ $dotapp().live("click", ".js-shop-page", function (e) {
 });
 ```
 
-PHP: clamp `page` to `1 … last_page`, return `{ status: 1, html: $rowsAndPager }`. Patch rows **and** the pager. First paint may be page 1 server-rendered. Keep `q` in every list POST. Public site: same JS with your module overlay instead of Notiflix.
+PHP: decrypt `page`, COUNT + LIMIT, return `{ status: 1, html: $rowsAndPager }`. **MUST NOT** `history.replaceState` / `?page=`. Keep `q` in every list POST. Public site: same JS with your module overlay instead of Notiflix.
 
 **Search — ASK in the plan.** Lookup lists **MUST** ship interactive AJAX search unless declined. Debounce ~300 ms, fire from **3 characters**, SQL + `paginate()`, overlay, patch `#listInner`. **MUST NOT** `<fo-rm>` on each keystroke. See [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
 **Delete MUST confirm first.** DACore admin: `Notiflix.Confirm` (never `alert()` / `window.confirm()`). Public site: your module modal.
 
 ```javascript
-$dotapp().live("click", ".js-delete", function (e) {
-  var id = $dotapp(e.currentTarget).attr("data-id");
+$dotapp().live("click", ".js-delete", function (el, e) {
+  var id = $dotapp(el).attr("data-id");
   Notiflix.Confirm.show(
     "Delete this item?",
     "This cannot be undone.",

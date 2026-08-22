@@ -192,6 +192,7 @@ Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: 
 | Cursor credits / subagents | [00](00-AGENT-CONTRACT.md) §2b — **ASK** in the plan; inherit parent; Composer 2.5 = file hunt only |
 | Finish gate after every chunk | [00](00-AGENT-CONTRACT.md) §2c — grep CRC, IDs, SQL, inputs, middleware; [17](17-CHECKLISTS.md) |
 | Visible outcome (save/fail) | [00](00-AGENT-CONTRACT.md) §2d — mark the wrong field; your own toast; [EX-09](examples/EX-09-validation-and-errors.md) |
+| Connect modules / fire a useful hook | [41](41-MODULE-HOOKS.md) — `module.{mod}.{name}.hook` + `.hooks` (not every save); [EX-16](examples/EX-16-module-hooks.md) |
 
 ---
 

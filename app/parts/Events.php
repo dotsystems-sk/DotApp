@@ -6,7 +6,8 @@
  * zrušenie jedného listenera (cez objekt z on) alebo všetkých pod menom udalosti,
  * a kontrola, či má udalosť odberateľov.
  *
- * Zodpovedá verejným metódam DotApp okolo `$listeners`: on, trigger, offevent, hasListener.
+ * Zodpovedá verejným metódam DotApp okolo `$listeners`: on, trigger,
+ * triggerWithVeto, offevent, hasListener.
  * Metóda `off` na DotApp je private — jednotlivý listener sa ruší cez `->off()` na objekte
  * vrátenom z `on()`. Načítanie `module.listeners.php` rieši framework (`load_module_listeners`),
  * nie táto fasáda.
@@ -37,6 +38,12 @@
 
     Events::trigger('user.registered', $userRow);
     // alebo s ďalšími argumentmi: Events::trigger('order.paid', $order, $invoiceId);
+
+    // Iba explicitny Veto objekt zastavi triggerWithVeto; false a ine stare navraty sa ignoruju.
+    $veto = Events::triggerWithVeto('record.deleting.veto', $record);
+    if ($veto instanceof Veto) {
+        // Volajuci rozhodne ako pouzije $veto->code(), message() a details().
+    }
 
     2) Zrušiť jeden konkrétny listener (ten, čo vráti on)
     ----------------------------------------------------------------
@@ -80,6 +87,18 @@ class Events {
 
     public static function trigger($eventname, $result = null, ...$data) {
         return DotApp::dotApp()->trigger($eventname, $result, ...$data);
+    }
+
+    /**
+     * Spusti udalost, ktora sa moze zastavit iba navratom Veto objektu.
+     *
+     * @param string $eventname Nazov udalosti.
+     * @param mixed $result Prvy argument listenerov.
+     * @param mixed ...$data Dalsie argumenty listenerov.
+     * @return Veto|null Prve explicitne veto alebo null.
+     */
+    public static function triggerWithVeto($eventname, $result = null, ...$data): ?Veto {
+        return DotApp::dotApp()->triggerWithVeto($eventname, $result, ...$data);
     }
 
     public static function offevent($eventname) {

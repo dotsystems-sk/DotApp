@@ -225,7 +225,7 @@ class Installation extends Installer
 
 **While coding:** name it **`install.php`**. The framework runs it, then renames it to `installed_*_install.php`. After a new version, rename that file back to `install.php`.
 
-**Packed zip only** (user asked, **and** this module is for DACore) — **LAW** ([00](../00-AGENT-CONTRACT.md) §2e): **MUST** rename `install.php` → **`dainstall.php`**, copy live init files into **`init/`**, inert root stubs. **MUST NOT** leave `install.php` in the zip — DACore **rejects** that package and **will not run** `Installation`. **MUST NOT** pack a module that is not for DACore.
+**Packed zip only** (user asked, **and** this module is for DACore) — **LAW** ([00](../00-AGENT-CONTRACT.md) §2e): **MUST** rename `install.php` → **`dainstall.php`**, copy live init files into **`init/`**, inert root stubs. **MUST** include root **`.hooks`** when the module fires `module.{this}.*` hooks ([41](../41-MODULE-HOOKS.md)). **MUST NOT** leave `install.php` in the zip — DACore **rejects** that package and **will not run** `Installation`. **MUST NOT** pack a module that is not for DACore.
 
 ```php
 <?php
@@ -235,6 +235,57 @@ Installation::module('Shop')->install();
 ```
 
 Idempotency comes from the `Installations@exist!` guards, not from a framework rename.
+
+## `about.php` (module root — working tree and zip)
+
+**MUST.** DACore’s installer reads this **without executing it**. Changelog keys **MUST** match `Installation.php`. **ASK** the user for the HTML if they did not supply it.
+
+During planning, also **ASK** for the installer identity: text-only, compact logo near the heading, or wide banner above the summary; existing asset + alt text; and whether it should also appear on the module landing/header. A menu Remix icon is separate. If no image is wanted, keep the text-only example below. If wanted, store an optimised raster in `about-assets/` and insert one of these at the start of `about`:
+
+```html
+<!-- Compact mark: real intrinsic dimensions, meaningful alt text. -->
+<img src="about-assets/shop-logo.png" width="160" height="160" alt="Shop">
+
+<!-- Or a wide banner; do not include both unless the user asked. -->
+<img src="about-assets/shop-banner.webp" width="1200" height="360" alt="Shop catalog">
+```
+
+No external URL, SVG/script/iframe, tracking image, invented logo, or DACore patch. Preview desktop + narrow width. Canonical: [35](../35-DACORE-INSTALL.md) §3b.
+
+```php
+<?php
+return [
+    'about' => <<<'HTML'
+<h2>Shop</h2>
+<p>Catalog and item management for the admin area.</p>
+HTML,
+    'license' => <<<'HTML'
+<p>Licensed for use with this DACore installation. Do not redistribute the package without permission.</p>
+HTML,
+    'changelog' => [
+        '1.0.0' => <<<'HTML'
+<ul>
+<li>Initial catalog, rights, and menu.</li>
+</ul>
+HTML,
+        '1.0.1' => <<<'HTML'
+<ul>
+<li>Stock column on shop items.</li>
+</ul>
+HTML,
+    ],
+];
+```
+
+After you add a version in `Installation.php`, add the same key here. If the notes are unknown, **ASK**.
+
+Optional discovery flags ([35](../35-DACORE-INSTALL.md) §3c) — omit on a normal Shop. A **template pack** for a CMS host:
+
+```php
+    'extra1' => 'template',
+```
+
+The CMS settings dropdown **MUST** list `DotApp::call('DACore:Plugins@listByExtra!', 1, 'template')` (or `SELECT … extra1 = :flag`), not `glob(app/modules)`. **ASK** the host’s token vocabulary before inventing `template`.
 
 ## Re-running after adding a version
 

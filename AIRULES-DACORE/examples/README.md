@@ -19,6 +19,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-12-ai-search-mcp.md](EX-12-ai-search-mcp.md) | AI calls, FastSearch, MCP tools |
 | [EX-13-schema-migrations.md](EX-13-schema-migrations.md) | SchemaBuilder, DDL, introspection; no `?` in `raw()` comments |
 | [EX-14-auth-and-2fa.md](EX-14-auth-and-2fa.md) | Login, permissions, 2FA (`$dotapp().twoFactor`), user creation; **`data(true)`** for password |
+| [EX-16-module-hooks.md](EX-16-module-hooks.md) | Fire `module.{mod}.{name}.hook` when useful, `.hooks`, listen (own `Listeners::initializeRoutes()` if needed), **`triggerWithVeto` / `Veto`** — [41](../41-MODULE-HOOKS.md) |
 
 ## DACore admin layer
 
@@ -31,8 +32,9 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-D05-dacore-notifications.md](EX-D05-dacore-notifications.md) | Inbox: `DACore:Notifications@push` on an event ([37](../37-DACORE-NOTIFICATIONS.md)) |
 | [EX-D06-dacore-email.md](EX-D06-dacore-email.md) | Outgoing mail — open with [38](../38-DACORE-EMAIL.md) |
 | [EX-D07-dacore-sms.md](EX-D07-dacore-sms.md) | Outgoing SMS — open with [39](../39-DACORE-SMS.md) |
+| [EX-D08-list-pager.md](EX-D08-list-pager.md) | Admin list pager — open with [40](../40-DACORE-LIST-PAGER.md) |
 
-Theory lives in `0x`–`2x` (framework) and `3x` (DACore). These files are **executable patterns**.
+Theory lives in `0x`–`2x` (framework), `3x` (DACore), and **[41](../41-MODULE-HOOKS.md)** (module hooks). These files are **executable patterns**.
 
 ---
 

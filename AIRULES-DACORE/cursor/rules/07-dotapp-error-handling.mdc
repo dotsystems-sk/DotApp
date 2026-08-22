@@ -37,9 +37,11 @@ Full contract: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 
 | Event | When |
 |-------|------|
-| `dotapp.catch` | always — the funnel a debugger subscribes to |
+| `dotapp.catch` | **failures** — the funnel a debugger subscribes to for `operation`/`source`/`message` |
 | `dotapp.catch.error` | the operation aborted |
 | `dotapp.catch.info` | expected / recovered (fallback, retry, ignored duplicate) |
+| `dotapp.catchall` | **core**, every `trigger()` except itself — event tracer in **your** module. Listener: `($result, $eventname, ...$data)`. Do not fire it yourself. Never under `app/modules/DACore/`. (`AIRULES/01`, `AIRULES/23` §1c) |
+| `module.{mod}.{name}.hook` | **owner** after a useful side-effect — names + payload in that module’s `.hooks`. Distinct from catch/catchall. (`AIRULES/41`) |
 
 Fixed payload keys: `severity`, `module`, `source` (`Shop:Items@save`), `operation` (`shop.item.update`), `message`, `exception`, `code`, `file`, `line`, `time` + `context` (ids/counts), `user_id`. **No** passwords, tokens, 2FA codes, decrypted secrets, rights blobs, request bodies or personal data. `trace` only for `error`, only if wanted.
 

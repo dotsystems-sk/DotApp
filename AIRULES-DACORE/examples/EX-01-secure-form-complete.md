@@ -121,6 +121,14 @@ use Dotsystems\App\Parts\Validator;
 
 class Contact extends \Dotsystems\App\Parts\Controller
 {
+    /**
+     * CRCchecking — none (GET HTML). CRC is forbidden on GET.
+     *
+     * Renders the public contact page with the secure form.
+     *
+     * @param  mixed $request Current request.
+     * @return mixed Rendered HTML.
+     */
     public static function page($request)
     {
         return Renderer::new()->module('Shop')
@@ -130,6 +138,14 @@ class Contact extends \Dotsystems\App\Parts\Controller
             ->renderView();
     }
 
+    /**
+     * CRCchecking — this action (`$request->crcCheck()` once). No CRC prefix on this route.
+     *
+     * Saves the public contact form after CRC and formName bind.
+     *
+     * @param  mixed $request POST from `<fo-rm>`.
+     * @return mixed JSON reply for `$dotapp().form`.
+     */
     public static function save($request)
     {
         $answer = ['code' => 400, 'body' => ['status' => 0, 'message' => 'Bad request']];

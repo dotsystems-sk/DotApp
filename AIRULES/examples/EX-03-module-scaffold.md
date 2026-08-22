@@ -64,3 +64,5 @@ User overrides in `app/config.php`:
 Config::module('Shop', 'prefix', '/store');
 Config::module('Shop', 'enckey', 'PRODUCTION_HEX_SECRET');
 ```
+
+After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** every save), fire `module.{lowercase_modulename}.{hook_name}.hook` and create **`app/modules/<Module>/.hooks`**. Sample: [EX-16](EX-16-module-hooks.md). Law: [41](../41-MODULE-HOOKS.md).

@@ -40,6 +40,8 @@ Edit/API sample: [examples/EX-02-secure-form-edit-api.md](examples/EX-02-secure-
 | `Router::before(['POST'], '/api/v1/auth\|noauth/{Module}/*', …)` already called `crcCheck()` | **MUST NOT** `crcCheck()` again — only `form()` / persist |
 | That POST has **no** prefix CRC | **MUST** `crcCheck()` **once** in the action (EX-01) |
 
+**PHPDoc (MUST):** every public method in `Controllers/` and `Middleware/` starts with **`CRCchecking —`** naming that row in plain text (exact `#Module:Gate@loginAndCrc!` / prefix path, or `this action`, or `none`). The next agent **MUST NOT** add `crcCheck()` when the line already names a prefix. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
+
 **MUST NOT:**
 - prefix CRC **and** `crcCheck()` in the controller (first call **burns** the token)
 - CRC `before` on GET or on `*` (GET has no `{ data, crc }`)

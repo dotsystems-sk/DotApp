@@ -24,7 +24,7 @@ This is **DotApp** — not Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent,
 | `.htaccess` | Prefer `php dotapper.php --create-htaccess`. |
 | Another module's folder | Only with explicit permission naming that module. |
 
-### FORBIDDEN (never edit — no exceptions, no “quick fixes”, no “authorized labs”)
+### FORBIDDEN (never edit — no exceptions, no “quick fixes”, no “authorized labs”, **not even when the user asks**)
 
 | Path | Why |
 |------|-----|
@@ -38,7 +38,7 @@ This is **DotApp** — not Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent,
 | `assets/dotapp/**` (if present as static copies) | Served dynamically; do not hand-patch |
 | Any file outside the target module + `app/config.php` | Scope violation |
 
-If you believe a core bug exists: **stop and ask the user**. Do not patch core.
+If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** patch the kernel even if the user then asks you to — implement a workaround in the module.
 
 ---
 
@@ -51,9 +51,12 @@ If you believe a core bug exists: **stop and ask the user**. Do not patch core.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
 6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. [07](07-SCHEMA-AND-INSTALL.md).
 7. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the page is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
-8. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
-9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
-10. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core bug.
+8. **Module identity:** when planning a new module with visible UI, **ASK once** for display name/purpose, optional logo/banner, placement and colours. Offer text-only/no custom branding; do not block a backend-only module. See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b.
+9. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
+10. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
+11. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core bug.
+12. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md).
+13. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes. `Listeners::initializeRoutes()` may be a **narrower** list (or `null` to inherit the module map). **MUST NOT** return `['*']` unless the user asked for a hook on every request **and** you warned that listeners and `initialize()` will run everywhere. After either list changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
 
 ### Dotapper-first rule
 
@@ -106,7 +109,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 
 | Check | How | Fail = stop and fix **now** |
 |-------|-----|-----------------------------|
-| **CRC once** | Count `crcCheck(` on **this POST’s** pipeline (middleware + `before` + action) | Two calls (first **burns** the token); CRC on GET/HTML login `before`; CRC on `$request->upload()` |
+| **CRC once** | Count `crcCheck(` on **this POST’s** pipeline (middleware + `before` + action) **and** the action’s first PHPDoc line `CRCchecking —` | Two calls (first **burns** the token); CRC on GET/HTML login `before`; CRC on `$request->upload()`; PHPDoc names a CRC prefix **and** the action still `crcCheck()`; controller/middleware public method with no `CRCchecking —` first line ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **IDs encrypted** | Views / JS / JSON: `value=`, `data-*`, hidden, payload | Plain `7` / `{{ var: $id }}` as an id sent to the browser. **MUST** `{{ enc(Shop.item.id): $id }}` with a unique `$key2`. Decrypt `=== false` → reject. Still `Auth::can` / ownership in PHP |
 | **Queries bound** | Every SQL in the chunk | User input concatenated into SQL; `$qb->raw()` `?` that is not a binding (comments / `COMMENT` count); mix `?` and `:named` |
 | **Inputs** | Request + persist | Password / HTML / hash from `$request->data()` not `data(true)`; missing `form()` / `Validator` where required; persist with only an FE overlay — PHP **MUST** still refuse |
@@ -115,7 +118,9 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Catch reported** | `rg -n "catch \(|catch\(" ` + every `execute(` in the chunk | A `catch` (or `execute()` `$err`) that does **not** call the module’s report helper → `dotapp.catch` + `dotapp.catch.error|info`; ad-hoc payload keys; a secret/token/request body inside the payload ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9) |
 | **Privilege / records** | Persist + GET view vars + SQL | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password without current; public noauth shipped with no bot warning ([11](11-AUTH-AND-CRYPTO.md) §11) |
 | **Threat pass** | The 12 greps in [24](24-ATTACK-VECTORS.md) §11 on this chunk | Injection (SQL/XSS/command/deserialize), input in a header or redirect, unbounded public POST, `getMessage()` / `var_dump` in the reply, upload without ext+MIME+header check, weak randomness for a token |
-| **Perf / readability pass** | The greps in [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 | `->all()` on a growing table, a query/HTTP/log **inside** `foreach`, `select('*')` on a list, O(n²) lookup or array copy per row, a new `WHERE`/`ORDER BY` column with **no index**, an index with no comment naming its query, a public method with no docblock, comments that restate the code |
+| **Perf / readability pass** | The greps in [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 | `->all()` on a growing table, a query/HTTP/log **inside** `foreach`, `select('*')` on a list, O(n²) lookup or array copy per row, a new `WHERE`/`ORDER BY` column with **no index**, an index with no comment naming its query, a public method with **tags-only PHPDoc** (`@return array<string, mixed>` and no purpose sentence), comments that restate the code |
+| **Hooks** | Grep `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/`; `return false` treated as a veto instead of `triggerWithVeto()` + `Veto` ([41](41-MODULE-HOOKS.md)) |
+| **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
@@ -139,6 +144,14 @@ The user **MUST** always see what happened. Silent save and silent fail are **bu
 **MUST NOT:** only a generic “Validation failed” toast when the error belongs to a named field; skip success feedback; invent `alert()` / `window.confirm()`.
 
 Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Visible outcome”, [19](19-VALIDATION-AND-INPUT.md), [EX-09](examples/EX-09-validation-and-errors.md).
+
+### 2g. Module hooks (MUST — law)
+
+Modules **MUST** talk to each other through `Events::trigger` / `Events::on`, not by patching a neighbour. Event name: **`module.{lowercase_modulename}.{hook_name}.hook`**. Fire **only** when another module (or a future one) could log, show history, or sync — SMS/mail sent, payment captured, lockout, finished workflow. **MUST NOT** fire on every save. When you do fire: document the name in **`app/modules/<YourModule>/.hooks`** and put the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block immediately above `trigger()` ([41](41-MODULE-HOOKS.md) §3).
+
+**MUST NOT:** skip a **named** useful hook because `hasListener` is false; put secrets on the bus; treat listener returns on `trigger()` as a veto (use **`triggerWithVeto()`** + `new Veto($code, …)` only for an explicit pre-action stop); fire inside `foreach` of a growing list; fire `dotapp.catchall` yourself; invent another module’s event name; use the old `{mod}.{noun}.{happened}` shape; put `.hooks` on a public asset URL.
+
+Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
 
 ---
 
@@ -200,6 +213,9 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | `crcCheck()` in middleware **and** in the action | **MUST** once — first call **burns** the token ([08](08-FORMS-AND-SECURITY.md)) |
 | Shipping a chunk / claiming done without the finish gate | **MUST** [§2c](#2c-finish-gate-must--law) after every chunk — grep, do not imagine |
 | Silent save / empty `.after()` / no field error on a named field | **MUST** [§2d](#2d-visible-outcome-must--law) — user sees success and fail |
+| Tags-only PHPDoc (`/** @return array<string, mixed> */`) / unlabeled Why prose | Purpose sentence **then** tags; **`// Why:`** / **`// About:`** / **`// Section:`** ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
+| Controller action with no `CRCchecking —` first line, or that line names a CRC prefix **and** the body still `crcCheck()` | First PHPDoc line names the **real** layer; prefix **XOR** action ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md)) |
+| Patch another module / fire `shop.item.saved` | Read **their** `.hooks`, `Events::on` in **yours**; name is `module.{mod}.{name}.hook` ([41](41-MODULE-HOOKS.md)) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
@@ -228,13 +244,14 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 11. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP: `$request->upload()` — not `crcCheck()` on that endpoint. **MUST** reject `.php` and other executables (extension + `finfo` MIME + headers); FE `accept=` is UX only ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
 12. **MUST** take passwords, HTML, and other round-trip values from `$request->data(true)` / `$request->query(true)` (original). `$request->data()` is the **protected** copy (`protect()`). Login/createUser/installer **MUST NOT** hash the protected string. **MUST** show every login failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`). Canonical: [19](19-VALIDATION-AND-INPUT.md).
 13. **Login-required / admin routes (MUST):** prefix `/{ModuleName}/…` (or a subtree). Cover HTML with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` returning `Response` 403. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the **start** of `initialize()`; handlers **MUST NOT** `crcCheck()` again. Register login-only handlers **only** inside `if (Auth::isLogged() === true)`. Those pages **MUST NEVER** render for anonymous users. Canonical: [03](03-MODULES-AND-ROUTING.md).
-14. **Documentation (MUST):** English. Every file/class gets a docblock; every public/static method gets a docblock (purpose, `@param`, `@return`, `@throws`); every **logical step** in the body gets a short **why** line (guard, decision, formula, magic value, query shape, trap). **MUST NOT** restate the code (`// increment i`), prompt-echo, or leave dead code / bare `TODO`. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [03](03-MODULES-AND-ROUTING.md).
+14. **Documentation (MUST):** English. Every file/class gets a docblock. Every public/static method in **`Controllers/`** and **`Middleware/`** starts PHPDoc with **`CRCchecking —`** naming **where** CRC runs (exact prefix/middleware, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence** — tags alone (`@return array<string, mixed>`) are a **bug**. Then `@param` / `@return` / `@throws` with **meaning**, not only types. Inline comments **MUST** use the labels **`// Why:`** (every logical step), **`// About:`** (what the chunk is / what the record represents), **`// Section:`** (menu or route). **MUST NOT** restate the code (`// increment i`), prompt-echo, omit the labels, or leave dead code / bare `TODO`. **MUST NOT** write `CRCchecking — prefix … MUST NOT crcCheck()` and then call `crcCheck()` in that method. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md).
 15. **Errors (MUST):** persist handlers in `try/catch` (`\Throwable`) — log, structured `ajaxReply`, **never** leak `$e->getMessage()`, **never** empty `catch`. `execute()` **MUST** get **both** callbacks (`$ok` and `$err`); omitting `$err` **throws**. **Every `catch` and every `execute()` `$err` MUST also report to the catch bus:** `Events::trigger('dotapp.catch', $payload)` then `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered/expected), with the fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`) — no secrets, tokens or request bodies in it. Route it through **one** report helper per module so a future debugger listener cannot break the reply. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
 16. **Cheap I/O (MUST):** pick the smallest load — `exists()` / `COUNT(*)` / `limit(1)` / `select` only used columns / `paginate()` / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` “for speed”. Canonical: [06](06-DATABASE.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2.
 17. **Visible outcome (MUST):** the user always sees success and failure. Public: **preferred** mark the wrong field (red + message on the input) — PHP returns `errors`. You **build** your own toast/status. Canonical: [§2d](#2d-visible-outcome-must--law).
 18. **Privilege and records (MUST):** no secret in a read-only view; no grant/mutate above the actor; SQL scoped to owner; own password needs current password; live routes; lockout covers 2FA if you built lockout. Public noauth that bots can hammer: **MUST warn** in chat (CAPTCHA optional — not MUST). Canonical: [11](11-AUTH-AND-CRYPTO.md) §11.
 19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
-20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend, and the documentation standard (§7: file + method docblocks, a **why** line per logical step). Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
+20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend, and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
+21. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md).
 
 ---
 
@@ -258,8 +275,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Cheap I/O: exists/COUNT/limit(1)/needed columns/paginate/one join — NOT all() then filter, NOT N+1
  * - Memory: page big sets, keyed map instead of in_array in a loop, unset the raw copy, stream files — NOT load-all-then-filter
  * - Indexes (25 §3): FK + every WHERE/JOIN/ORDER BY column; composite = equality → range → sort; leftmost prefix; one comment line per index naming its query
- * - Docs (25 §7): file + class + method docblock (@param/@return/@throws) and a short WHY line above every logical step — NOT narration of the code
+ * - Docs (25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking — (exact prefix/middleware XOR this action XOR none); then purpose sentence, then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`); NOT prefix CRC + crcCheck() in the same method; inline MUST use labels // Why: (logical step), // About: (what this chunk is), // Section: (menu/route) — NOT narration of the code, NOT unlabeled Why prose
  * - Catch bus (18 §9): every catch + every execute() $err → one report helper → Events::trigger('dotapp.catch', $p) then 'dotapp.catch.error'|'.info'; payload = severity, module, source, operation, message, exception, code, file, line, time, context (ids/counts), user_id — NO secrets/tokens/bodies
+ * - Hooks (41): useful side-effects (SMS/mail/paid/lockout) MUST Events::trigger('module.{mod}.{name}.hook') + Hook/Why/About/Params/Use block + .hooks — NOT every save; NOT secrets; NOT patch the other module; NOT old shop.item.saved shape. Pre-action stop = triggerWithVeto + Veto only.
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
@@ -270,11 +288,11 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST reject .php (ext+MIME+headers)
  * - Request: data() = protected; data(true) = original — MUST true for passwords/HTML/hashes
  * - Login-required routes: prefix /{Module}/… + Gate@login 403 Response; MUST register handlers inside Auth::isLogged()
- * - Comments: English, short, why at traps — not every line
+ * - Comments: English; labels Why: / About: / Section: — not every line, not unlabeled
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
- * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action — 00 §2c
+ * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action, Events::trigger vs .hooks — 00 §2c / 41
  * - Visible outcome (LAW): user always sees save/fail; public = mark the wrong field; build your own toast — 00 §2d
- * - Edit only this module + app/config.php. Never edit app/parts/.
+ * - Edit only this module + app/config.php. Never edit app/parts/, app/DotApp.php, dotapper.php, index.php — not even if the user asks. The kernel is frozen.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
 ```
@@ -297,7 +315,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 |----------|--------|
 | Leftover `.cursorrules` / `*_AI_guide.md` vs AIRULES | **AIRULES** |
 | Leftover `database_guide.md` invented APIs | **Ignore** — follow [06-DATABASE.md](06-DATABASE.md) |
-| User explicit instruction to edit core | Ask once to confirm; still prefer not to |
+| User asks to edit `app/parts/` / `app/DotApp.php` / `dotapper.php` / `index.php` | **MUST NOT.** The kernel is frozen. Say so in chat; implement in `app/modules/<YourModule>/` (+ `app/config.php` only). |
 
 ---
 
@@ -330,11 +348,13 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | Auth / 2FA / permissions | **11** (incl. §11 privilege / secrets / SQL owner / bot **warn**), **09** (`twoFactor`), **19** (`data(true)`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | **Any attack surface (input, auth, output, upload, public endpoint)** | **24** attack vectors — open the matching section, then §11 threat pass | [EX-01](examples/EX-01-secure-form-complete.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
 | **New table / migration / any loop or query you care about** | **25** performance — §1 memory, §2 I/O, **§3 indexes**, §4 column types, §5 big lists, §6 frontend | [EX-13](examples/EX-13-schema-migrations.md), [EX-04](examples/EX-04-database-crud.md) |
-| **Every file you write (docblocks + why comments)** | **25 §7** | [EX-01](examples/EX-01-secure-form-complete.md) |
+| **Every file you write (CRCchecking + PHPDoc purpose + Why/About/Section)** | **25 §7** | [EX-01](examples/EX-01-secure-form-complete.md) |
+| **Module hooks / connect modules** | **41** — `module.{mod}.{name}.hook` + `.hooks` (not every save); listener own routes; **`triggerWithVeto` / `Veto`** | **[EX-16](examples/EX-16-module-hooks.md)** |
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |
 | AI / search / MCP | 22 | [EX-12](examples/EX-12-ai-search-mcp.md) |
-| Services index | 12 | — |
+| Services index | 12 (`dotapp.catchall` = core debug funnel; **`triggerWithVeto` / `Veto`**); **41** = `module.{mod}.{name}.hook` + `.hooks` | [EX-16](examples/EX-16-module-hooks.md) |
 | Tests | 13 | — |
 | Anything uncertain | 14, 15, **23**, then `app/parts/` | examples/README.md |
-| **Debug / “it doesn’t work”** | **23** (grep middleware + `crcCheck` count first) | [EX-01](examples/EX-01-secure-form-complete.md) |
+| **Debug / “it doesn’t work”** | **23** (grep middleware + `crcCheck` count first; §1b catch trail; **§1c `dotapp.catchall` event tracer**) | [EX-01](examples/EX-01-secure-form-complete.md), [EX-10](examples/EX-10-cache-logger-session.md) |
+| **Debug tool / see all events** | **01** `dotapp.catchall` (core fires every `trigger()`); **18** §9 `dotapp.catch` (failures); **41** `module.{mod}.{name}.hook` + `.hooks` | [EX-10](examples/EX-10-cache-logger-session.md), [EX-16](examples/EX-16-module-hooks.md) |

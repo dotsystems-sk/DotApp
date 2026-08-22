@@ -40,6 +40,34 @@ Log files need `Config::logger('core_log_enabled', true)` ([20](20-CACHE-LOGGER-
 
 ---
 
+## 1c. Event tracer — `dotapp.catchall` (when building a debugger, or hunting a missing event)
+
+The core fires **`dotapp.catchall` on every `trigger()`** except itself ([01](01-ARCHITECTURE.md) Built-in events). That is the **one** listener a debug tool **MUST** use to see the whole event stream. It is **not** `dotapp.catch` (failures only — §1b).
+
+```php
+// Temporary, in your module's module.listeners.php — remove or gate when done.
+Events::on('dotapp.catchall', function ($result, $eventname, ...$data) {
+    try {
+        Logger::use('debug')->warning($eventname, ['argc' => count($data)]);
+    } catch (\Throwable $ignored) {
+        // A throw here aborts the original event — never let that happen.
+    }
+});
+```
+
+| Need | Subscribe to |
+|------|----------------|
+| Every event in the request (boot, router, module, log, catch reports) | `dotapp.catchall` — core |
+| Structured failures (`operation`, `source`, `message`) | `dotapp.catch` — your report helper |
+| Log lines | `dotapp.log` ([20](20-CACHE-LOGGER-SESSION.md)) |
+| A named business step (`module.shop.sms_sent.hook`) | That exact name from the owner’s `.hooks` ([41](41-MODULE-HOOKS.md)) |
+
+**Hunting a missing business event:** open `app/modules/<Owner>/.hooks` (Fired section), then grep `Events::trigger(` in that module. If the name is not there, it was never fired — **MUST NOT** invent it. Ordinary saves may have **no** hook by design ([41](41-MODULE-HOOKS.md)). Catchall will only show names that were actually triggered.
+
+**MUST NOT:** `Events::trigger('dotapp.catchall', …)` (core already does it); trigger other events from this listener; persist every event without an opt-in flag; log `$result` wholesale (secrets). Canonical: [12](12-SERVICES.md) §2.
+
+---
+
 ## 2. Grep first (**MUST**)
 
 Count every `$request->crcCheck()` / `crcCheck(` on the **failing route’s pipeline** — not only the controller.
@@ -53,6 +81,8 @@ Count every `$request->crcCheck()` / `crcCheck(` on the **failing route’s pipe
 | Shared “security” helpers | any `Crc` / `Secure` / `Gate` class in **this** module |
 
 **Two or more `crcCheck()` on one request = the first call burned the one-time token; the second returns `false`.** That is the usual “Bad request” after a generic CRC middleware.
+
+Read the action’s first PHPDoc line **`CRCchecking —`**. If it already names a CRC prefix/middleware, the body **MUST NOT** call `crcCheck()`. A missing `CRCchecking —` line on a public controller/middleware method is a docs bug ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7).
 
 Canonical: [08](08-FORMS-AND-SECURITY.md) “`crcCheck()` burns the token”.
 

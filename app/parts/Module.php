@@ -107,9 +107,13 @@ abstract class Module {
 
     public static function optimize() {
         try {
-            define('__DOTAPPER_OPTIMIZER__', 1);
+            // Why: dotapper zadefinuje rezim este pred bootom appky, webovy DACore optimizer ho zasa potrebuje nastavit tu.
+            if (!defined('__DOTAPPER_OPTIMIZER__')) {
+                define('__DOTAPPER_OPTIMIZER__', 1);
+            }
             $moduly = glob(__ROOTDIR__ . "/app/modules/*", GLOB_ONLYDIR); // Get all module directories
             $routyModulov = [];
+            $routyListenerov = [];
             foreach ($moduly as $modul) {
                 $modulinit = $modul . '/module.init.php';
                 $modulName = str_replace("\\", "/", $modul);
@@ -129,9 +133,35 @@ abstract class Module {
                         throw new \InvalidArgumentException("initializeRoutes() must return a one-dimensional array of strings in module {$objekt->modulename}");
                     }
                     $routyModulov[$modulName] = $routes;
+
+                    // Why: listener moze pocuvat na inych routach a pritom nema zobudit initialize() celeho modulu.
+                    $listenerRoutes = $routes;
+                    $listenerInit = $modul . '/module.listeners.php';
+                    if (file_exists($listenerInit)) {
+                        $listenerClass = "Dotsystems\\App\\Modules\\" . $modulName . "\\Listeners";
+                        if (!class_exists($listenerClass, false)) {
+                            // Why: subor vytvara objekt aj na konci, optimizer konstanta ale zastavi register().
+                            $dotApp = DotApp::DotApp();
+                            include $listenerInit;
+                        }
+                        if (!class_exists($listenerClass, false)) {
+                            throw new \RuntimeException("Listener class $listenerClass not found");
+                        }
+
+                        $listenerObject = new $listenerClass(DotApp::DotApp(), true);
+                        $listenerRoutes = $listenerObject->resolvedInitializeRoutes($routes);
+                    }
+                    $routyListenerov[$modulName] = $listenerRoutes;
                 }
             }
-            file_put_contents(__ROOTDIR__ . "/app/modules/modulesAutoLoader.php", "<?php\n\$modules = " . var_export($routyModulov, true) . ";\n ?>");
+
+            // Why: $modules ostava pre stare jadro, nove jadro navyse rozlisi listener mapu a jej verziu.
+            $phpCode = "<?php\n"
+                . "\$modules = " . var_export($routyModulov, true) . ";\n"
+                . "\$listeners = " . var_export($routyListenerov, true) . ";\n"
+                . "\$modulesAutoLoaderVersion = 2;\n"
+                . " ?>";
+            file_put_contents(__ROOTDIR__ . "/app/modules/modulesAutoLoader.php", $phpCode);
             return true;
         } catch (\Exception $e) {
             return $e;

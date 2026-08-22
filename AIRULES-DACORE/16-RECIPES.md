@@ -172,11 +172,11 @@ php .\dotapper.php --module=Shop --test
 
 ## R13 — Paginated AJAX list (**MUST** — first ship, interactive)
 
-Users, logs, items, orders — any collection that **can accumulate** — **MUST** `->paginate($perPage, $page)` on the **first** version, not `->all()` into the view. **“Few rows now” is not a skip.**
+Users, logs, items, orders — any collection that **can accumulate** — **MUST** COUNT + LIMIT on the **first** version, not `->all()` into the view. **“Few rows now” is not a skip.**
 
-Pager **MUST** be **interactive AJAX**: `type="button"` + `$dotapp().load()`; overlay the list while in flight; patch rows **and** pager. **MUST NOT** `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing. Admin markup: `DACore:Page@paginate!` `$callable` as buttons ([33](33-DACORE-PAGES-AND-UI.md) §3). Lookup lists: **AJAX search** unless declined — **ASK** in the plan ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
+Pager **MUST** follow [40](40-DACORE-LIST-PAGER.md): `type="button"` + `$dotapp().load()` + `function (el, e)`; overlay; patch rows **and** pager. **MUST NOT** `<a href="?page=2">` / `location.reload()` / `replaceState`. Copy-paste: [EX-D08](examples/EX-D08-list-pager.md). Lookup lists: **AJAX search** unless declined — **ASK** in the plan ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
 
-Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: [EX-04](examples/EX-04-database-crud.md), [EX-06](examples/EX-06-dotapp-js-boot.md), [EX-D01](examples/EX-D01-dacore-module-skeleton.md).
+Theory: [40](40-DACORE-LIST-PAGER.md), [06](06-DATABASE.md).
 
 ---
 
@@ -184,7 +184,7 @@ Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: 
 
 | Need | Recipe |
 |------|--------|
-| Paginated UI list (logs, users, items) | R13 + [EX-06](examples/EX-06-dotapp-js-boot.md) |
+| Paginated UI list (logs, users, items) | R13 + [EX-D08](examples/EX-D08-list-pager.md) |
 | Validation + JSON error envelope | [examples/EX-09](examples/EX-09-validation-and-errors.md) |
 | Cache / logging / sessions | [examples/EX-10](examples/EX-10-cache-logger-session.md) |
 | Email, SMS provider, QR | [examples/EX-11](examples/EX-11-email-sms-qr.md) |
@@ -194,6 +194,7 @@ Theory: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. Copy-paste: 
 | Cursor credits / subagents | [00](00-AGENT-CONTRACT.md) §2b — **ASK** in the plan; inherit parent; Composer 2.5 = file hunt only |
 | Finish gate after every chunk | [00](00-AGENT-CONTRACT.md) §2c — grep CRC, IDs, SQL, inputs, middleware; [17](17-CHECKLISTS.md) |
 | Visible outcome (save/fail) | [00](00-AGENT-CONTRACT.md) §2d — DACore toast (search first); public mark the field; [EX-09](examples/EX-09-validation-and-errors.md) |
+| Connect modules / fire a useful hook | [41](41-MODULE-HOOKS.md) — `module.{mod}.{name}.hook` + `.hooks` (not every save); [EX-16](examples/EX-16-module-hooks.md) |
 
 ---
 

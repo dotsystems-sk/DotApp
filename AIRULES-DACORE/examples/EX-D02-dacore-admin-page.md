@@ -64,7 +64,7 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
 </div>
 ```
 
-Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. `$baseUrl` is the HTML page prefix (`/dacore/Shop`). `$apiAuth` is `/api/v1/auth/Shop` — **MUST** pass it from the controller for `fo-rm` / list `load()`. Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — not `<a href="?page=">` ([33](../33-DACORE-PAGES-AND-UI.md) §3). `#listInner` is the fragment AJAX replaces (rows **and** pager).
+Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. `$baseUrl` is the HTML page prefix (`/dacore/Shop`). `$apiAuth` is `/api/v1/auth/Shop` — **MUST** pass it from the controller for `fo-rm` / list `load()`. Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md). `#listInner` is the fragment AJAX replaces (rows **and** pager).
 
 ## Edit form with dotgrid + secure form
 
@@ -159,11 +159,14 @@ Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplie
 })();
 ```
 
-On a **list** page (add rule, toggle, delete, reorder, **page**): overlay `#listWrap` **before** `load()` (Notiflix.Block preferred, or your module preloader), patch `#listInner` (rows **and** pager), then remove the overlay on success **and** error. Toast (Notiflix.Notify or your equivalent). Do not `location.reload()`. Pager controls are `type="button"` + `$dotapp().load()` — **not** `<a href="?page=">`, **not** one `<fo-rm>` per button. SQL: `paginate()`. Pattern: [EX-06](EX-06-dotapp-js-boot.md), [EX-D01](EX-D01-dacore-module-skeleton.md).
+On a **list** page (add rule, toggle, delete, reorder, **page**): overlay `#listWrap` **before** `load()`, patch `#listInner` (rows **and** pager), then remove the overlay on success **and** error. Pager law: [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md). `$dotapp().live` = `function (el, e)`.
 
 ```javascript
-$dotapp().live("click", ".js-shop-page", function (e) {
-  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+$dotapp().live("click", ".shop-page", function (el, e) {
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  if (!el || el.disabled) return;
+  var page = el.getAttribute("data-page") || "";
+  if (!page) return;
   Notiflix.Block.standard("#listWrap", "Loading…");
   $dotapp().load($dotapp("#listWrap").attr("data-list-url"), "POST", { page: page },
     function (raw) {

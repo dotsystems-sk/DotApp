@@ -22,7 +22,8 @@ DACore is an admin-UI **module**, not framework core — by default its files ar
 - Invent an SMS gateway in a DACore-bound module — **read** `AIRULES/39` first
 - Steal another module’s `menuid` prefix or uninstall with `DELETE … LIKE 'Host.%'` — your `menuid` starts with **your** module; own sidebar gets a `type => 0` header. **ASK** shared vs module-own menu before scaffolding (`AIRULES/31`). Do not dump 10 leaves under a header. Do not register “Return back”.
 - Use `$_SESSION` / `session_start()` — **MUST** `DSM::use('Shop')` (`AIRULES/20`)
-- Use `dainstall.php` / blank root init / `init/` **while coding**, or pack a zip for a module that is **not** for DACore — develop with **`install.php`**. When the user asks to zip a DACore-bound module (including create+zip): **MUST** put **`dainstall.php`** (renamed from `install.php`) + **`init/`** live copies + inert root in the zip; **MUST NOT** leave `install.php` in the zip (DACore rejects it / Installation never runs). After a new version, rename `installed_*` → `install.php`. **Never** pack `app/modules/DACore/`. (`AIRULES/00` §2e, `AIRULES/35` §4–§5).
+- Use `dainstall.php` / blank root init / `init/` **while coding**, or pack a zip for a module that is **not** for DACore — develop with **`install.php`**. When the user asks to zip a DACore-bound module (including create+zip): **MUST** put **`dainstall.php`** (renamed from `install.php`) + **`init/`** live copies + inert root + **`about.php`** in the zip; **MUST NOT** leave `install.php` in the zip (DACore rejects it / Installation never runs). After a new version, rename `installed_*` → `install.php` **and** add a matching `about.php` changelog entry (**ASK** for the notes). **Never** pack `app/modules/DACore/`. (`AIRULES/00` §2e, `AIRULES/35` §3b, §4–§5).
+- `include` / `require` another module’s PHP (`about.php`, `module.init.php`, `Installation.php`) to list or describe it — DACore stores sanitised HTML **and** `extra1`…`extra5` in `dacore_modules`. Discover packs with `DACore:Plugins@listByExtra!` (`AIRULES/35` §3c). **MUST NOT** return `initializeRoutes() => ['*']` unless the user asked for a hook on every URL (`AIRULES/03`).
 
 ## Call map
 
@@ -37,6 +38,7 @@ DotApp::call("DACore:Sms@…!");                                    // SMS API �
 DotApp::call("DACore:Page@withMenu!", $title, $body, $header, $css, $js, $menuId, $currentFile); // string HTML; 7th = active leaf on edit/detail
 DotApp::call("DACore:Installations@exist!", $module, $version);    // bool
 DotApp::call("DACore:Installations@insert!", $module, $version, $status, $statusTxt);
+DotApp::call("DACore:Plugins@listByExtra!", $slot, $value);       // packs with extraN = token — AIRULES/35 §3c
 ```
 
 Check every return value: `bool` helpers never throw and never log.
@@ -68,7 +70,7 @@ Prefer DACore widgets (cards, `btn`, dotgrid, Remix, Notiflix). **MUST search fi
 
 Admin runtime is **`$dotapp`** (already in the shell). jQuery may coexist for **UI widgets only**. **All HTTP to the app** uses `$dotapp().form` / `$dotapp().load` / `dotbridge` — never `$.ajax` / `$.post` / raw `fetch` to DotApp endpoints. When porting jQuery plugins, **ask**, then **rewrite** as `$dotapp().fn(...)` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`. If DACore already ships the widget, use it — never copy DACore JS into your module.
 
-Growing lists (logs, users, items) **MUST** use `paginate()` and an **interactive AJAX** pager on **first ship** (`DACore:Page@paginate!` `$callable` as buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or `<a href="?page=">` / `location.reload()`. Lookup lists **MUST** AJAX search unless declined; **ASK** on other lists (`AIRULES/09` §3). See `AIRULES/09` §3 and `AIRULES/33` §3.
+Growing lists (logs, users, items) **MUST** follow `AIRULES/40-DACORE-LIST-PAGER.md` on **first ship** (`dacore-list-pager`, `live(el, e)`, encrypted `data-page`, COUNT). **MUST NOT** dump `->all()`, `?page=` / `replaceState`, or `e.currentTarget`. Lookup lists **MUST** AJAX search unless declined (`AIRULES/09` §3). Sample: `AIRULES/examples/EX-D08-list-pager.md`.
 
 **Persist:** PHP **MUST** re-check (2FA, rights, validation, [11](11-AUTH-AND-CRYPTO.md) §11). A 2FA overlay covering Save is UX only — removing it **MUST** still fail on the server (`AIRULES/08`, `AIRULES/32` §6).
 

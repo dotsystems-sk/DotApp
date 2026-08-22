@@ -74,6 +74,8 @@ DotApp::call(
 
 **MUST ASK** when starting a **new** DACore module: shared full sidebar vs module-own menu. Canonical layout, grouping (`type` 0 / 2 / 1), and wiring: [31](31-DACORE-MENU.md).
 
+In the same planning round, **MUST ASK one grouped module-identity question**: public name/purpose; installer preview as text-only, compact logo or wide banner; existing local asset + alt text; optional landing/header placement and colours. Do not confuse the sidebar Remix icon with the module logo. The installer mechanism is `about.php` + local `about-assets/`, not a DACore page/core edit ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b).
+
 Returns the complete page HTML — return it directly from your controller.
 
 ### Shell placeholders it fills
@@ -108,38 +110,17 @@ When `AI.enabled` is true, DACore injects the chat CSS/JS itself; do not add the
 
 ## 3. Pagination
 
-Growing lists (logs, users, items, orders) **MUST** use SQL `paginate()` ([06](06-DATABASE.md)) **and** an **interactive AJAX** pager ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) in the **first** version. Empty table today is not a skip. **MUST NOT** dump `->all()` into the table. **MUST NOT** navigate with `<a href="?page=2">` / `location.reload()` — that reloads the admin shell and is not a pager.
+**Law:** [40-DACORE-LIST-PAGER.md](40-DACORE-LIST-PAGER.md). Copy-paste: [EX-D08](examples/EX-D08-list-pager.md).
 
-**Search:** when **planning** the list, **ASK**. Lookup lists (articles, products, catalog) **MUST** ship interactive AJAX search unless declined (debounce, 3+ chars, SQL + `paginate()`, overlay). [09](09-DOTAPP-JS-AND-BRIDGE.md) §3. **Search DACore first** for search-field chrome.
+Growing lists **MUST** use SQL paging (`COUNT(*)` + `LIMIT`/`OFFSET`) **and** the [40](40-DACORE-LIST-PAGER.md) AJAX pager in the **first** version. **MUST NOT** dump `->all()`. **MUST NOT** `<a href="?page=2">` / `location.reload()` / `history.replaceState` of query params.
 
-First paint may be server-rendered page 1. Further pages: `$dotapp().load()` POST with `page` (clamp in PHP) plus current filters (`q`). Overlay the list while in flight.
+**MUST** classes: `card-footer dacore-list-pager` (**no** `--split`), `dacore-list-pager-summary`, `dacore-list-pager-nav`, `ul.pagination.mb-0`, `button.page-link.{module}-page` with encrypted `data-page`. Load DACore `users.css` on `withMenu` `$css`. **MUST NOT** `data-dacore-page` in your module.
 
-```php
-$page = DB::module('RAW')->q(/* ... */)->paginate(20, $currentPage);
+`DACore:Page@paginate!` `$callable` as **buttons**, `$href = null`. `$dotapp().live("click", …, function (el, e)` — first arg is the **element**.
 
-$links = DotApp::call(
-    "DACore:Page@paginate!",
-    $page['current_page'],
-    $page['last_page'],
-    null,
-    function ($type, $pageNo, $label, $state, $href) {
-        if ($type === 'ellipsis') {
-            return '<li class="page-item disabled"><span class="page-link">…</span></li>';
-        }
-        $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
-        return '<li class="page-item ' . $state . '"><button type="button" class="page-link js-shop-page" data-page="'
-            . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
-    }
-);
-```
+**Search:** when **planning** the list, **ASK**. Lookup lists **MUST** ship interactive AJAX search unless declined. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
-Returns Bootstrap `<li class="page-item">` items — wrap them yourself:
-
-```html
-<ul class="pagination">{{ var: $links }}</ul>
-```
-
-Signature: `paginate($actual_page, $number_of_pages, $href = null, $callable = null)`. Pass **`$callable`** so each control is a **button**. Do **not** pass a `?page=` `$href` for an in-app list.
+Do **not** copy the old `js-shop-page` + plain `data-page` + `e.currentTarget` snippet from earlier AIRULES — it is **wrong**.
 
 ---
 
@@ -336,7 +317,7 @@ PHP handler: prefix `LoginAndCRC` already burned the token — only `form(['POST
 
 **MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
 
-**MUST (paginate growing lists):** logs, users, items **MUST** have an AJAX pager. See this file §3. **MUST NOT** dump `->all()` or reload with `<a href="?page=">`. **Search / list UX:** [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 — **ASK** in the plan; empty state + sticky header **MUST**.
+**MUST (paginate growing lists):** logs, users, items **MUST** use the [40](40-DACORE-LIST-PAGER.md) pager. **MUST NOT** dump `->all()` or reload with `<a href="?page=">`. **Search / list UX:** [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 — **ASK** in the plan; empty state + sticky header **MUST**.
 
 **MUST (block while in flight):** while save / toggle / reorder / paginate is running, cover the form or the **whole list** so the user cannot click or drag again. **Notiflix is DACore-admin only** (this shell). **Preferred on admin pages:** `Notiflix.Block`. **Alternative on admin:** equivalent overlay in **your** module. **Public / front-office pages** in the same project **MUST** use **module preloaders** — Notiflix is not loaded there. Skipping Notiflix does **not** skip preloaders. **MUST** remove the overlay on success **and** error. Overlay a stable parent; patch `TBODY` / inner wrap. UX **MUST** be excellent on desktop **and** mobile (visible spinner, intercepts touch, no hover-only). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
@@ -347,6 +328,8 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 **MUST (operator 2FA / dangerous actions):** DACore operators **MUST** have at least one 2FA method and **MUST NOT** be able to turn it off. Before an action that can seriously damage the system (delete admin, wipe data, grant `dotapp.root`, …), re-prompt with `$dotapp().twoFactor` and **verify the code in PHP** in **your** module **before** persist. The overlay is UX only — removing it **MUST** still fail on the server. Do **not** call `Auth::confirmTwoFactor` (login stage 2 only). See [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6.
 
 **MUST (product copy):** labels, help under buttons, rights descriptions, menu names, toasts. A software company would ship the sentence — never prompt-echo (`This user can hide the AI icon themselves.`). See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8.
+
+**MUST (layout / buttons):** padding vs the parent on all sides — especially **below** a Save in `card-footer`. Center or match sibling cards. `pt-0` **MUST** keep a compensating `pb-*` / CSS `padding-bottom`. A flush button is a **bug**. Law: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
 
 **MUST (AI write on this page):** if this screen shows data that an AI tool can change, listen for `DACore.AI.UIEvent`, accept only that tool’s `detail.name`, AJAX-refresh. Ignore other tools. No `location.reload()`. See [34](34-DACORE-AI-TOOLS.md) §5.
 
@@ -360,7 +343,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | Re-adding `dotgrid.css` / `core.css` / `dotapp.js` | The shell loads them |
 | `$.ajax` for admin saves / lists | `$dotapp().form` / `$dotapp().load` / `dotbridge` (jQuery UI OK) |
 | `location.reload()` after toggle/save on the same page | JSON `html` + patch DOM + Notiflix toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
-| Logs/users/items with no pager, or `<a href="?page=">` | `paginate()` + AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, this file §3) |
+| Logs/users/items with no pager, or `<a href="?page=">` | [40](40-DACORE-LIST-PAGER.md) pager |
 | Catalog/articles list with no search | **ASK**; lookup lists **MUST** AJAX search ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | One `<fo-rm>` per row button / D&D via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
 | List still clickable during reorder / toggle | Overlay the wrapper (Notiflix preferred **or** module preloaders); remove on success **and** error; desktop **and** mobile |
@@ -368,6 +351,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | 2FA overlay only; Save still writes without a code | PHP refuses — FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | `alert()` / `window.confirm()` on delete | `Notiflix.Confirm` or `$dotapp().modal`, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo copy on a right / button / help | Product language ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
+| Save button flush to the card bottom / `pt-0` with no `pb-*` | Padding vs parent (esp. below); center or match siblings ([00](00-AGENT-CONTRACT.md) §2f) |
 | AI tool changed this list and the table stayed stale / full reload | `DACore.AI.UIEvent` + `$dotapp().load()` ([34](34-DACORE-AI-TOOLS.md) §5) |
 | UI that disables an operator’s 2FA | Forbidden |
 | Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |

@@ -40,6 +40,8 @@ Edit/API sample: [examples/EX-02-secure-form-edit-api.md](examples/EX-02-secure-
 | `#DACore:AuthTest@CRC!` / `LoginAndCRC!` on `/api/v1/auth\|noauth/{Module}/*`, **or** DACore `#DACore:AuthTest@check!` on `POST /dacore/*` | **MUST NOT** `crcCheck()` again — only `form()` / persist |
 | That POST has **no** prefix CRC | **MUST** `crcCheck()` **once** in the action (EX-01) |
 
+**PHPDoc (MUST):** every public method in `Controllers/` and `Middleware/` starts with **`CRCchecking —`** naming that row in plain text (exact `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` / prefix path, or `this action`, or `none`). The next agent **MUST NOT** add `crcCheck()` when the line already names a prefix. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
+
 **MUST NOT:**
 - prefix CRC **and** `crcCheck()` in the controller (first call **burns** the token)
 - CRC `before` on GET or on `*` (GET has no `{ data, crc }`)
@@ -247,7 +249,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA. DACo
 5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. **MUST** show every outcome ([00](00-AGENT-CONTRACT.md) §2d). **DACore admin:** search DACore first, then Notiflix toast. **Public:** mark the wrong field. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; cover the list/form until `load()` ends (success **and** error). **DACore admin:** Notiflix (preferred) **or** your module overlay. **Public website:** **your module preloaders** — Notiflix is not there. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **MUST** confirm deletes in a graphical dialog — never `alert()` / `window.confirm()`. **DACore admin:** `Notiflix.Confirm` or `$dotapp().modal`. **Public website:** your module modal.
-8. **MUST** paginate accumulating lists on **first ship** (`paginate()` + interactive AJAX buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()`. Lookup lists **MUST** ship AJAX search unless declined; **ASK** on other lists. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3.
+8. **MUST** paginate accumulating lists on **first ship** ([40](40-DACORE-LIST-PAGER.md)). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()` / `replaceState`. Lookup lists **MUST** ship AJAX search unless declined; **ASK** on other lists. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 9. **MUST** re-check in PHP on every persist. FE overlay/modal is UX only.
 10. **MUST** upload files with `$dotapp().uploadFile` — never `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers).
 
@@ -264,7 +266,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA. DACo
 9. One `<fo-rm>` per table-row button (up/down/toggle/delete) or drag-and-drop via forms.
 10. Leave a list/form clickable (or start a second `load()`) while the first request is still in flight; forget to remove the overlay on the error path; skip preloaders because Notiflix was not used.
 11. Delete with `alert()` / `window.confirm()` or with no confirm dialog.
-12. Dump logs/users/items with `->all()` and no pager, or paginate by reloading `<a href="?page=">`.
+12. Dump logs/users/items with `->all()` and no pager, or paginate by reloading `<a href="?page=">` / `function (e) { e.currentTarget }`.
 13. Use `data-dotapp-nojs` unless rebuilding the whole chain.
 14. Load raw `app/parts/js/dotapp.js` instead of `/assets/dotapp/dotapp.js` on pages.
 15. Use a JS overlay/modal as the only 2FA or save gate — PHP **MUST** refuse without valid proof.

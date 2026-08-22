@@ -26,7 +26,8 @@ Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (
 - `location.reload()` after `fo-rm` / `load` while staying on the page — patch `reply.html` + Notiflix toast (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
 - One `<fo-rm>` per row action — use `$dotapp().load()` + encrypted `data-*` (`AIRULES/08-FORMS-AND-SECURITY.md`)
 - Leave a list/form clickable during `load()` — overlay until success **and** error (Notiflix preferred **or** module preloaders; desktop **and** mobile) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
-- Dump users/logs/items with `->all()`, skip the pager because “few rows now”, or change pages by reloading `<a href="?page=">` / `location.reload()` — interactive AJAX pager + `$dotapp().load()` (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Dump users/logs/items with `->all()`, skip the pager because “few rows now”, or change pages by reloading `<a href="?page=">` / `location.reload()` / `replaceState` — `AIRULES/40-DACORE-LIST-PAGER.md`
+- `$dotapp().live("click", …, function (e) { e.currentTarget })` — `live` calls `handler(el, e)`; pager clicks silently no-op (`AIRULES/40`)
 - Ship a catalog/articles list with no search, or filter `->all()` in JS — **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars)
 - Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
 - Delete with `alert()` / `window.confirm()` — graphical dialog first (`Notiflix.Confirm` on admin) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)

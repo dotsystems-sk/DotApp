@@ -10,7 +10,7 @@ Correct + secure is not enough. Code you ship **MUST** also be **cheap** (I/O, m
 
 1. **The smallest I/O wins.** Disk, DB, and network round-trips cost orders of magnitude more than CPU or a tight `if`. The OS page cache hides some of it — **MUST NOT** rely on that. Ask “what is the least data that answers this question?” and fetch exactly that ([06](06-DATABASE.md)).
 2. **Memory is bounded, input is not.** Anything that grows with the table (rows, files, uploads, AI text, log lines) is processed **page by page**, never “load it all and filter”. One request **MUST NOT** be able to allocate an unbounded array.
-3. **Readable beats clever.** Optimise the code path that **scales** (a loop over the whole table, a query per row, an index that is missing). **MUST NOT** obfuscate a 20-row loop to save microseconds. Every optimisation that is not obvious gets a **why** comment (§7).
+3. **Readable beats clever.** Optimise the code path that **scales** (a loop over the whole table, a query per row, an index that is missing). **MUST NOT** obfuscate a 20-row loop to save microseconds. Every optimisation that is not obvious gets a **`// Why:`** comment (§7).
 4. **Optimise your module, not DACore.** Reuse what DACore already exposes (`DotApp::call("DACore:…")`, its assets, its page shell). **MUST NOT** patch, extend, or duplicate `app/modules/DACore/` for performance, and **MUST NOT** read or write `dacore_*` tables directly ([00](00-AGENT-CONTRACT.md) §1).
 
 ---
@@ -43,7 +43,7 @@ Correct + secure is not enough. Code you ship **MUST** also be **cheap** (I/O, m
 | Need | Do (**MUST**) | **MUST NOT** |
 |------|---------------|--------------|
 | Does it exist? | `exists()` | `->all()` then `count($rows)` |
-| How many? | `select('COUNT(*) as total')` or `paginate()['total']` | fetch rows to count them |
+| How many? | `select('COUNT(*) as total')` + `all()` ([40](40-DACORE-LIST-PAGER.md) §4) | fetch rows to count them; trust `paginate()['total']` |
 | One row | `where(...)->limit(1)` + only the columns you use | `select('*')` for a list screen |
 | Related data for N rows | **one** prefetch with `whereIn('id', $ids)`, keyed by id | a query inside `foreach` (**N+1**) |
 | Same data twice in one request | a local variable / a `static` memo in the helper | running the identical query again |
@@ -55,6 +55,8 @@ Correct + secure is not enough. Code you ship **MUST** also be **cheap** (I/O, m
 | Insert-or-update | `onDuplicateKeyUpdate()` | `SELECT` then branch to `INSERT`/`UPDATE` |
 | Counters / “last activity” | one `UPDATE … SET x = x + 1` | read, add in PHP, write back (also a race — [24](24-ATTACK-VECTORS.md) §4) |
 | Logging in a loop | aggregate, log **once** after the loop | `Logger` per row |
+| Notify other modules | **one** `module.{mod}.{name}.hook` after a **useful** side-effect (or one **batch** after the loop) | `Events::trigger` **inside** `foreach` of a growing list; a hook on every save; skip a named SMS/mail hook “for perf” ([41](41-MODULE-HOOKS.md)) |
+| Another module’s files / boot | DACore `dacore_modules` / `Plugins@listByExtra!` / that module’s own matching route | `include` another module; `glob(app/modules)` on a request; `initializeRoutes() => ['*']` without a global job ([03](03-MODULES-AND-ROUTING.md), [35](35-DACORE-INSTALL.md) §3c) |
 | External API | one `HttpHelper::request` with a timeout; retry only transient ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md)) | a call per row |
 
 ### The N+1 pattern you MUST use
@@ -144,7 +146,7 @@ $qb->createTableIfNotExist('shop_orders', function ($t) {
 - `paginate()` on the first ship, plus a **cap** on `per_page` (a client asking for 100 000 rows is [24](24-ATTACK-VECTORS.md) §7).
 - `select` only the columns the row prints. A list query that drags `TEXT` bodies is the usual cause of a slow admin.
 - Deep pages: `LIMIT … OFFSET 200000` still walks 200 000 rows. For log-like tables prefer **keyset** paging (`WHERE id < :lastId ORDER BY id DESC LIMIT :n`) and say so in a comment; for normal admin lists `paginate()` is fine.
-- `COUNT(*)` over a huge table is not free — reuse `paginate()['total']` instead of a second count, and for very large log tables consider counting only on the first page.
+- `COUNT(*)` over a huge table is not free — run it once per list request (same as [40](40-DACORE-LIST-PAGER.md) §4). **MUST NOT** reuse `QueryObject::paginate()['total']` (often 0). For very large log tables consider counting only on the first page.
 - Send back **only what changed**: patch the affected rows + the pager from JSON ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3). **MUST NOT** re-render the whole table or reload the admin shell after one toggle.
 - Never base64 an image into a JSON reply.
 
@@ -168,35 +170,118 @@ $qb->createTableIfNotExist('shop_orders', function ($t) {
 
 ## 7. Professional code and comments (**MUST**)
 
-The next reader is a human (or a weaker agent) with no memory of this chat. Code **MUST** be skimmable: a docblock says *what and why*, inline comments say *why here*.
+### Temporary framework-author language exception
 
-**MUST — three layers of documentation:**
+For the explicitly authorized listener-route separation task, comments in these core files may use natural Slovak without diacritics:
+
+- `app/DotApp.php`
+- `app/parts/Module.php`
+- `app/parts/Listeners.php`
+- related `dotapper.php` changes
+
+The comments must still explain decisions and traps. They MUST NOT deliberately introduce spelling mistakes that make the code harder to understand.
+
+Normal modules and DACore continue using English documentation.
+
+This exception is temporary and applies only to the named framework-core task.
+
+The next reader is a human (or a weaker agent) with no memory of this chat. Code **MUST** be skimmable: a **PHPDoc purpose sentence** says *what the function is for*, tags say *shape*, labeled inline comments say *where / what this block is / why this step*.
+
+**MUST — layers of documentation:**
 
 1. **File / class docblock:** what this file owns, which module, the traps that apply (CRC once, encrypted ids, rights guard, DSM). New PHP files also carry the identity header from [00](00-AGENT-CONTRACT.md) §6.
-2. **Method docblock** on every public/static method: one-line purpose, `@param`, `@return`, `@throws` when it throws, and — when the behaviour is surprising — one `why` line.
-3. **Inline `why` comments** on every **logical step** inside the body: each guard, decision, formula, magic value, query shape, index-driven order, security trap gets a short line above it explaining **why** it is there. A reader **MUST** be able to follow the intent without reconstructing it from the code.
+2. **Method PHPDoc** on every public/static method **and** every private/protected helper that is more than a one-line getter — **`CRCchecking —` first** on every public method in `Controllers/` and `Middleware/` (see below), then a **purpose sentence**, then tags.
+3. **Labeled inline comments** — the keyword is **part of the law** (so a reader can grep). English. Place each kind where it orients; **MUST NOT** stack all three on every line.
+
+| Keyword | Meaning | Where (**MUST**) |
+|---------|---------|------------------|
+| `// Why:` | Why this **decision** exists (guard, formula, trap) — **not** what the next line does | Above every **logical step** (same places agents already comment). The label **MUST** be `Why:` — a bare `// turning SMS off…` is incomplete |
+| `// About:` | What this **chunk** is: creates a DB row; that row **represents** X | Once per action / library method / non-obvious block — not on every guard |
+| `// Section:` | Which **admin menu** or **route** this code belongs to | File or action that serves a page (DACore leaf or public URL) |
+
+### CRCchecking first line (**MUST** — law)
+
+`$request->crcCheck()` is **one-shot**. The first valid call **burns** the token; a second call in the same request returns `false` and the FE looks broken ([08](08-FORMS-AND-SECURITY.md)). The next reader **MUST** see **where** CRC already ran **without** opening `module.init.php`.
+
+**MUST:** every **public** method in `Controllers/` and `Middleware/` starts its PHPDoc with this **first line** (immediately after `/**`):
+
+```
+CRCchecking — <where it runs>. <what this method MUST / MUST NOT do>.
+```
+
+Write the **real** middleware / prefix / route — not the word “middleware”.
+
+| First line (shape) | When |
+|--------------------|------|
+| `CRCchecking — prefix `#DACore:AuthTest@LoginAndCRC!` on POST `/api/v1/auth/Shop/*` (`module.init.php`). This action MUST NOT crcCheck().` | Versioned logged-in POST API — CRC already ran in `before` |
+| `CRCchecking — prefix `#DACore:AuthTest@CRC!` on POST `/api/v1/noauth/Shop/*` (`module.init.php`). This action MUST NOT crcCheck().` | Versioned public POST API |
+| `CRCchecking — prefix `#Shop:Gate@loginAndCrc!` on POST `/api/v1/auth/Shop/*` (`module.init.php`). This action MUST NOT crcCheck().` | Module-own Gate CRC (no DACore AuthTest on that route) |
+| `CRCchecking — this action (`$request->crcCheck()` once). No CRC prefix on this route.` | Isolated POST with no API CRC prefix ([EX-01](examples/EX-01-secure-form-complete.md)) |
+| `CRCchecking — this middleware (`$request->crcCheck()`). Actions under this prefix MUST NOT crcCheck().` | The Gate / CRC middleware method itself |
+| `CRCchecking — none (GET HTML). CRC is forbidden on GET.` | Page render (admin or public) |
+| `CRCchecking — none (`$request->upload()`). CRC is forbidden on upload.` | File endpoint |
+| `CRCchecking — none (not a route).` | Public helper on the controller that is not an HTTP entry |
+
+**MUST NOT:** omit the line on a controller/middleware public method; name a prefix/middleware **and** call `crcCheck()` in the same method (double CRC); write `this action` when a CRC `before` (`AuthTest@CRC!` / `LoginAndCRC!` / Gate) already covers the route; put CRC on GET or upload; invent a middleware name that is not in `module.init.php`.
+
+Finish gate: grep `CRCchecking` vs `crcCheck(` in the same method ([00](00-AGENT-CONTRACT.md) §2c).
+
+### PHPDoc purpose (**MUST** — law)
+
+Tags **without** a description are a **bug**. A file of functions that only show `@param` / `@return array<string, mixed>` cannot be scanned — the reader still has to reconstruct what each method is **for**.
+
+**Required order:**
+
+1. **`CRCchecking — …`** — first line on every public method in `Controllers/` and `Middleware/` (see above). Other classes skip this line.
+2. **Summary sentence** (English) — what this function is for. **MUST** exist even on a short helper.
+3. Optional extra paragraph — when it runs, surprising behaviour, what it does **not** do.
+4. `@param` — type **and** meaning (not only `string $id`).
+5. `@return` — type **and** meaning (not only `array<string, mixed>` / `void`).
+6. `@throws` when it throws.
 
 ```php
 /**
+ * CRCchecking — prefix `#DACore:AuthTest@LoginAndCRC!` on POST `/api/v1/auth/Shop/*` (`module.init.php`). This action MUST NOT crcCheck().
+ *
  * Toggles the "active" flag of one item owned by the current user.
+ *
+ * Decrypts the posted id, checks ownership in SQL, and returns JSON for the
+ * live list patch. Encryption is not authorization — the WHERE still scopes
+ * to the owner.
  *
  * @param  Request $request POST with an encrypted `id` field.
  * @return Response JSON: status + message (+ the patched row HTML).
  * @throws \Throwable Only from the DB layer; caught and logged inside.
- *
- * Why: the id arrives encrypted, so the actor cannot enumerate rows —
- * the ownership check still runs in SQL (encryption is not authorization).
  */
 public static function toggle($request)
 {
-    // Same $key2 as the view used; false means a tampered or replayed value.
+    // Section: DACore → Shop → Items (`{prefixUrl}/Shop/items`)
+    // About: flip shop_items.active for one catalog product the storefront lists.
+    // Why: the id arrives encrypted, so the actor cannot enumerate rows —
+    // the ownership check still runs in SQL (encryption is not authorization).
     $id = Crypto::decrypt($request->data(true)['id'] ?? '', 'Shop.item.id');
     if ($id === false) {
         return self::reply($request, 0, 'This item is no longer available.');
     }
+    // Why: turning the flag off is a persist, not a GET — CRC and rights already ran.
     // ...
 }
 ```
+
+**Section** examples: `DACore → Users → Two-factor (`{prefixUrl}/dacore/users/{id}/two-factor`)` · `Public: POST /api/v1/auth/Shop/checkout`.
+
+**About** examples: `insert one shop_items row; it is the catalog product the public site lists` · `send the 2FA SMS after PHP verified the actor`.
+
+A `Events::trigger('module.…hook'` needs its **own** five-line `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block ([41](41-MODULE-HOOKS.md) §3) — that does not replace `Section:` on the action.
+
+| Wrong (fail the gate) | Right |
+|-----------------------|--------|
+| Controller/middleware public method with no `CRCchecking —` first line | First line names the **real** prefix/middleware/action/`none` |
+| `CRCchecking — prefix … MUST NOT crcCheck()` **and** `$request->crcCheck()` in the body | Prefix **XOR** action — never both |
+| `/** @return array<string, mixed> */` only | `CRCchecking —` (if a route) then purpose sentence **above** the tags |
+| `@return mixed` / `@return array` with no meaning | `@return array{id:int,title:string}\|null` plus “null when missing or forbidden” |
+| Docblock that restates the method name (`toggleItem` → `Toggles item.`) | Say **what in the product** it changes and **who** it is for |
+| Prompt-echo in PHPDoc (`As requested, this saves…`) | Product-facing purpose, same tone as comments |
 
 **MUST NOT:**
 
@@ -218,7 +303,7 @@ Part of the finish gate ([00](00-AGENT-CONTRACT.md) §2c). Grep **your module + 
 | # | Grep / look at | Fail if |
 |---|----------------|---------|
 | 1 | `->all()` | a table that can grow is dumped without `paginate()` / `limit` |
-| 2 | `foreach` blocks | a query, an HTTP call, a rights check, or a `Logger` line **inside** the loop (N+1) |
+| 2 | `foreach` blocks | a query, an HTTP call, a rights check, a `Logger` line, or `Events::trigger` **inside** the loop of a growing list (N+1 / N events) |
 | 3 | `select('*')`, `select("*")` | a list screen fetching columns it never prints |
 | 4 | `in_array(`, `array_merge(`, `array_map(` | O(n²) lookup or a full array copy per iteration on data that scales |
 | 5 | new `where(` / `orderBy(` columns | the column is not covered by an index (leftmost prefix counts) → add it in a **new** `Installation.php` version |
@@ -226,7 +311,9 @@ Part of the finish gate ([00](00-AGENT-CONTRACT.md) §2c). Grep **your module + 
 | 7 | `Cache::`, `Config::db('cache')` | caching something cheap, no TTL, or no invalidation on write |
 | 8 | `file_get_contents(`, `json_encode(` | a whole big file / an unbounded payload in memory |
 | 9 | `$css`, `$js`, new assets | a library DACore already ships; a second file that could be one |
-| 10 | new public methods | no docblock (purpose, `@param`, `@return`) |
-| 11 | the diff, comment by comment | comments that restate the code or echo the prompt; a logical step with no **why**; leftover `TODO` / dead code |
+| 10 | new public methods | no PHPDoc **purpose sentence**; tags-only (`@return array<string, mixed>` with no description); missing `@param` / `@return` meaning; a `Controllers/` / `Middleware/` public method whose PHPDoc does **not** start with `CRCchecking —`; that line names a CRC prefix **and** the body still calls `crcCheck(` |
+| 11 | the diff, comment by comment | comments that restate the code or echo the prompt; a logical step with no `// Why:`; a new page action with no `// About:` / `// Section:`; leftover `TODO` / dead code |
+
+**MUST NOT** skip a **named** useful `module.{mod}.{name}.hook` “for performance” — unused `trigger()` is cheap. **MUST NOT** fire a hook on every save to dodge this row ([41](41-MODULE-HOOKS.md)).
 
 **Pass →** continue or say done. **Fail →** fix now.

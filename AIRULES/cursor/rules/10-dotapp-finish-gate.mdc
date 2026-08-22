@@ -11,7 +11,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 
 | Check | Fail if |
 |-------|---------|
-| **CRC once** | `crcCheck()` in middleware/`before` **and** in the action; CRC on GET; CRC on `$request->upload()` |
+| **CRC once** | `crcCheck()` in middleware/`before` **and** in the action; CRC on GET; CRC on `$request->upload()`; PHPDoc `CRCchecking —` names a prefix **and** the method still `crcCheck()`; a new public controller/middleware method with no `CRCchecking —` first line |
 | **IDs** | Plain `value="7"` / `data-id="7"` / `{{ var: $id }}` sent to the browser — need `{{ enc(Shop.item.id): $id }}` unique `$key2` |
 | **Queries** | User input in SQL; `$qb->raw()` `?` that is not a binding (comments count) |
 | **Inputs** | Password/HTML/hash from `$request->data()` not `data(true)`; persist only gated in JS |
@@ -19,7 +19,9 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Visible outcome** | Silent `.after()`; success with no toast/status; field errors without marking the input (`AIRULES/00` §2d) |
 | **Privilege / records** | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password with no current-password check (`AIRULES/11` §11) |
 | **Catch reported** | A `catch` or `execute()` `$err` that does not call the module report helper → `dotapp.catch` + `dotapp.catch.error|info`; ad-hoc payload keys; a secret/token/request body in the payload (`AIRULES/18` §9) |
-| **Perf / readability** | `->all()` on a growing table; query/HTTP/log inside `foreach`; `select('*')` on a list; O(n²) or array copy per row; a new `WHERE`/`ORDER BY` column with no index; an index with no comment naming its query; a public method with no docblock; comments that restate the code (`AIRULES/25` §8) |
+| **Perf / readability** | `->all()` on a growing table; query/HTTP/log inside `foreach`; `select('*')` on a list; O(n²) or array copy per row; a new `WHERE`/`ORDER BY` column with no index; an index with no comment naming its query; a public method with tags-only PHPDoc (`@return array<string, mixed>` and no purpose sentence); comments that restate the code (`AIRULES/25` §8) |
 | **Threat pass** | Unescaped user string in a view or `.html()`; sort/insert column from the request; input in `header()` / redirect / `HttpHelper` URL; `eval`/`exec`/`unserialize`; public POST with no `throttle()`; `getMessage()` / `var_dump` in the reply; upload without ext + `finfo` + headers (`AIRULES/24` §11) |
+| **Hooks** | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save; secrets; `trigger()` inside a growing `foreach`; `return false` as a veto instead of `triggerWithVeto()` + `Veto` (`AIRULES/41`) |
+| **Comments** | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; controller/middleware public method whose PHPDoc does not start with `CRCchecking —` (`AIRULES/25` §7) |
 
 Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.

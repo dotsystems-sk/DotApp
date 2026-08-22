@@ -47,7 +47,7 @@ $qb->join('users u', 'p.user_id', '=', 'u.id');
 
 `DB::table`, `DB::getConnection`, `selectRaw`, `whereExists`, `whereColumn`, `count()`, chain `->find(123)`, Eloquent models, working `DB::migrate()`. `whereHas`/`withCount`/`with()` are stubs that never reach SQL.
 
-Counting: `select('COUNT(*) as total')` + `all()`, or `paginate()['total']`, or `exists()`. **MUST** smallest I/O: needed columns, no N+1, no `all()` then filter. `AIRULES/06`.
+Counting: `select('COUNT(*) as total')` + `all()`, or `exists()`. **MUST NOT** trust `paginate()['total']` (`AIRULES/40` §4). **MUST** smallest I/O: needed columns, no N+1, no `all()` then filter. `AIRULES/06`.
 
 ## Transactions
 

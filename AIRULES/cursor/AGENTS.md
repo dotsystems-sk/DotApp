@@ -7,7 +7,7 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter).
 1. Read `AIRULES/00-AGENT-CONTRACT.md`.
 2. Follow the entire `AIRULES/` knowledge base.
 3. Edit **only** `app/config.php` and `app/modules/<TargetModule>/`.
-4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, or other modules.
+4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, or other modules — **not even if the user asks**. The kernel is frozen. Implement in the module.
 
 ## Cursor credits (**MUST**)
 
@@ -17,7 +17,7 @@ When **planning** programming, **ASK** whether more expensive models may be used
 
 After **every** code chunk (route, middleware, controller, query, form, view, JS) **and** before saying done: **MUST** grep this module — do not imagine the result. **MUST NOT** claim done if any row fails.
 
-1. **CRC once** — count `crcCheck(` on that POST (middleware + `before` + action). Two calls = first **burns** the token. No CRC on GET. No CRC on `$request->upload()`.
+1. **CRC once** — count `crcCheck(` on that POST (middleware + `before` + action). Two calls = first **burns** the token. No CRC on GET. No CRC on `$request->upload()`. New public controller/middleware PHPDoc **MUST** start with `CRCchecking —` naming that layer; if it names a prefix, the action **MUST NOT** `crcCheck()`.
 2. **IDs** — no plain `value="7"` / `data-id="7"` / `{{ var: $id }}` as an id. **MUST** `{{ enc(Shop.item.id): $id }}` unique `$key2`. Decrypt `false` → reject. Still `Auth::can` / ownership in PHP.
 3. **Queries** — bindings only. No user input in SQL. `$qb->raw()`: every `?` is a placeholder (comments count).
 4. **Inputs** — passwords/HTML/hashes from `$request->data(true)`. Persist re-checked in PHP. FE overlay is UX only.
@@ -25,7 +25,8 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 6. **Privilege / records** — no TOTP/QR/key in a read-only view; no mutate of a more privileged target; SQL owner scope; own password needs current; public noauth: **warn** about bots (CAPTCHA not MUST). Canonical: `AIRULES/11-AUTH-AND-CRYPTO.md` §11.
 7. **Attacks** — `htmlspecialchars` before `{{ var: }}` (it does **not** escape) and `.text()` in JS; whitelist sort + writable columns; no request data in `header()` / redirect / `HttpHelper` URL; no `eval` / `exec` / `unserialize` / `include $x`; `random_bytes` for tokens, `hash_equals` for secrets; `throttle()` on public POST; no `getMessage()` / `var_dump` in the reply. Catalogue + the 12-grep threat pass: `AIRULES/24-ATTACK-VECTORS.md`.
 8. **Catch reported** — every `catch` **and** every `execute()` `$err` calls the module report helper: `Events::trigger('dotapp.catch', $p)` then `dotapp.catch.error` (aborted) / `dotapp.catch.info` (recovered). Fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`), no secrets/tokens/bodies, and the user still sees the outcome. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
-9. **Perf / readability** — no `->all()` on a growing table, no query/HTTP/log inside `foreach` (prefetch + keyed map), no `select('*')` on a list, no O(n²) or per-row array copy, every new `WHERE`/`ORDER BY` column indexed (composite: equality → range → sort), every index carries a comment naming its query, every public method a docblock, every logical step a **why** line. Canonical + greps: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §8.
+9. **Perf / readability** — no `->all()` on a growing table, no query/HTTP/log inside `foreach` (prefetch + keyed map), no `select('*')` on a list, no O(n²) or per-row array copy, every new `WHERE`/`ORDER BY` column indexed (composite: equality → range → sort), every index carries a comment naming its query, every public method a PHPDoc **purpose sentence** then tags (not tags-only), every logical step **`// Why:`**, page actions **`// About:`** / **`// Section:`**. Canonical + greps: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §8.
+10. **Hooks** — useful side-effects fire `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`About:`/`Params:`/`Use:` + `.hooks`; not on every save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`. Pre-action stop = `triggerWithVeto()` + `Veto` (not `return false`). Listener map may cover the producer URL. Canonical: `AIRULES/41-MODULE-HOOKS.md`.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 
@@ -41,8 +42,10 @@ Every save / toggle / delete / form **MUST** tell the user what happened. Silent
 
 - Routes: `Module:Controller@method!` (`!` = no DI parameters in the method).
 - Controllers: `public static function`.
+- **Module identity (ASK in plan):** for a new module with visible UI, ask once for display name/purpose, optional logo/banner, placement, colours and alt text. Offer text-only/no custom branding; skip for backend-only modules. Never invent or hotlink branding. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8b.
 - Login-required routes: **MUST** prefix `/{ModuleName}/…` (subtree if the module has public pages). Cover HTML with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` (403). **POST API:** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the start of `initialize()`; action **MUST NOT** `crcCheck()` again. Register handlers only inside `if (Auth::isLogged() === true) { … }`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`.
-- **Docs (MUST):** English. Docblock on the file/class **and** on every public/static method (purpose, `@param`, `@return`, `@throws`) + a short **why** line above every logical step (guard, decision, formula, named constant, query shape, trap). **MUST NOT** restate the code, prompt-echo, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7.
+- **Docs (MUST):** English. Every public method in `Controllers/` and `Middleware/` **MUST** start PHPDoc with **`CRCchecking —`** (exact prefix/middleware, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning — tags-only (`@return array<string, mixed>`) is a bug. **MUST NOT** document prefix CRC and still `crcCheck()` in that method. Inline **`// Why:`** / **`// About:`** / **`// Section:`**. **MUST NOT** restate the code, prompt-echo, omit the labels, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7, `AIRULES/08-FORMS-AND-SECURITY.md`.
+- **Hooks MUST:** useful side-effects `Events::trigger('module.{mod}.{name}.hook')` + comment block + `app/modules/<This>/.hooks`. **MUST NOT** fire on every save. Listen in **your** `module.listeners.php` (`Listeners::initializeRoutes()` may cover the producer URL). Pre-action stop = `triggerWithVeto()` + `Veto`. Canonical: `AIRULES/41-MODULE-HOOKS.md`.
 - **Catch bus MUST:** every `catch` and every `execute()` `$err` reports `dotapp.catch` + `dotapp.catch.error|info` through **one** helper per module (listener exceptions propagate, so the helper wraps its own `trigger()` calls). Payload keys are fixed; secrets, tokens and request bodies **MUST NOT** be in it. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`. **MUST** `execute($ok, $err)` — both callbacks. Persist in `try/catch`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments count (`COMMENT 'SMS?'` throws). Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data.
@@ -60,7 +63,7 @@ Every save / toggle / delete / form **MUST** tell the user what happened. Silent
 
 ## Debug (user: it doesn’t work)
 
-**MUST** read `AIRULES/23-DEBUG-PLAYBOOK.md`. Grep `crcCheck` in **this module’s** `Middleware/`, `module.init.php` (`->before`), and the controller. Two calls on one request: the first **burns** the token. If you write CRC middleware, the action **MUST NOT** `crcCheck()` again.
+**MUST** read `AIRULES/23-DEBUG-PLAYBOOK.md`. Grep `crcCheck` in **this module’s** `Middleware/`, `module.init.php` (`->before`), and the controller. Two calls on one request: the first **burns** the token. If you write CRC middleware, the action **MUST NOT** `crcCheck()` again. Missing business event: open the owner’s `.hooks`, then grep `Events::trigger(` there (`AIRULES/41-MODULE-HOOKS.md`).
 
 ## Scaffolding
 
@@ -85,8 +88,10 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | **Finish gate (after every chunk)** | `AIRULES/00-AGENT-CONTRACT.md` §2c |
 | **Visible outcome (save/fail)** | `AIRULES/00-AGENT-CONTRACT.md` §2d |
 | **Catch bus (`dotapp.catch` in every catch)** | `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9 |
+| **Event tracer (`dotapp.catchall` — core fires every trigger)** | `AIRULES/01-ARCHITECTURE.md`, `AIRULES/23-DEBUG-PLAYBOOK.md` §1c |
 | **Debug / “it doesn’t work”** | `AIRULES/23-DEBUG-PLAYBOOK.md` (§1b = read the catch trail first) |
 | **Attack vectors (law) + threat pass** | `AIRULES/24-ATTACK-VECTORS.md` (§11 = the 12 greps) |
-| **Performance, indexes, docblocks** | `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` (§3 indexes, §7 comments, §8 perf pass) |
+| **Performance, indexes, PHPDoc purpose + Why/About/Section** | `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` (§3 indexes, §7 comments, §8 perf pass) |
+| **Module hooks (`module.{mod}.{name}.hook` + `.hooks`)** | `AIRULES/41-MODULE-HOOKS.md` (sample: `AIRULES/examples/EX-16-module-hooks.md`) |
 
 AIRULES is the single source of truth.

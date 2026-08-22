@@ -16,7 +16,7 @@ ASK FIRST:
 - app/listeners.php
 - .htaccess (prefer: php dotapper.php --create-htaccess)
 
-FORBIDDEN (never):
+FORBIDDEN (never, not even if the user asks — kernel is frozen):
 - app/parts/**
 - app/DotApp.php
 - app/vendor/**
@@ -31,6 +31,10 @@ From project root:
   php dotapper.php --module=Name --create-middleware=X
   php dotapper.php --module=Name --create-model=X
 --module= must come BEFORE create-* flags.
+
+## MODULE IDENTITY (ASK IN PLAN)
+New module with visible UI: ask once for display name/purpose, optional logo/banner, placement, colours and alt text.
+Offer text-only/no custom branding; skip backend-only modules. Never invent or hotlink branding. AIRULES/05 §8b.
 
 ## CONTROLLERS / ROUTES
 - public static methods extending \Dotsystems\App\Parts\Controller
@@ -88,13 +92,26 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   fixed payload = severity, module, source (Shop:Items@save), operation (shop.item.update), message, exception,
   code, file, line, time + context (ids/counts), user_id; NO passwords/tokens/2FA codes/request bodies;
   reporting is EXTRA — the user still sees the outcome; helper wraps its own trigger() (listener exceptions propagate)
+- Event tracer (AIRULES/01, AIRULES/23 §1c): core fires `dotapp.catchall` on every trigger() except itself;
+  listener = function ($result, $eventname, ...$data); subscribe, do NOT trigger it; cheap + own try/catch (a throw aborts the original event)
 - Perf pass (AIRULES/25 §8): no ->all() on a growing table; no query/HTTP/log inside foreach (whereIn prefetch + keyed map);
   no select('*') on a list; no in_array()/array_merge per iteration; every new WHERE/JOIN/ORDER BY column indexed
   (composite = equality -> range -> sort, leftmost prefix, no duplicate prefix); one comment line per index naming its query;
   realistic column types (decimal money, FK bigInteger unsigned to match id()); new index = new Installation.php version + indexExists()
-- Docs (AIRULES/25 §7): docblock on file/class + every public method (@param/@return/@throws)
-  and a short WHY line above every logical step — never narration of the code, never prompt-echo, no dead code / bare TODO
-Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md, AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
+- Module hooks (AIRULES/41, AIRULES/00 §2g): useful side-effects MUST Events::trigger('module.{mod}.{name}.hook')
+  with Hook:/Why:/About:/Params:/Use: above trigger(); document in app/modules/<Module>/.hooks;
+  MUST NOT fire on every save; MUST NOT old shop.item.saved shape; MUST NOT secrets/OTP/tokens on the bus;
+  MUST NOT treat listener return as a veto (pre-action stop = triggerWithVeto + Veto only);
+  MUST NOT trigger() inside foreach of a growing list (one batch event);
+  listener initializeRoutes() may cover the producer URL (omit/null inherits);
+  react to another module by reading THEIR .hooks then Events::on in YOURS — do not patch them
+- Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
+  (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
+  then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);
+  NOT prefix CRC + crcCheck() in the same method;
+  labeled // Why: (logical step), // About: (what the chunk is), // Section: (menu/route) —
+  never narration of the code, never unlabeled Why prose, never prompt-echo, no dead code / bare TODO
+Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md, AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md, AIRULES/41-MODULE-HOOKS.md
 
 ## VISIBLE OUTCOME (LAW)
 Every save/toggle/delete MUST show success and fail on the FE.

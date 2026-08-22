@@ -6,9 +6,11 @@
 - [ ] Read `00-AGENT-CONTRACT.md`
 - [ ] Read task-specific AIRULES doc (views/DB/forms/JS)
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
-- [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, other modules
+- [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, `index.php`, other modules — **not even if asked** (kernel is frozen). DACore stays the informed exception in [00](00-AGENT-CONTRACT.md) §1 only.
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
-- [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest) — [00](00-AGENT-CONTRACT.md) §2c
+- [ ] New visible module: asked once for public name/purpose, installer identity (text-only / compact logo / wide banner), existing local asset + alt text, optional landing/header placement and colours ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b)
+- [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
+- [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
 
 ## Scaffold checklist
 
@@ -16,6 +18,9 @@
 - [ ] Controllers/models/middleware created via `--module=... --create-*`
 - [ ] `--module=` appeared **before** create flag
 - [ ] Namespaces match `Dotsystems\App\Modules\{Name}\...`
+- [ ] DACore-bound module: `about.php` in the module root (about + license + changelog HTML); user was **asked** for that copy if they did not supply it ([35](35-DACORE-INSTALL.md) §3b). Pack or host-that-picks-packs: `extra1`…`extra5` **asked** and match the host contract ([35](35-DACORE-INSTALL.md) §3c)
+- [ ] Installer image (if chosen) is one optimised local raster under `about-assets/`, referenced from `about` with real `width`/`height` + correct `alt`; no external URL/SVG/script/tracker; desktop + narrow preview checked
+- [ ] Sidebar Remix `icon` was selected separately — it was not treated as the installer/module logo
 
 ## Routing / controller checklist
 
@@ -25,6 +30,7 @@
 - [ ] Methods are `public static`
 - [ ] Params via `$request->matchData()`
 - [ ] Login-required / admin routes: `{prefixUrl}/{ModuleName}/…` + `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`); handlers **only** inside `if (Auth::isLogged() === true)` — those pages **MUST NEVER** show to anonymous users ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
+- [ ] `initializeRoutes()` lists **only this module’s** prefixes (HTML + `/api/v1/auth|noauth/{Module}`). `Listeners::initializeRoutes()` may be narrower or `null` to inherit. Did **not** return `['*']` unless the user asked for a global hook. Did **not** `include` another module to list/describe it. After either list changed: `--optimize-modules` ([03](03-MODULES-AND-ROUTING.md))
 - [ ] Trap-prone spots have a short **English why** comment — not every line
 - [ ] No named routes / Laravel group APIs invented
 
@@ -37,6 +43,7 @@
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
 - [ ] User-visible strings are product copy — not prompt-echo / “this user can…” ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
+- [ ] **Layout / UX-UI:** every new button has padding vs the parent (especially **bottom**), is centered or aligned to siblings, and is not flush to the card/page edge ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c)
 - [ ] No PHP function names in `setViewVar` / `setLayoutVar` / `PrivateBlock::set` (`time`, `copy`, `count`, `key`, `header`, `date`, `sort`, `file`, …) — sandbox **drops the whole var**; empty `foreach` with a visible heading is this, not a broken template ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
 
 ## Database checklist
@@ -52,7 +59,7 @@
 - [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items`, `dotapp_*`, or `dacore_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
-- [ ] Growing lists (users, logs, items, orders) use `paginate()` on **first ship** — not `->all()` into the view; “few rows now” is not a skip ([06](06-DATABASE.md))
+- [ ] Growing lists (users, logs, items, orders) use COUNT + LIMIT + the [40](40-DACORE-LIST-PAGER.md) pager on **first ship** — not `->all()`, not `paginate()['total']` as last_page, not “few rows now”
 - [ ] Cheap I/O: `exists()` / `COUNT(*)` / `limit(1)` / only needed columns / no N+1 in `foreach` ([06](06-DATABASE.md))
 
 ## Error-handling checklist (see 18)
@@ -92,7 +99,7 @@
 - [ ] New / ported `$dotapp` libraries follow [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 / [EX-15](examples/EX-15-dotapp-js-library.md) (`dotapp-register`, `fn()`, `this.load` — no `$.ajax`)
 - [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
 - [ ] Deletes use a graphical confirm dialog first — never `alert()` / `window.confirm()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
-- [ ] Accumulating lists have an **interactive AJAX** pager (`type="button"` + `$dotapp().load()`, overlay while in flight, patch rows **and** pager) — not missing, not `<a href="?page=">` / `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] Accumulating lists follow [40](40-DACORE-LIST-PAGER.md): `dacore-list-pager` (no `--split`), `button.page-link.{module}-page`, encrypted `data-page`, `$dotapp().live(..., function (el, e)`, overlay, patch rows **and** pager — not `<a href="?page=">` / `replaceState` / `e.currentTarget`
 - [ ] Lookup lists (articles, products, catalog, …) have **interactive AJAX search** (debounce, 3+ chars, SQL + `paginate()`) unless the user declined; other lists were **asked** in the plan — not JS-filter of `->all()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] List plan **asked** filters / sort / bulk / page size / DSM remember / CSV-if-it-fits; empty state + sticky header + match highlight shipped when required ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
@@ -130,7 +137,7 @@
 - [ ] Did **not** register a “Return back” row (DACore appends it on a branch `$menuId`)
 - [ ] Edit/detail admin pages keep the list/section leaf active: `withMenu` 7th `$currentFile` when the URL is not under that leaf — no extra menu row per edit URL ([31](31-DACORE-MENU.md))
 - [ ] Trigger while coding is **`install.php`** + live root init files; `installed_*` renamed back after a new version ([07](07-SCHEMA-AND-INSTALL.md), [35](35-DACORE-INSTALL.md) §4)
-- [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack: zip **MUST** contain `dainstall.php` (renamed from `install.php`) + `init/` live copies + inert root init; **MUST NOT** contain `install.php` (DACore rejects it / Installation never runs); working tree restored ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5)
+- [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack: zip **MUST** contain `dainstall.php` (renamed from `install.php`) + `init/` live copies + inert root init + **`about.php`**; **MUST NOT** contain `install.php` (DACore rejects it / Installation never runs); working tree restored ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5)
 - [ ] Root init files were **not** blanked unless packing a zip
 - [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs**
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
@@ -158,6 +165,8 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - [ ] `form()` error callback + `null`/`false` guarded; JS shows `reply.message`
 - [ ] Upload endpoints do **not** `crcCheck()`
 - [ ] Read the catch trail: temporarily `Events::on('dotapp.catch', …)` in **your** module (or check the log) to see `operation`, `source`, `message` of the real failure instead of guessing ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
+- [ ] Building a debugger / hunting a missing event: subscribe to core `dotapp.catchall` in **your** module (`function ($result, $eventname, ...$data)`), gated, own `try/catch` — **MUST NOT** trigger it yourself or add it under `app/modules/DACore/` ([23](23-DEBUG-PLAYBOOK.md) §1c)
+- [ ] Missing business event: open `app/modules/<Owner>/.hooks`, then grep `Events::trigger(` there — do **not** invent a name the owner never fires ([41](41-MODULE-HOOKS.md))
 - [ ] Admin routes use `#Shop:Rights@check!` — not `#DACore:AuthTest@check!` as a rights guard
 - [ ] Did **not** “fix” it by editing `app/modules/DACore/`
 
@@ -171,7 +180,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - [ ] **Migration:** a new index / column shipped as a **new version** in `Installation.php`, guarded by `indexExists()` / `columnExists()`, then `installed_*_install.php` renamed back to `install.php`
 - [ ] **Cache:** used only for expensive cross-request data, with TTL **and** invalidation on write; `Config::db('cache')` untouched
 - [ ] **Frontend:** DACore searched first (no duplicate library), then one CSS + one JS in your module, delegated handlers, one DOM write per batch, debounced search, lazy images ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §6)
-- [ ] **Docs:** file/class docblock; every public method has purpose + `@param` + `@return` (+ `@throws`); every logical step has a short **why** comment ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
+- [ ] **Docs:** file/class docblock; every public method in `Controllers/` / `Middleware/` starts with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`); then a **purpose sentence** then `@param` + `@return` (+ `@throws`) with meaning — not tags-only; logical steps use **`// Why:`**; page actions have **`// About:`** and **`// Section:`** ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
 - [ ] **No noise:** no comment that restates the code, no prompt-echo, no dead code / commented-out blocks, no bare `TODO`, no `$tmp` / 200-line method
 
 ## Attack-surface checklist (canonical: [24](24-ATTACK-VECTORS.md))
@@ -196,23 +205,25 @@ Tick only the rows for the surface you touched.
 
 **MUST** after **every** code chunk. **MUST NOT** claim done until every applicable row was actually grepped — not imagined.
 
-- [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::` / `#DACore:AuthTest@CRC!` / `LoginAndCRC!`), Controllers — **one** call per POST (API prefix **XOR** action). Not on GET/HTML login `before`. Not on `$request->upload()`. Action does **not** `crcCheck()` after a CRC prefix
+- [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::` / `#DACore:AuthTest@CRC!` / `LoginAndCRC!`), Controllers — **one** call per POST (API prefix **XOR** action). Not on GET/HTML login `before`. Not on `$request->upload()`. Action does **not** `crcCheck()` after a CRC prefix. New public controller/middleware methods start PHPDoc with **`CRCchecking —`** matching that layer ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
 - [ ] No plain record IDs in HTML/JSON (`value="7"`, `data-id="7"`, `{{ var: $id }}` as an id) — `{{ enc(Shop.item.id): $id }}` unique `$key2`; decrypt `=== false` rejected; PHP still `Auth::can` / ownership ([11](11-AUTH-AND-CRYPTO.md) §8)
 - [ ] Privilege / records grepped: secrets not in read-only views; SQL has owner (or can on that row); no escalate; public noauth bot **warning** if applicable ([11](11-AUTH-AND-CRYPTO.md) §11)
 - [ ] Queries use bindings; no user input in SQL strings; `$qb->raw()` has no `?` except real bindings ([06](06-DATABASE.md))
 - [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, step-up 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate; rights via `#YourModule:Rights@check!` — **not** `#DACore:AuthTest@check!` ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
 - [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. **Admin:** grepped DACore, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
+- [ ] **Layout / UX-UI:** grepped/read the chrome you added — buttons have padding vs parent (esp. bottom); not flush; aligned to siblings; `pt-0` footers still have `pb-*` / CSS padding-bottom ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c)
 - [ ] **Catch reported:** grepped `catch (` and `execute(` in this chunk — each one reports `dotapp.catch` + `dotapp.catch.error|info` with the fixed payload and no secrets ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 - [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, duplicated DACore library, missing docblock, comments that restate the code)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning, no `dacore_*` write)
+- [ ] **Hooks:** grepped `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/`; pre-action stop uses `triggerWithVeto()` + `Veto`, not `return false` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
 - [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)
 - [ ] No Laravel/Blade/jQuery APIs introduced
 - [ ] `--list-routes` or manual route review if routes changed
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)
-- [ ] Users/logs/items (or any accumulating list) shipped with **interactive AJAX** pager — not omitted, not a full-page `?page=` reload
+- [ ] Users/logs/items shipped with the [40](40-DACORE-LIST-PAGER.md) pager — not omitted, not `?page=` / `replaceState`, not `e.currentTarget`, not `paginate()['total']` as last_page
 - [ ] Lookup lists shipped with AJAX search (or the user declined); other lists were asked in the plan
 - [ ] User-facing summary mentions AIRULES docs followed
 
@@ -238,7 +249,12 @@ Tick only the rows for the surface you touched.
 - Custom OTP digit widget instead of `$dotapp().twoFactor`
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
-- Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `location.reload()` — both are incomplete
+- Save / primary button flush against the card or page edge; `pt-0` footer with no bottom padding; uncentered vs sibling cards ([00](00-AGENT-CONTRACT.md) §2f)
+- Successful SMS/mail/payment/lockout with no `module.{mod}.{name}.hook`, or a trigger missing from `.hooks` / missing `Hook:` comment ([41](41-MODULE-HOOKS.md))
+- Hook on every save “just in case”; old `shop.item.saved` name ([41](41-MODULE-HOOKS.md))
+- Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc that is only `@return array<string, mixed>`; controller/middleware public method with no `CRCchecking —` first line ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
+- `.hooks` under `assets/` or named `hooks.md`; secrets/OTP/tokens on the event bus; `trigger()` inside `foreach` of a growing list; patching another module instead of `Events::on` ([41](41-MODULE-HOOKS.md))
+- Growing list (users, logs, items, …) with **no pager**, or a pager that reloads via `<a href="?page=">` / `replaceState`, or `live` handler `function (e) { e.currentTarget }` — [40](40-DACORE-LIST-PAGER.md)
 - Lookup list (articles, catalog, …) with **no search**, or search that filters `->all()` in JS / reloads the page
 - `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
 - JS overlay/modal as the only 2FA or save check — PHP must refuse without valid proof

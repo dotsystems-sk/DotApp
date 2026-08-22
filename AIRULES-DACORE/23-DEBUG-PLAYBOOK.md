@@ -43,6 +43,34 @@ Log files need `Config::logger('core_log_enabled', true)` ([20](20-CACHE-LOGGER-
 
 ---
 
+## 1c. Event tracer — `dotapp.catchall` (when building a debugger, or hunting a missing event)
+
+The core fires **`dotapp.catchall` on every `trigger()`** except itself ([01](01-ARCHITECTURE.md) Built-in events). That is the **one** listener a debug tool **MUST** use to see the whole event stream. Implement it in **your** module — **MUST NOT** add anything under `app/modules/DACore/`. It is **not** `dotapp.catch` (failures only — §1b).
+
+```php
+// Temporary, in YOUR module's module.listeners.php — remove or gate when done.
+Events::on('dotapp.catchall', function ($result, $eventname, ...$data) {
+    try {
+        Logger::use('debug')->warning($eventname, ['argc' => count($data)]);
+    } catch (\Throwable $ignored) {
+        // A throw here aborts the original event — never let that happen.
+    }
+});
+```
+
+| Need | Subscribe to |
+|------|----------------|
+| Every event in the request (boot, router, module, log, catch reports) | `dotapp.catchall` — core |
+| Structured failures (`operation`, `source`, `message`) | `dotapp.catch` — your report helper |
+| A named business step (`module.shop.sms_sent.hook`) | That exact name from the owner’s `.hooks` ([41](41-MODULE-HOOKS.md)) |
+| Log lines | `dotapp.log` ([20](20-CACHE-LOGGER-SESSION.md)) |
+
+**MUST NOT:** `Events::trigger('dotapp.catchall', …)` (core already does it); trigger other events from this listener; persist every event without an opt-in flag; log `$result` wholesale (secrets); push a DACore inbox notification per event ([37](37-DACORE-NOTIFICATIONS.md)). Canonical: [12](12-SERVICES.md) §2.
+
+**Hunting a missing business event:** open `app/modules/<Owner>/.hooks` (Fired section), then grep `Events::trigger(` in that module. If the name is not there, it was never fired — **MUST NOT** invent it. Ordinary saves may have **no** hook by design ([41](41-MODULE-HOOKS.md)). Catchall will only show names that were actually triggered.
+
+---
+
 ## 2. Grep first (**MUST**)
 
 Count every `$request->crcCheck()` / `crcCheck(` on the **failing route’s pipeline** — not only the controller.
@@ -57,6 +85,8 @@ Count every `$request->crcCheck()` / `crcCheck(` on the **failing route’s pipe
 | DACore route wrappers | `#DACore:AuthTest@check!` and your `#Shop:Rights@check!` — AuthTest is **not** a rights guard ([32](32-DACORE-RIGHTS.md), [36](36-DACORE-KNOWN-ISSUES.md) §1) |
 
 **Two or more `crcCheck()` on one request = the first call burned the one-time token; the second returns `false`.** That is the usual “Bad request” after a generic CRC middleware.
+
+Read the action’s first PHPDoc line **`CRCchecking —`**. If it already names a CRC prefix/middleware (`#DACore:AuthTest@CRC!` / `LoginAndCRC!` / Gate), the body **MUST NOT** call `crcCheck()`. A missing `CRCchecking —` line on a public controller/middleware method is a docs bug ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7).
 
 Canonical: [08](08-FORMS-AND-SECURITY.md) “`crcCheck()` burns the token”.
 
@@ -128,5 +158,6 @@ Do these **after** the framework list when the failing URL is under the admin sh
 3. **Installer** — live `install.php`; after a new version rename `installed_*` → `install.php`. Admin password from the wizard: `$request->data(true)`. [35](35-DACORE-INSTALL.md).
 4. **2FA** — operators keep 2FA on; dangerous actions need step-up. Boxes: `$dotapp().twoFactor`. [32](32-DACORE-RIGHTS.md) §6.
 5. **Did someone edit `app/modules/DACore/`?** Those changes vanish on update and are the wrong fix. Revert the idea; implement in the current module.
+6. **Pager click does nothing / CRC on page 2** — `$dotapp().live` first arg is the **element** (`function (el, e)`), not `e.currentTarget`. **MUST NOT** `history.replaceState` / `?page=` (Referer CRC). Total “1–10 of 10”: COUNT via `all()`, not `paginate()['total']`. [40](40-DACORE-LIST-PAGER.md).
 
 Full DACore trap list: [36](36-DACORE-KNOWN-ISSUES.md).

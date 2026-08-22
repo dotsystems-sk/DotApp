@@ -146,6 +146,7 @@ There is **no `Response::headers()`**. Set headers with PHP `header()` **before*
 | Secrets in the repo | Keys and credentials only in `app/config.php` (with fallbacks); never hardcoded in a module, comment, or example | [10](10-CONFIG-AND-SECRETS.md) |
 | PII / secrets in logs | Never log passwords, tokens, codes, card data, or whole request bodies | [20](20-CACHE-LOGGER-SESSION.md) |
 | Existence oracle | 403 vs 404 vs a different wording **MUST NOT** reveal that someone else’s record exists — same reply for “not yours” and “not there” | [11](11-AUTH-AND-CRYPTO.md) §11 |
+| Secrets on the event bus | `Events::trigger` payloads are ids / counts / flags — **never** passwords, TOTP/OTP, CRC, tokens, rights blobs, or request bodies. Same leak law as logs. Document names in `.hooks`, not secrets | [41](41-MODULE-HOOKS.md) |
 | Debug / admin endpoint left in | No “temporary” route without a gate; delete it before you say done | [03](03-MODULES-AND-ROUTING.md) |
 
 ---
@@ -197,3 +198,5 @@ Part of the finish gate ([00](00-AGENT-CONTRACT.md) §2c). Grep **your module + 
 | 12 | the diff + the route list | anything under `app/modules/DACore/`; a direct write to `dacore_*` / `users_rights*`; a public `noauth` endpoint shipped **without the bot warning in chat**; a registered URL with no handler |
 
 **Pass →** continue or say done. **Fail →** fix now. Only then claim the work is finished.
+
+Also fail the chunk if `Events::trigger(` carries a secret / request body, or if `.hooks` sits under `assets/` ([41](41-MODULE-HOOKS.md) — same leak law as §8).

@@ -91,7 +91,7 @@ Prefer Option A for Cursor.
 
 In the first message of a session (or pin it in Cursor User Rules / Project Rules):
 
-> You are working on a DotApp PHP project. Read `AIRULES/00-AGENT-CONTRACT.md` before any edit. Follow all files under `AIRULES/`. Never invent Laravel/Blade/Eloquent/jQuery APIs. Never edit `app/parts/`, `app/DotApp.php`, `dotapper.php`, or any module you were not asked to change. Allowed edits: `app/config.php` and `app/modules/<TargetModule>/` only.
+> You are working on a DotApp PHP project. Read `AIRULES/00-AGENT-CONTRACT.md` before any edit. Follow all files under `AIRULES/`. Never invent Laravel/Blade/Eloquent/jQuery APIs. Never edit `app/parts/`, `app/DotApp.php`, `dotapper.php`, or `index.php` — **not even if the user asks** (kernel is frozen). Allowed edits: `app/config.php` and `app/modules/<TargetModule>/` only.
 
 ## Step 4 — First-run secrets (new apps)
 

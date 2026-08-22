@@ -46,6 +46,7 @@ class Module extends \Dotsystems\App\Parts\Module
 
     public function initializeRoutes()
     {
+        // Own prefixes only — never ['*'] unless this module must run on every request
         return ['/Shop', '/Shop/*', '/api/v1/auth/Shop', '/api/v1/auth/Shop/*', '/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'];
     }
 
@@ -64,3 +65,7 @@ User overrides in `app/config.php`:
 Config::module('Shop', 'prefix', '/store');
 Config::module('Shop', 'enckey', 'PRODUCTION_HEX_SECRET');
 ```
+
+DACore-bound modules also **MUST** add root `about.php` (description, license, changelog HTML). **ASK** if the user did not provide that copy. Canonical: [35](../35-DACORE-INSTALL.md) §3b, [EX-D04](EX-D04-dacore-installer.md).
+
+After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** every save), fire `module.{lowercase_modulename}.{hook_name}.hook` and create **`app/modules/<Module>/.hooks`**. Sample: [EX-16](EX-16-module-hooks.md). Law: [41](../41-MODULE-HOOKS.md).

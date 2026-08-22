@@ -16,7 +16,7 @@ ASK FIRST:
 - app/listeners.php
 - .htaccess (prefer: php dotapper.php --create-htaccess)
 
-FORBIDDEN (never):
+FORBIDDEN (never, not even if the user asks — kernel is frozen):
 - app/parts/**
 - app/DotApp.php
 - app/vendor/**
@@ -32,6 +32,12 @@ From project root:
   php dotapper.php --module=Name --create-middleware=X
   php dotapper.php --module=Name --create-model=X
 --module= must come BEFORE create-* flags.
+
+## DACORE MODULE IDENTITY (ASK IN PLAN)
+Ask once for public name/purpose; installer preview = text-only / compact logo / wide banner;
+existing local asset + alt text; optional landing/header placement. No preference = text-only, do not block.
+Installer image = optimised raster in YOUR about-assets/, referenced from about.php with real width/height.
+Sidebar Remix icon is separate. No external URL/SVG/tracker and NEVER patch app/modules/DACore/. AIRULES/05 §8b, AIRULES/35 §3b.
 
 ## CONTROLLERS / ROUTES
 - public static methods extending \Dotsystems\App\Parts\Controller
@@ -92,13 +98,27 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   code, file, line, time + context (ids/counts), user_id; NO passwords/tokens/2FA codes/rights/request bodies;
   reporting is EXTRA — the user still sees the toast; helper wraps its own trigger() (listener exceptions propagate);
   nothing for this under app/modules/DACore/; no DACore notification per failure (flood)
+- Module hooks (AIRULES/41, AIRULES/00 §2g): useful side-effects MUST Events::trigger('module.{mod}.{name}.hook')
+  with Hook:/Why:/About:/Params:/Use: above trigger(); document in app/modules/<Module>/.hooks;
+  MUST NOT fire on every save; MUST NOT old shop.item.saved shape; MUST NOT secrets/OTP/tokens on the bus;
+  MUST NOT treat listener return as a veto (pre-action stop = triggerWithVeto + Veto only);
+  MUST NOT trigger() inside foreach of a growing list (one batch event);
+  listener initializeRoutes() may cover the producer URL (omit/null inherits);
+  react to another module by reading THEIR .hooks then Events::on in YOURS — do not patch them or DACore
+- Event tracer (AIRULES/01, AIRULES/23 §1c): core fires `dotapp.catchall` on every trigger() except itself;
+  listener in YOUR module = function ($result, $eventname, ...$data); subscribe, do NOT trigger it;
+  cheap + own try/catch (a throw aborts the original event); never under app/modules/DACore/; no inbox flood
 - Perf pass (AIRULES/25 §8): no ->all() on a growing table; no query/HTTP/rights check/log inside foreach (whereIn prefetch + keyed map);
   no select('*') on a list; no in_array()/array_merge per iteration; every new WHERE/JOIN/ORDER BY column indexed
   (composite = equality -> range -> sort, leftmost prefix, no duplicate prefix); one comment line per index naming its query;
   realistic column types (decimal money, FK bigInteger unsigned to match id()); new index = new Installation.php version + indexExists();
   never index or query dacore_* ; search DACore assets before adding a library
-- Docs (AIRULES/25 §7): docblock on file/class + every public method (@param/@return/@throws)
-  and a short WHY line above every logical step — never narration of the code, never prompt-echo, no dead code / bare TODO
+- Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
+  (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
+  then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);
+  NOT prefix CRC + crcCheck() in the same method;
+  labeled // Why: (logical step), // About: (what the chunk is), // Section: (menu/route) —
+  never narration of the code, never unlabeled Why prose, never prompt-echo, no dead code / bare TODO
 Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md, AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
 
 ## VISIBLE OUTCOME (LAW)
@@ -118,7 +138,9 @@ Module settings MUST have fallbacks:
 Treat app/modules/DACore/ like app/parts/. Never edit, patch, or ADD files there.
 DACore updates overwrite the whole module — local changes disappear.
 Use DotApp::call("DACore:…") only. Put all new work in app/modules/<YourModule>/.
-If asked to change DACore in place: refuse and implement it in your own module.
+If asked to change DACore in place: refuse and implement it in your own module
+  (edit DACore only if they themselves asked AND confirmed the update wipe — 00 §1).
+If asked to edit app/parts/, DotApp.php, dotapper.php, or index.php: MUST NOT. Kernel is frozen.
 
 ## LEARN MORE
 AIRULES/14-ANTIPATTERNS.md
@@ -126,4 +148,5 @@ AIRULES/15-KNOWN-ISSUES.md
 AIRULES/17-CHECKLISTS.md
 AIRULES/24-ATTACK-VECTORS.md
 AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
+AIRULES/41-MODULE-HOOKS.md
 AIRULES/cursor/AGENTS.md

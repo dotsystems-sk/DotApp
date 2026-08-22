@@ -1,0 +1,26 @@
+---
+description: DACore list pager — HTML classes, live(el,e), encrypted page, no ?page=
+alwaysApply: true
+---
+
+# List pager (LAW)
+
+Canonical: `AIRULES/40-DACORE-LIST-PAGER.md`. Sample: `AIRULES/examples/EX-D08-list-pager.md`.
+
+## MUST
+
+- Accumulating lists: COUNT(*) + LIMIT/OFFSET + interactive AJAX pager on first ship
+- HTML: `card-footer dacore-list-pager` (never `--split`, including DACore), `dacore-list-pager-summary`, `dacore-list-pager-nav`, `ul.pagination.mb-0`
+- Load `/assets/modules/DACore/css/pages/dotapp-ui/users.css` on `withMenu` `$css`
+- `DACore:Page@paginate!` `$callable` as **buttons**, `$href = null`
+- Encrypted `data-page` (`Crypto::encrypt`, unique `$key2`). Never `data-dacore-page` in your module
+- `$dotapp().live("click", ".shop-page", function (el, e) { … })` — **first arg is the element**
+- POST `/api/v1/auth/{Module}/…` + `LoginAndCRC!`; action **MUST NOT** `crcCheck()` again
+- Overlay the card; patch rows **and** pager; remove overlay on error too
+
+## MUST NOT
+
+- `function (e) { e.currentTarget }` — `$dotapp().live` calls `handler(el, e)`; clicks silently no-op
+- `<a href="?page=">`, `location.reload()`, `history.replaceState` of query params (burns CRC Referer)
+- `QueryObject::paginate()['total']` for last_page, or `total = count($rows)` of the current page
+- Invent pager CSS / DataTable / a second pagination library

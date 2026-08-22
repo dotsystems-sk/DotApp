@@ -156,6 +156,17 @@ Events::on('dotapp.catch', function ($payload) {
 });
 ```
 
+See **every** event (not only failures) — core `dotapp.catchall`. A debug tool **MUST** subscribe here. Listener arity is `($result, $eventname, ...$data)`. Gate it; own `try/catch`; do not trigger `dotapp.catchall` yourself. Canonical: [01](../01-ARCHITECTURE.md), [23](../23-DEBUG-PLAYBOOK.md) §1c.
+
+```php
+Events::on('dotapp.catchall', function ($result, $eventname, ...$data) {
+    try {
+        Logger::use('debug')->warning($eventname, ['argc' => count($data)]);
+    } catch (\Throwable $ignored) {
+    }
+});
+```
+
 ---
 
 ## Session (DSM)

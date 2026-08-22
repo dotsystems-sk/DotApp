@@ -7,7 +7,7 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter) th
 1. Read `AIRULES/00-AGENT-CONTRACT.md`.
 2. Follow the entire `AIRULES/` knowledge base.
 3. Edit **only** `app/config.php` and `app/modules/<TargetModule>/` (the module you are programming — including **its** assets).
-4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`.
+4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php` — **not even if the user asks**. The kernel is frozen. Implement in the module.
 5. **DACore default:** **Never** edit, patch, delete, or **add** anything under `app/modules/DACore/` (files **or** assets). **Never propose** a DACore edit. Implement in the current module.
 6. **DACore exception:** only if the user **themselves** asks to edit DACore **and** confirms they know the next update **wipes** those changes. Then edit DACore for that request. Vague “fix the admin” is not enough. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §1.
 
@@ -19,7 +19,7 @@ When **planning** programming, **ASK** whether more expensive models may be used
 
 After **every** code chunk (route, middleware, controller, query, form, view, JS) **and** before saying done: **MUST** grep this module — do not imagine the result. **MUST NOT** claim done if any row fails.
 
-1. **CRC once** — count `crcCheck(` on that POST (middleware + `before` + `#DACore:AuthTest@CRC!` / `LoginAndCRC!` + action). Two calls = first **burns** the token. No CRC on GET. No CRC on `$request->upload()`. Action **MUST NOT** `crcCheck()` after a CRC prefix.
+1. **CRC once** — count `crcCheck(` on that POST (middleware + `before` + `#DACore:AuthTest@CRC!` / `LoginAndCRC!` + action). Two calls = first **burns** the token. No CRC on GET. No CRC on `$request->upload()`. Action **MUST NOT** `crcCheck()` after a CRC prefix. New public controller/middleware PHPDoc **MUST** start with `CRCchecking —` naming that layer.
 2. **IDs** — no plain `value="7"` / `data-id="7"` / `{{ var: $id }}` as an id. **MUST** `{{ enc(Shop.item.id): $id }}` unique `$key2`. Decrypt `false` → reject. Still `Auth::can` / ownership in PHP.
 3. **Queries** — bindings only. No user input in SQL. `$qb->raw()`: every `?` is a placeholder (comments count).
 4. **Inputs** — passwords/HTML/hashes from `$request->data(true)`. Persist re-checked in PHP (incl. step-up 2FA). FE overlay is UX only.
@@ -27,7 +27,9 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 6. **Privilege / records** — no TOTP/QR/key in a read-only view; no mutate of a more privileged target; SQL owner scope; own password needs current; public noauth: **warn** about bots (CAPTCHA not MUST). Canonical: `AIRULES/11-AUTH-AND-CRYPTO.md` §11.
 7. **Attacks** — `htmlspecialchars` before `{{ var: }}` (it does **not** escape) and `.text()` in JS; whitelist sort + writable columns; no request data in `header()` / redirect / `HttpHelper` URL; no `eval` / `exec` / `unserialize` / `include $x`; `random_bytes` for tokens, `hash_equals` for secrets; `throttle()` on public POST; no `getMessage()` / `var_dump` in the reply; no write to `dacore_*` / `users_rights*`. Catalogue + the 12-grep threat pass: `AIRULES/24-ATTACK-VECTORS.md`.
 8. **Catch reported** — every `catch` **and** every `execute()` `$err` calls the module report helper: `Events::trigger('dotapp.catch', $p)` then `dotapp.catch.error` (aborted) / `dotapp.catch.info` (recovered). Fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`), no secrets/tokens/rights/bodies, helper and listener in **your** module, and the user still sees the toast. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
-9. **Perf / readability** — no `->all()` on a growing table, no query/HTTP/rights check/log inside `foreach` (prefetch + keyed map), no `select('*')` on a list, no O(n²) or per-row array copy, every new `WHERE`/`ORDER BY` column indexed (composite: equality → range → sort), every index carries a comment naming its query, no duplicate of a library DACore ships, every public method a docblock, every logical step a **why** line. Canonical + greps: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §8.
+9. **Perf / readability** — no `->all()` on a growing table, no query/HTTP/rights check/log inside `foreach` (prefetch + keyed map), no `select('*')` on a list, no O(n²) or per-row array copy, every new `WHERE`/`ORDER BY` column indexed (composite: equality → range → sort), every index carries a comment naming its query, no duplicate of a library DACore ships, every public method a PHPDoc **purpose sentence** then tags (not tags-only), every logical step **`// Why:`**, page actions **`// About:`** / **`// Section:`**. Canonical + greps: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §8.
+10. **Layout / UX-UI** — every new button has padding vs the parent (especially **bottom**); not flush to the card/page edge; centered or aligned to siblings. `pt-0` footers still have `pb-*` / CSS `padding-bottom`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f.
+11. **Hooks** — fire **`module.{lowercase_modulename}.{hook_name}.hook`** only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:`. Same name in `app/modules/<ThisModule>/.hooks`. No secrets. No `trigger()` inside `foreach` of a growing list. Pre-action stop = `triggerWithVeto()` + `Veto`. Listener map may cover the producer URL. Canonical: `AIRULES/41-MODULE-HOOKS.md`.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 
@@ -39,19 +41,25 @@ Every save / toggle / delete / form **MUST** tell the user what happened. Silent
 - **Public site:** **you** build feedback. Field errors **preferred:** red input + message **on that field**. PHP returns `errors`. Persist still in PHP.
 - Empty `.after()` is forbidden.
 
+## Layout / UX-UI (**MUST** — law)
+
+General UX/UI principles **MUST** be followed **at all costs**. After adding a button: check **padding vs the parent** (especially **below**), and place it deliberately (centered or same rhythm as siblings). A Save glued to the card edge is a **bug**. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8c.
+
 ## Non-negotiable syntax
 
 - Routes: `Module:Controller@method!` (`!` = no DI parameters in the method).
 - Controllers: `public static function`.
+- **Module identity (ASK in plan):** for every new DACore-bound module, ask once for public name/purpose; installer preview as text-only, compact logo near heading, or wide banner; existing local asset + alt text; and optional landing/header placement. No preference → text-only, do not block. Installer image = optimised raster in **your** `about-assets/`, referenced from `about.php`; sidebar Remix `icon` is separate. No external image/SVG/tracker and no DACore patch. If this is a **pack** or a **host that picks packs** (CMS templates): **ASK** `extra1`…`extra5` tokens (`AIRULES/35-DACORE-INSTALL.md` §3c). Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8b, `AIRULES/35-DACORE-INSTALL.md` §3b–§3c.
 - Login-required / admin routes: **MUST** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login`. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()`; action **MUST NOT** `crcCheck()` again. Register handlers only inside `if (Auth::isLogged() === true) { … }`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`, `AIRULES/32-DACORE-RIGHTS.md`.
-- **Docs (MUST):** English. Docblock on the file/class **and** on every public/static method (purpose, `@param`, `@return`, `@throws`) + a short **why** line above every logical step (guard, decision, formula, named constant, query shape, trap). **MUST NOT** restate the code, prompt-echo, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7.
+- **Docs (MUST):** English. Every public method in `Controllers/` and `Middleware/` **MUST** start PHPDoc with **`CRCchecking —`** (exact prefix/middleware such as `#DACore:AuthTest@LoginAndCRC!`, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning — tags-only (`@return array<string, mixed>`) is a bug. **MUST NOT** document prefix CRC and still `crcCheck()` in that method. Inline comments **MUST** use labels **`// Why:`** (every logical step), **`// About:`** (what this chunk is / what the record represents), **`// Section:`** (admin menu or route). **MUST NOT** restate the code, prompt-echo, omit the labels, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7, `AIRULES/08-FORMS-AND-SECURITY.md`.
 - **Catch bus MUST:** every `catch` and every `execute()` `$err` reports `dotapp.catch` + `dotapp.catch.error|info` through **one** helper per module (listener exceptions propagate, so the helper wraps its own `trigger()` calls). Payload keys are fixed; secrets, tokens, rights blobs and request bodies **MUST NOT** be in it; nothing for this goes under `app/modules/DACore/`; a listener **MUST NOT** push a DACore notification per failure. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
+- **Hooks MUST:** useful side-effects `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and the same name in `app/modules/<ThisModule>/.hooks`. **MUST NOT** fire on every save. Listen in **your** module after reading **their** `.hooks` — do not patch the owner. `Listeners::initializeRoutes()` may cover the producer URL. Pre-action stop = `triggerWithVeto()` + `Veto`. Canonical: `AIRULES/41-MODULE-HOOKS.md`, sample `AIRULES/examples/EX-16-module-hooks.md`.
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`. **MUST** `execute($ok, $err)` — both callbacks. Persist in `try/catch`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments count (`COMMENT 'SMS?'` throws). Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data.
 - Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`. **VIEW = outer file:** `setView` + `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view (or `renderLayout()` / inject a string). User-visible strings **MUST** be product copy (a software company would ship it) — never prompt-echo / “this user can…”. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b, §8.
 - Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** for real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop, paginate) **MUST** be `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. + **`/assets/dotapp/dotapp.js`** + PHP `crcCheck()` **once** (API prefix **or** action — never both) + `form()` for real forms. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`. Row-action sample: `AIRULES/examples/EX-06-dotapp-js-boot.md`.
 - **Request MUST:** `$request->data(true)` / `$request->query(true)` = original. `$request->data()` is **protected** (`protect()`). **MUST** use original for passwords, HTML, hashes. **MUST** show every login failure. Canonical: `AIRULES/19-VALIDATION-AND-INPUT.md`.
-- **Lists MUST paginate:** users, logs, items, orders, messages — any collection that can grow. Ship `paginate()` + an **interactive AJAX** pager in the first version (even if the table is empty today). **MUST NOT** dump `->all()`. **MUST NOT** change pages by reloading the admin shell (`<a href="?page=">`, `location.reload()`). Overlay the list while the request runs; patch rows **and** pager from JSON. **Search / list UX:** **ASK** when planning (search, filters, sort, bulk, page size, DSM remember, CSV only if it fits). Lookup lists **MUST** AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. No toast-undo after delete. Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3, `AIRULES/33-DACORE-PAGES-AND-UI.md` §3.
+- **Lists MUST paginate:** users, logs, items, orders, messages — any collection that can grow. Follow `AIRULES/40-DACORE-LIST-PAGER.md` on first ship (`dacore-list-pager`, `live(el, e)`, encrypted `data-page`, COUNT + LIMIT). **MUST NOT** dump `->all()`. **MUST NOT** `?page=` / `location.reload()` / `replaceState` / `e.currentTarget`. Overlay; patch rows **and** pager. Lookup lists **MUST** AJAX search unless declined. Canonical: `AIRULES/40-DACORE-LIST-PAGER.md`, sample `AIRULES/examples/EX-D08-list-pager.md`.
 - **Cheap I/O (MUST):** smallest load — `exists()` / `COUNT(*)` / `limit(1)` / only needed columns / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` for speed. Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §2.
 - **Memory (MUST):** page anything that grows; keyed map + `isset()` instead of `in_array()` in a loop; no `array_merge` per iteration; `unset` the raw copy after mapping; stream files. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §1.
 - **Indexes (MUST):** every FK + every `WHERE` / `JOIN` / `ORDER BY` column on a growing table; composite order **equality → range → sort**; leftmost prefix counts; no index duplicating a composite prefix; one comment line per index naming its query; a later index = a **new** `Installation.php` version guarded by `indexExists()`. Columns: realistic `VARCHAR`, `decimal` money, FK `bigInteger()->unsigned()` to match `id()`. **Your** tables only — never `dacore_*`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §3–§4.
@@ -62,7 +70,7 @@ Every save / toggle / delete / form **MUST** tell the user what happened. Silent
 
 ## Debug (user: it doesn’t work)
 
-**MUST** read `AIRULES/23-DEBUG-PLAYBOOK.md`. Grep `crcCheck` in **this module’s** `Middleware/`, `module.init.php` (`->before`), and the controller. Two calls on one request: the first **burns** the token. If you write CRC middleware, the action **MUST NOT** `crcCheck()` again. DACore: grep `AuthTest` — it ignores passed rights; do not patch DACore.
+**MUST** read `AIRULES/23-DEBUG-PLAYBOOK.md`. Grep `crcCheck` in **this module’s** `Middleware/`, `module.init.php` (`->before`), and the controller. Two calls on one request: the first **burns** the token. If you write CRC middleware, the action **MUST NOT** `crcCheck()` again. DACore: grep `AuthTest` — it ignores passed rights; do not patch DACore. Missing business event: open the owner’s `.hooks`, then grep `Events::trigger(` there (`AIRULES/41-MODULE-HOOKS.md`).
 
 ## Scaffolding
 
@@ -76,10 +84,11 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | CLI | `AIRULES/02-DOTAPPER-CLI.md` |
 | Routing | `AIRULES/03-MODULES-AND-ROUTING.md` |
 | Controllers | `AIRULES/04-CONTROLLERS-AND-RESPONSES.md` |
-| Views | `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` |
+| Views | `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` (§8c = button padding / UX-UI layout law) |
 | Database | `AIRULES/06-DATABASE.md` |
 | Forms | `AIRULES/08-FORMS-AND-SECURITY.md` |
-| Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays + **AJAX pagination**; §4 = `$dotapp().fn`; §4.C = jQuery ports) |
+| Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays; **pager law = 40**) |
+| **List pager (HTML / live(el, e) / COUNT)** | `AIRULES/40-DACORE-LIST-PAGER.md` |
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
 | Cache / session | `AIRULES/20-CACHE-LOGGER-SESSION.md` (DSM — never `$_SESSION`) |
 | Antipatterns | `AIRULES/14-ANTIPATTERNS.md` |
@@ -87,9 +96,10 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | **Finish gate (after every chunk)** | `AIRULES/00-AGENT-CONTRACT.md` §2c |
 | **Visible outcome (save/fail)** | `AIRULES/00-AGENT-CONTRACT.md` §2d |
 | **Catch bus (`dotapp.catch` in every catch)** | `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9 |
+| **Event tracer (`dotapp.catchall` — core fires every trigger)** | `AIRULES/01-ARCHITECTURE.md`, `AIRULES/23-DEBUG-PLAYBOOK.md` §1c — listener in **your** module |
 | **Debug / “it doesn’t work”** | `AIRULES/23-DEBUG-PLAYBOOK.md` (§1b = read the catch trail first) |
 | **Attack vectors (law) + threat pass** | `AIRULES/24-ATTACK-VECTORS.md` (§11 = the 12 greps) |
-| **Performance, indexes, docblocks** | `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` (§3 indexes, §7 comments, §8 perf pass) |
+| **Performance, indexes, PHPDoc purpose + Why/About/Section** | `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` (§3 indexes, §7 comments, §8 perf pass) |
 | **DACore overview** | `AIRULES/30-DACORE-OVERVIEW.md` |
 | DACore menu | `AIRULES/31-DACORE-MENU.md` |
 | DACore rights | `AIRULES/32-DACORE-RIGHTS.md` |
@@ -100,6 +110,8 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | DACore notifications | `AIRULES/37-DACORE-NOTIFICATIONS.md` |
 | DACore email senders | `AIRULES/38-DACORE-EMAIL.md` |
 | DACore SMS drivers | `AIRULES/39-DACORE-SMS.md` |
+| **List pager** | `AIRULES/40-DACORE-LIST-PAGER.md` |
+| **Module hooks (`module.{mod}.{name}.hook` + `.hooks`)** | `AIRULES/41-MODULE-HOOKS.md` (sample: `AIRULES/examples/EX-16-module-hooks.md`) |
 
 ## DACore rules (hard)
 
@@ -120,7 +132,7 @@ DACore is as sacred as framework core **by default**. It is updated as a package
 - **Sending mail?** Read `AIRULES/38-DACORE-EMAIL.md` — do not invent SMTP
 - **Sending SMS?** Read `AIRULES/39-DACORE-SMS.md` — do not invent a gateway
 - If this module has a sidebar: own `type => 0` header (one is ideal). **ASK** before a new DACore module: shared full menu vs module-own (`withMenu` `$menuId`). From ~5 items, group with `type => 2` or use header + **one** entry. `menuid` starts with **your** module. Do not register “Return back”. An extension may use another module’s `parent`; uninstall deletes only **your** prefix (`AIRULES/31-DACORE-MENU.md`)
-- **Your** modules: while coding use **`install.php`** and **live** init files. After a new migration, rename `installed_*_install.php` → `install.php`. User asks to zip a **DACore-bound** module (including create+zip): **MUST** rename `install.php` → **`dainstall.php` in the zip**, copy live init into **`init/`**, inert root stubs, **no** `install.php` in the zip — DACore **rejects** `install.php` and **never runs** Installation without `dainstall.php`. Working tree stays `install.php`. A non-DACore module: no zip. **MUST NOT** pack `app/modules/DACore/`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2e, `AIRULES/35-DACORE-INSTALL.md` §4–§5.
+- **Your** modules: while coding use **`install.php`** and **live** init files. After a new migration, rename `installed_*_install.php` → `install.php`. User asks to zip a **DACore-bound** module (including create+zip): **MUST** rename `install.php` → **`dainstall.php` in the zip**, copy live init into **`init/`**, inert root stubs, **no** `install.php` in the zip — DACore **rejects** `install.php` and **never runs** Installation without `dainstall.php`. **MUST** include root **`.hooks`** when the module fires `module.{this}.*` hooks (`AIRULES/41-MODULE-HOOKS.md`). Working tree stays `install.php`. A non-DACore module: no zip. **MUST NOT** pack `app/modules/DACore/`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2e, `AIRULES/35-DACORE-INSTALL.md` §4–§5.
 - If asked to “just change DACore”: **do not jump in**. Implement in the current module. Edit DACore **only** after they confirm they accept the update wipe (`AIRULES/00-AGENT-CONTRACT.md` §1).
 
 AIRULES is the single source of truth.

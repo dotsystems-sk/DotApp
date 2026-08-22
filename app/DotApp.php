@@ -59,6 +59,7 @@ use Dotsystems\App\Parts\DI;
 use Dotsystems\App\Parts\Limiter;
 use Dotsystems\App\Parts\Response;
 use Dotsystems\App\Parts\Middleware;
+use Dotsystems\App\Parts\Veto;
 
 global $translator;
 $translator = new \stdClass();
@@ -1245,6 +1246,7 @@ class DotApp {
 	 * any additional parameters to the callback functions registered 
 	 * for the event.
 	 *
+	 * dotapp.catchall - triger sluzi na to aby sme vedeli na jednom mieste vidiet vsetky triggery - za ucelom DEBUGGovania
 	 * @param string $eventname The name of the event to be triggered.
 	 * @param array $data An array of data to be passed to the listener 
 	 *                    callbacks.
@@ -1254,6 +1256,10 @@ class DotApp {
 	 */
 	public function trigger($eventname, $result = null, ...$data) {
         $eventname = strtolower($eventname);
+		if ($eventname != 'dotapp.catchall') {
+			// Za ucelom aby sme mali detailne moznsoti debuugovat dorobene pre DotApp 2.0
+			$this->trigger('dotapp.catchall', $result, $eventname, ...$data);
+		}
         if (isset($this->listeners['listenersids']) && isset($this->listeners['listenersids'][$eventname])) {
 			foreach ($this->listeners['listenersids'][$eventname] as $key => $listenerid) {
 				if (isset($this->listeners['listeners'][$listenerid]) && is_callable($this->listeners['listeners'][$listenerid])) {
@@ -1266,6 +1272,41 @@ class DotApp {
 		}
 		return $result;
 	}
+
+    /**
+     * Spusti udalost a vrati prve explicitne veto od listenera.
+     *
+     * Oproti trigger() sleduje iba navratovu hodnotu typu Veto. Vsetky stare
+     * navraty vratane false ostavaju ignorovane, aby sa nezmenilo spravanie modulov.
+     *
+     * @param string $eventname Nazov udalosti, ktory sa normalizuje na lowercase.
+     * @param mixed $result Prvy argument odovzdany listenerom.
+     * @param mixed ...$data Dalsie argumenty odovzdane listenerom.
+     * @return Veto|null Prve veto alebo null ked vsetci listeneri povolili pokracovat.
+     */
+    public function triggerWithVeto($eventname, $result = null, ...$data): ?Veto {
+        $eventname = strtolower($eventname);
+        if ($eventname != 'dotapp.catchall') {
+            // Why: debugger musi vidiet veto udalost rovnako ako kazdy povodny trigger.
+            $this->trigger('dotapp.catchall', $result, $eventname, ...$data);
+        }
+        if (isset($this->listeners['listenersids']) && isset($this->listeners['listenersids'][$eventname])) {
+            foreach ($this->listeners['listenersids'][$eventname] as $key => $listenerid) {
+                if (isset($this->listeners['listeners'][$listenerid]) && is_callable($this->listeners['listeners'][$listenerid])) {
+                    $callback = $this->listeners['listeners'][$listenerid];
+                    $listenerResult = call_user_func($callback, $result, ...$data);
+                    // Why: iba explicitny objekt Veto moze zastavit dispatch, false zo stareho listenera nie.
+                    if ($listenerResult instanceof Veto) {
+                        return $listenerResult;
+                    }
+                } else {
+                    unset($this->listeners['listenersids'][$eventname][$key]);
+                }
+            }
+        }
+
+        return null;
+    }
 
     /**
          * Checks if a listener is registered for a given event.
@@ -1473,26 +1514,28 @@ class DotApp {
                 $dotapp = $this; // Reference to the current instance
                 $izolovane = function() use ($dotapp) {
                     define('__DOTAPP_MODULES_AUTOLOADER__',1);
-                    include(__ROOTDIR__."/app/modules/modulesAutoLoader.php");                    
+                    include(__ROOTDIR__."/app/modules/modulesAutoLoader.php");
+                    // Why: poskodena alebo rucne pisana cache nesmie pustit warning cez foreach.
+                    $modules = isset($modules) && is_array($modules) ? $modules : [];
+                    // Why: stara cache ma iba $modules, preto listenerom nechame rovnaku mapu ako doteraz.
+                    $listenerModuly = $dotapp->moduleListenerRoutes(
+                        $modules,
+                        $listeners ?? null,
+                        $modulesAutoLoaderVersion ?? null
+                    );
+
+                    // Why: najprv zaregistrujeme vsetky sediace listenery, az potom sa moze spustit initialize() modulov.
+                    foreach ($listenerModuly as $modul => $routes) {
+                        if ($dotapp->moduleRoutesMatch($routes) === true) {
+                            $this->load_module_listeners($modul);
+                        }
+                    }
+
                     $nacitaj = [];
                     foreach ($modules as $modul => $routes) {
-                        $matched = false;
-                        foreach ($routes as $route) {
-                            if ($route === "*") {
-                                $matched = true;
-                                break;
-                            } else {
-                                if ($dotapp->router->match_url($route) !== false) {
-                                    $matched = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if ($matched === true) {
+                        if ($dotapp->moduleRoutesMatch($routes) === true) {
                             $nacitaj[] = $modul;
-                            $this->load_module_listeners($modul);
-                        }                        
+                        }
                     }
 
                     define('__DOTAPP_MODULES_CAN_LOAD__',1);
@@ -1529,6 +1572,46 @@ class DotApp {
         if ($this->defaultRoutes === false ) $this->defaultRoutes = new Routes($this);
 		return $this; // Return the current instance for method chaining
 	}
+
+    /**
+     * Overi ci aktualna URL sedi aspon na jednu routu z optimizer mapy.
+     *
+     * @param mixed $routes Pole masiek nacitania modulu alebo listenera.
+     * @return bool True ked sedi hviezdicka alebo jedna URL maska.
+     */
+    private function moduleRoutesMatch($routes) {
+        if (!is_array($routes)) {
+            return false;
+        }
+
+        foreach ($routes as $route) {
+            if ($route === "*") {
+                return true;
+            }
+            if (is_string($route) && $this->router->match_url($route) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Vyberie listener mapu podla verzie optimizer cache.
+     *
+     * @param array<string, array<int, string>> $modules Povodna mapa initialize rout.
+     * @param mixed $listeners Volitelna listener mapa z noveho formatu.
+     * @param mixed $version Volitelna verzia suboru modulesAutoLoader.php.
+     * @return array<string, array<int, string>> Nova listener mapa alebo stary fallback.
+     */
+    private function moduleListenerRoutes($modules, $listeners, $version) {
+        if ((int) $version >= 2 && is_array($listeners)) {
+            // Why: pri ciastocne zapisanej v2 cache doplnime chybajuci listener starou modulovou routou.
+            return array_replace($modules, $listeners);
+        }
+
+        return $modules;
+    }
 
     function load_module($modul) {
         $modul = str_replace(__ROOTDIR__."/app/modules/","",$modul);

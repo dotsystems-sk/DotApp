@@ -11,7 +11,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 
 - **ALLOWED:** `app/config.php`, `app/modules/<TargetModule>/` only (the module you are programming, including **its** assets)
 - **ASK FIRST:** `app/listeners.php`, `.htaccess` (prefer `dotapper --create-htaccess`)
-- **FORBIDDEN:** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, any other module
+- **FORBIDDEN (never, not even if the user asks):** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, any other module. Kernel is frozen. Implement in the module.
 - **DACore:** default **FORBIDDEN** (`app/modules/DACore/**` — files and assets). **MUST NOT propose** a DACore edit. **Exception:** user themselves asks to edit DACore **and** confirms the next update wipes it (`AIRULES/00` §1). Otherwise implement in the current module.
 
 ## Before coding
@@ -21,15 +21,18 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 3. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
 4. **Cursor credits:** when planning programming, **ASK** before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only, not the coder. (`AIRULES/00` §2b)
 5. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core/DACore bug.
-6. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware / AuthTest (`AIRULES/00` §2c). Do not claim done without it.
+6. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware / AuthTest / `Events::trigger` vs `.hooks` (`AIRULES/00` §2c, `AIRULES/41`). Do not claim done without it.
 7. **Visible outcome (LAW):** user always sees save/fail. DACore admin: search DACore then **toast**. Public: mark the wrong field. (`AIRULES/00` §2d)
 8. **Mail / inbox / SMS:** if the task sends email, operator notifications, or SMS, **read** `AIRULES/38` (mail), `AIRULES/37` (inbox), and `AIRULES/39` (SMS). Do not invent SMTP or a gateway.
+9. **DACore module identity:** in the plan, **ASK once** for public name/purpose; installer as text-only / compact logo / wide banner; local asset + alt; optional landing/header placement. Pack/host: **ASK** `extra1`…`extra5` (`AIRULES/35` §3c). `about.php` + your `about-assets/`; sidebar Remix icon is separate; never patch DACore. (`AIRULES/05` §8b, `AIRULES/35` §3b–§3c)
+10. **Module hooks (LAW):** fire `Events::trigger('module.{mod}.{hook_name}.hook')` only when another module could log/history/sync — **not** every save. Comment block + `app/modules/<YourModule>/.hooks`. Pre-action stop = `triggerWithVeto()` + `Veto`. (`AIRULES/41`)
+11. **Do not wake other modules:** `Module::initializeRoutes()` = this module’s prefixes. `Listeners::initializeRoutes()` may be narrower or `null` to inherit. After either list changes: `php dotapper.php --optimize-modules`. (`AIRULES/03`)
 
 ## Syntax locks
 
 - Controllers: `public static`; route `"Mod:Ctrl@method!"` (`!` ⇒ no DI params)
 - Login-required / admin routes: **MUST** `{prefixUrl}/{ModuleName}/…` + `Gate@login` 403 `Response` + wrap handlers in `Auth::isLogged()` in `initialize()`. Admin pages **MUST NEVER** render for anonymous users. `AIRULES/03`, `AIRULES/32`
-- Comments: English. Docblock on file/class + every public method; a short **why** line above every logical step — never narration of the code (`AIRULES/25` §7)
+- Comments: English. Public Controllers/Middleware PHPDoc **MUST** start with `CRCchecking —` (exact prefix/middleware XOR this action XOR none) then a purpose sentence; labeled **`// Why:`** / **`// About:`** / **`// Section:`** — never tags-only, never prefix CRC + `crcCheck()` in the same method, never narration of the code (`AIRULES/25` §7, `AIRULES/08`)
 - DB: `DB::module("RAW")->q(fn($qb)=>...)->all()` + `[0] ?? null` (never bare `first()`). **MUST** `execute($ok,$err)` both callbacks. Persist `try/catch`. `AIRULES/18`
 - Views: `{{ var: $x }}`, `{{ /if }}`, `{{ /foreach }}` — NOT `{{ $x }}` / `endif`. VIEW = outer file; `setLayout`+`renderView()` fills `{{ content }}` in that view (or `renderLayout()` / inject a string). **Sandbox drops** any var whose name or nested value is `is_callable` (`time`, `copy`, `count`, `header`, …) — prefix keys or pass escaped HTML; **MUST NOT** patch Renderer. `AIRULES/05` §1b + §5
 - Forms: `<fo-rm>` + `{{ formName(x) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit + `/assets/dotapp/dotapp.js` + `crcCheck()` **once** (API prefix **or** action) + `form()`. Row actions (toggle/delete/reorder/D&D) = `$dotapp().load()` + encrypted `data-*` — NOT one `<fo-rm>` per button
@@ -48,15 +51,16 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - DACore operators MUST keep 2FA; dangerous admin actions MUST step-up 2FA (`AIRULES/32` §6)
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** module preloaders; desktop **and** mobile). (`AIRULES/09` §3, EX-06)
 - Public website: overlay nav drawer L/R; lock page scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own section (`AIRULES/09` §3)
-- Accumulating lists (users, logs, items, …): **MUST** `paginate()` + **interactive AJAX** pager on first ship — NOT `->all()`, NOT `<a href="?page=">` / `location.reload()`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined; **ASK** on other lists. (`AIRULES/06`, `AIRULES/09` §3, EX-06)
+- Accumulating lists (users, logs, items, …): **MUST** follow `AIRULES/40-DACORE-LIST-PAGER.md` on first ship — NOT `->all()`, NOT `<a href="?page=">` / `replaceState` / `e.currentTarget`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined. (`AIRULES/40`, EX-D08)
 - Cheap I/O: `exists()` / `COUNT(*)` / needed columns / one `join` — NOT `all()` then filter, NOT N+1. `AIRULES/06`
 - Memory (`AIRULES/25` §1): page big sets; keyed map + `isset()` instead of `in_array()` in a loop; `$out[] =` not `array_merge` per iteration; `unset` the raw copy; stream files — NOT load-all-then-filter
 - Indexes (`AIRULES/25` §3): every FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite = **equality → range → sort**; leftmost prefix counts; no index duplicating a composite prefix; one comment line per index naming its query; later index = new `Installation.php` version + `indexExists()`; never touch `dacore_*`
 - Columns (`AIRULES/25` §4): realistic `VARCHAR`, `decimal(10,2)` money, `NOT NULL` + default, FK `bigInteger()->unsigned()` (matches `id()` = BIGINT) — NOT `string()` 255 for a status, NOT `float` money
-- Docs (`AIRULES/25` §7): docblock on file/class + every public method (`@param`/`@return`/`@throws`) and a short **why** line above every logical step — NOT narration (`// increment i`), NOT prompt-echo, NOT dead code / bare `TODO`
+- Docs (`AIRULES/25` §7): Controllers/Middleware public PHPDoc **MUST** start with `CRCchecking —` (exact prefix/middleware XOR this action XOR none) then a purpose sentence, then `@param`/`@return`/`@throws` with meaning — NOT tags-only (`@return array<string, mixed>`); NOT prefix CRC + `crcCheck()` in the same method; inline **MUST** use `// Why:` (logical step), `// About:` (what the chunk is), `// Section:` (menu/route) — NOT narration (`// increment i`), NOT unlabeled Why prose, NOT prompt-echo, NOT dead code / bare `TODO`
 - Cursor credits: **ASK** in the plan before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only — NOT the programmer. (`AIRULES/00` §2b)
-- Finish gate (LAW): after every chunk grep `crcCheck` once, enc IDs, bound SQL, `data(true)`, middleware vs action / AuthTest — then claim done. (`AIRULES/00` §2c)
+- Finish gate (LAW): after every chunk grep `crcCheck` once, enc IDs, bound SQL, `data(true)`, middleware vs action / AuthTest, `Events::trigger` vs `.hooks`, `// Why:` / `// About:` / `// Section:` — then claim done. (`AIRULES/00` §2c, `AIRULES/41`, `AIRULES/25` §7)
 - Visible outcome (LAW): user always sees save/fail; DACore admin = search DACore then toast; public = mark the wrong field. (`AIRULES/00` §2d)
+- Module hooks (LAW): useful side-effects MUST `Events::trigger('module.{mod}.{name}.hook')` + Hook/Why/About/Params/Use block + `app/modules/<M>/.hooks` — NOT every save; NOT secrets; NOT patch the other module; pre-action stop = `triggerWithVeto()` + `Veto` (`AIRULES/41`, EX-16)
 - Before a new DACore admin library/widget: **MUST** grep `app/modules/DACore/` (read-only) and this module — reuse what exists (`AIRULES/33`)
 - DACore edit/detail: `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf — NOT a menu row per edit URL (`AIRULES/31`)
 - DACore zip: `install.php` is framework-only. Zip **MUST** rename it to `dainstall.php` and put live init in `init/`. A zip that still has `install.php` is **rejected**; without `dainstall.php` Installation **never runs**. (`AIRULES/00` §2e, `AIRULES/35`)
@@ -90,5 +94,5 @@ See `AIRULES/30-DACORE-OVERVIEW.md` and rule `08-dacore`.
 
 ## Docs
 
-Deep reference: `AIRULES/` (`00`–`22` framework, `30`–`36` DACore). Examples: `AIRULES/examples/` (open one EX file per task). Antipatterns: `AIRULES/14-ANTIPATTERNS.md`.  
+Deep reference: `AIRULES/` (`00`–`25` framework, `30`–`40` DACore, **`41` module hooks**). Examples: `AIRULES/examples/` (open one EX file per task). Antipatterns: `AIRULES/14-ANTIPATTERNS.md`.  
 AIRULES supersedes stock `.cursorrules` and old `*_AI_guide.md` files.

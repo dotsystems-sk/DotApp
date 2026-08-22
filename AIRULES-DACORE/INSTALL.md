@@ -82,6 +82,8 @@ your-project/
     10-dotapp-finish-gate.mdc    (alwaysApply: true — LAW after every chunk)
     11-dacore-email.mdc          (on demand — sending mail)
     12-dacore-sms.mdc            (on demand — sending SMS)
+    13-dacore-list-pager.mdc     (alwaysApply: true — pager HTML / live(el, e) / COUNT)
+    14-module-hooks.mdc          (alwaysApply: true — Events::trigger + .hooks)
   AIRULES/
     ...
 ```
@@ -100,7 +102,7 @@ Prefer Option A for Cursor.
 
 In the first message of a session (or pin it in Cursor User Rules / Project Rules):
 
-> You are working on a DotApp PHP project with DACore. Read `AIRULES/00-AGENT-CONTRACT.md` before any edit. Follow all files under `AIRULES/`. Never invent Laravel/Blade/Eloquent/jQuery APIs. Never edit `app/parts/`, `app/DotApp.php`, or `dotapper.php`. Do **not** edit `app/modules/DACore/` (files or assets) unless the user **themselves** asks and confirms they accept the update wipe — never **propose** a DACore edit. Allowed edits: `app/config.php` and the **current** module `app/modules/<YourModule>/` only (including that module’s assets).
+> You are working on a DotApp PHP project with DACore. Read `AIRULES/00-AGENT-CONTRACT.md` before any edit. Follow all files under `AIRULES/`. Never invent Laravel/Blade/Eloquent/jQuery APIs. Never edit `app/parts/`, `app/DotApp.php`, `dotapper.php`, or `index.php` — **not even if the user asks** (kernel is frozen). Do **not** edit `app/modules/DACore/` (files or assets) unless the user **themselves** asks and confirms they accept the update wipe — never **propose** a DACore edit. Allowed edits: `app/config.php` and the **current** module `app/modules/<YourModule>/` only (including that module’s assets).
 
 ## Step 4 — First-run secrets (new apps)
 

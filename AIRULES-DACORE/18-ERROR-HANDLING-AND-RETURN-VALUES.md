@@ -222,11 +222,13 @@ Same for `Entity::delete()` and `Entity::find($db, $id, $ok, $err)`.
 ## 7. Events do not propagate return values
 
 ```php
-$result = $dotApp->trigger('shop.item.saved', $initial, $itemId);
+$result = $dotApp->trigger('module.shop.sms_sent.hook', $initial);
 // $result === $initial ALWAYS — listener return values are IGNORED
 ```
 
 Listener exceptions **propagate** and abort remaining listeners. Wrap risky listener bodies in `try/catch` yourself.
+
+A pre-action stop is a **different** API: `triggerWithVeto()` returns the first `Dotsystems\App\Parts\Veto` or `null`. Ordinary `false`/scalar returns stay ignored. Canonical: [12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md).
 
 Also: `Events::on($route, $event, $cb)` and `on($method, $route, $event, $cb)` return **`false` and do not register** when the current request does not match the route.
 
@@ -360,15 +362,31 @@ private static function reportCatch($source, $operation, $e = null, $severity = 
 
 ### Subscribing later (this is the point)
 
+Do not mix the failure bus with business hooks:
+
+| Event | Fired by | What a debugger sees |
+|-------|----------|----------------------|
+| `dotapp.catchall` | **Core**, every `trigger()` except itself | **All** events. Listener: `function ($result, $eventname, ...$data)`. [01](01-ARCHITECTURE.md), [23](23-DEBUG-PLAYBOOK.md) §1c |
+| `dotapp.catch` | **Your** report helper | **Failures only**, fixed payload |
+| `module.{mod}.{name}.hook` | **Owner** module after a useful side-effect | Business steps. Names + payload: that module’s `.hooks`. [41](41-MODULE-HOOKS.md) |
+
 ```php
 // In YOUR debug/audit module's module.listeners.php — no change to any reporting code,
 // and no file added under app/modules/DACore/.
 Events::on('dotapp.catch', function ($payload) {
     // persist to your own {module}_ table, show it on your DACore page, ship it out
 });
+
+// Event tracer (opt-in). Core already fires this — do not trigger it yourself.
+Events::on('dotapp.catchall', function ($result, $eventname, ...$data) {
+    try {
+        // cheap: name + maybe sizeof($data). Own try/catch — a throw aborts the original event.
+    } catch (\Throwable $ignored) {
+    }
+});
 ```
 
-Listener bodies **MUST** be defensive (own `try/catch`) and cheap — they run inside a failing request ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2). **MUST NOT** push a DACore inbox notification from the bus by default — one broken cron would flood the inbox ([37](37-DACORE-NOTIFICATIONS.md)); notify on a real event, or on a rate-limited threshold. The core `dotapp.log` hook stays available for log-level shipping ([20](20-CACHE-LOGGER-SESSION.md) §2).
+Listener bodies **MUST** be defensive (own `try/catch`) and cheap — they run inside a failing request ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2). **MUST NOT** push a DACore inbox notification from the bus by default — one broken cron would flood the inbox ([37](37-DACORE-NOTIFICATIONS.md)); notify on a real event, or on a rate-limited threshold. The same flood rule applies to `dotapp.catchall` (it fires far more often). The core `dotapp.log` hook stays available for log-level shipping ([20](20-CACHE-LOGGER-SESSION.md) §2).
 
 **Frontend:** a JS `catch` (or a failed `load()` / `form()` reply) **MUST** show the outcome to the user ([00](00-AGENT-CONTRACT.md) §2d — admin = toast); `console.error` alone is not a report. If the project wants browser telemetry, POST the **same** payload shape to your own module endpoint — do not invent a second format.
 

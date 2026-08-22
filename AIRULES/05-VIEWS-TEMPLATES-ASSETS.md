@@ -345,6 +345,24 @@ Applies to: button labels, text under buttons, help, placeholders, empty states,
 
 ---
 
+## 8b. Module identity brief (**ASK when planning visible UI**)
+
+A module with pages is a product surface, not only routes and tables. When planning a new module that users will see, **ASK once** for its identity if the user did not already provide it:
+
+- public display name and one-sentence purpose;
+- existing logo / mark / banner asset, or no image;
+- where it should appear (module landing/header, public navigation, installer/about screen when an integration supports one);
+- preferred accent/brand colours and light/dark variants, if branding is wanted;
+- accessible alt text (empty only for a purely decorative image).
+
+Offer a sensible **no-custom-branding** option. A backend-only/library/migration module does not need this question. **MUST NOT** block functional work merely because the user has no logo.
+
+**MUST NOT:** invent a company name or logo, hotlink a remote image, reuse a third-party mark without permission, put a huge original image on every page, or treat a menu icon as the module logo. Optimise raster assets, include intrinsic dimensions, and load non-critical imagery lazily. If image generation may cost extra, **ASK before using it** ([00](00-AGENT-CONTRACT.md) §2b).
+
+For DACore-bound packages, the installer has a specific identity mechanism and planning question: [AIRULES-DACORE/35](../AIRULES-DACORE/35-DACORE-INSTALL.md) §3b. Do not invent that API in a framework-only module.
+
+---
+
 ## 9. Translations
 
 ```php

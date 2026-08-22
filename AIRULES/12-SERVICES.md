@@ -61,12 +61,13 @@ Maintenance mode is the `__MAINTENANCE__` constant in the bootstrap, not a runti
 ## 2. Events
 
 ```php
-$sub = $dotApp->on('shop.item.saved', function ($result, ...$data) { /* ... */ });
+$sub = $dotApp->on('module.shop.sms_sent.hook', function ($result, ...$data) { /* ... */ });
 $sub->off();
 
-$dotApp->trigger('shop.item.saved', $payload, $itemId);
-$dotApp->hasListener('shop.item.saved');   // bool
-$dotApp->offevent('shop.item.saved');      // $this
+$dotApp->trigger('module.shop.sms_sent.hook', $payload);
+$veto = $dotApp->triggerWithVeto('module.shop.item_delete.veto', $payload); // Veto|null
+$dotApp->hasListener('module.shop.sms_sent.hook');   // bool
+$dotApp->offevent('module.shop.sms_sent.hook');      // $this
 ```
 
 Arities:
@@ -75,9 +76,16 @@ Arities:
 Events::on($event, $callback);                       // always registers
 Events::on($routePattern, $event, $callback);        // returns FALSE if route doesn't match
 Events::on($method, $routePattern, $event, $callback); // returns FALSE on mismatch
+Events::triggerWithVeto($event, $result, ...$data);   // first Veto or null
 ```
 
 **`trigger()` returns `$result` unchanged — listener return values are ignored.** Listener exceptions **propagate** and abort remaining listeners, so wrap risky bodies in `try/catch`. Event names are lowercased; `dotapp.middleware` is an alias of `dotapp.router.resolve`.
+
+**`triggerWithVeto()` is opt-in and returns the first `Dotsystems\App\Parts\Veto`, or `null`.** It stops listeners immediately only when a callback returns a `Veto` object. `false`, `null`, strings, arrays, and every other legacy return remain ignored. A returned `Veto` contains a stable lowercase `code`, an internal `message`, and safe `details`; the core never serializes it to a client. Exceptions still propagate. Ordinary `trigger()` ignores even a `Veto`, preserving old module behavior.
+
+**`dotapp.catchall` (core, DotApp 2.0):** every `trigger($name, $result, …$data)` except `dotapp.catchall` itself first fires `dotapp.catchall` with `($result, $name, …$data)`. That is the **one** place a debugger / event tracer **MUST** subscribe to see every event. Do **not** trigger `dotapp.catchall` yourself. A throw in that listener aborts the original event. Distinct from `dotapp.catch` (module-fired failures — [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9) and from **`module.{mod}.{name}.hook`** (business steps — [41](41-MODULE-HOOKS.md)). Canonical: [01](01-ARCHITECTURE.md) Built-in events, [23](23-DEBUG-PLAYBOOK.md) §1c.
+
+**Your `module.{mod}.{name}.hook` names (MUST judge):** fire **only** when another module could log, show history, or sync (SMS/mail sent, payment, lockout). Name: `module.{lowercase_modulename}.{hook_name}.hook`. **MUST** document it in `app/modules/<YourModule>/.hooks` and put `Hook:` / `Why:` / `About:` / `Params:` / `Use:` above `trigger()`. **MUST NOT** fire on every save. **MUST NOT** skip a **decided** hook because `hasListener` is false. Listener returns on `trigger()` are **ignored** (not a veto). No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
 
 ---
 
@@ -114,7 +122,8 @@ class ShopFacade extends \Dotsystems\App\Parts\Facade
 | Method | Returns |
 |--------|---------|
 | `initialize($dotApp)` | abstract — register routes here |
-| `initializeRoutes()` | `array` of URL patterns (default `['*']`) |
+| `initializeRoutes()` | `array` of URL patterns (default `['*']`) — **MUST** list this module’s prefixes, not `['*']` unless the user asked |
+| `Listeners::initializeRoutes()` | `array\|null` — `null` / omit inherits `Module::initializeRoutes()`; may be a **narrower** list so the listener wakes without full `initialize()` |
 | `initializeCondition($routeMatch)` | `bool`/mixed |
 | `Module::optimize()` | `true` or the caught `\Exception` — writes `modulesAutoLoader.php` |
 | `settings($input = null, $value = null, $mode = 0)` | see below |

@@ -76,11 +76,13 @@ foreach ($page['data'] as $row) { /* ... */ }
 $totalPages = $page['last_page'];
 ```
 
-**MUST (accumulating lists):** if the screen lists records that **can grow over time** — users, logs, items, orders, messages, files, events — **MUST** use `paginate()` on the **first** ship (typical `per_page` 20, or a module setting with a fallback). **“There are only three users now” is not an exception.** **MUST NOT** `->all()` the whole table into a view.
+**MUST (accumulating lists):** if the screen lists records that **can grow over time** — users, logs, items, orders, messages, files, events — **MUST** page in SQL on the **first** ship (typical `per_page` 20). **“There are only three users now” is not an exception.** **MUST NOT** `->all()` the whole table into a view.
+
+**Trap:** `QueryObject::paginate()['total']` is often **0** because COUNT goes through `execute()` (non-numeric). The UI then shows “1–10 of 10” and no page buttons. **MUST** `SELECT COUNT(*) AS total` via `all()`, then `LIMIT`/`OFFSET` for rows. **MUST NOT** set `total` from `count($rows)` on the current page. Canonical: [40](40-DACORE-LIST-PAGER.md) §4.
 
 Skip a pager **only** when the set is **closed by product design** and will never grow (e.g. four fixed status cards). If you are unsure, paginate.
 
-The pager in the browser is **interactive AJAX** — [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Paginate accumulating lists”. **MUST NOT** reload the site with `<a href="?page=2">` / `location.reload()`. A reload pager counts as missing.
+The pager in the browser is **interactive AJAX** — [40](40-DACORE-LIST-PAGER.md). **MUST NOT** reload with `<a href="?page=2">` / `location.reload()` / `history.replaceState` of query params. A reload pager counts as missing.
 
 **MUST (search):** lookup lists (articles, products, catalog, …) **MUST** ship **interactive AJAX search** (SQL `LIKE` + `paginate()`, debounce, from 3 characters) unless the user declined. Other lists: **ASK** in the plan. **MUST NOT** `->all()` and filter in JS. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Interactive AJAX search”.
 
@@ -92,7 +94,7 @@ Write **CPU- and memory-cheap** code. Pick the **smallest** I/O that answers the
 |------|-----|----------------|
 | One row | `where` + `limit(1)` + `all()` + `[0] ?? null` | Load the table and scan in PHP |
 | Exists? | `exists()` | `all()` then `count($rows)` |
-| How many? | `select('COUNT(*) as total')` or `paginate()['total']` | Fetch every row to count |
+| How many? | `select('COUNT(*) as total')` + `all()` (see [40](40-DACORE-LIST-PAGER.md) §4) | Fetch every row to count; trust `paginate()['total']` without verifying |
 | List | `select` **only used columns** + `paginate()` | `select('*')` + `->all()` |
 | Related names | **one** `join` / extra `IN (...)` | Query inside `foreach` (N+1) |
 | Search | SQL `WHERE` + `paginate()` | Load all, filter in PHP or JS |
@@ -225,7 +227,7 @@ $qb->raw("CREATE TABLE `shop_x` ( `id` INT COMMENT 'SMS optional' )", []);
 
 `whereExists`, `whereColumn`, `selectRaw`, `count()` — and on `Databaser`: `whereHas`, `whereDoesntHave`, `withCount`, `with()` are **stubs that never reach SQL**.
 
-For counting use `select('COUNT(*) as total')` + `all()`, or `paginate()['total']`, or `exists()`.
+For counting use `select('COUNT(*) as total')` + `all()`, or `exists()`. **MUST NOT** trust `paginate()['total']` ([40](40-DACORE-LIST-PAGER.md) §4).
 
 ---
 
@@ -349,7 +351,7 @@ Also avoid `DB::migrate()` — **no driver implements it**.
 | `User::find(1)` | `->where('id','=',1)->all()` then `[0] ?? null` |
 | `DB::table('users')->get()` | `DB::module('RAW')->q(...)->all()` |
 | `->get()` | `->all()` |
-| `->count()` | `select('COUNT(*) as total')` or `paginate()['total']` |
+| `->count()` | `select('COUNT(*) as total')` + `all()` ([40](40-DACORE-LIST-PAGER.md) §4) |
 | `DB::getConnection()` | does not exist |
 | `->selectRaw(...)` | `select('COUNT(*) as c')` or `raw()` |
 | `->find(123)` on chain | does not exist |

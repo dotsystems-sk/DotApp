@@ -15,6 +15,7 @@ Detailed docs by area:
 | Bridge, Reactive, dotapp.js | [09](09-DOTAPP-JS-AND-BRIDGE.md) |
 | Auth, Crypto, TOTP | [11](11-AUTH-AND-CRYPTO.md) |
 | Tester | [13](13-TESTING.md) |
+| **Module hooks / `.hooks`** | **[41](41-MODULE-HOOKS.md)** |
 
 This file covers what is left: DotApp helpers, Events, DI, Module, Middleware, Pagination, Collection utilities.
 
@@ -61,12 +62,13 @@ Maintenance mode is the `__MAINTENANCE__` constant in the bootstrap, not a runti
 ## 2. Events
 
 ```php
-$sub = $dotApp->on('shop.item.saved', function ($result, ...$data) { /* ... */ });
+$sub = $dotApp->on('module.shop.sms_sent.hook', function ($result, ...$data) { /* ... */ });
 $sub->off();
 
-$dotApp->trigger('shop.item.saved', $payload, $itemId);
-$dotApp->hasListener('shop.item.saved');   // bool
-$dotApp->offevent('shop.item.saved');      // $this
+$dotApp->trigger('module.shop.sms_sent.hook', $payload);
+$veto = $dotApp->triggerWithVeto('module.shop.item_delete.veto', $payload); // Veto|null
+$dotApp->hasListener('module.shop.sms_sent.hook');   // bool
+$dotApp->offevent('module.shop.sms_sent.hook');      // $this
 ```
 
 Arities:
@@ -75,9 +77,16 @@ Arities:
 Events::on($event, $callback);                       // always registers
 Events::on($routePattern, $event, $callback);        // returns FALSE if route doesn't match
 Events::on($method, $routePattern, $event, $callback); // returns FALSE on mismatch
+Events::triggerWithVeto($event, $result, ...$data);   // first Veto or null
 ```
 
 **`trigger()` returns `$result` unchanged — listener return values are ignored.** Listener exceptions **propagate** and abort remaining listeners, so wrap risky bodies in `try/catch`. Event names are lowercased; `dotapp.middleware` is an alias of `dotapp.router.resolve`.
+
+**`triggerWithVeto()` is opt-in and returns the first `Dotsystems\App\Parts\Veto`, or `null`.** It stops listeners immediately only when a callback returns a `Veto` object. `false`, `null`, strings, arrays, and every other legacy return remain ignored. A returned `Veto` contains a stable lowercase `code`, an internal `message`, and safe `details`; the core never serializes it to a client. Exceptions still propagate. Ordinary `trigger()` ignores even a `Veto`, preserving old module behavior.
+
+**`dotapp.catchall` (core, DotApp 2.0):** every `trigger($name, $result, …$data)` except `dotapp.catchall` itself first fires `dotapp.catchall` with `($result, $name, …$data)`. That is the **one** place a debugger / event tracer **MUST** subscribe to see every event. Implement the listener in **your** module — never under `app/modules/DACore/`. Do **not** trigger `dotapp.catchall` yourself. A throw in that listener aborts the original event. Distinct from `dotapp.catch` (module-fired failures — [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9). Canonical: [01](01-ARCHITECTURE.md) Built-in events, [23](23-DEBUG-PLAYBOOK.md) §1c.
+
+**Your `module.{mod}.{name}.hook` names (MUST judge):** fire **only** when another module could log, show history, or sync (SMS/mail sent, payment, lockout). Name: `module.{lowercase_modulename}.{hook_name}.hook`. **MUST** document it in `app/modules/<YourModule>/.hooks` and put `Hook:` / `Why:` / `About:` / `Params:` / `Use:` above `trigger()`. **MUST NOT** fire on every save. **MUST NOT** skip a **decided** hook because `hasListener` is false. Listener returns are **ignored** (not a veto). No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
 
 ---
 
@@ -114,7 +123,8 @@ class ShopFacade extends \Dotsystems\App\Parts\Facade
 | Method | Returns |
 |--------|---------|
 | `initialize($dotApp)` | abstract — register routes here |
-| `initializeRoutes()` | `array` of URL patterns (default `['*']`) |
+| `initializeRoutes()` | `array` of URL patterns (default `['*']`) — **MUST** list this module’s prefixes, not `['*']` unless the user asked |
+| `Listeners::initializeRoutes()` | `array\|null` — `null` / omit inherits `Module::initializeRoutes()`; may be a **narrower** list so the listener wakes without full `initialize()` |
 | `initializeCondition($routeMatch)` | `bool`/mixed |
 | `Module::optimize()` | `true` or the caught `\Exception` — writes `modulesAutoLoader.php` |
 | `settings($input = null, $value = null, $mode = 0)` | see below |
@@ -200,24 +210,27 @@ Response sending order in `runRequest()`: redirect → status → headers → co
 
 ## 7. Pagination (UI)
 
+**DACore admin lists:** follow [40](40-DACORE-LIST-PAGER.md) (`DACore:Page@paginate!` `$callable` as buttons, encrypted `data-page`, `live(el, e)`). Do **not** use the snippet below as the admin pager.
+
+`Pagination::paginate` is a **string helper** (unrelated to SQL). In-app lists still **MUST** be buttons + `$dotapp().load()`. **MUST NOT** a `?page=` `$href`.
+
 ```php
 use Dotsystems\App\Parts\Pagination;
 
 $html = Pagination::paginate($page['current_page'], $page['last_page'])
     ->window(2)->arrows(true)->ellipsis(true)->edge(true)
     ->render(function ($type, $pageNo, $label, $state, $href) {
-        // $type: first|prev|page|ellipsis|next|last
-        // $state: active|disabled|normal
-        if ($type === 'ellipsis') { return '<li class="disabled"><span>…</span></li>'; }
+        unset($href);
+        if ($type === 'ellipsis') { return '<li class="page-item disabled"><span class="page-link">…</span></li>'; }
         $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
-        return '<li class="' . $state . '"><button type="button" class="js-shop-page" data-page="'
-            . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
+        $token = Crypto::encrypt((string) (int) $pageNo, 'Shop.items.page');
+        return '<li class="page-item ' . $state . '"><button type="button" class="page-link shop-page" data-page="'
+            . htmlspecialchars((string) $token, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $off . '>'
+            . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</button></li>';
     });
 ```
 
-`render()` returns an HTML `string` (empty string when total ≤ 0). This is unrelated to SQL `paginate()`.
-
-In-app lists **MUST** paginate with **buttons** + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3). **MUST NOT** pass a `?page=` `$href` that reloads the site. Admin markup: [33](33-DACORE-PAGES-AND-UI.md) §3 (`DACore:Page@paginate!` + `$callable`).
+`render()` returns an HTML `string` (empty string when total ≤ 0).
 
 ---
 

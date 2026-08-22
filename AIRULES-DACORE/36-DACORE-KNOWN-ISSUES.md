@@ -126,9 +126,21 @@ Full menu (`''`) loads every `dacore_menu` row and builds the tree. A branch id 
 
 ---
 
+## 14. Pager click is dead, or CRC fails on page 2
+
+`$dotapp().live(event, selector, fn)` calls **`fn(el, e)`**. A handler written as `function (e) { e.currentTarget }` never sees the button — the click is a silent no-op. Fix: `function (el, e)` and `el.getAttribute("data-page")`.
+
+`crcCheck()` compares the encrypted Referer from page load with `$_SERVER['HTTP_REFERER']`. `history.replaceState` of `?page=` / `?logpage=` changes the Referer on the **next** POST → HTTP 400 CRC failed. Stay on the same path. Buttons, not `<a href="?page=">`.
+
+`QueryObject::paginate()['total']` is often 0 (COUNT through `execute()`). Then the UI shows “1–10 of 10” and `last_page = 1`. **MUST** `COUNT(*)` via `all()`.
+
+Law: [40](40-DACORE-LIST-PAGER.md).
+
+---
+
 ## Priority order when docs disagree
 
 1. DACore source under `app/modules/DACore/` — **read-only by default**. Do not edit or add files there (updates wipe them) unless the user **themselves** asked and confirmed the wipe ([00](00-AGENT-CONTRACT.md) §1). **MUST NOT propose** that edit.
-2. This DACore layer (`30`–`36`)
+2. This DACore layer (`30`–`40`)
 3. Framework docs (`00`–`22`)
 4. Anything else

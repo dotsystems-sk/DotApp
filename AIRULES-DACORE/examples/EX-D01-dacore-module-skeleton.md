@@ -1,6 +1,6 @@
 # EX-D01 — Complete DACore admin module skeleton
 
-End-to-end: scaffold, routes, rights middleware, installer wiring. Rules: [30](../30-DACORE-OVERVIEW.md), [31](../31-DACORE-MENU.md), [32](../32-DACORE-RIGHTS.md), [35](../35-DACORE-INSTALL.md).
+End-to-end: scaffold, routes, rights middleware, installer wiring. Rules: [30](../30-DACORE-OVERVIEW.md), [31](../31-DACORE-MENU.md), [32](../32-DACORE-RIGHTS.md), [35](../35-DACORE-INSTALL.md). **List pager:** [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md).
 
 **ASK in chat before scaffolding the menu:** shared full sidebar vs **module-own** (`Page@withMenu` last argument). This sample uses the **shared** tree (`$menuId` `''`) with a header + `type => 2` group. A large module is usually header + one entry in the global sidebar, and inner pages pass `'Shop.nav'`. Do not register “Return back”. See [31](../31-DACORE-MENU.md).
 
@@ -153,18 +153,28 @@ class Admin extends \Dotsystems\App\Parts\Controller
 
         $baseUrl = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
 
+        // Pager HTML/classes/COUNT: AIRULES/40 + examples/EX-D08 — do not use QueryObject::paginate()['total']
         $links = DotApp::call(
             'DACore:Page@paginate!',
             $result['current_page'],
             $result['last_page'],
             null,
             function ($type, $pageNo, $label, $state, $href) {
+                unset($href);
                 if ($type === 'ellipsis') {
                     return '<li class="page-item disabled"><span class="page-link">…</span></li>';
                 }
                 $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
-                return '<li class="page-item ' . $state . '"><button type="button" class="page-link js-shop-page" data-page="'
-                    . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
+                $token = Crypto::encrypt((string) (int) $pageNo, 'Shop.items.page');
+                if (!is_string($token) || $token === '') {
+                    return '<li class="page-item disabled"><span class="page-link">'
+                        . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                        . '</span></li>';
+                }
+                return '<li class="page-item ' . $state . '"><button type="button" class="page-link shop-page" data-page="'
+                    . htmlspecialchars($token, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $off . '>'
+                    . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                    . '</button></li>';
             }
         );
 
@@ -199,7 +209,17 @@ class Admin extends \Dotsystems\App\Parts\Controller
         try {
             $perPage = (int) (Config::module('Shop', 'itemsPerPage') ?? 20);
             $body = $request->data(true)['data'] ?? [];
-            $page = max(1, (int) ($body['page'] ?? 1));
+            $raw = $body['page'] ?? 1;
+            if (is_int($raw) || (is_string($raw) && ctype_digit($raw))) {
+                $page = max(1, (int) $raw);
+            } else {
+                $plain = Crypto::decrypt((string) $raw, 'Shop.items.page');
+                if ($plain === false || !ctype_digit((string) $plain)) {
+                    return Response::json(['status' => 0, 'message' => Translator::trans('Bad request')], 400);
+                }
+                $page = max(1, (int) $plain);
+            }
+            // List query: COUNT(*) + LIMIT — AIRULES/40 §4 / EX-D08. Do not trust paginate()['total'].
 
             $result = DB::module('RAW')->q(function ($qb) {
                 $qb->select(['id', 'title', 'sku', 'price', 'active'])
@@ -213,12 +233,21 @@ class Admin extends \Dotsystems\App\Parts\Controller
                 $result['last_page'],
                 null,
                 function ($type, $pageNo, $label, $state, $href) {
+                    unset($href);
                     if ($type === 'ellipsis') {
                         return '<li class="page-item disabled"><span class="page-link">…</span></li>';
                     }
                     $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
-                    return '<li class="page-item ' . $state . '"><button type="button" class="page-link js-shop-page" data-page="'
-                        . (int) $pageNo . '"' . $off . '>' . $label . '</button></li>';
+                    $token = Crypto::encrypt((string) (int) $pageNo, 'Shop.items.page');
+                    if (!is_string($token) || $token === '') {
+                        return '<li class="page-item disabled"><span class="page-link">'
+                            . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                            . '</span></li>';
+                    }
+                    return '<li class="page-item ' . $state . '"><button type="button" class="page-link shop-page" data-page="'
+                        . htmlspecialchars($token, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $off . '>'
+                        . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                        . '</button></li>';
                 }
             );
 
@@ -298,6 +327,8 @@ class Admin extends \Dotsystems\App\Parts\Controller
 
 Copy [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) / [35](../35-DACORE-INSTALL.md). **While coding:** `install.php` + live `module.init.php` / `module.listeners.php`. After a new version, rename `installed_*_install.php` → `install.php`. **`dainstall.php` + `init/`** only when packing a zip the user asked for. **Do not do this inside `app/modules/DACore/`**.
 
+**MUST** add `about.php` in the module root ([35](../35-DACORE-INSTALL.md) §3b). **ASK** the user for description, license, and 1.0.0 changelog HTML if they did not provide it. If this module is a **pack** or a **host that picks packs**, **ASK** `extra1`…`extra5` ([35](../35-DACORE-INSTALL.md) §3c). In the same grouped question, ask for module identity: text-only / compact logo / wide banner in the installer, existing local asset + alt text, and optional landing/header placement. The sidebar Remix icon is separate. No preference → text-only; do not block the scaffold.
+
 ## 7. Resulting file layout
 
 ```
@@ -305,6 +336,8 @@ app/modules/Shop/
   module.init.php
   module.listeners.php
   Installation.php
+  about.php                        (installer preview — nowdoc HTML)
+  about-assets/                    (optional images)
   install.php                      (development trigger — NOT dainstall.php until pack)
 
   AI_RULES.md                      (generated by dotapper)

@@ -21,7 +21,9 @@ Router::before(['POST'], ['/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'], '#Sho
 - Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`
 - No named routes, no Laravel `Route::prefix()->group()` — cover an area with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` (403 `Response`)
 - **MUST:** HTML `/{ModuleName}/…` + `Gate@login` (no CRC). **POST API** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the start of `initialize()` — action **MUST NOT** `crcCheck()` again. Wrap login-only handlers in `if (Auth::isLogged() === true)`. `AIRULES/03`
-- **Comments:** English, short **why** at traps — not every line
+- **MUST:** `initializeRoutes()` = this module’s prefixes only. **MUST NOT** `['*']` unless the user asked for a global hook. `AIRULES/03`
+- **Listeners:** `Listeners::initializeRoutes()` may be a **narrower** list (or omit/`null` to inherit). After either list changes: `php dotapper.php --optimize-modules`.
+- **Comments:** English. Public Controllers/Middleware PHPDoc **MUST** start with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`) then a **purpose sentence** then `@param`/`@return` (not tags-only). Labeled **`// Why:`** (logical step), **`// About:`** (what this chunk is), **`// Section:`** (menu/route) — not every line, not unlabeled (`AIRULES/25` §7, `AIRULES/08`)
 
 ## Controllers
 
@@ -59,4 +61,8 @@ Use versioned `Installation.php` + module-owned installations table. Do **not** 
 
 `php dotapper.php --module=Shop --create-controller=Home` (module flag first).
 
-After editing PHP in this module: **MUST** `AIRULES/00` §2c finish gate (CRC once vs middleware, enc IDs, bindings, `data(true)`).
+After editing PHP in this module: **MUST** `AIRULES/00` §2c finish gate (CRC once vs middleware, enc IDs, bindings, `data(true)`, `Events::trigger` vs `.hooks`).
+
+## Hooks (MUST)
+
+After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** every save) **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and **MUST** document that name in **`app/modules/<ThisModule>/.hooks`**. Payload = ids/counts/flags — never secrets. Listen to another module in **your** `module.listeners.php` after reading **their** `.hooks` — do not patch them. `Listeners::initializeRoutes()` may cover the producer URL. Pre-action stop = `Events::triggerWithVeto()` + `new Veto(...)`. `AIRULES/41-MODULE-HOOKS.md`, EX-16.

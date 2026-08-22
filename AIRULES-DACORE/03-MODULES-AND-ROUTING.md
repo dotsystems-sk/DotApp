@@ -32,9 +32,8 @@ class Module extends \Dotsystems\App\Parts\Module
 
     public function initializeRoutes()
     {
-        // Patterns for modulesAutoLoader lazy loading
-        return ['/Shop', '/Shop/*'];
-        // return ['*']; // load on every request (less efficient)
+        // Own prefixes only. ['*'] boots this module on every request.
+        return ['/Shop', '/Shop/*', '/api/v1/auth/Shop', '/api/v1/auth/Shop/*', '/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'];
     }
 
     public function initializeCondition($routeMatch)
@@ -47,6 +46,26 @@ new Module($dotApp);
 ```
 
 Register **routes and config defaults** in `initialize()`.
+
+### Keep other modules asleep (**MUST**)
+
+When `app/modules/modulesAutoLoader.php` exists (`php dotapper.php --optimize-modules`), DotApp matches two maps independently:
+
+- `Module::initializeRoutes()` decides when the full module runs `module.init.php` / `initialize()`.
+- `Listeners::initializeRoutes()` decides when only `module.listeners.php` registers callbacks.
+
+All matching listeners register before any matching module performs full initialization. A listener class that does not define `initializeRoutes()` automatically uses its module's routes, so old modules and old optimizer files remain compatible.
+
+**MUST:**
+
+1. Module `initializeRoutes()` lists **only this module’s** HTML prefixes **and** `/api/v1/auth|noauth/{Module}`. Listener `initializeRoutes()` lists only the requests where its callbacks must exist. After either list changes, run `--optimize-modules`.
+2. `module.listeners.php` **MUST** only *register* callbacks. **MUST NOT** query, log, HTTP, or write files when the file is included.
+3. Another module’s description / license / changelog / **discovery flags** (`extra1`…`extra5`) is in DACore `dacore_modules` (filled at install from `about.php`). **MUST NOT** `include` / `require` / `eval` that module’s `about.php`, `module.init.php`, `Installation.php`, or `settings.php` just to render a list, drawer, or “pick a template” dropdown. Filter with `DACore:Plugins@listByExtra!` or `SELECT … WHERE extra1 = :flag` ([35](35-DACORE-INSTALL.md) §3c).
+4. **MUST NOT** `glob('app/modules/*')` or loop other module folders on a request to catalog them. **MUST NOT** `DotApp::call('OtherModule:…')` for that.
+
+**MUST NOT** return `['*']` unless the user asked for a hook on **every** URL (firewall, HUD) **and** you warned that this module will boot everywhere. DACore uses `['*']` for the app firewall — that is **not** a pattern to copy.
+
+Without `modulesAutoLoader.php`, DotApp still evaluates listener and module routes separately at runtime. Keep listeners cheap anyway.
 
 ### Login-required routes (**MUST**)
 
@@ -127,13 +146,14 @@ Router::before(['POST'], [$openApi, $openApi . '/*'], '#DACore:AuthTest@CRC!');
 
 ### Comments in module code (**MUST**)
 
-Write **English** comments in three layers — canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
+Write **English** comments — canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
 
-1. A **docblock** on the file/class (what it owns) and on every public/static method (purpose, `@param`, `@return`, `@throws`).
-2. A short **why** line above every **logical step** in the body: guards, decisions, formulas, named constants, the query shape, and the traps of this framework (logged-in route wrap, `crcCheck()` once, `$request->data(true)`, no `?` in `$qb->raw()` comments, unique `$key2`, owner predicate in SQL, rights via your own `Rights@check`).
-3. Nothing else.
+1. A **PHPDoc** on the file/class (what it owns) and on every public/static method. On every public method in `Controllers/` and `Middleware/`, the **first** line **MUST** be **`CRCchecking —`** naming the exact prefix/middleware (`#DACore:AuthTest@LoginAndCRC!` / `@CRC!` / Gate), or `this action`, or `none` (GET/upload/helper) — so the next agent does not add a second `crcCheck()`. Then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning. Tags-only (`@return array<string, mixed>`) is a **bug**. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md).
+2. **`// Why:`** above every **logical step** (the keyword **MUST** be `Why:`): guards, decisions, formulas, named constants, the query shape, and the traps of this framework (logged-in route wrap, `crcCheck()` once, `$request->data(true)`, no `?` in `$qb->raw()` comments, unique `$key2`, owner predicate in SQL, rights via your own `Rights@check`).
+3. **`// About:`** once per action / domain method — what this chunk does and what the record **represents**.
+4. **`// Section:`** on code that serves a page — DACore menu path and/or route so a reader can map PHP → admin (or public URL).
 
-**MUST NOT** restate the code (`// increment i`, `// return the response`), prompt-echo (“as requested…”), or leave dead code / commented-out blocks / a bare `TODO`. UI strings stay product copy ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8); comments are for the programmer.
+**MUST NOT** restate the code (`// increment i`, `// return the response`), prompt-echo (“as requested…”), or leave dead code / commented-out blocks / a bare `TODO`. **MUST NOT** omit the `Why:` / `About:` / `Section:` **labels**. UI strings stay product copy ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8); comments are for the programmer.
 
 ---
 
@@ -148,6 +168,18 @@ use Dotsystems\App\Parts\Router;
 
 class Listeners extends \Dotsystems\App\Parts\Listeners
 {
+    /**
+     * Wake this listener only where the subscribed hook can fire.
+     *
+     * Omit this method to inherit Module::initializeRoutes() exactly.
+     *
+     * @return array<int, string> Listener route masks.
+     */
+    public function initializeRoutes()
+    {
+        return ['/api/v1/auth/Shop/*', '/worker/shop/*'];
+    }
+
     public function register($dotApp)
     {
         // Example: global before-hook
@@ -157,6 +189,10 @@ class Listeners extends \Dotsystems\App\Parts\Listeners
 
 new Listeners($dotApp);
 ```
+
+`register()` **MUST** only *register* callbacks. **MUST NOT** query, log, HTTP, or write files when the file is included ([03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”).
+
+To subscribe to **another** module’s business event: read `app/modules/<Other>/.hooks` first, then `Events::on('module.{other}.{name}.hook', …)` here. Canonical: [41](41-MODULE-HOOKS.md).
 
 ---
 
@@ -299,12 +335,16 @@ Attach on the HTML prefix: `Router::before([$member, $member . '/*'], '#Shop:Gat
 ## Events from modules
 
 ```php
-$sub = $dotApp->on('shop.item.saved', function ($result, ...$data) { /* ... */ });
+$sub = $dotApp->on('module.shop.sms_sent.hook', function ($result, ...$data) { /* ... */ });
 $sub->off();
-$dotApp->trigger('shop.item.saved', $result, $itemId);
+$dotApp->trigger('module.shop.sms_sent.hook', $result);
 ```
 
-`trigger()` returns `$result` **unchanged** — listener return values are ignored. Listener exceptions propagate. Route-scoped forms (`on($route, $event, $cb)` / `on($method, $route, $event, $cb)`) return **`false` and do not register** when the current request does not match. Full detail: [12-SERVICES.md](12-SERVICES.md).
+`trigger()` returns `$result` **unchanged** — listener return values are ignored (they are **not** a veto). The separate `triggerWithVeto()` API stops only on an explicit `Parts\Veto` object and returns that object or `null`; ordinary false/scalar returns stay ignored. Listener exceptions propagate. Route-scoped forms (`on($route, $event, $cb)` / `on($method, $route, $event, $cb)`) return **`false` and do not register** when the current request does not match. Full API: [12-SERVICES.md](12-SERVICES.md) §2.
+
+**MUST (business hooks):** name is **`module.{lowercase_modulename}.{hook_name}.hook`**. Fire only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Document that exact name in **`app/modules/<YourModule>/.hooks`**. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:` ([41](41-MODULE-HOOKS.md) §3). **MUST NOT** put secrets on the bus; **MUST NOT** fire inside `foreach` of a growing list (one batch event after the loop).
+
+To react to **another** module: read **their** `.hooks`, then `Events::on(...)` in **your** `module.listeners.php`. **MUST NOT** edit the owner (and **MUST NOT** edit DACore) to “add a call”. Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
 
 ---
 

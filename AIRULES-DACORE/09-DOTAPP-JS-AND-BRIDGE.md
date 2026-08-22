@@ -231,6 +231,7 @@ Skipping Notiflix on an admin page does **not** waive preloaders. A custom syste
 - Do not rely on desktop-only layout for the busy state.
 - One in-flight request per region; a second tap/drag is ignored until the overlay is gone.
 - Toasts are short and non-blocking. Never `alert()`.
+- **Layout (LAW):** every new button/control has padding vs its parent (especially **below**), and is centered or aligned to the same rhythm as siblings. A Save glued to the card edge is a **bug**. Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
 
 Notiflix API (when you choose option 1):
 
@@ -308,11 +309,18 @@ Agents **MUST NOT** dump the table with `->all()` ([06](06-DATABASE.md)). Skip a
 
 The pager **MUST** be **interactive AJAX**: stay on the page, overlay the list (Notiflix preferred **or** module) while the request runs, `$dotapp().load()`, patch `html` (rows **and** pager), remove overlay on success **and** error. Desktop **and** mobile. The overlay is a busy state — it is **not** a page reload.
 
-First paint may be server-rendered page 1. Further pages: POST with `page` (clamp in PHP) plus current filters. Pager: `type="button"` + `.live()` — **MUST NOT** `<fo-rm>` per page button. DACore markup: `DACore:Page@paginate!` with a **`$callable`** that emits buttons — do not pass a `?page=` `$href` that navigates. See [33](33-DACORE-PAGES-AND-UI.md).
+**Law (HTML, classes, `live` signature, COUNT, CRC Referer):** [40-DACORE-LIST-PAGER.md](40-DACORE-LIST-PAGER.md). Copy-paste: [EX-D08](examples/EX-D08-list-pager.md).
+
+First paint may be server-rendered page 1. Further pages: POST with encrypted `page` plus current filters. Pager: `type="button"` + `.live()` — **MUST NOT** `<fo-rm>` per page button. `DACore:Page@paginate!` with a **`$callable`** that emits buttons — do not pass a `?page=` `$href`. **MUST NOT** `history.replaceState` of `?page=` — that burns CRC on the next POST.
+
+`$dotapp().live(event, selector, fn)` calls **`fn(el, e)`**. The first argument is the **element**. `function (e) { e.currentTarget }` silently no-ops.
 
 ```javascript
-$dotapp().live("click", ".js-shop-page", function (e) {
-  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+$dotapp().live("click", ".shop-page", function (el, e) {
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  if (!el || el.disabled) return;
+  var page = el.getAttribute("data-page") || "";
+  if (!page) return;
   Notiflix.Block.standard("#listWrap", "Loading…");
   $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: page, q: currentQuery },
     function (raw) {
@@ -325,7 +333,7 @@ $dotapp().live("click", ".js-shop-page", function (e) {
 });
 ```
 
-SQL: `->paginate($perPage, $page)`. Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md), [examples/EX-D02-dacore-admin-page.md](examples/EX-D02-dacore-admin-page.md).
+SQL: `COUNT(*)` + `LIMIT`/`OFFSET` — **MUST NOT** trust `QueryObject::paginate()['total']` ([40](40-DACORE-LIST-PAGER.md) §4). Copy-paste: [examples/EX-D08-list-pager.md](examples/EX-D08-list-pager.md), [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
 
 ### Interactive AJAX search on lists (**MUST ASK** / often **MUST ship**)
 
@@ -622,7 +630,7 @@ If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').
 | `.data('k')` | `el.dataset` / `getAttribute` |
 | `.find('.c')` | `el.querySelectorAll` |
 | `$.ajax` / `$.post` | `$dotapp().load` + `parseReply` |
-| `$(this)` in a handler | `e.currentTarget` or `$dotapp(e.currentTarget)` |
+| `$(this)` in a handler | native `el` from `.live(..., function (el, e)` — **not** `e.currentTarget` as the first arg ([40](40-DACORE-LIST-PAGER.md)) |
 
 #### `fn` wrapper (per-element ports)
 

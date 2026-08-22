@@ -17,7 +17,7 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | **Never edit any file in `app/modules/DACore/`** (default) | DACore updates overwrite the whole module — local patches disappear |
 | **Never add files, controllers, views, JS, CSS, or SQL into DACore** (default) | Same reason: the next update wipes them. Extend via your own module only |
 | **Never propose a DACore patch** | The user must ask; the agent must not offer it |
-| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders` directly** | Use the registration / push / `Email@send` / `Sms@send` APIs — they handle upsert/fan-out, column compatibility and cache invalidation. Installer tables are DACore-owned. |
+| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders` directly** | Use the registration / push / `Email@send` / `Sms@send` APIs. **Exception (read):** listing packs by `extra1`…`extra5` is `DACore:Plugins@listByExtra!` or a bound `SELECT` ([35](35-DACORE-INSTALL.md) §3c). Never `UPDATE` extras from your module. |
 | **Never write into `{prefix}users_rights*` directly** | Use `DACore:Rights@*` |
 | **Never duplicate the admin HTML shell** | Use `DACore:Page@withMenu!` |
 | **Never use `$_SESSION` / `session_start()`** | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
@@ -28,7 +28,7 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | Sending SMS from a module | Open [39](39-DACORE-SMS.md) — do not invent a gateway |
 | **ASK menu layout** on a new DACore module | Shared full sidebar vs module-own (`withMenu` `$menuId`). Many items: group `type => 2` or header + one entry ([31](31-DACORE-MENU.md)) |
 | **Active sidebar on subpages** | Edit/detail **MUST** pass `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). [31](31-DACORE-MENU.md) |
-| Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when asked | While coding: **`install.php`**. Zip **MUST** rename it to `dainstall.php` (DACore **rejects** `install.php` / never runs Installation without `dainstall.php`) + **`init/`**. Non-DACore: copy the folder. [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5. **MUST NOT** pack `app/modules/DACore/`. |
+| Pack `dainstall.php` + `init/` + **`about.php`** **only** for a **DACore-bound** module and only when asked | While coding: **`install.php`**. Zip **MUST** rename it to `dainstall.php` (DACore **rejects** `install.php` / never runs Installation without `dainstall.php`) + **`init/`** + **`about.php`**. Non-DACore: copy the folder. [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5. **MUST NOT** pack `app/modules/DACore/`. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
 | **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — **PHP** verifies the code before persist (overlay is UX only); never `Auth::confirmTwoFactor` while already logged in |
 
@@ -58,7 +58,7 @@ Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` 
 | Send SMS via DACore drivers | `DACore:Sms@…!` ([39](39-DACORE-SMS.md)) | `{ok, message_id, message, errors}` |
 | Add AI system context | `DACore:AI@addSystemContext` | `bool` |
 | Migration guard | `DACore:Installations@exist!` | `bool` |
-| Record migration | `DACore:Installations@insert!` | `bool` |
+| List installed packs by `extra1`…`extra5` | `DACore:Plugins@listByExtra!` (1.0.26; not HTTP; empty token → `[]`) | `array` of `{module, version, extra1…extra5}` |
 | Error page body | `DotApp::call(Config::module("DACore","error403Page"))` | `string` |
 
 Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!` = no DI.
@@ -74,7 +74,7 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_ai_tools` | AI tool registry: `toolid`, `creator`, `description`, `howtouse`, `controller`, `rights`, `helper`, `workflow`, `tool_type`, `risk_level`, `requires_confirmation`, `intent_tags`, `allowed_tools`, `forbidden_tools` |
 | `dacore_chat` | AI chat sessions |
 | `dacore_chat_messages` | AI chat messages |
-| `dacore_modules` | ZIP-installed modules (DACore-owned — **never write**) |
+| `dacore_modules` | ZIP-installed modules: about/license/changelog HTML **and** `extra1`…`extra5` discovery flags from `about.php` (DACore-owned — **never INSERT/UPDATE/DELETE** from your module; **READ** / `Plugins@listByExtra!` is how a CMS finds templates) |
 | `dacore_plugin_logs` | Plugin installer audit (DACore-owned — **never write**) |
 | `dacore_settings` | DACore-wide settings (DACore-owned — **never write**) |
 | `dacore_notifications` | Inbox events (DACore-owned — **never write**; `Notifications@push` only) |
@@ -207,8 +207,9 @@ Reminder from [12](12-SERVICES.md): `trigger()` **ignores listener return values
 | Permissions + route guards | [32](32-DACORE-RIGHTS.md) | EX-D01 |
 | Admin pages, dotgrid, tables | [33](33-DACORE-PAGES-AND-UI.md) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | AI tools | [34](34-DACORE-AI-TOOLS.md) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
-| Installer wiring | [35](35-DACORE-INSTALL.md) | [EX-D04](examples/EX-D04-dacore-installer.md) |
+| Installer wiring | [35](35-DACORE-INSTALL.md) (incl. §3c extras) | [EX-D04](examples/EX-D04-dacore-installer.md) |
 | Inbox notifications | [37](37-DACORE-NOTIFICATIONS.md) | [EX-D05](examples/EX-D05-dacore-notifications.md) |
 | Outgoing mail (DACore senders) | [38](38-DACORE-EMAIL.md) | [EX-D06](examples/EX-D06-dacore-email.md) |
 | Outgoing SMS (DACore drivers) | [39](39-DACORE-SMS.md) | [EX-D07](examples/EX-D07-dacore-sms.md) |
+| List pager (HTML, classes, AJAX) | [40](40-DACORE-LIST-PAGER.md) | [EX-D08](examples/EX-D08-list-pager.md) |
 | DACore quirks | [36](36-DACORE-KNOWN-ISSUES.md) | — |

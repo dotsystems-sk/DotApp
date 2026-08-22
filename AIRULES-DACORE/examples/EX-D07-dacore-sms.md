@@ -42,6 +42,7 @@ $reg = DotApp::call('DACore:Sms@registerSender!', [
     'controller_status' => 'supersms123:Provider@status',
     'controller_test'   => 'supersms123:Provider@test',
     'supports_from'     => 1,
+    'extra1'            => 'profile-key', // optional non-secret routing token
 ]);
 if (($reg['ok'] ?? false) !== true) {
     Logger::use()->error('SMS driver register failed', ['errors' => $reg['errors'] ?? []]);
@@ -61,19 +62,22 @@ namespace Dotsystems\App\Modules\supersms123\Controllers;
 
 class Provider extends \Dotsystems\App\Parts\Controller
 {
-    public static function send($to, $text, $from = '', $options = [])
+    public static function send($to, $text, $from = '', $options = [], $context = [])
     {
+        // extra1 is a driver-private routing token (never a secret).
+        $profileKey = is_array($context) ? (string) ($context['extra1'] ?? '') : '';
+        unset($profileKey);
         // Call your gateway. Ignore $from when the account has no originator.
         return ['ok' => true, 'message_id' => 'abc123'];
         // return ['ok' => false, 'message' => 'Gateway rejected the number'];
     }
 
-    public static function status($messageId)
+    public static function status($messageId, $context = [])
     {
         return ['ok' => true, 'status' => 'delivered'];
     }
 
-    public static function test($to = '')
+    public static function test($to = '', $context = [])
     {
         return ['ok' => true, 'message' => 'Test SMS accepted'];
     }
@@ -86,4 +90,4 @@ Test send from **your** settings page (not from DACore's list):
 DotApp::call('DACore:Sms@testSender!', 'supersms123.sender', $to);
 ```
 
-**MUST NOT:** write `dacore_sms_senders`; keep API keys in DACore; clone add/edit on `/dacore/sms-senders`; store auto-increment ids; call `DACore:SMS@…`.
+**MUST NOT:** write `dacore_sms_senders`; keep API keys in DACore (including `extra1`–`extra3`); clone add/edit on `/dacore/sms-senders`; store auto-increment ids; call `DACore:SMS@…`.

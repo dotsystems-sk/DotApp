@@ -8,9 +8,11 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 |-------|-------|
 | “This is basically Laravel” | DotApp is a separate BE+FE framework |
 | Copy Blade/Eloquent snippets | Use AIRULES syntax only |
-| Edit `app/parts` to “fix” something | Ask user; edit module + `config.php` only |
+| Edit `app/parts` / `DotApp.php` / `dotapper.php` / `index.php` to “fix” something | **MUST NOT**, even if the user asks. Kernel is frozen. Implement in the module + `config.php` only |
 | Premium Cursor subagent without asking (Opus / GPT-5 / xhigh / cloud / best-of-N) | Inherit the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Composer 2.5 as the programmer | Composer 2.5 only for a pile of files; programming = parent model ([00](00-AGENT-CONTRACT.md) §2b) |
+| SMS/mail/payment/lockout with no hook, or a trigger not listed in `.hooks` | Fire **`module.{mod}.{name}.hook`** when a future module would subscribe; document in `.hooks` ([41](41-MODULE-HOOKS.md)) |
+| Hook on every save / unlabeled `// turning SMS off…` | Judge first; comments **MUST** start with `Why:` / `About:` / `Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
 | Silent save / empty `.after()` / only a generic error when the field is known | Show success **and** fail; mark the wrong input ([00](00-AGENT-CONTRACT.md) §2d) |
 
@@ -61,7 +63,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `in_array()` / nested `foreach` over data that scales; `array_merge` per iteration | key the array once, `isset()`; `$out[] =` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §1) |
 | New `WHERE` / `ORDER BY` column with no index; three single-column indexes | index designed for the query; composite equality → range → sort ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3) |
 | `string()` (255) for a status, `float` for money, FK type ≠ `id()` (BIGINT) | realistic length, `decimal(10,2)`, `bigInteger()->unsigned()` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4) |
-| Public method with no docblock; a body of undocumented steps | docblock + a short **why** per logical step ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
+| Public method with tags-only PHPDoc (`@return array<string, mixed>`); a body of undocumented steps | purpose sentence **then** tags; labeled **`// Why:`** / **`// About:`** / **`// Section:`** ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
+| Controller/middleware public method with no `CRCchecking —` first line, or prefix CRC in PHPDoc **and** `crcCheck()` in the body | First line names the **real** layer; prefix **XOR** action ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md)) |
+| `// turning SMS off is dangerous` without the label | **`// Why:`** turning SMS off is a dangerous flag — … ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Inventing a DACore `dainstall.php` zip for a bare module | Rename to `install.php` and copy the module folder |
@@ -91,6 +95,13 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `$payload['context'] = $request->data(true)` | ids and counts only — never the request body, tokens or passwords |
 | `Events::trigger('dotapp.catch', …)` inline in 20 `catch` blocks | **one** report helper per module — listener exceptions propagate |
 | Collecting results from `trigger()` | returns `$result` unchanged |
+| Treat listener `return false` as a veto | `trigger()` **ignores** returns. Pre-action stop = `triggerWithVeto()` + `new Veto($code, …)` ([41](41-MODULE-HOOKS.md)) |
+| Skip `Events::trigger` because `hasListener` is false / “nobody listens yet” | **MUST** fire a **decided** useful hook ([41](41-MODULE-HOOKS.md)) |
+| `initializeRoutes() => ['*']` without a global job | Own prefixes + `--optimize-modules`. Listener map may be narrower ([03](03-MODULES-AND-ROUTING.md)) |
+| `Events::trigger('dotapp.catchall', …)` | **Core** already fires it on every other `trigger()` — subscribe with `Events::on('dotapp.catchall', …)` ([01](01-ARCHITECTURE.md)) |
+| Heavy / throwing `dotapp.catchall` listener | cheap + own `try/catch` — a throw **aborts the original event** ([23](23-DEBUG-PLAYBOOK.md) §1c) |
+| Patch another module to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
+| `hooks.md` / `.hooks` under `assets/` | Filename **`.hooks`** at the module **root** — not a public page ([41](41-MODULE-HOOKS.md)) |
 
 ## Forms / frontend
 

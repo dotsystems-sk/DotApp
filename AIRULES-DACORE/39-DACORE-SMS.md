@@ -35,7 +35,7 @@ DACore `/dacore/sms-senders` is a **list**. The only action is **set as default*
 
 ### `Sms@listSenders!` → `list<array>`
 
-`id`, `token`, `sender_key`, `name`, `info`, `settings_url`, `supports_from`, `supports_status`, `is_default`, `available`. No credentials.
+`id`, `token`, `sender_key`, `name`, `info`, `settings_url`, `supports_from`, `supports_status`, `is_default`, `available`. No credentials. No `extra1`–`extra3` — those are driver-private routing tokens.
 
 HTML may use encrypted `token`. **Store `sender_key`** in `{lowercase}_*` — never the auto-increment `id` (ids differ per install).
 
@@ -54,6 +54,7 @@ Aliases: `sendSMS!`, `sms!`.
 | `$text` | Body |
 | `$from` | Optional originator. Drivers with `supports_from=0` ignore it |
 | `$options` | Driver-private extras. Never required |
+| `$context` | DACore adds this last argument on dispatch: `sender_key`, `creator`, `extra1`, `extra2`, `extra3`. Consumers never pass it. |
 | Array form | `['id'\|'sender'\|'sender_key', 'to', 'text', 'from', 'options']` |
 | Returns | Always an array. Check `ok === true`. Never throws |
 
@@ -91,6 +92,9 @@ $reg = DotApp::call('DACore:Sms@registerSender!', [
     'controller_status' => 'supersms123:Provider@status',
     'controller_test'   => 'supersms123:Provider@test',
     'supports_from'     => 1,
+    'extra1'            => 'profile-key', // optional; non-secret routing token
+    'extra2'            => '',
+    'extra3'            => '',
 ]);
 if (($reg['ok'] ?? false) !== true) {
     Logger::use()->error('SMS driver register failed', ['errors' => $reg['errors'] ?? []]);
@@ -105,25 +109,30 @@ DotApp::call('DACore:Sms@unregisterByCreator!', 'supersms123');
 
 `sender_key`: `[A-Za-z0-9][A-Za-z0-9._-]{0,49}`. `settings_url`: relative path starting with `/` (not `//`). Controllers: `Module:Controller@method`.
 
-Your controller methods **MUST NOT throw**. Same argument order every time:
+`extra1`–`extra3` are optional `varchar(64)` tokens (`[A-Za-z0-9._-]` or empty). Omitted extras stay unchanged on upsert. **MUST NOT** store API keys, passwords, signatures, or phone numbers there — credentials stay in the driver module.
+
+Your controller methods **MUST NOT throw**. Same argument order every time. DACore always appends `$context` last; older drivers that omit the parameter still work.
 
 ```php
-public static function send($to, $text, $from = '', $options = [])
+public static function send($to, $text, $from = '', $options = [], $context = [])
 {
+    $profileKey = is_array($context) ? (string) ($context['extra1'] ?? '') : '';
     return ['ok' => true, 'message_id' => 'abc123'];
     // or ['ok' => false, 'message' => 'Gateway rejected the number'];
 }
 
-public static function status($messageId)
+public static function status($messageId, $context = [])
 {
     return ['ok' => true, 'status' => 'delivered'];
 }
 
-public static function test($to = '')
+public static function test($to = '', $context = [])
 {
     return ['ok' => true, 'message' => 'Test SMS accepted'];
 }
 ```
+
+`$context` keys: `sender_key`, `creator`, `extra1`, `extra2`, `extra3`. Use them to select among several senders registered by the same module.
 
 Credentials stay in **your** tables / config. DACore stores routing metadata only.
 
@@ -135,7 +144,7 @@ The first registered driver becomes **default**. When the default is uninstalled
 
 - A second SMS stack (`Parts\Sms` / `SmsProvider`) unless the user declined DACore drivers
 - `INSERT` / `UPDATE` / `DELETE` on `dacore_sms_senders`
-- Keep provider secrets in DACore
+- Keep provider secrets in DACore — including in `extra1`–`extra3`
 - Propose add / edit / delete / test on DACore's SMS senders list
 - Store auto-increment `id` as the stable sender reference — use `sender_key`
 - Call `DACore:SMS@…` (wrong class case on Linux)

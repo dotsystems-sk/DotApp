@@ -8,11 +8,13 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 |-------|-------|
 | “This is basically Laravel” | DotApp is a separate BE+FE framework |
 | Copy Blade/Eloquent snippets | Use AIRULES syntax only |
-| Edit `app/parts` to “fix” something | Ask user; edit module + `config.php` only |
+| Edit `app/parts` / `DotApp.php` / `dotapper.php` / `index.php` to “fix” something | **MUST NOT**, even if the user asks. Kernel is frozen. Implement in the module + `config.php` only. DACore §1 is **not** a licence to patch the kernel |
 | Premium Cursor subagent without asking (Opus / GPT-5 / xhigh / cloud / best-of-N) | Inherit the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Composer 2.5 as the programmer | Composer 2.5 only for a pile of files; programming = parent model ([00](00-AGENT-CONTRACT.md) §2b) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
 | Silent save / empty `.after()` / invent a second toast instead of grepping DACore | Admin: search DACore then **toast**. Public: mark the wrong field ([00](00-AGENT-CONTRACT.md) §2d) |
+| SMS/mail/payment/lockout with no hook, or a trigger not listed in `.hooks` | Fire **`module.{mod}.{name}.hook`** when a future module would subscribe; document in `.hooks` ([41](41-MODULE-HOOKS.md)) |
+| Hook on every save / unlabeled `// turning SMS off…` | Judge first; comments **MUST** start with `Why:` / `About:` / `Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 
 ## Controllers / routing
 
@@ -58,13 +60,15 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Eloquent models | Optional Entity ORM or plain RAW |
 | String-built SQL with user input | Bindings only (`?` xor `:named`) |
 | `COMMENT 'SMS?'` / `?` inside `--` comments in `$qb->raw()` | Every `?` is a placeholder — write “SMS optional”; [06](06-DATABASE.md) |
-| Logs / users / items via `->all()` into the view / no pager because “few rows now” | `->paginate($perPage, $page)` on first ship ([06](06-DATABASE.md)) |
+| Logs / users / items via `->all()` into the view / no pager because “few rows now” | COUNT + LIMIT + [40](40-DACORE-LIST-PAGER.md) pager on first ship |
 | `all()` then filter in PHP; query inside `foreach`; `select('*')` for a 3-column list | `exists()` / `COUNT(*)` / needed columns / one `join` ([06](06-DATABASE.md)) |
 | N+1: one lookup (or rights) query per row | one `whereIn` prefetch + a **keyed map** (`$byId[$id]`) ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2) |
 | `in_array()` / nested `foreach` over data that scales; `array_merge` per iteration | key the array once, `isset()`; `$out[] =` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §1) |
 | New `WHERE` / `ORDER BY` column with no index; three single-column indexes | index designed for the query; composite equality → range → sort ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3) |
 | `string()` (255) for a status, `float` for money, FK type ≠ `id()` (BIGINT) | realistic length, `decimal(10,2)`, `bigInteger()->unsigned()` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4) |
-| Public method with no docblock; a body of undocumented steps | docblock + a short **why** per logical step ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
+| Public method with tags-only PHPDoc (`@return array<string, mixed>`); a body of undocumented steps | purpose sentence **then** tags; labeled **`// Why:`** / **`// About:`** / **`// Section:`** ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
+| Controller/middleware public method with no `CRCchecking —` first line, or prefix CRC in PHPDoc **and** `crcCheck()` in the body | First line names the **real** layer; prefix **XOR** action ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md)) |
+| `// turning SMS off is dangerous` without the label | **`// Why:`** turning SMS off is a dangerous flag — … ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
@@ -94,6 +98,20 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | A `dotapp.catch` listener that pushes a DACore notification every time | rate-limited threshold, or notify on the real business event ([37](37-DACORE-NOTIFICATIONS.md)) |
 | Adding the report helper / listener inside `app/modules/DACore/` | **your** module only — DACore is wiped on update |
 | Collecting results from `trigger()` | returns `$result` unchanged |
+| `Events::trigger('dotapp.catchall', …)` | **Core** already fires it on every other `trigger()` — subscribe with `Events::on('dotapp.catchall', …)` in **your** module ([01](01-ARCHITECTURE.md)) |
+| Heavy / throwing `dotapp.catchall` listener | cheap + own `try/catch` — a throw **aborts the original event** ([23](23-DEBUG-PLAYBOOK.md) §1c) |
+| A `dotapp.catchall` listener that pushes a DACore notification every time | opt-in tracer only — that event fires on **every** `trigger()` ([37](37-DACORE-NOTIFICATIONS.md)) |
+| Skip `Events::trigger` because `hasListener` is false / “nobody listens yet” | **MUST** fire a **decided** useful hook ([41](41-MODULE-HOOKS.md)) |
+| Trigger on every item save “just in case” | Fire only when `Use:` names a real consumer ([41](41-MODULE-HOOKS.md)) |
+| `shop.item.saved` / `{mod}.{noun}.{happened}` | `module.shop.sms_sent.hook` ([41](41-MODULE-HOOKS.md)) |
+| `Events::trigger` without `Hook:` / `Params:` / `Use:` | The five-line block above `trigger()` ([41](41-MODULE-HOOKS.md) §3) |
+| Treat listener `return false` as a veto | `trigger()` **ignores** returns. Pre-action stop = `triggerWithVeto()` + `new Veto($code, …)` ([41](41-MODULE-HOOKS.md)) |
+| Patch another module (or DACore) to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
+| Invent `module.blog.*` from Shop / fire `dotapp.*` for business | Prefix = **this** module’s lowercase name ([41](41-MODULE-HOOKS.md)) |
+| `hooks.md` / `.hooks` under `assets/` | Filename **`.hooks`** at the module **root** — not a public page ([41](41-MODULE-HOOKS.md)) |
+| Password / TOTP / CRC / request body on `Events::trigger` | Ids, counts, flags only ([41](41-MODULE-HOOKS.md), [24](24-ATTACK-VECTORS.md) §8) |
+| `Events::trigger` inside `foreach` of a growing list | One **batch** event after the loop ([41](41-MODULE-HOOKS.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md)) |
+| Skip a useful SMS/mail hook “for performance” | Unused `trigger()` is cheap; spraying every save is noise ([41](41-MODULE-HOOKS.md)) |
 
 ## Forms / frontend
 
@@ -116,11 +134,12 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | List still clickable / second drag during `load()` | Cover the wrapper (Notiflix preferred **or** module preloaders) until success **and** error — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |
 | `alert()` / `window.confirm()` on delete | Graphical dialog (`Notiflix.Confirm` on admin), then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
-| Growing list with no pager / `<a href="?page=">` | AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3) |
+| Growing list with no pager / `<a href="?page=">` / `e.currentTarget` | [40](40-DACORE-LIST-PAGER.md): `live(el, e)`, encrypted `data-page`, COUNT |
 | Articles/catalog list with no search / JS-filter of `->all()` | **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Naked empty table / unvalidated `ORDER BY` / JS-only sort / toast-undo after delete | Empty state **MUST**; sort whitelist; confirm is enough ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + `$request->upload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 | Desktop-only public header / hover-only nav / no drawer | Overlay drawer L/R; lock page scroll; drawer list scrolls; contacts+compact search in the drawer ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Save / primary button flush to the card or page edge | Padding vs parent (esp. **bottom**); center or match sibling footers ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c) |
 | Accept `.php` / trust browser MIME on upload | Reject scripts in PHP: extension + `finfo` + headers ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 
 ## Config / security
@@ -144,6 +163,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `$e->getMessage()` / `var_dump` in the reply | Generic message + `Logger` ([24](24-ATTACK-VECTORS.md) §8) |
 | AI / webhook output executed, echoed raw, or trusted unsigned | Treat as input: escape, whitelist, `hash_hmac` + `hash_equals` ([24](24-ATTACK-VECTORS.md) §10) |
 | Edit core to add config API | Use `Config::module` / `Config::set` |
+| `include` another module’s `about.php` / `module.init.php` to list it or pick a template | Read `dacore_modules` / `DACore:Plugins@listByExtra!`; keep `initializeRoutes()` to **this** module ([03](03-MODULES-AND-ROUTING.md), [35](35-DACORE-INSTALL.md) §3c) |
+| `initializeRoutes() => ['*']` “so the catalog works” | Own prefixes + `--optimize-modules`. `['*']` only for a user-asked global hook |
 
 ## DACore
 
@@ -159,7 +180,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `Parts\Sms` / `SmsProvider` as the default in a DACore module | **ASK** first; then `DACore:Sms@send` ([39](39-DACORE-SMS.md)) |
 | Clone SMTP admin pages in your module | Operators use DACore Email senders; your module only **picks** sender/template ids |
 | Module-owned inbox table / second bell UI | DACore navbar + `{prefix}/dacore/notifications` |
-| `Notifications@push` in `Installation.php` or every request | Call on the event in **your** controller/service |
+| `Notifications@push` in `Installation.php` or every request | Call on the event in **your** controller/service — or `Events::on` their `module.{mod}.{name}.hook` from **your** listeners ([41](41-MODULE-HOOKS.md)) |
 | Own sidebar with no header (`type => 0`) | One header per module; more only if you need more sections ([31](31-DACORE-MENU.md)) |
 | Ten `type => 1` leaves under a header in the global sidebar | **ASK** shared vs module-own; group with `type => 2`, or header + one entry ([31](31-DACORE-MENU.md)) |
 | Guess the menu layout on a new DACore module | Ask in chat first — do not scaffold until the user picks |
@@ -178,7 +199,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |
-| Shipping a DACore zip that still has `install.php`, or that lacks `dainstall.php` / `init/` | Rename `install.php` → `dainstall.php` on a **copy**; copy live init into `init/`; inert root stubs. DACore **rejects** `install.php` and **never runs** Installation without `dainstall.php` ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5) |
+| Shipping a DACore zip that still has `install.php`, or that lacks `dainstall.php` / `init/` / `about.php` | Rename `install.php` → `dainstall.php` on a **copy**; copy live init into `init/`; inert root stubs; include `about.php`. DACore **rejects** `install.php` and a missing/invalid `about.php`, and **never runs** Installation without `dainstall.php` ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5) |
 | `dainstall.php` / inert root **while coding** | Live `install.php` + live init files until the user asks to pack a **DACore** module ([35](35-DACORE-INSTALL.md) §4–§5) |
 | `dainstall.php` zip for a module that is not for DACore | Rename `installed_*` → `install.php` and copy the folder ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |

@@ -75,6 +75,17 @@ Route: `'Shop:Home@index!'`. Omit the `!` only when the method should receive DI
 
 ## What's New ✨
 
+### Module loader v2, listener routes, and `Veto` (NEW – 2026-08-22)
+
+The kernel is **done**. Agents and contributors **MUST NOT** edit `app/DotApp.php`, `app/parts/`, `dotapper.php`, or `index.php` — implement features in **your module**.
+
+- **Faster module boot, old maps still work:** `php dotapper.php --optimize-modules` writes `app/modules/modulesAutoLoader.php` **v2** (`$modulesAutoLoaderVersion = 2`) with two independent lists: `$modules` (full `module.init.php` / `initialize()`) and `$listeners` (only `module.listeners.php`). An older file that has only `$modules` still loads.
+- **Listeners can have their own URLs:** `Listeners::initializeRoutes()` may return a different prefix list than `Module::initializeRoutes()`. Return `null` (or omit the method) to inherit the module map — that is the compatible default.
+- **Listeners register first:** matching `module.listeners.php` files run **before** matching modules initialize, so a subscriber can hear an event without booting its whole admin UI.
+- **`triggerWithVeto()` + `Dotsystems\App\Parts\Veto`:** ordinary `Events::trigger()` still **ignores** listener returns (not a veto). The opt-in API stops only when a listener returns `new Veto($code, $message, $details)` and yields `Veto|null`. Name: `module.{mod}.{action}.veto`. Never send `message` / `details` to the browser.
+
+AI rules: `AIRULES/03-MODULES-AND-ROUTING.md` (sleep + listener routes), `AIRULES/12-SERVICES.md` §2, `AIRULES/41-MODULE-HOOKS.md`, sample `AIRULES/examples/EX-16-module-hooks.md`.
+
 ### Version 2.0 Released (NEW – 2026-08-18)
 
 This is not a coat of paint. 2.0 is the result of **heavy production use** plus a hard rewrite of how agents are allowed to touch the stack. The rulebook was driven in **Cursor** with **Grok 4.5** and **Grok 4.6**. Apps that came out of those sessions are **secure, snappy, and shippable** — on models that stay cheap to run.

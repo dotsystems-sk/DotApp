@@ -16,7 +16,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 2. **You may edit only:**
    - `app/config.php`
    - files inside **your own** module at `app/modules/<YourModule>/`
-3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …).
+3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …). The kernel is **finished**. **MUST NOT** edit it even if the user asks — implement in the module. Read `app/parts/` **read-only** when an API is missing from AIRULES.
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** ship **your own** form/list preloaders (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile. User-visible strings **MUST** read as shipped product copy — never prompt-echo.
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items` or `dotapp_*` for module data.
@@ -26,11 +26,23 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
 11. **Public website (MUST):** mobile nav is an overlay drawer from the left or right; the page behind **MUST NOT** scroll while it is open (including iOS); the drawer list **MUST** scroll; contacts + compact search live in the drawer unless large search is its own mobile section. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 12. **Cursor credits (MUST):** when **planning** programming, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. Composer 2.5 is **only** for hunting a pile of files — **not** the programmer. Canonical: [00](00-AGENT-CONTRACT.md) §2b.
-13. **Finish gate (LAW):** after **every** code chunk **and** before claiming done, **MUST** grep this module — double `crcCheck`, plain IDs, unbound SQL, wrong `data()`, middleware vs action. **MUST NOT** skip. Canonical: [00](00-AGENT-CONTRACT.md) §2c, [17](17-CHECKLISTS.md).
+13. **Finish gate (LAW):** after **every** code chunk **and** before claiming done, **MUST** grep this module — double `crcCheck`, plain IDs, unbound SQL, wrong `data()`, middleware vs action, `Events::trigger` vs `.hooks`. **MUST NOT** skip. Canonical: [00](00-AGENT-CONTRACT.md) §2c, [17](17-CHECKLISTS.md), [41](41-MODULE-HOOKS.md).
 14. **Visible outcome (LAW):** the user **MUST** see save success **and** failure. **Preferred** on public FE+BE: mark the wrong input (red + message on the field). **You MUST build** your own toast/status (Notiflix is DACore-only). Canonical: [00](00-AGENT-CONTRACT.md) §2d.
 15. **Attack vectors (LAW):** the known vectors in [24](24-ATTACK-VECTORS.md) **MUST NOT** be shippable — injection (SQL, XSS, command, template, deserialization), headers / redirect / SSRF, mass assignment, CSRF / brute force / enumeration, IDOR and escalation, files and paths, missing rate limit, leaks, weak crypto, prompt injection. Open the section for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. A vector not listed is still forbidden — apply the nearest rule and **say it in chat**.
 16. **Catch bus (LAW):** every `catch` **and** every `execute()` `$err` **MUST** report through one module helper: `Events::trigger('dotapp.catch', $payload)` then `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered), with the fixed payload (`severity, module, source, operation, message, exception, code, file, line, time`, plus `context` ids/counts and `user_id`). No secrets, tokens or request bodies in it. That is what makes a debugger possible later — reporting is **in addition to** the user-visible outcome, never instead of it. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
-17. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column, composite order equality → range → sort, leftmost prefix, no duplicate prefixes), sane column types, and code a human can read: file/class/method docblocks + a short **why** line above every logical step. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md).
+17. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote**, sane column types, and code a human can read: controller/middleware PHPDoc **MUST** start with **`CRCchecking —`** (where CRC runs — prefix XOR action), then a **purpose sentence** then tags (not `@return array<string, mixed>` alone), labeled **`// Why:`** / **`// About:`** / **`// Section:`**. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
+18. **Module hooks (LAW):** useful side-effects (SMS/mail sent, payment, lockout) **MUST** `Events::trigger('module.{mod}.{name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module — `Listeners::initializeRoutes()` may cover the producer URL without waking the whole module. Pre-action stop is **`triggerWithVeto()`** + `Veto`, not `return false`. Canonical: [41](41-MODULE-HOOKS.md).
+
+## Kernel APIs (2026-08-22)
+
+The kernel is **finished**. Agents **MUST NOT** edit `app/parts/`, `DotApp.php`, `dotapper.php`, or `index.php` — even if the user asks.
+
+- Module loader **v2:** `php dotapper.php --optimize-modules` writes `$modules` + `$listeners` (`$modulesAutoLoaderVersion = 2`). Old `$modules`-only files still work.
+- `Listeners::initializeRoutes()` may differ from `Module::initializeRoutes()`; omit/`null` inherits the module map.
+- Matching listeners register **before** matching modules initialize.
+- **`Events::triggerWithVeto()`** + `Dotsystems\App\Parts\Veto` — ordinary `trigger()` still ignores returns.
+
+Canonical: [01](01-ARCHITECTURE.md), [03](03-MODULES-AND-ROUTING.md), [12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md), [EX-16](examples/EX-16-module-hooks.md). Framework README What's New: project-root `README.md`.
 
 ## Quick install
 
@@ -57,7 +69,7 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 |------|----------|
 | [00-AGENT-CONTRACT.md](00-AGENT-CONTRACT.md) | Hard laws — edit boundaries, workflow, **§2c finish gate** |
 | [examples/](examples/) | Short code samples by situation |
-| [01-ARCHITECTURE.md](01-ARCHITECTURE.md) | Lifecycle, module structure |
+| [01-ARCHITECTURE.md](01-ARCHITECTURE.md) | Lifecycle, module structure — incl. core `dotapp.catchall` debug funnel |
 | [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
 | [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()`; English why-comments |
 | [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md) | Controllers, response |
@@ -68,7 +80,7 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
 | [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md) | Config, keys, fallbacks |
 | [11-AUTH-AND-CRYPTO.md](11-AUTH-AND-CRYPTO.md) | Auth, 2FA, Crypto |
-| [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, … |
+| [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, Events, **`triggerWithVeto` / `Veto`**, Module API |
 | [13-TESTING.md](13-TESTING.md) | Tester + dotapper --test |
 | [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md) | Wrong vs right (Laravel/…) |
 | [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md) | Quirks + leftover-doc corrections |
@@ -79,9 +91,10 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, **DSM** (never `$_SESSION`) |
 | [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md) | Email/IMAP/POP3, SMS, QR |
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
-| [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first |
+| [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first; §1c = `dotapp.catchall` event tracer |
 | **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
-| **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost, docblock & why-comment standard, §8 perf pass |
+| **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost, **PHPDoc purpose sentence** + Why/About/Section, §8 perf pass |
+| **[41-MODULE-HOOKS.md](41-MODULE-HOOKS.md)** | **Business hooks as law** — `module.{mod}.{name}.hook` + `.hooks` (not every save); **`triggerWithVeto` / `Veto`** |
 | [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |
 
 ## Critical: return values

@@ -391,6 +391,47 @@ Applies to: button labels, text under buttons, help, placeholders, empty states,
 
 ---
 
+## 8b. Module identity brief (**ASK when planning visible UI**)
+
+A module with pages is a product surface, not only routes and tables. When planning a new visible module, **ASK once** for its identity if the user did not already provide it:
+
+- public display name and one-sentence purpose;
+- existing logo / mark / banner asset, or no image;
+- where it should appear (module landing/header and DACore installer preview);
+- preferred accent/brand colours and light/dark variants, if branding is wanted;
+- accessible alt text (empty only for a purely decorative image).
+
+Offer a sensible **no-custom-branding** option. A backend-only/library/migration module does not need this question. **MUST NOT** block functional work merely because the user has no logo.
+
+**DACore distinction:** the sidebar `icon` is a Remix Icon class and is **not** the module logo ([31](31-DACORE-MENU.md)). Installer branding belongs in your module’s `about.php` HTML with local raster files under `about-assets/` ([35](35-DACORE-INSTALL.md) §3b). Nothing is added under `app/modules/DACore/`.
+
+**MUST NOT:** invent a company name or logo, hotlink a remote image, reuse a third-party mark without permission, put a huge original image on every page, or patch DACore styling to fit branding. Optimise raster assets, include intrinsic dimensions, and load non-critical imagery lazily. If image generation may cost extra, **ASK before using it** ([00](00-AGENT-CONTRACT.md) §2b).
+
+---
+
+## 8c. Layout, padding, and UX/UI (**MUST** — law)
+
+General UX/UI principles **MUST** be followed **at all costs**. A screen that posts correctly but looks cheap (flush buttons, cramped footers, leftover left-stack) is **not done**. Canonical law: [00](00-AGENT-CONTRACT.md) §2f.
+
+**Every new or moved button / action cluster:**
+
+| Check | Fail if |
+|-------|---------|
+| Padding vs the **parent** (card, footer, modal, drawer) | Control glued to the edge — especially **no space below** a Save |
+| Alignment vs siblings | One card’s Save left-stacked, the next centered; leftover `text-start` / missing flex |
+| Rhythm | `pt-0` (or `border-0`) with **no** compensating `pb-*` / CSS `padding-bottom` |
+| Touch / wrap | Hover-only placement; overflow on a phone; hit target too small |
+
+**MUST:**
+
+- Look at the **parent padding box**, not only the button. Footer, card, and page edge all count.
+- Prefer the shell’s existing spacing (`card-footer`, `pb-3`/`pb-4`, centered flex) — **grep DACore first** on admin pages ([33](33-DACORE-PAGES-AND-UI.md)).
+- After adding a button, **re-read the rendered structure** (HTML class list + CSS). Do not claim done from the PHP handler alone.
+
+**MUST NOT:** ship a primary Save flush against the bottom of a card; zero the footer padding on one side and forget the other; invent a one-off margin that fights the parent’s flex/`h-100` layout.
+
+---
+
 ## 9. Translations
 
 ```php
