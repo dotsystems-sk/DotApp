@@ -58,11 +58,12 @@ All matching listeners register **before** any matching module performs full ini
 
 **MUST:**
 
-1. Module `initializeRoutes()` lists **only this module’s** HTML prefixes **and** `/api/v1/auth|noauth/{Module}`. Listener `initializeRoutes()` lists only the requests where its callbacks must exist. After either list changes, run `--optimize-modules`.
-2. `module.listeners.php` **MUST** only *register* callbacks. **MUST NOT** query, log, HTTP, or write files when the file is included.
+1. Module `initializeRoutes()` lists **only this module’s** HTML prefixes **and** `/api/v1/auth|noauth/{Module}` (or `[]` for a listener-only module). Listener `initializeRoutes()` lists only the requests where its callbacks or extenders must exist. After either list changes, run `--optimize-modules`.
+2. `module.listeners.php` **MUST** only *register*: `Events::on(...)`, `Extender::extend(...)`, middleware registrations, and similarly cheap registry writes. **MUST NOT** query, log, call HTTP, write files, load another module, or invoke the target when the file is included.
 3. **MUST NOT** `include` / `require` / `glob('app/modules/*')` another module just to list or describe it. **MUST NOT** `DotApp::call('OtherModule:…')` for that.
+4. **Extender:** judge first ([00](00-AGENT-CONTRACT.md) §2h) — not every method. Register `Extender::extend()` in `Listeners::register()` so it exists before Module initialization. Keep the extending module’s own URLs (or `[]`) in its Module map; put the **target** URLs in its listener map. Prefer a controller string handler. Canonical: [12](12-SERVICES.md) §10.
 
-**MUST NOT** return `['*']` unless the user asked for a hook on **every** URL **and** you warned that this module will boot everywhere.
+**MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned which part wakes everywhere: listener `['*']` runs that file’s `register()` on every URL; Module `['*']` runs full initialization.
 
 Without `modulesAutoLoader.php`, DotApp still evaluates listener and module routes separately at runtime. Keep listeners cheap anyway.
 
@@ -359,6 +360,8 @@ $dotApp->trigger('module.shop.sms_sent.hook', $result);
 **MUST (business hooks):** name is **`module.{lowercase_modulename}.{hook_name}.hook`**. Fire only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Document that exact name in **`app/modules/<YourModule>/.hooks`**. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:` ([41](41-MODULE-HOOKS.md) §3). **MUST NOT** put secrets on the bus; **MUST NOT** fire inside `foreach` of a growing list (one batch event after the loop).
 
 To react to **another** module: read **their** `.hooks`, then `Events::on(...)` in **your** `module.listeners.php`. **MUST NOT** edit the owner to “add a call”. Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
+
+To **replace** a judged output method (page/block, cart, export — one handler owns the result): register `Extender::extend()` in `Listeners::register()` on the target URL surfaces, not Events and not the extending Module’s `initialize()`. **MUST NOT** Extender every method. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h. Sample: [EX-17](examples/EX-17-extender.md).
 
 ---
 

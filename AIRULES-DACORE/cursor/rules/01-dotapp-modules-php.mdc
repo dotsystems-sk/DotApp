@@ -67,3 +67,7 @@ After editing PHP in this module: **MUST** `AIRULES/00` §2c finish gate (CRC on
 ## Hooks (MUST)
 
 After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** every save) **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and **MUST** document that name in **`app/modules/<ThisModule>/.hooks`**. Payload = ids/counts/flags — never secrets. Listen to another module in **your** `module.listeners.php` after reading **their** `.hooks` — do not patch them. `AIRULES/41-MODULE-HOOKS.md`, EX-16.
+
+## Extender (judge — not every method)
+
+Owner: `Extender::exists()` then immediate `return Extender::call(...)`. Extender: register in **`Listeners::register()`** before Module initialization; explicit target listener routes; own Module routes or `[]`; prefer `'Module:Controller@method!'`. **MUST NOT** use `['*']` just to attach, `.loaded` for initialize-time, Events, `$request`/secrets, duplicate registration, or patch DACore. `AIRULES/12-SERVICES.md` §10, EX-17.

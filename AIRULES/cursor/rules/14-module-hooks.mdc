@@ -17,3 +17,4 @@ Canonical: `AIRULES/41-MODULE-HOOKS.md`. Sample: `AIRULES/examples/EX-16-module-
 - React to another module: **read its `.hooks`**, `Events::on` in **your** `module.listeners.php`. Cover the producer URL in `Listeners::initializeRoutes()` (omit/`null` inherits the module map). **MUST NOT** patch them.
 - **MUST NOT** fire `dotapp.catchall` yourself. **MUST NOT** `trigger()` inside `foreach` of a growing list — one batch event.
 - Finish gate: grep `Events::trigger(` vs `.hooks`; reject old `shop.item.saved` shape.
+- **Not Extender.** Replacing how a page/cart/export renders is `AIRULES/12` §10 / EX-17 — do not fire a hook for that. **MUST NOT** Extender every method (`AIRULES/00` §2h).

@@ -19,6 +19,8 @@
 
 This section is **DotApp’s Renderer**. Use it when **your module owns the HTML document** (public site, emails, widgets, a standalone page).
 
+**Extender (judge):** if this page/block (cart HTML, export HTML, a fragment another module would swap) is a high-value replacement surface, the **PHP method that produces that HTML** may opt in — [00](00-AGENT-CONTRACT.md) §2h / [12](12-SERVICES.md) §10. **MUST NOT** Extender every `renderView()`.
+
 **The VIEW is the outer file. The LAYOUT is the inner piece.**  
 `renderView()` loads the `.view.php`. If you also called `setLayout()`, it **replaces the literal `{{ content }}` in that view with the generated layout HTML**. The layout does **not** wrap the view.
 

@@ -130,8 +130,9 @@ See [§7](#7-dacore-is-sacred-same-rank-as-framework-core).
 8. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
 9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
 10. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core/DACore bug.
-11. **Do not wake other modules:** `initializeRoutes()` lists **only this module’s** URL prefixes. **MUST NOT** return `['*']` unless the user asked for a hook on every request **and** you warned that listeners, logs and `initialize()` will run everywhere. **MUST NOT** `include` / `require` / `DotApp::call` another module just to list it or show its about/changelog — that lives in DACore `dacore_modules`. After route changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
+11. **Do not wake other modules:** `Module::initializeRoutes()` lists only this module’s URL prefixes (or `[]` for a listener-only module). `Listeners::initializeRoutes()` may list different producer/target prefixes. **MUST NOT** use `['*']` unless the dependency is genuinely global/dynamic and you warned that this listener registers on every request. **MUST NOT** `include` / `require` / `DotApp::call` another module just to list it or show its about/changelog — that lives in DACore `dacore_modules`. After route-map changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
 12. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. A **DACore-bound** module **MUST** read **`app/modules/DACore/.hooks` first** — that is the catalog of events DACore already offers. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md) §6.
+13. **Extender (judge):** **MUST NOT** Extender every method. Owner `exists()` + immediate `return call()`; extender registers in **`Listeners::register()`** before Module initialization. Target URLs belong in the listener map; Module keeps its own URLs or `[]`; controller string preferred. **MUST NOT** patch DACore to insert `Extender::call`. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 
 ### Dotapper-first rule
 
@@ -197,6 +198,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Perf / readability pass** | The greps in [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 | `->all()` on a growing table, a query/HTTP/rights check/log **inside** `foreach`, `select('*')` on a list, O(n²) lookup or array copy per row, a new `WHERE`/`ORDER BY` column with **no index**, an index with no comment naming its query, a duplicate of a library DACore ships, a public method with **tags-only PHPDoc** (`@return array<string, mixed>` and no purpose sentence), comments that restate the code |
 | **Threat pass** | The 12 greps in [24](24-ATTACK-VECTORS.md) §11 on this chunk | Injection (SQL/XSS/command/deserialize), input in a header or redirect, unbounded public POST, `getMessage()` / `var_dump` in the reply, upload without ext+MIME+header check, weak randomness for a token, a direct write to `dacore_*` / `users_rights*` |
 | **Hooks** | Grep `Events::trigger(` **and** `Events::triggerWithVeto(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; `.veto` fire without a **Veto contracts** heading; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/` ([41](41-MODULE-HOOKS.md)) |
+| **Extender** | New page/cart/export renderer **or** `Extender::` in the chunk | Spray on every persist/helper; `extend()` delayed to Module `initialize()`; target URLs in Module map; listener-only Module `[]` with omitted/`null` listener routes; `.loaded` for initialize-time; `call()` without owner `exists()` + immediate return; `$request` / secrets; Events; `['*']` just to attach; patch of another module or DACore ([12](12-SERVICES.md) §10, [§2h](#2h-extender-judge--not-every-method)) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence / tags-only `@return array<string, mixed>`; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without the [40](40-DACORE-LIST-PAGER.md) pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
@@ -278,6 +280,32 @@ Modules **MUST** talk to each other through `Events::trigger` / `Events::on`, no
 **MUST NOT:** skip a **named** useful hook because `hasListener` is false; put secrets on the bus; treat ordinary `trigger()` listener returns as a veto (`triggerWithVeto()` + `Veto` only); fire inside `foreach` of a growing list; fire `dotapp.catchall` yourself; invent another module’s event name; use the old `{mod}.{noun}.{happened}` shape; put `.hooks` on a public asset URL. DACore template list-delete is already gated: `module.dacore.email_template_delete.veto` and `module.dacore.sms_template_delete.veto` ([38](38-DACORE-EMAIL.md), [39](39-DACORE-SMS.md)).
 
 Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
+
+### 2h. Extender (judge — not every method)
+
+`Dotsystems\App\Parts\Extender` lets **one** handler **replace** a target method for the current request. It is **not** Events, hooks, or `triggerWithVeto()`. No `.hooks` row.
+
+**MUST NOT** sprinkle `Extender::exists()` on every helper, persist, CRC, decrypt, or pager. The agent **MUST** judge first: would another module (or a later one) reasonably **replace how this output is produced** without patching this file?
+
+**Yes →** the **owner** opts in: `Extender::exists()` then **immediately** `return Extender::call(...)`. Typical yes: **rendering** a page or fragment, drawing a **cart**, building an **export** / invoice, swapping a checkout quote presentation.
+
+**No / “maybe someday on every method” →** skip. Ordinary CRUD, CRC, decrypt, list internals, catch-bus helpers — **MUST NOT** become Extender targets “just in case.”
+
+When the owner **does** opt in, mechanics are MUST:
+
+- There is **no original / next**.
+- The extending module registers `Extender::extend()` in **`Listeners::register()`** (`module.listeners.php`). Matching listeners register before every matching Module initializes. This is cheap registration; **MUST NOT** query, HTTP, write files, invoke the target, or call `$dotapp->module()` for the target **or itself** merely to attach. A controller-string handler autoloads lazily at `call()`.
+- `Module::initializeRoutes()` contains only the extending module’s own URLs, or `[]`. `Listeners::initializeRoutes()` **MUST** list target URLs. With Module `[]`, listener routes **MUST NOT** omit/return `null` (that inherits `[]`). Then `php dotapper.php --optimize-modules`.
+- **MUST NOT** use listener `['*']` merely to attach. Allow it only for a genuinely global/dynamic dependency after warning that `register()` runs on every request.
+- Prefer a DotApp controller string (`Addon:Pricing@quote!`). Native callables remain legal but skip DotApp DI and **MUST NOT** capture request/secrets.
+- Direct listener registration is canonical. Optional lifecycle wrappers may use `dotapp.module.{Target}.init.start` or `.loading`. **MUST NOT** wait for `.loaded`, `.init.end`, or `dotapp.modules.loaded` when the point can run during target `initialize()`.
+- One replacement. A second `extend()` for the same class+method throws. Recursion into the same target throws.
+- Pass **explicit safe arguments** into `call()`. **MUST NOT** forward `$request`, secrets, tokens, CRC, rights blobs, or request bodies.
+- Prefer `exists()`; `exist()` is the alias.
+
+**MUST NOT** skip a judged surface; spray Extender on every method; register the same target in both listener and Module initialization; use Events to replace a method; wrap `call()` and still run the original; patch another module **or DACore** to insert `Extender::call`.
+
+Canonical: [12](12-SERVICES.md) §10. Sample: [EX-17](examples/EX-17-extender.md).
 
 ---
 
@@ -387,6 +415,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend (**reuse DACore assets** instead of a second library), and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Index and query **your** tables only — never `dacore_*`. Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
 21. **Layout and UX/UI (MUST):** general UX/UI principles **MUST** be followed **at all costs** on every visible control. Adding a button **MUST** include a padding check vs the parent (especially bottom), deliberate alignment (center / same rhythm as siblings), and desktop+mobile. A flush Save on the card edge is a **bug**. Canonical: [§2f](#2f-layout-and-uxui-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
 22. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. A DACore-bound module **MUST** read `app/modules/DACore/.hooks` first. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md) §6.
+23. **Extender (judge — not every method):** owner `exists()` + immediate `return Extender::call(...)`; extender `extend()` in `Listeners::register()`, target URLs in listener map, own Module routes or `[]`, controller string preferred. **MUST NOT** use `.loaded` for initialize-time, spray on every method, use Events, pass `$request`/secrets, or patch the owner / DACore. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 
 ---
 
@@ -414,6 +443,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Docs (25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking — (exact prefix/middleware XOR this action XOR none); then purpose sentence, then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`); NOT prefix CRC + crcCheck() in the same method; inline MUST use labels // Why: (logical step), // About: (what this chunk is), // Section: (menu/route) — NOT narration of the code, NOT unlabeled Why prose
  * - Catch bus (18 §9): every catch + every execute() $err → one report helper → Events::trigger('dotapp.catch', $p) then 'dotapp.catch.error'|'.info'; payload = severity, module, source, operation, message, exception, code, file, line, time, context (ids/counts), user_id — NO secrets/tokens/rights/bodies
  * - Hooks (41): useful side-effects (SMS/mail/paid/lockout) MUST Events::trigger('module.{mod}.{name}.hook') + Hook/Why/About/Params/Use block + .hooks — NOT every save; NOT secrets; NOT patch the other module; NOT old shop.item.saved shape; DACore-bound MUST read app/modules/DACore/.hooks first
+ * - Extender (12 §10): judge first; owner exists()/call(); Extender::extend in Listeners::register(); target URLs in listener map; own Module routes or []; prefer controller string; NOT .loaded for initialize-time, Events, $request/secrets, duplicate, or patch DACore
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
@@ -511,6 +541,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Paginated list (users, logs, items) | **40** list pager (HTML/classes/`live(el, e)`/COUNT) — **MUST** ship, **MUST** be AJAX | **[EX-D08](examples/EX-D08-list-pager.md)**, [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | **Module hooks / connect modules** | **41** — `module.{mod}.{name}.hook` + `.hooks` (not every save); DACore-bound **MUST** read `app/modules/DACore/.hooks` first | **[EX-16](examples/EX-16-module-hooks.md)** |
+| **Replace a judged output (Extender)** | **12 §10** / **00 §2h** — owner `exists()`/`call()`; `extend()` in `Listeners::register()`; target listener routes; own Module routes or `[]`; controller string preferred; **MUST NOT** patch DACore | **[EX-17](examples/EX-17-extender.md)** |
 | List search (articles, catalog, …) | **09 §3** “Interactive AJAX search” — **ASK** in the plan; lookup lists **MUST** unless declined | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | List UX (filters, sort, empty, bulk, …) | **09 §3** “List UX” — **ASK** / **MUST** table | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |

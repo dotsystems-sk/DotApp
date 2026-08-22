@@ -75,6 +75,20 @@ Route: `'Shop:Home@index!'`. Omit the `!` only when the method should receive DI
 
 ## What's New ✨
 
+### Extender — opt-in method replacement (NEW – 2026-08-22)
+
+New core class: **`Dotsystems\App\Parts\Extender`**. A module can **replace** another module’s method for the current request — one handler owns the result. This is **not** Events, `module.{mod}.{name}.hook`, or `triggerWithVeto()`.
+
+- **Judge first:** offer Extender on highly replaceable **outputs** (page/block HTML, cart, export) — **not** on every method.
+- When the owner opts in: `Extender::exists()` then immediately `return Extender::call(...)`. There is no original / next.
+- The extending module registers `Extender::extend()` in **`Listeners::register()`** (`module.listeners.php`) before any matching Module initializes.
+- Target URLs belong in `Listeners::initializeRoutes()`; the extending Module keeps only its own routes or `[]`. Prefer a `Module:Controller@method!` handler.
+- Direct listener registration is canonical. `.loaded` is too late when the target can call the extension point during `initialize()`.
+- One replacement per class+method (a duplicate throws). Recursion into the same target throws. Handler exceptions propagate.
+- Pass only explicit safe arguments (ids, flags, scalars) — never `$request`, tokens, CRC, or request bodies.
+
+Rules: `AIRULES/12-SERVICES.md` §10. Sample: `AIRULES/examples/EX-17-extender.md`.
+
 ### Module loader v2, listener routes, and `Veto` (NEW – 2026-08-22)
 
 The kernel is **done**. Agents and contributors **MUST NOT** edit `app/DotApp.php`, `app/parts/`, `dotapper.php`, or `index.php` — implement features in **your module**.

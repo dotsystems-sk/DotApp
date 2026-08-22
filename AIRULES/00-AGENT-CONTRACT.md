@@ -56,7 +56,8 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 10. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
 11. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core bug.
 12. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md).
-13. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes. `Listeners::initializeRoutes()` may be a **narrower** list (or `null` to inherit the module map). **MUST NOT** return `['*']` unless the user asked for a hook on every request **and** you warned that listeners and `initialize()` will run everywhere. After either list changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
+13. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes (or `[]` for a listener-only module). `Listeners::initializeRoutes()` may list different producer/target prefixes (or `null` to inherit). **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned that this listener file registers on every request. After either map changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
+14. **Extender (judge):** **MUST NOT** Extender every method. Opt in when another module would reasonably **replace this output** (page/block HTML, cart, export). Register `extend()` in **`Listeners::register()`** before module initialization; put target URLs in `Listeners::initializeRoutes()`, not the Module map. Prefer a controller string handler. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 
 ### Dotapper-first rule
 
@@ -120,6 +121,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Threat pass** | The 12 greps in [24](24-ATTACK-VECTORS.md) §11 on this chunk | Injection (SQL/XSS/command/deserialize), input in a header or redirect, unbounded public POST, `getMessage()` / `var_dump` in the reply, upload without ext+MIME+header check, weak randomness for a token |
 | **Perf / readability pass** | The greps in [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 | `->all()` on a growing table, a query/HTTP/log **inside** `foreach`, `select('*')` on a list, O(n²) lookup or array copy per row, a new `WHERE`/`ORDER BY` column with **no index**, an index with no comment naming its query, a public method with **tags-only PHPDoc** (`@return array<string, mixed>` and no purpose sentence), comments that restate the code |
 | **Hooks** | Grep `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/`; `return false` treated as a veto instead of `triggerWithVeto()` + `Veto` ([41](41-MODULE-HOOKS.md)) |
+| **Extender** | New page/cart/export renderer **or** `Extender::` in the chunk | Spray on every persist/helper; skipped opt-in on a judged swap; `extend()` delayed to Module `initialize()`; target URLs placed in the Module map; listener-only Module `[]` with omitted/`null` listener routes; `.loaded` used although the point may run during target `initialize()`; `call()` without owner `exists()` + immediate return; `$request` / secrets in args; Events used to replace a method; `['*']` just to attach; patch of another module to insert `call()` ([12](12-SERVICES.md) §10, [§2h](#2h-extender-judge--not-every-method)) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
@@ -152,6 +154,32 @@ Modules **MUST** talk to each other through `Events::trigger` / `Events::on`, no
 **MUST NOT:** skip a **named** useful hook because `hasListener` is false; put secrets on the bus; treat listener returns on `trigger()` as a veto (use **`triggerWithVeto()`** + `new Veto($code, …)` only for an explicit pre-action stop); fire inside `foreach` of a growing list; fire `dotapp.catchall` yourself; invent another module’s event name; use the old `{mod}.{noun}.{happened}` shape; put `.hooks` on a public asset URL.
 
 Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
+
+### 2h. Extender (judge — not every method)
+
+`Dotsystems\App\Parts\Extender` lets **one** handler **replace** a target method for the current request. It is **not** Events, hooks, or `triggerWithVeto()`. No `.hooks` row.
+
+**MUST NOT** sprinkle `Extender::exists()` on every helper, persist, CRC, decrypt, or pager. The agent **MUST** judge first: would another module (or a later one) reasonably **replace how this output is produced** without patching this file?
+
+**Yes →** the **owner** opts in: `Extender::exists()` then **immediately** `return Extender::call(...)`. Typical yes: **rendering** a page or fragment, drawing a **cart**, building an **export** / invoice, swapping a checkout quote presentation.
+
+**No / “maybe someday on every method” →** skip. Ordinary CRUD, CRC, decrypt, list internals, catch-bus helpers — **MUST NOT** become Extender targets “just in case.”
+
+When the owner **does** opt in, mechanics are MUST:
+
+- There is **no original / next**.
+- The extending module registers `Extender::extend()` in **`Listeners::register()`** (`module.listeners.php`). Matching listeners register **before any matching Module initializes**, removing module-order races. This is cheap registration; **MUST NOT** query, call HTTP, write files, invoke the target, or call `$dotapp->module()` for the target **or itself** merely to attach. A controller-string handler autoloads lazily when `call()` runs.
+- `Module::initializeRoutes()` lists only the extending module’s own URLs, or `[]` when it has no runtime routes. `Listeners::initializeRoutes()` **MUST** list the target URLs that can reach the extension point. If the Module map is `[]`, the listener **MUST NOT** omit/return `null`, because it would inherit `[]` and never register. Then `php dotapper.php --optimize-modules`.
+- **MUST NOT** use listener `['*']` merely to attach. It is allowed only for a genuinely global/dynamic dependency after warning that `register()` runs on every request.
+- Prefer a DotApp controller string such as `Addon:Pricing@quote!`; it is validated at registration and invoked lazily through `DotApp::call()`. Native callables remain allowed but skip DotApp DI and **MUST NOT** capture request/secrets.
+- Direct registration is canonical. If registration must wait for the target lifecycle, subscribe from `Listeners::register()` to `dotapp.module.{Target}.init.start` or `.loading`. **MUST NOT** wait for `.loaded`, `.init.end`, or `dotapp.modules.loaded` when the extension point can run during target `initialize()`; those events are too late.
+- One replacement. A second `extend()` for the same class+method throws. Recursion into the same target throws.
+- Pass **explicit safe arguments** into `call()`. **MUST NOT** forward `$request`, secrets, tokens, CRC, rights blobs, or request bodies.
+- Prefer `exists()`; `exist()` is the alias.
+
+**MUST NOT** skip a render/cart/export surface the agent already judged as highly replaceable; spray Extender on every method; register the same target in both listener and Module initialization; use `trigger()` / `triggerWithVeto()` to replace a method; wrap `call()` and still run the original; patch another module to insert `Extender::call`.
+
+Canonical: [12](12-SERVICES.md) §10. Sample: [EX-17](examples/EX-17-extender.md).
 
 ---
 
@@ -252,6 +280,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
 20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend, and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
 21. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md).
+22. **Extender (judge — not every method):** opt in when another module would reasonably replace this **output** (page/block, cart, export). Owner: `exists()` + immediate `return Extender::call(...)`. Extender: `extend()` in `Listeners::register()`, target URLs in `Listeners::initializeRoutes()`, own Module routes only (or `[]`), controller string preferred. **MUST NOT** use `.loaded` for an initialize-time point, spray on every method, use Events to replace a method, pass `$request`/secrets, or patch the owner. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 
 ---
 
@@ -278,6 +307,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Docs (25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking — (exact prefix/middleware XOR this action XOR none); then purpose sentence, then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`); NOT prefix CRC + crcCheck() in the same method; inline MUST use labels // Why: (logical step), // About: (what this chunk is), // Section: (menu/route) — NOT narration of the code, NOT unlabeled Why prose
  * - Catch bus (18 §9): every catch + every execute() $err → one report helper → Events::trigger('dotapp.catch', $p) then 'dotapp.catch.error'|'.info'; payload = severity, module, source, operation, message, exception, code, file, line, time, context (ids/counts), user_id — NO secrets/tokens/bodies
  * - Hooks (41): useful side-effects (SMS/mail/paid/lockout) MUST Events::trigger('module.{mod}.{name}.hook') + Hook/Why/About/Params/Use block + .hooks — NOT every save; NOT secrets; NOT patch the other module; NOT old shop.item.saved shape. Pre-action stop = triggerWithVeto + Veto only.
+ * - Extender (12 §10): judge first — opt in on replaceable output (page/block HTML, cart, export), NOT every method; owner exists()/call(); Extender::extend in Listeners::register(); target URLs in listener map; own Module map or []; prefer 'Module:Controller@method!'; NOT .loaded for initialize-time, Events, $request/secrets, duplicate registration
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
@@ -350,6 +380,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | **New table / migration / any loop or query you care about** | **25** performance — §1 memory, §2 I/O, **§3 indexes**, §4 column types, §5 big lists, §6 frontend | [EX-13](examples/EX-13-schema-migrations.md), [EX-04](examples/EX-04-database-crud.md) |
 | **Every file you write (CRCchecking + PHPDoc purpose + Why/About/Section)** | **25 §7** | [EX-01](examples/EX-01-secure-form-complete.md) |
 | **Module hooks / connect modules** | **41** — `module.{mod}.{name}.hook` + `.hooks` (not every save); listener own routes; **`triggerWithVeto` / `Veto`** | **[EX-16](examples/EX-16-module-hooks.md)** |
+| **Replace a judged output (Extender)** | **12 §10** / **00 §2h** — owner `exists()`/`call()`; `extend()` in `Listeners::register()`; target URLs in the **listener** map; own Module routes or `[]`; controller string preferred | **[EX-17](examples/EX-17-extender.md)** |
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |
 | AI / search / MCP | 22 | [EX-12](examples/EX-12-ai-search-mcp.md) |

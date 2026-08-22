@@ -19,6 +19,8 @@
 
 This section is **DotApp’s Renderer** when **your module owns the HTML document** (public site, emails, widgets, a standalone page).
 
+**Extender (judge):** if this page/block (cart HTML, export HTML, a fragment another module would swap) is a high-value replacement surface, the **PHP method that produces that HTML** may opt in — [00](00-AGENT-CONTRACT.md) §2h / [12](12-SERVICES.md) §10. **MUST NOT** Extender every `renderView()` / `renderLayout()`. **MUST NOT** patch DACore to insert `Extender::call`.
+
 **DACore admin pages are a different procedure.** You do **not** `setView` a full `<html>` shell and you do **not** fill `{{ content }}` yourself. Render **only your fragment** (`renderLayout()`), then pass `$title`, `$body`, `$header`, `$css`, `$js` to `DACore:Page@withMenu!`. The Page controller generates the shell. Canonical: [33-DACORE-PAGES-AND-UI.md](33-DACORE-PAGES-AND-UI.md), sample [EX-D02](examples/EX-D02-dacore-admin-page.md).
 
 ---

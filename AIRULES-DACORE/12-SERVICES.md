@@ -16,8 +16,9 @@ Detailed docs by area:
 | Auth, Crypto, TOTP | [11](11-AUTH-AND-CRYPTO.md) |
 | Tester | [13](13-TESTING.md) |
 | **Module hooks / `.hooks`** | **[41](41-MODULE-HOOKS.md)** |
+| **Extender** (judge: replaceable output, not every method) | this file §10 — [EX-17](examples/EX-17-extender.md) |
 
-This file covers what is left: DotApp helpers, Events, DI, Module, Middleware, Pagination, Collection utilities.
+This file covers what is left: DotApp helpers, Events, DI, Module, Middleware, Pagination, Collection utilities, Extender.
 
 ---
 
@@ -243,3 +244,50 @@ With RAW mode you get plain arrays — use PHP array functions instead.
 ## 9. Connector
 
 `Connector.php` is a visual workflow/graph engine (`load, save, addNode, removeNode, connect, disconnect, setRules, route, evaluateInput, evaluateNode, getNodes, getConnections, exportSidebar`). `addNode`/`connect` throw on invalid input; `route()` returns a runner object or `null`. Niche — read the source before use.
+
+---
+
+## 10. Extender
+
+`Dotsystems\App\Parts\Extender` is an **opt-in, request-local** replacement registry. It is **not** Events, hooks, middleware, or `triggerWithVeto()`. Sample: [EX-17](examples/EX-17-extender.md).
+
+**Judge first.** **MUST NOT** opt in on every method. Offer Extender when another module would reasonably **replace this output** — especially **page/block HTML**, a **cart** drawn differently, an **export** / invoice built differently. Skip ordinary persist, CRC, decrypt, pager internals. Canonical writing law: [00](00-AGENT-CONTRACT.md) §2h.
+
+A method is extendable only when its owner checks `exists()` and **immediately** `return Extender::call(...)`. Registering a handler for a method that never calls `Extender` does nothing. There is **no original / next** — the replacement fully owns the result.
+
+| Method | Returns / throws |
+|--------|------------------|
+| `Extender::extend($className, $methodName, $handler)` | `void`. `\InvalidArgumentException` when the target or handler is invalid. `\LogicException` when that target already has a replacement. |
+| `Extender::exists($className, $methodName)` | `bool` — **canonical** probe. `\InvalidArgumentException` when the identifier is invalid. |
+| `Extender::exist($className, $methodName)` | alias of `exists()` — same return and throws. Prefer `exists()` in new code. |
+| `Extender::call($className, $methodName, ...$arguments)` | replacement return value, unchanged. `\LogicException` when none is registered or the same target re-enters `call()`. Handler `\Throwable` **propagates**. `\InvalidArgumentException` when the identifier is invalid. |
+
+`$className` is a fully qualified PHP class name (leading `\` stripped; the class is **not** autoloaded at register time). `$methodName` is a PHP method name. Keys are **case-insensitive**.
+
+`$handler` is either:
+
+- a DotApp controller string `Module:Controller@method!` — validated with `stringToCallable()`, invoked with `DotApp::call()` (trailing `!` = no DI, same grammar as routes — [04](04-CONTROLLERS-AND-RESPONSES.md));
+- a native PHP callable — invoked with `call_user_func_array`, **no** DotApp DI.
+
+**One replacement only.** A second `extend()` for the same class+method throws. Do not catch-and-ignore that.
+
+**Boot:** `Extender::extend()` **MUST** run before the owner can call `exists()` / `call()`. Canonical place: **`Listeners::register()`** (`module.listeners.php`), because all matching listeners register before any matching Module initializes.
+
+- Target URLs belong in `Listeners::initializeRoutes()`. `Module::initializeRoutes()` keeps only this module’s URLs, or `[]`. With Module `[]`, listener routes **MUST NOT** omit/return `null` (that inherits `[]`). Then `php dotapper.php --optimize-modules`.
+- **MUST NOT** use `['*']` just to attach. Only a genuinely global/dynamic dependency may use it after warning that this listener registers on every request.
+- Prefer `'Module:Controller@method!'`; native callables are legal but skip DotApp DI.
+- **MUST NOT** call `$dotapp->module()` for itself or the target merely to attach. A controller-string handler autoloads when invoked and needs no full Module initialization.
+- Direct listener registration is canonical. If lifecycle timing is required, use `{Target}.init.start` or `.loading`. `{Target}.loaded`, `.init.end`, and `dotapp.modules.loaded` are too late for a point used during target `initialize()`.
+- **MUST NOT** also register the same target from Module `initialize()`; duplicate registration throws.
+
+**Safe context only.** The owner passes explicit arguments into `call()`. **MUST NOT** forward `$request`, superglobals, locals, secrets, tokens, CRC, rights blobs, or request bodies automatically.
+
+**Target shape:**
+
+```php
+if (Extender::exists(self::class, 'quote')) {
+    return Extender::call(self::class, 'quote', $cartId, $subtotal);
+}
+```
+
+**MUST NOT:** spray `exists()`/`call()` on every persist/helper; fire `Events::trigger` / `triggerWithVeto` instead of Extender; wrap `call()` and still run the original; patch DACore (or another module you do not own) to add an extension point; from the replacement, call the same extendable method (recursion throws). Canonical writing law: [00](00-AGENT-CONTRACT.md) §2h.

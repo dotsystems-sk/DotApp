@@ -6,6 +6,8 @@ A module that only talks to itself is a silo. When a step is **worth another mod
 
 Canonical API: [12](12-SERVICES.md) §2, [03](03-MODULES-AND-ROUTING.md) “Events from modules”, [01](01-ARCHITECTURE.md) (`dotapp.catchall`). Sample: [EX-16](examples/EX-16-module-hooks.md). Finish gate: [00](00-AGENT-CONTRACT.md) §2c / §2g. Inline comments: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
 
+**Not Extender.** Replacing how a page/cart/export renders (one handler owns the result) is [12](12-SERVICES.md) §10 / [EX-17](examples/EX-17-extender.md) — **MUST NOT** fire a hook for that. **MUST NOT** treat Extender as required on every method — judge first ([00](00-AGENT-CONTRACT.md) §2h). **MUST NOT** patch DACore to insert `Extender::call`.
+
 ---
 
 ## 0. Four root laws
@@ -261,6 +263,7 @@ Tick [17](17-CHECKLISTS.md) Finish gate **Hooks**.
 | Patch DACore / Shop to call your code | Listen to **their** documented event |
 | `hooks.md` in `assets/` | `app/modules/Shop/.hooks` |
 | Veto via `return false` | Persist already happened; do your own work or don’t |
+| `Events::trigger` to replace a method | `Extender` on a judged render/cart/export — **not** every method ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h) |
 | Trigger before `execute()` `$ok` | Fire in the success path only |
 | Full user row / SMS body on the bus | `id` + flags |
 | `trigger()` with no `Hook:` comment | The five-line block |

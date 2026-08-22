@@ -107,6 +107,13 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `Events::trigger` without `Hook:` / `Params:` / `Use:` | The five-line block above `trigger()` ([41](41-MODULE-HOOKS.md) §3) |
 | Treat listener `return false` as a veto | `trigger()` **ignores** returns — persist is already done ([41](41-MODULE-HOOKS.md)) |
 | Patch another module (or DACore) to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
+| `Extender::exists` on every persist / helper | Judge first: opt in on render/cart/export swap points ([00](00-AGENT-CONTRACT.md) §2h) |
+| `Events::trigger` / `triggerWithVeto` to replace a method | `Extender::extend` + owner `exists()` / `call()` ([12](12-SERVICES.md) §10) |
+| `Extender::extend` delayed to Module `initialize()` / target URLs in Module map | `Listeners::register()` + target listener routes; Module owns only its URLs or `[]` ([12](12-SERVICES.md) §10) |
+| Listener `['*']` just to attach | Exact target URL surfaces; global only when genuinely dynamic and warned |
+| `.loaded` when the point may run in target `initialize()` | Direct registration, or earlier `.init.start` / `.loading` |
+| Pass `$request` / tokens into `Extender::call` | Explicit ids, flags, already-safe scalars |
+| Patch DACore to insert `Extender::call` | Only the **owner** of the target method opts in |
 | Invent `module.blog.*` from Shop / fire `dotapp.*` for business | Prefix = **this** module’s lowercase name ([41](41-MODULE-HOOKS.md)) |
 | `hooks.md` / `.hooks` under `assets/` | Filename **`.hooks`** at the module **root** — not a public page ([41](41-MODULE-HOOKS.md)) |
 | Password / TOTP / CRC / request body on `Events::trigger` | Ids, counts, flags only ([41](41-MODULE-HOOKS.md), [24](24-ATTACK-VECTORS.md) §8) |

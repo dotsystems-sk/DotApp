@@ -70,6 +70,21 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 17. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column, composite order equality → range → sort, leftmost prefix, no duplicate prefixes), sane column types, DACore assets reused instead of a second library, and code a human can read: controller/middleware PHPDoc **MUST** start with **`CRCchecking —`** (where CRC runs — prefix XOR action), then a **purpose sentence** then tags (not `@return array<string, mixed>` alone), labeled **`// Why:`** / **`// About:`** / **`// Section:`**. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
 18. **Layout / UX-UI (LAW):** every new button **MUST** be checked for padding vs the parent (especially **bottom**) and placed deliberately (center / same rhythm as siblings). A Save glued to the card edge is a **bug**. General UX/UI principles **MUST** be followed **at all costs**. Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
 19. **Module hooks (LAW):** fire **`module.{lowercase_modulename}.{hook_name}.hook`** only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Document in **`.hooks`**. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:`. Connect by listening, never by patching the owner. A DACore-bound module **MUST** read **`app/modules/DACore/.hooks` first**. Canonical: [41](41-MODULE-HOOKS.md) §6, [00](00-AGENT-CONTRACT.md) §2g.
+20. **Extender (judge — not every method):** owner `exists()` + immediate `return call()`; extender registers in `Listeners::register()` before Module initialization. Target URLs in listener map; own Module routes or `[]`; controller string preferred. **MUST NOT** use `.loaded` for initialize-time, Events, `$request`/secrets, or patch owner/DACore. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h.
+
+## What's New (2026-08-22)
+
+### Extender — opt-in method replacement
+
+New core class: **`Dotsystems\App\Parts\Extender`**. A module can **replace** another module’s method for the current request — one handler owns the result. This is **not** Events, hooks, or `triggerWithVeto()`. **MUST NOT** patch DACore to insert `Extender::call`.
+
+- **Judge first:** offer Extender on highly replaceable **outputs** (page/block HTML, cart, export) — **not** on every method.
+- When the owner opts in: `exists()` then immediately `return call(...)`. No original / next.
+- Register `extend()` in **`Listeners::register()`**. Target URLs belong in `Listeners::initializeRoutes()`; Module keeps own routes or `[]`.
+- Prefer a controller string. Direct registration is before every Module `initialize()`; `.loaded` is too late for initialize-time points.
+- One replacement per class+method. Recursion throws. Pass only explicit safe arguments.
+
+Canonical: [12](12-SERVICES.md) §10. Sample: [EX-17](examples/EX-17-extender.md). Framework README: project-root `README.md`.
 
 ## Quick install
 
@@ -108,7 +123,7 @@ Theory lives in `00`–`25` (framework), `30`–`40` (DACore), and **[41](41-MOD
 | [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
 | [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md) | Config, keys, fallbacks |
 | [11-AUTH-AND-CRYPTO.md](11-AUTH-AND-CRYPTO.md) | Auth, 2FA, Crypto |
-| [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, … |
+| [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, Events, **`triggerWithVeto` / `Veto`**, **`Extender`**, Module API |
 | [13-TESTING.md](13-TESTING.md) | Tester + dotapper --test |
 | [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md) | Wrong vs right (Laravel/…) |
 | [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md) | Quirks + leftover-doc corrections |

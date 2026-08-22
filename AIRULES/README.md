@@ -32,6 +32,21 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 16. **Catch bus (LAW):** every `catch` **and** every `execute()` `$err` **MUST** report through one module helper: `Events::trigger('dotapp.catch', $payload)` then `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered), with the fixed payload (`severity, module, source, operation, message, exception, code, file, line, time`, plus `context` ids/counts and `user_id`). No secrets, tokens or request bodies in it. That is what makes a debugger possible later — reporting is **in addition to** the user-visible outcome, never instead of it. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
 17. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote**, sane column types, and code a human can read: controller/middleware PHPDoc **MUST** start with **`CRCchecking —`** (where CRC runs — prefix XOR action), then a **purpose sentence** then tags (not `@return array<string, mixed>` alone), labeled **`// Why:`** / **`// About:`** / **`// Section:`**. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
 18. **Module hooks (LAW):** useful side-effects (SMS/mail sent, payment, lockout) **MUST** `Events::trigger('module.{mod}.{name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module — `Listeners::initializeRoutes()` may cover the producer URL without waking the whole module. Pre-action stop is **`triggerWithVeto()`** + `Veto`, not `return false`. Canonical: [41](41-MODULE-HOOKS.md).
+19. **Extender (judge — not every method):** owner `Extender::exists()` + immediate `return Extender::call(...)`; extender registers in `Listeners::register()` before Module initialization. Target URLs belong in the listener map; the Module map stays on its own URLs or `[]`. Prefer a controller string. **MUST NOT** use `.loaded` for initialize-time points, Events, `$request`/secrets, or patch the owner. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h.
+
+## What's New (2026-08-22)
+
+### Extender — opt-in method replacement
+
+New core class: **`Dotsystems\App\Parts\Extender`**. A module can **replace** another module’s method for the current request — one handler owns the result. This is **not** Events, hooks, or `triggerWithVeto()`.
+
+- **Judge first:** offer Extender on highly replaceable **outputs** (page/block HTML, cart, export) — **not** on every method.
+- When the owner opts in: `exists()` then immediately `return call(...)`. No original / next.
+- Register `extend()` in **`Listeners::register()`**. Put target URLs in `Listeners::initializeRoutes()`; keep the Module map on its own URLs or `[]`.
+- Prefer a controller string handler. Direct listener registration is earlier than every Module `initialize()`; `.loaded` is too late for initialize-time points.
+- One replacement per class+method. Recursion throws. Pass only explicit safe arguments.
+
+Canonical: [12](12-SERVICES.md) §10. Sample: [EX-17](examples/EX-17-extender.md). Framework README: project-root `README.md`.
 
 ## Kernel APIs (2026-08-22)
 
@@ -41,8 +56,9 @@ The kernel is **finished**. Agents **MUST NOT** edit `app/parts/`, `DotApp.php`,
 - `Listeners::initializeRoutes()` may differ from `Module::initializeRoutes()`; omit/`null` inherits the module map.
 - Matching listeners register **before** matching modules initialize.
 - **`Events::triggerWithVeto()`** + `Dotsystems\App\Parts\Veto` — ordinary `trigger()` still ignores returns.
+- **`Extender`:** judge first; owner `exists()` / `call()`, extender `extend()` in `Listeners::register()` on target listener routes. Own Module routes or `[]`; controller string preferred. Not Events. Sample [EX-17](examples/EX-17-extender.md).
 
-Canonical: [01](01-ARCHITECTURE.md), [03](03-MODULES-AND-ROUTING.md), [12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md), [EX-16](examples/EX-16-module-hooks.md). Framework README What's New: project-root `README.md`.
+Canonical: [01](01-ARCHITECTURE.md), [03](03-MODULES-AND-ROUTING.md), [12](12-SERVICES.md) §2 / §10, [41](41-MODULE-HOOKS.md), [EX-16](examples/EX-16-module-hooks.md), [EX-17](examples/EX-17-extender.md). Framework README What's New: project-root `README.md`.
 
 ## Quick install
 
@@ -80,7 +96,7 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
 | [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md) | Config, keys, fallbacks |
 | [11-AUTH-AND-CRYPTO.md](11-AUTH-AND-CRYPTO.md) | Auth, 2FA, Crypto |
-| [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, Events, **`triggerWithVeto` / `Veto`**, Module API |
+| [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, Events, **`triggerWithVeto` / `Veto`**, **`Extender`**, Module API |
 | [13-TESTING.md](13-TESTING.md) | Tester + dotapper --test |
 | [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md) | Wrong vs right (Laravel/…) |
 | [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md) | Quirks + leftover-doc corrections |

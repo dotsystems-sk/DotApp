@@ -229,6 +229,8 @@ Listener exceptions **propagate** and abort remaining listeners. Wrap risky list
 
 A pre-action stop is a **different** API: `triggerWithVeto()` returns the first `Dotsystems\App\Parts\Veto` or `null`. Ordinary `false`/scalar returns stay ignored. Canonical: [12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md).
 
+To **replace** a judged output method (page/block, cart, export), use `Extender` — `trigger()` cannot swap the implementation. **MUST NOT** Extender every method. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h.
+
 Also: `Events::on($route, $event, $cb)` and `on($method, $route, $event, $cb)` return **`false` and do not register** when the current request does not match the route.
 
 ---

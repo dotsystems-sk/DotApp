@@ -25,14 +25,20 @@ flowchart TD
 4. Framework default routes (e.g. `/assets/{modul}/{cesta*}`) register.
 5. `$dotApp->davajhet()` (= `run()`) resolves the route and sends the response.
 
+Because the listener phase is first, cheap `Extender::extend()` registration belongs in `Listeners::register()` when one module replaces another module’s opted-in method. The Module map stays on the extending module’s own URLs (or `[]`); the listener map covers the target URLs.
+
 ### Module init details
 
 `Module::__construct` fires:
 
 - `dotapp.module.{name}.init.start`
 - optional condition via `initializeCondition` / listener
-- `initialize($dotApp)` — **register routes here**
+- `dotapp.module.{name}.loading`
+- `initialize($dotApp)` — **register this module’s routes here**
+- `dotapp.module.{name}.loaded`
 - `dotapp.module.{name}.init.end`
+
+For Extender lifecycle wrappers, `.init.start` and `.loading` are before `initialize()`. `.loaded`, `.init.end`, and the global `dotapp.modules.loaded` are too late when the target can call its extension point during `initialize()`.
 
 `Module::initializeRoutes()` returns URL patterns used by `modulesAutoLoader.php` (created via `php dotapper.php --optimize-modules`) for full module initialization. `Listeners::initializeRoutes()` may return a different list for callback registration; omitting it (or returning `null`) inherits the module routes. Optimizer format v2 keeps legacy `$modules`, adds `$listeners`, and sets `$modulesAutoLoaderVersion = 2`. Runtime falls back to `$modules` when it reads an old file. A map containing `['*']` wakes that part on every URL — **MUST NOT** copy it unless the product really needs a global hook ([03](03-MODULES-AND-ROUTING.md)).
 
@@ -124,6 +130,7 @@ Trailing `!` = skip DI. When using `!`, **do not** type-hint injectable services
 | `Crypto` | Encrypt/decrypt |
 | `Events` | Event bus (`trigger` / `triggerWithVeto`) |
 | `Veto` | Opt-in stop object — **only** with `triggerWithVeto()` ([12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md)) |
+| `Extender` | Opt-in **method replacement** — owner `exists()` / `call()`; extender registers in `Listeners::register()` on target listener routes; own Module routes or `[]` ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h) |
 | `Renderer` | Templates |
 | `Translator` | i18n |
 | `Cache` / `Logger` | Cache / logs |

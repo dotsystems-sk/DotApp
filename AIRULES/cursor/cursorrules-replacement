@@ -105,6 +105,11 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   MUST NOT trigger() inside foreach of a growing list (one batch event);
   listener initializeRoutes() may cover the producer URL (omit/null inherits);
   react to another module by reading THEIR .hooks then Events::on in YOURS — do not patch them
+- Extender (AIRULES/12 §10, AIRULES/00 §2h): judge first — opt in on replaceable output
+  (page/block HTML, cart, export), NOT every method; owner exists()/immediate return call();
+  Extender::extend in Listeners::register() before Module initialize; target URLs in explicit
+  listener routes; own Module routes or []; prefer 'Module:Controller@method!';
+  MUST NOT .loaded for initialize-time, Events, $request/secrets, ['*'] just to attach, duplicate
 - Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
   (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
   then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);

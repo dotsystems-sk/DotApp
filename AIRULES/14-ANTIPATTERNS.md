@@ -101,6 +101,12 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `Events::trigger('dotapp.catchall', …)` | **Core** already fires it on every other `trigger()` — subscribe with `Events::on('dotapp.catchall', …)` ([01](01-ARCHITECTURE.md)) |
 | Heavy / throwing `dotapp.catchall` listener | cheap + own `try/catch` — a throw **aborts the original event** ([23](23-DEBUG-PLAYBOOK.md) §1c) |
 | Patch another module to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
+| `Extender::exists` on every persist / helper | Judge first: opt in on render/cart/export swap points ([00](00-AGENT-CONTRACT.md) §2h) |
+| `Events::trigger` / `triggerWithVeto` to replace a method | `Extender::extend` + owner `exists()` / `call()` ([12](12-SERVICES.md) §10) |
+| `Extender::extend` delayed to Module `initialize()` / target URLs in Module map | Register in `Listeners::register()` + target URLs in `Listeners::initializeRoutes()`; Module owns only its URLs or `[]` ([12](12-SERVICES.md) §10) |
+| Listener `['*']` just to attach an Extender | Exact target URL surfaces; global only for a genuinely dynamic dependency after warning |
+| Register on `dotapp.module.Target.loaded` when the point may run in `initialize()` | Direct listener registration, or the earlier `.init.start` / `.loading` event |
+| Pass `$request` / tokens into `Extender::call` | Explicit ids, flags, already-safe scalars |
 | `hooks.md` / `.hooks` under `assets/` | Filename **`.hooks`** at the module **root** — not a public page ([41](41-MODULE-HOOKS.md)) |
 
 ## Forms / frontend

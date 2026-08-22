@@ -26,14 +26,20 @@ flowchart TD
 5. Framework default routes (e.g. `/assets/{modul}/{cesta*}`) register.
 6. `$dotApp->davajhet()` (= `run()`) resolves the route and sends the response.
 
+Cheap `Extender::extend()` registration therefore belongs in `Listeners::register()` when one module replaces another opted-in method. Target URLs go in the listener map; the extending Module keeps only its URLs or `[]`.
+
 ### Module init details
 
 `Module::__construct` fires:
 
 - `dotapp.module.{name}.init.start`
 - optional condition via `initializeCondition` / listener
-- `initialize($dotApp)` — **register routes here**
+- `dotapp.module.{name}.loading`
+- `initialize($dotApp)` — **register this module’s routes here**
+- `dotapp.module.{name}.loaded`
 - `dotapp.module.{name}.init.end`
+
+For Extender wrappers, `.init.start` and `.loading` are early enough. `.loaded`, `.init.end`, and `dotapp.modules.loaded` are too late when the target calls the point during `initialize()`.
 
 `Module::initializeRoutes()` returns URL patterns used by `modulesAutoLoader.php` (created via `php dotapper.php --optimize-modules`) for full module initialization. `Listeners::initializeRoutes()` may return a different list for callback registration; omitting it inherits the module routes. Optimizer format v2 retains legacy `$modules`, adds `$listeners`, and marks `$modulesAutoLoaderVersion = 2`. Runtime falls back to `$modules` when it reads an old file. A map containing `['*']` wakes that part on every URL — **MUST NOT** copy it unless the product really needs a global hook ([03](03-MODULES-AND-ROUTING.md)).
 
@@ -127,6 +133,7 @@ Trailing `!` = skip DI. When using `!`, **do not** type-hint injectable services
 | `Auth` | Authentication |
 | `Crypto` | Encrypt/decrypt |
 | `Events` | Event bus |
+| `Extender` | Opt-in **method replacement** — owner `exists()` / `call()`; extender registers in `Listeners::register()` on target listener routes; own Module routes or `[]` ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h) |
 | `Renderer` | Templates |
 | `Translator` | i18n |
 | `Cache` / `Logger` | Cache / logs |
