@@ -43,14 +43,14 @@ flowchart TD
 
 ```
 project-root/
-  index.php                 # front controller — FORBIDDEN even if asked
-  dotapper.php              # CLI — FORBIDDEN even if asked
+  index.php                 # front controller — FORBIDDEN to edit
+  dotapper.php              # CLI — FORBIDDEN to edit
   .htaccess
   app/
     config.php              # ALLOWED
-    DotApp.php              # FORBIDDEN — even if asked (kernel frozen)
+    DotApp.php              # FORBIDDEN
     listeners.php           # ASK FIRST
-    parts/                  # FORBIDDEN — even if asked (core libraries)
+    parts/                  # FORBIDDEN — core libraries
     modules/                # your modules live here
       MyModule/             # ALLOWED (own module only)
     runtime/                # FORBIDDEN — cache/logs
@@ -126,8 +126,7 @@ Trailing `!` = skip DI. When using `!`, **do not** type-hint injectable services
 | `Config` | Configuration |
 | `Auth` | Authentication |
 | `Crypto` | Encrypt/decrypt |
-| `Events` | Event bus (`trigger` / `triggerWithVeto`) |
-| `Veto` | Opt-in stop object — **only** with `triggerWithVeto()` ([12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md)) |
+| `Events` | Event bus |
 | `Renderer` | Templates |
 | `Translator` | i18n |
 | `Cache` / `Logger` | Cache / logs |
@@ -149,7 +148,7 @@ Canonical singleton: `DotApp::dotApp()` / `DotApp::DotApp()`.
 | `dotapp.router.resolve` | Start of routing (alias `dotapp.middleware`) |
 | `dotapp.router.resolve.404` | No route matched |
 
-Event names are lowercased on register/trigger. `trigger()` **ignores** listener return values. `triggerWithVeto()` stops only on `Dotsystems\App\Parts\Veto` and returns `Veto|null`.
+Event names are lowercased on register/trigger.
 
 ### `dotapp.catchall` — core debug funnel (DotApp 2.0)
 

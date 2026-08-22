@@ -228,8 +228,6 @@ $result = $dotApp->trigger('module.shop.sms_sent.hook', $initial);
 
 Listener exceptions **propagate** and abort remaining listeners. Wrap risky listener bodies in `try/catch` yourself.
 
-A pre-action stop is a **different** API: `triggerWithVeto()` returns the first `Dotsystems\App\Parts\Veto` or `null`. Ordinary `false`/scalar returns stay ignored. Canonical: [12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md).
-
 Also: `Events::on($route, $event, $cb)` and `on($method, $route, $event, $cb)` return **`false` and do not register** when the current request does not match the route.
 
 ---

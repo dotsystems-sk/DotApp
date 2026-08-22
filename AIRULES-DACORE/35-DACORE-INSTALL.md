@@ -258,6 +258,8 @@ For every new DACore-bound module, ask **one grouped identity question** before 
 
 If the user has no preference, default to a clean text-only heading and description; do **not** hold up the installer. If they want a generated image, **ASK before using a potentially paid image model** ([00](00-AGENT-CONTRACT.md) §2b).
 
+**MUST** also open **`app/modules/DACore/.hooks`** (read-only) before scaffolding listeners for this module — catalog of events DACore already fires ([41](41-MODULE-HOOKS.md) §6).
+
 There is **no separate installer `logo` field** in this package contract. Placement is expressed by the order of HTML inside `about`; the file itself lives under your module’s `about-assets/` and ships in the zip:
 
 ```php

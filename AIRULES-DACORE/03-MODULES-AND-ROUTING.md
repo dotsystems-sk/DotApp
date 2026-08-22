@@ -344,7 +344,7 @@ $dotApp->trigger('module.shop.sms_sent.hook', $result);
 
 **MUST (business hooks):** name is **`module.{lowercase_modulename}.{hook_name}.hook`**. Fire only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Document that exact name in **`app/modules/<YourModule>/.hooks`**. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:` ([41](41-MODULE-HOOKS.md) §3). **MUST NOT** put secrets on the bus; **MUST NOT** fire inside `foreach` of a growing list (one batch event after the loop).
 
-To react to **another** module: read **their** `.hooks`, then `Events::on(...)` in **your** `module.listeners.php`. **MUST NOT** edit the owner (and **MUST NOT** edit DACore) to “add a call”. Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
+To react to **another** module: read **their** `.hooks`, then `Events::on(...)` in **your** `module.listeners.php`. **MUST NOT** edit the owner (and **MUST NOT** edit DACore) to “add a call”. A **DACore-bound** module **MUST** read **`app/modules/DACore/.hooks` first**. Canonical: [41](41-MODULE-HOOKS.md) §6. Sample: [EX-16](examples/EX-16-module-hooks.md).
 
 ---
 

@@ -140,6 +140,14 @@ The first registered driver becomes **default**. When the default is uninstalled
 
 ---
 
+## Stop an operator from deleting your SMS template
+
+DACore fires `Events::triggerWithVeto('module.dacore.sms_template_delete.veto', …)` **before** a manual delete of one custom SMS template. Uninstall wipe does **not**.
+
+Return `new \Dotsystems\App\Parts\Veto($code, $message, $details)` from **your** `module.listeners.php`. `false` is ignored. Cover `{prefixUrl}/dacore/sms-templates` (and `/new`, `/edit`) in `Listeners::initializeRoutes()` and run `--optimize-modules`. Canonical: [41](41-MODULE-HOOKS.md), `app/modules/DACore/.hooks`.
+
+---
+
 ## MUST NOT
 
 - A second SMS stack (`Parts\Sms` / `SmsProvider`) unless the user declined DACore drivers

@@ -22,7 +22,6 @@ Router::before(['POST'], ['/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'], '#DAC
 - No named routes, no Laravel `Route::prefix()->group()` — cover an area with `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`)
 - **MUST:** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login` (no CRC). **POST API** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — action **MUST NOT** `crcCheck()` again. Wrap login-only handlers in `if (Auth::isLogged() === true)`. `AIRULES/03`, `AIRULES/32`
 - **MUST:** `initializeRoutes()` = this module’s prefixes only. **MUST NOT** `['*']` unless the user asked for a global hook. **MUST NOT** `include` another module to list or show its about/changelog (`AIRULES/03`)
-- **Listeners:** `Listeners::initializeRoutes()` may be a **narrower** list (or omit/`null` to inherit). After either list changes: `php dotapper.php --optimize-modules`.
 - **Comments:** English. Public Controllers/Middleware PHPDoc **MUST** start with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`) then a **purpose sentence** then `@param`/`@return` (not tags-only). Labeled **`// Why:`** (logical step), **`// About:`** (what this chunk is), **`// Section:`** (menu/route) — not every line, not unlabeled
 
 ## Controllers
@@ -67,4 +66,4 @@ After editing PHP in this module: **MUST** `AIRULES/00` §2c finish gate (CRC on
 
 ## Hooks (MUST)
 
-After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** every save) **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and **MUST** document that name in **`app/modules/<ThisModule>/.hooks`**. Payload = ids/counts/flags — never secrets. Listen to another module in **your** `module.listeners.php` after reading **their** `.hooks` — do not patch them or DACore. `Listeners::initializeRoutes()` may cover the producer URL. Pre-action stop = `Events::triggerWithVeto()` + `new Veto(...)`. `AIRULES/41-MODULE-HOOKS.md`, EX-16.
+After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** every save) **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and **MUST** document that name in **`app/modules/<ThisModule>/.hooks`**. Payload = ids/counts/flags — never secrets. Listen to another module in **your** `module.listeners.php` after reading **their** `.hooks` — do not patch them. `AIRULES/41-MODULE-HOOKS.md`, EX-16.

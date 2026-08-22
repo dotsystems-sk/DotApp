@@ -77,7 +77,6 @@ Arities:
 Events::on($event, $callback);                       // always registers
 Events::on($routePattern, $event, $callback);        // returns FALSE if route doesn't match
 Events::on($method, $routePattern, $event, $callback); // returns FALSE on mismatch
-Events::triggerWithVeto($event, $result, ...$data);   // first Veto or null
 ```
 
 **`trigger()` returns `$result` unchanged — listener return values are ignored.** Listener exceptions **propagate** and abort remaining listeners, so wrap risky bodies in `try/catch`. Event names are lowercased; `dotapp.middleware` is an alias of `dotapp.router.resolve`.
@@ -86,7 +85,7 @@ Events::triggerWithVeto($event, $result, ...$data);   // first Veto or null
 
 **`dotapp.catchall` (core, DotApp 2.0):** every `trigger($name, $result, …$data)` except `dotapp.catchall` itself first fires `dotapp.catchall` with `($result, $name, …$data)`. That is the **one** place a debugger / event tracer **MUST** subscribe to see every event. Implement the listener in **your** module — never under `app/modules/DACore/`. Do **not** trigger `dotapp.catchall` yourself. A throw in that listener aborts the original event. Distinct from `dotapp.catch` (module-fired failures — [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9). Canonical: [01](01-ARCHITECTURE.md) Built-in events, [23](23-DEBUG-PLAYBOOK.md) §1c.
 
-**Your `module.{mod}.{name}.hook` names (MUST judge):** fire **only** when another module could log, show history, or sync (SMS/mail sent, payment, lockout). Name: `module.{lowercase_modulename}.{hook_name}.hook`. **MUST** document it in `app/modules/<YourModule>/.hooks` and put `Hook:` / `Why:` / `About:` / `Params:` / `Use:` above `trigger()`. **MUST NOT** fire on every save. **MUST NOT** skip a **decided** hook because `hasListener` is false. Listener returns are **ignored** (not a veto). No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
+**Your `module.{mod}.{name}.hook` names (MUST judge):** fire **only** when another module could log, show history, or sync (SMS/mail sent, payment, lockout). Name: `module.{lowercase_modulename}.{hook_name}.hook`. **MUST** document it in `app/modules/<YourModule>/.hooks` and put `Hook:` / `Why:` / `About:` / `Params:` / `Use:` above `trigger()`. **MUST NOT** fire on every save. **MUST NOT** skip a **decided** hook because `hasListener` is false. Listener returns are **ignored** (not a veto). No secrets on the bus. A DACore-bound module **MUST** read `app/modules/DACore/.hooks` first. Canonical: [41](41-MODULE-HOOKS.md) §6. Sample: [EX-16](examples/EX-16-module-hooks.md).
 
 ---
 
@@ -123,8 +122,7 @@ class ShopFacade extends \Dotsystems\App\Parts\Facade
 | Method | Returns |
 |--------|---------|
 | `initialize($dotApp)` | abstract — register routes here |
-| `initializeRoutes()` | `array` of URL patterns (default `['*']`) — **MUST** list this module’s prefixes, not `['*']` unless the user asked |
-| `Listeners::initializeRoutes()` | `array\|null` — `null` / omit inherits `Module::initializeRoutes()`; may be a **narrower** list so the listener wakes without full `initialize()` |
+| `initializeRoutes()` | `array` of URL patterns (default `['*']`) |
 | `initializeCondition($routeMatch)` | `bool`/mixed |
 | `Module::optimize()` | `true` or the caught `\Exception` — writes `modulesAutoLoader.php` |
 | `settings($input = null, $value = null, $mode = 0)` | see below |

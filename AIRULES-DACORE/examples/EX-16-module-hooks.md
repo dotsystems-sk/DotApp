@@ -6,6 +6,8 @@ Canonical law: [41-MODULE-HOOKS.md](../41-MODULE-HOOKS.md). API: [12-SERVICES.md
 
 Fire **only** when another module could log, show history, or sync — not on every save.
 
+When the module **plugs into DACore**, open **`app/modules/DACore/.hooks` first** (Fired + Veto contracts). That is the catalog of events DACore already offers — subscribe there instead of inventing `module.dacore.*` or patching DACore ([41](../41-MODULE-HOOKS.md) §6).
+
 ---
 
 ## 1. Fire after a useful side-effect (Shop sent SMS)
@@ -147,3 +149,5 @@ Events::on('module.shop.item_delete.veto', function ($result) {
 ```
 
 Document this under **Veto contracts** in Shop’s `.hooks`, including timing, payload, and allowed codes. The subscriber’s `Listeners::initializeRoutes()` must cover the Shop request where this event fires. Never expose `Veto::message()` or `details()` directly to a browser.
+
+DACore already ships two owner contracts you can listen to without patching DACore: `module.dacore.email_template_delete.veto` and `module.dacore.sms_template_delete.veto` ([38](../38-DACORE-EMAIL.md), [39](../39-DACORE-SMS.md), `app/modules/DACore/.hooks`).

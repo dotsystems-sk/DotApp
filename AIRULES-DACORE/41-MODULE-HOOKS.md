@@ -12,7 +12,7 @@ Canonical API: [12](12-SERVICES.md) §2, [03](03-MODULES-AND-ROUTING.md) “Even
 
 1. **Judge, then fire.** Fire only after a **successful** side-effect another module could care about (sent SMS/mail, captured payment, finished workflow, lockout, confirmed 2FA). Skipping a **named** useful hook is a bug. Firing on a trivial catalog save “because hooks are cheap” is also a bug.
 2. **Document it.** Every `module.{yourmodule}.*.hook` you fire **MUST** have a matching heading in that module’s **`.hooks`**. A trigger without a row, or a row without a trigger, is a **bug**. Update `.hooks` in the **same chunk**.
-3. **Connect, do not patch.** To react to another module: **read its `.hooks`**, then `Events::on(...)` in **your** `module.listeners.php`. **MUST NOT** edit the other module (and **MUST NOT** edit DACore) to “add a call”. Inventing an event name the owner never fires is a bug.
+3. **Connect, do not patch.** To react to another module: **read its `.hooks`**, then `Events::on(...)` in **your** `module.listeners.php`. **MUST NOT** edit the other module (and **MUST NOT** edit DACore) to “add a call”. Inventing an event name the owner never fires is a bug. A **DACore-bound** module **MUST** start with **`app/modules/DACore/.hooks`** ([§6](#6-listening-from-another-module-must)).
 4. **No secrets on the bus.** Hook payloads are **ids, counts, status flags** — never passwords, TOTP/OTP, CRC, tokens, rights blobs, SMS/email bodies, or request bodies. The same leak law as the catch bus ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9, [24](24-ATTACK-VECTORS.md) §8).
 
 ---
@@ -75,6 +75,7 @@ Example: `module.shop.item_delete.veto`. This is **not** a normal post-success `
 - Payload and `Veto::details()` follow the same no-secrets law as hooks. The core never sends `message` or `details` to a browser.
 - A subscriber MUST cover the producer request in `Listeners::initializeRoutes()` and regenerate `modulesAutoLoader.php`; an unloaded listener cannot veto.
 - Ordinary `trigger()` ignores even a returned `Veto`, so old modules remain compatible.
+- DACore ships two owner contracts today: `module.dacore.email_template_delete.veto` and `module.dacore.sms_template_delete.veto` ([38](38-DACORE-EMAIL.md), [39](39-DACORE-SMS.md)). Uninstall wipe is not gated.
 
 ---
 
@@ -191,9 +192,17 @@ Shape: module.{modulename}.{hook_name}.hook
 
 ## 6. Listening from another module (**MUST**)
 
-1. **Read** `app/modules/<Other>/.hooks` (and grep `Events::trigger` there if the file is thin).
+### DACore catalog (**MUST**)
+
+When you program a **DACore-bound** module (create Shop, extend CMS, add an SMS driver, audit, … — new **or** existing), **MUST** open **`app/modules/DACore/.hooks`** **read-only** **before** scaffolding listeners, history tables, lockout reactions, mail/SMS audit, or template-delete protection.
+
+That file is the catalog of events DACore already fires (`Fired` = `module.dacore.*.hook`, **Veto contracts** = `module.dacore.*.veto`: login, lockout, 2FA, mail/SMS sent, plugin install, template delete, …). Subscribe in **your** `module.listeners.php` so the module uses that potential instead of reinventing it or patching DACore.
+
+**MUST NOT** invent `module.dacore.*` names from your module. **MUST NOT** skip a listed event because you did not open the file. **MUST NOT** edit `app/modules/DACore/` to “add a call”.
+
+1. **Read** `app/modules/<Other>/.hooks` (and grep `Events::trigger` there if the file is thin). For a DACore-bound module, **Other** is **DACore first** (`app/modules/DACore/.hooks`), then any other owner you actually subscribe to.
 2. Register in **your** `module.listeners.php` — register **only**, no query/HTTP on include ([03](03-MODULES-AND-ROUTING.md)).
-3. `Module::initializeRoutes()` stays on **your** prefixes. To hear a producer that runs on **their** URL, set `Listeners::initializeRoutes()` to those prefixes (or omit/`null` to inherit when the maps already overlap) — **MUST NOT** `['*']` just to hear events ([03](03-MODULES-AND-ROUTING.md) sleep law). Then `php dotapper.php --optimize-modules`. An unloaded listener cannot react or veto.
+3. Keep `initializeRoutes()` on **your** prefixes — **MUST NOT** `['*']` just to hear events ([03](03-MODULES-AND-ROUTING.md) sleep law). Loaded modules still receive global events.
 4. Listener body: cheap; own `try/catch` + your catch-bus helper; **MUST NOT** push a DACore inbox notification on every fire ([37](37-DACORE-NOTIFICATIONS.md)).
 5. **MUST NOT** `DotApp::call` the other module on every request just to “discover” hooks — the file is on disk.
 
@@ -216,10 +225,11 @@ Events::on('module.shop.sms_sent.hook', function ($result, ...$data) {
 
 ## 7. Finish gate (**MUST**)
 
-After every chunk that **adds or changes** `Events::trigger(`, **grep** (do not imagine):
+After every chunk that **adds or changes** `Events::trigger(` or `Events::triggerWithVeto(`, **grep** (do not imagine):
 
 ```text
 Events::trigger(
+Events::triggerWithVeto(
 ```
 
 | Fail now | Fix |
@@ -228,6 +238,7 @@ Events::trigger(
 | A **named** useful side-effect (SMS sent, paid, lockout) with **no** hook | Add trigger + `.hooks` + comment block |
 | Hook on a trivial save with no `Use:` you can name | Remove the trigger |
 | `Events::trigger('module.` **without** the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block | Add the block |
+| `triggerWithVeto('module.` without a **Veto contracts** heading in `.hooks` | Document the `.veto` name, timing, payload, and producer POSTs |
 | Name **not** in `.hooks` | Add the heading in the same chunk |
 | `.hooks` names that are not in the PHP | Delete the stale row |
 | Trigger **inside** `foreach` of a list that can grow | One batch event after the loop |
@@ -235,7 +246,6 @@ Events::trigger(
 | `Events::trigger('dotapp.catchall'` | Remove — core already fires it |
 | Skip a **decided** hook because `hasListener` is false | Always fire that name |
 | Putting `.hooks` in `assets/` or naming it `hooks.md` | Module-root `.hooks` only |
-| Wanted a pre-action stop but used `trigger()` / `return false` | `triggerWithVeto()` + `new Veto($code, …)` + **Veto contracts** in `.hooks` |
 
 Tick [17](17-CHECKLISTS.md) Finish gate **Hooks**.
 
@@ -250,7 +260,7 @@ Tick [17](17-CHECKLISTS.md) Finish gate **Hooks**.
 | `shop.item.saved` | `module.shop.order_paid.hook` (four segments) |
 | Patch DACore / Shop to call your code | Listen to **their** documented event |
 | `hooks.md` in `assets/` | `app/modules/Shop/.hooks` |
-| Veto via `return false` on `trigger()` | Persist already happened; for a real stop use `triggerWithVeto()` + `new Veto(...)` |
+| Veto via `return false` | Persist already happened; do your own work or don’t |
 | Trigger before `execute()` `$ok` | Fire in the success path only |
 | Full user row / SMS body on the bus | `id` + flags |
 | `trigger()` with no `Hook:` comment | The five-line block |

@@ -13,7 +13,7 @@ Canonical: `AIRULES/41-MODULE-HOOKS.md`. Sample: `AIRULES/examples/EX-16-module-
 - **MUST** document every fired name in `app/modules/<YourModule>/.hooks` (Markdown **content**, filename **`.hooks`**, module **root** — not `assets/`, not `hooks.md`).
 - Same chunk: new trigger ↔ new `.hooks` heading. Stale rows **MUST** go.
 - Payload: ids/counts/flags. **MUST NOT** passwords, OTP, tokens, rights, SMS/email bodies, request bodies.
-- `trigger()` **ignores** listener returns — not a veto. Pre-action stop = **`triggerWithVeto()`** + `new \Dotsystems\App\Parts\Veto($code, $message, $details)` only. Ordinary `false`/scalar returns stay ignored. Never send `Veto` message/details to the browser.
-- React to another module: **read its `.hooks`**, `Events::on` in **your** `module.listeners.php`. Cover the producer URL in `Listeners::initializeRoutes()` (omit/`null` inherits the module map). **MUST NOT** patch them or DACore.
+- `trigger()` **ignores** listener returns — not a veto. Listeners: cheap + own `try/catch`.
+- React to another module: **read its `.hooks`**, `Events::on` in **your** `module.listeners.php`. **MUST NOT** patch them or DACore.
 - **MUST NOT** fire `dotapp.catchall` yourself. **MUST NOT** `trigger()` inside `foreach` of a growing list — one batch event.
 - Finish gate: grep `Events::trigger(` vs `.hooks`; reject old `shop.item.saved` shape.

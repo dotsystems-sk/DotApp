@@ -30,6 +30,7 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | **Active sidebar on subpages** | Edit/detail **MUST** pass `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). [31](31-DACORE-MENU.md) |
 | Pack `dainstall.php` + `init/` + **`about.php`** **only** for a **DACore-bound** module and only when asked | While coding: **`install.php`**. Zip **MUST** rename it to `dainstall.php` (DACore **rejects** `install.php` / never runs Installation without `dainstall.php`) + **`init/`** + **`about.php`**. Non-DACore: copy the folder. [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5. **MUST NOT** pack `app/modules/DACore/`. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
+| **Read `app/modules/DACore/.hooks` first** | Catalog of `module.dacore.*.hook` and `.veto` DACore already fires — subscribe in **your** module; do not invent names or patch DACore ([41](41-MODULE-HOOKS.md) §6) |
 | **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — **PHP** verifies the code before persist (overlay is UX only); never `Auth::confirmTwoFactor` while already logged in |
 
 Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` only (that module’s assets included). DACore: [00](00-AGENT-CONTRACT.md) §1.

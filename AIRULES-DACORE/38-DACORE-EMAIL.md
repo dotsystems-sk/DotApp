@@ -84,6 +84,14 @@ HTML selects: encrypted `token`. **Store ints** in your tables. Use `DotApp::cal
 
 ---
 
+## Stop an operator from deleting your template
+
+DACore fires `Events::triggerWithVeto('module.dacore.email_template_delete.veto', …)` **before** a manual delete of one custom email template. Uninstall wipe does **not**.
+
+Return `new \Dotsystems\App\Parts\Veto($code, $message, $details)` from **your** `module.listeners.php`. `false` is ignored. Cover `{prefixUrl}/dacore/email-templates` (and `/new`, `/edit`) in `Listeners::initializeRoutes()` and run `--optimize-modules`. Canonical: [41](41-MODULE-HOOKS.md), `app/modules/DACore/.hooks`.
+
+---
+
 ## MUST NOT
 
 - SMTP UI / PHPMailer / `Config::email` unless the user declined DACore senders

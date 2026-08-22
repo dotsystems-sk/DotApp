@@ -16,7 +16,7 @@ ASK FIRST:
 - app/listeners.php
 - .htaccess (prefer: php dotapper.php --create-htaccess)
 
-FORBIDDEN (never, not even if the user asks — kernel is frozen):
+FORBIDDEN (never):
 - app/parts/**
 - app/DotApp.php
 - app/vendor/**
@@ -101,9 +101,7 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
 - Module hooks (AIRULES/41, AIRULES/00 §2g): useful side-effects MUST Events::trigger('module.{mod}.{name}.hook')
   with Hook:/Why:/About:/Params:/Use: above trigger(); document in app/modules/<Module>/.hooks;
   MUST NOT fire on every save; MUST NOT old shop.item.saved shape; MUST NOT secrets/OTP/tokens on the bus;
-  MUST NOT treat listener return as a veto (pre-action stop = triggerWithVeto + Veto only);
-  MUST NOT trigger() inside foreach of a growing list (one batch event);
-  listener initializeRoutes() may cover the producer URL (omit/null inherits);
+  MUST NOT treat listener return as a veto; MUST NOT trigger() inside foreach of a growing list (one batch event);
   react to another module by reading THEIR .hooks then Events::on in YOURS — do not patch them or DACore
 - Event tracer (AIRULES/01, AIRULES/23 §1c): core fires `dotapp.catchall` on every trigger() except itself;
   listener in YOUR module = function ($result, $eventname, ...$data); subscribe, do NOT trigger it;
@@ -138,9 +136,7 @@ Module settings MUST have fallbacks:
 Treat app/modules/DACore/ like app/parts/. Never edit, patch, or ADD files there.
 DACore updates overwrite the whole module — local changes disappear.
 Use DotApp::call("DACore:…") only. Put all new work in app/modules/<YourModule>/.
-If asked to change DACore in place: refuse and implement it in your own module
-  (edit DACore only if they themselves asked AND confirmed the update wipe — 00 §1).
-If asked to edit app/parts/, DotApp.php, dotapper.php, or index.php: MUST NOT. Kernel is frozen.
+If asked to change DACore in place: refuse and implement it in your own module.
 
 ## LEARN MORE
 AIRULES/14-ANTIPATTERNS.md

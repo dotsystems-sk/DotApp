@@ -170,21 +170,6 @@ $qb->createTableIfNotExist('shop_orders', function ($t) {
 
 ## 7. Professional code and comments (**MUST**)
 
-### Temporary framework-author language exception
-
-For the explicitly authorized listener-route separation task, comments in these core files may use natural Slovak without diacritics:
-
-- `app/DotApp.php`
-- `app/parts/Module.php`
-- `app/parts/Listeners.php`
-- related `dotapper.php` changes
-
-The comments must still explain decisions and traps. They MUST NOT deliberately introduce spelling mistakes that make the code harder to understand.
-
-Normal modules and DACore continue using English documentation.
-
-This exception is temporary and applies only to the named framework-core task.
-
 The next reader is a human (or a weaker agent) with no memory of this chat. Code **MUST** be skimmable: a **PHPDoc purpose sentence** says *what the function is for*, tags say *shape*, labeled inline comments say *where / what this block is / why this step*.
 
 **MUST — layers of documentation:**

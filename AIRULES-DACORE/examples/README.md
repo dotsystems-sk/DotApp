@@ -19,7 +19,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-12-ai-search-mcp.md](EX-12-ai-search-mcp.md) | AI calls, FastSearch, MCP tools |
 | [EX-13-schema-migrations.md](EX-13-schema-migrations.md) | SchemaBuilder, DDL, introspection; no `?` in `raw()` comments |
 | [EX-14-auth-and-2fa.md](EX-14-auth-and-2fa.md) | Login, permissions, 2FA (`$dotapp().twoFactor`), user creation; **`data(true)`** for password |
-| [EX-16-module-hooks.md](EX-16-module-hooks.md) | Fire `module.{mod}.{name}.hook` when useful, `.hooks`, listen (own `Listeners::initializeRoutes()` if needed), **`triggerWithVeto` / `Veto`** — [41](../41-MODULE-HOOKS.md) |
+| [EX-16-module-hooks.md](EX-16-module-hooks.md) | Fire `module.{mod}.{name}.hook` when useful (SMS/history), document in `.hooks`, listen from another module — [41](../41-MODULE-HOOKS.md) |
 
 ## DACore admin layer
 

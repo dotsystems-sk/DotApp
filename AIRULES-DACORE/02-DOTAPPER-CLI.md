@@ -32,7 +32,7 @@ CLI-only: non-CLI HTTP requests get 403.
 | Create .htaccess | `--create-htaccess` | Write root `.htaccess` |
 | List routes | `--list-routes` | Boot app, print routes |
 | List one route | `--list-route=<path>` | e.g. `--list-route=/` |
-| Optimize modules | `--optimize-modules` | Write `app/modules/modulesAutoLoader.php` v2 (`$modules` + `$listeners` + `$modulesAutoLoaderVersion = 2`). Old files with only `$modules` still work. |
+| Optimize modules | `--optimize-modules` | Write versioned init + listener maps to `app/modules/modulesAutoLoader.php` |
 | Core tests | `--test` | Framework tests, or module tests if `--module` set |
 | All module tests | `--test-modules` | All modules' tests |
 | Prepare DB SQL | `--prepare-database[=prefix]` | Export prefixed SQL file (interactive) |

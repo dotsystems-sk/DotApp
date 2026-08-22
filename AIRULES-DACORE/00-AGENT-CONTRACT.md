@@ -24,7 +24,7 @@ This is **DotApp** — not Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent,
 | `.htaccess` | Prefer `php dotapper.php --create-htaccess`. |
 | Another **your-project** module's folder | Only with explicit permission naming that module. **Never propose** editing DACore instead. |
 
-### FORBIDDEN (never edit — no exceptions, no “quick fixes”, no “authorized labs”, **not even when the user asks**)
+### FORBIDDEN (except the explicit framework-author exception below)
 
 | Path | Why |
 |------|-----|
@@ -38,7 +38,67 @@ This is **DotApp** — not Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent,
 | `assets/dotapp/**` (if present as static copies) | Served dynamically; do not hand-patch |
 | Any file outside the target module + `app/config.php` | Scope violation (DACore: see below) |
 
-If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** patch the kernel even if the user then asks you to — implement a workaround in the module. The DACore informed exception in §1 is **not** a licence to edit `app/parts/` or `DotApp.php`.
+If you believe a core bug exists: **stop and ask the user**. Do not patch core unless the explicit framework-author exception below applies.
+
+### Framework-author exception
+
+The user is the author of the DotApp framework.
+
+When the user explicitly names and authorizes a framework-core task, the agent may edit only the core files required by that task.
+
+Current authorized task:
+
+- Separate listener routes from module initialization routes.
+- Preserve compatibility with existing modules and old `modulesAutoLoader.php` files.
+- Extend the module optimizer to store initialization routes and listener routes separately.
+- Inspect dotapper generators and optimizer integration for the old route format.
+- Update the DACore optimization overview for the new format.
+
+Allowed core paths for this task:
+
+- `app/DotApp.php`
+- `app/parts/Module.php`
+- `app/parts/Listeners.php`
+- `dotapper.php` only when its optimizer, help text, or module scaffolding requires updating
+- framework tests required for this task
+- relevant AIRULES documentation
+
+The authorization does not include:
+
+- `index.php`
+- `initializedb.php`
+- `app/vendor/**`
+- `app/runtime/**`
+- unrelated files under `app/parts/**`
+- unrelated framework behavior
+
+The main chat model MUST implement and review the runtime logic in `app/DotApp.php`, `app/parts/Module.php`, and `app/parts/Listeners.php`.
+
+For this task, the user explicitly permits the Grok 4.6 High model to inspect dotapper and implement the DACore optimization overview. It MUST NOT modify the runtime core files owned by the main model.
+
+This exception is temporary and applies only to the listener-route separation task.
+
+### Framework-author exception — veto event API
+
+The user explicitly authorizes a general core veto API without integrating it into any module action yet.
+
+Allowed paths for this task:
+
+- `app/DotApp.php`
+- `app/parts/Events.php`
+- new `app/parts/Veto.php`
+- framework tests under `app/tests/`
+- relevant AIRULES documentation and examples
+
+Required compatibility:
+
+- Existing `trigger()` behavior MUST remain unchanged.
+- Only `triggerWithVeto()` observes listener returns.
+- Only a returned `Dotsystems\App\Parts\Veto` object stops dispatch.
+- `false`, `null`, strings, arrays and other old listener returns MUST remain non-vetoing.
+- No DACore or module business action is wired to veto as part of this core-only task.
+
+The main chat model MUST implement and review this runtime core change.
 
 ### DACore files — strict default, informed exception only
 
@@ -60,7 +120,7 @@ See [§7](#7-dacore-is-sacred-same-rank-as-framework-core).
 
 ## 2. Mandatory workflow
 
-1. **Identify the target module** (or create one). If it is a **new DACore-bound module**, **ASK in chat first**: shared full sidebar vs **module-own** menu (`Page@withMenu` `$menuId`). Do not guess. From about five items, do not dump leaves under a header. [31](31-DACORE-MENU.md). **Also ASK one grouped identity question:** public display name + one-sentence purpose; installer preview as text-only, compact logo near the heading, or wide banner above the summary; existing local asset + alt text; and whether the identity also appears on the module landing/header. The menu Remix icon is separate from the logo. No preference → clean text-only preview, do not block work. [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b. **Sending mail, inbox notifications, or SMS?** Open [38](38-DACORE-EMAIL.md) / [37](37-DACORE-NOTIFICATIONS.md) / [39](39-DACORE-SMS.md) — do not invent SMTP or a gateway. **Also ASK** for `about.php` copy: module description HTML, license HTML, and changelog HTML for **1.0.0**. If the user has not given that text, **ASK** — do not invent legal terms or a fake changelog. **Pack vs host:** if this module is a **theme/gateway/locale pack**, or a **host** that will pick among packs (CMS “choose template”), **ASK** the `extra1`…`extra5` tokens ([35](35-DACORE-INSTALL.md) §3c). A normal app module omits extras.
+1. **Identify the target module** (or create one). If it is a **new DACore-bound module**, **ASK in chat first**: shared full sidebar vs **module-own** menu (`Page@withMenu` `$menuId`). Do not guess. From about five items, do not dump leaves under a header. [31](31-DACORE-MENU.md). **Also ASK one grouped identity question:** public display name + one-sentence purpose; installer preview as text-only, compact logo near the heading, or wide banner above the summary; existing local asset + alt text; and whether the identity also appears on the module landing/header. The menu Remix icon is separate from the logo. No preference → clean text-only preview, do not block work. [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b. **Sending mail, inbox notifications, or SMS?** Open [38](38-DACORE-EMAIL.md) / [37](37-DACORE-NOTIFICATIONS.md) / [39](39-DACORE-SMS.md) — do not invent SMTP or a gateway. **DACore hooks (MUST):** before scaffolding a DACore-bound module, **MUST** read **`app/modules/DACore/.hooks`** (read-only catalog of `module.dacore.*.hook` and `.veto`) so the module can subscribe instead of reinventing login/lockout/mail/SMS/template-delete events. **Also ASK** for `about.php` copy: module description HTML, license HTML, and changelog HTML for **1.0.0**. If the user has not given that text, **ASK** — do not invent legal terms or a fake changelog. **Pack vs host:** if this module is a **theme/gateway/locale pack**, or a **host** that will pick among packs (CMS “choose template”), **ASK** the `extra1`…`extra5` tokens ([35](35-DACORE-INSTALL.md) §3c). A normal app module omits extras.
 2. **Read** the relevant AIRULES docs for the task (routing / views / DB / forms / JS).
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
@@ -70,8 +130,8 @@ See [§7](#7-dacore-is-sacred-same-rank-as-framework-core).
 8. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
 9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
 10. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core/DACore bug.
-11. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes. `Listeners::initializeRoutes()` may be a **narrower** list (or `null` to inherit the module map). **MUST NOT** return `['*']` unless the user asked for a hook on every request **and** you warned that listeners, logs and `initialize()` will run everywhere. **MUST NOT** `include` / `require` / `DotApp::call` another module just to list it or show its about/changelog — that lives in DACore `dacore_modules`. After either list changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
-12. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md).
+11. **Do not wake other modules:** `initializeRoutes()` lists **only this module’s** URL prefixes. **MUST NOT** return `['*']` unless the user asked for a hook on every request **and** you warned that listeners, logs and `initialize()` will run everywhere. **MUST NOT** `include` / `require` / `DotApp::call` another module just to list it or show its about/changelog — that lives in DACore `dacore_modules`. After route changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
+12. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. A **DACore-bound** module **MUST** read **`app/modules/DACore/.hooks` first** — that is the catalog of events DACore already offers. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md) §6.
 
 ### Dotapper-first rule
 
@@ -136,7 +196,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Privilege / records** | Persist + GET view vars + SQL | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password without current; public noauth shipped with no bot warning ([11](11-AUTH-AND-CRYPTO.md) §11) |
 | **Perf / readability pass** | The greps in [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 | `->all()` on a growing table, a query/HTTP/rights check/log **inside** `foreach`, `select('*')` on a list, O(n²) lookup or array copy per row, a new `WHERE`/`ORDER BY` column with **no index**, an index with no comment naming its query, a duplicate of a library DACore ships, a public method with **tags-only PHPDoc** (`@return array<string, mixed>` and no purpose sentence), comments that restate the code |
 | **Threat pass** | The 12 greps in [24](24-ATTACK-VECTORS.md) §11 on this chunk | Injection (SQL/XSS/command/deserialize), input in a header or redirect, unbounded public POST, `getMessage()` / `var_dump` in the reply, upload without ext+MIME+header check, weak randomness for a token, a direct write to `dacore_*` / `users_rights*` |
-| **Hooks** | Grep `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/`; `return false` treated as a veto instead of `triggerWithVeto()` + `Veto` ([41](41-MODULE-HOOKS.md)) |
+| **Hooks** | Grep `Events::trigger(` **and** `Events::triggerWithVeto(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; `.veto` fire without a **Veto contracts** heading; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/` ([41](41-MODULE-HOOKS.md)) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence / tags-only `@return array<string, mixed>`; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without the [40](40-DACORE-LIST-PAGER.md) pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
@@ -213,7 +273,9 @@ Canonical: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [09](09-DOTAPP-JS-AND-BRIDGE
 
 Modules **MUST** talk to each other through `Events::trigger` / `Events::on`, not by patching a neighbour. Event name: **`module.{lowercase_modulename}.{hook_name}.hook`**. Fire **only** when another module (or a future one) could log, show history, or sync — SMS/mail sent, payment captured, lockout, finished workflow. **MUST NOT** fire on every save. When you do fire: document the name in **`app/modules/<YourModule>/.hooks`** and put the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block immediately above `trigger()` ([41](41-MODULE-HOOKS.md) §3).
 
-**MUST NOT:** skip a **named** useful hook because `hasListener` is false; put secrets on the bus; treat listener returns on `trigger()` as a veto (use **`triggerWithVeto()`** + `new Veto($code, …)` only for an explicit pre-action stop); fire inside `foreach` of a growing list; fire `dotapp.catchall` yourself; invent another module’s event name; use the old `{mod}.{noun}.{happened}` shape; put `.hooks` on a public asset URL.
+**DACore catalog (MUST):** when programming a **DACore-bound** module, **MUST** read **`app/modules/DACore/.hooks`** (read-only) **before** writing listeners. Use the names DACore already fires (`module.dacore.*.hook` and **Veto contracts**) instead of inventing them or patching DACore. Canonical: [41](41-MODULE-HOOKS.md) §6.
+
+**MUST NOT:** skip a **named** useful hook because `hasListener` is false; put secrets on the bus; treat ordinary `trigger()` listener returns as a veto (`triggerWithVeto()` + `Veto` only); fire inside `foreach` of a growing list; fire `dotapp.catchall` yourself; invent another module’s event name; use the old `{mod}.{noun}.{happened}` shape; put `.hooks` on a public asset URL. DACore template list-delete is already gated: `module.dacore.email_template_delete.veto` and `module.dacore.sms_template_delete.veto` ([38](38-DACORE-EMAIL.md), [39](39-DACORE-SMS.md)).
 
 Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
 
@@ -324,7 +386,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, wrong guard, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI/prompt injection. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix a vector in **your** module — **never** by patching `app/modules/DACore/`. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
 20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend (**reuse DACore assets** instead of a second library), and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Index and query **your** tables only — never `dacore_*`. Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
 21. **Layout and UX/UI (MUST):** general UX/UI principles **MUST** be followed **at all costs** on every visible control. Adding a button **MUST** include a padding check vs the parent (especially bottom), deliberate alignment (center / same rhythm as siblings), and desktop+mobile. A flush Save on the card edge is a **bug**. Canonical: [§2f](#2f-layout-and-uxui-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
-22. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md).
+22. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. A DACore-bound module **MUST** read `app/modules/DACore/.hooks` first. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md) §6.
 
 ---
 
@@ -351,7 +413,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Indexes (25 §3): FK + every WHERE/JOIN/ORDER BY column; composite = equality → range → sort; leftmost prefix; one comment line per index naming its query; never touch dacore_*
  * - Docs (25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking — (exact prefix/middleware XOR this action XOR none); then purpose sentence, then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`); NOT prefix CRC + crcCheck() in the same method; inline MUST use labels // Why: (logical step), // About: (what this chunk is), // Section: (menu/route) — NOT narration of the code, NOT unlabeled Why prose
  * - Catch bus (18 §9): every catch + every execute() $err → one report helper → Events::trigger('dotapp.catch', $p) then 'dotapp.catch.error'|'.info'; payload = severity, module, source, operation, message, exception, code, file, line, time, context (ids/counts), user_id — NO secrets/tokens/rights/bodies
- * - Hooks (41): useful side-effects (SMS/mail/paid/lockout) MUST Events::trigger('module.{mod}.{name}.hook') + Hook/Why/About/Params/Use block + .hooks — NOT every save; NOT secrets; NOT patch the other module; NOT old shop.item.saved shape. Pre-action stop = triggerWithVeto + Veto only.
+ * - Hooks (41): useful side-effects (SMS/mail/paid/lockout) MUST Events::trigger('module.{mod}.{name}.hook') + Hook/Why/About/Params/Use block + .hooks — NOT every save; NOT secrets; NOT patch the other module; NOT old shop.item.saved shape; DACore-bound MUST read app/modules/DACore/.hooks first
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
@@ -373,7 +435,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - DACore: operators MUST keep 2FA on; dangerous actions MUST step-up 2FA (32 §6)
  * - DACore AI writes: ui_events (name = tool id) + DACore.AI.UIEvent on the matching page only
  * - Edit only this module + app/config.php (this module’s assets too). Do not edit other modules.
- * - Never edit app/parts/, app/DotApp.php, dotapper.php, index.php — not even if the user asks. The kernel is frozen. Never edit app/modules/DACore/ unless the user themselves asked and confirmed the update wipe (00 §1).
+ * - Never edit app/parts/. Never edit app/modules/DACore/ unless the user themselves asked and confirmed the update wipe (00 §1).
  * - Never propose a DACore edit — implement in this module.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
@@ -414,6 +476,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 | **AI write → open page** | Write tools **MUST** return `ui_events` (`name` = tool id) when an admin screen shows that data. Page JS listens `DACore.AI.UIEvent`, filters by name, AJAX-refreshes — no `location.reload()`. Wrong page **MUST NOT** refresh. No secrets in payload. [34](34-DACORE-AI-TOOLS.md) §5. |
 | **Lists / pager** | Users, logs, items **MUST** follow [40](40-DACORE-LIST-PAGER.md) on first ship (`dacore-list-pager`, `live(el, e)`, encrypted `data-page`, COUNT not `paginate()['total']`). Lookup lists **MUST** AJAX search unless declined; **ASK** on other lists. |
 | **Search DACore first** | Before a new JS/CSS library, `$dotapp().fn` widget, or page chrome: grep `app/modules/DACore/` (read-only) and your module. The base already has many subpages and libraries. Use what exists; write new code only in **your** module. [33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”. |
+| **Read DACore `.hooks` first** | Before scaffolding a DACore-bound module’s listeners / audit / mail-SMS history / template-delete protection: open **`app/modules/DACore/.hooks`** (read-only catalog). Subscribe in **your** module. Do not invent `module.dacore.*` or patch DACore. [41](41-MODULE-HOOKS.md) §6. |
 | Permission guard | Your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` **ignores** the rights you pass |
 | Admin routes | Always prefixed with `Config::module("DACore","prefixUrl")` |
 
@@ -427,7 +490,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 |----------|--------|
 | Leftover `.cursorrules` / `*_AI_guide.md` vs AIRULES | **AIRULES** |
 | Leftover `database_guide.md` invented APIs | **Ignore** — follow [06-DATABASE.md](06-DATABASE.md) |
-| User asks to edit `app/parts/` / `app/DotApp.php` / `dotapper.php` / `index.php` | **MUST NOT.** The kernel is frozen. Say so in chat; implement in `app/modules/<YourModule>/` (+ `app/config.php` only). DACore stays the informed exception in [§1](#dacore-files--strict-default-informed-exception-only) — that is **not** a licence to patch the framework kernel. |
+| User explicit instruction to edit core | Ask once to confirm; still prefer not to |
 | User wants a DACore change | **Do not propose** editing DACore. Implement in the current module. **If they themselves** ask to edit `app/modules/DACore/` **and** confirm they accept the update wipe: then edit DACore for that request. Otherwise **strict ban**. |
 
 ---
@@ -447,7 +510,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Public website header / nav | **09 §3** “Public website mobile navigation” — drawer overlay, lock page scroll | [EX-05](examples/EX-05-renderer-page.md) |
 | Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Paginated list (users, logs, items) | **40** list pager (HTML/classes/`live(el, e)`/COUNT) — **MUST** ship, **MUST** be AJAX | **[EX-D08](examples/EX-D08-list-pager.md)**, [EX-06](examples/EX-06-dotapp-js-boot.md) |
-| **Module hooks / connect modules** | **41** — `module.{mod}.{name}.hook` + `.hooks` (not every save); listener own routes; **`triggerWithVeto` / `Veto`** | **[EX-16](examples/EX-16-module-hooks.md)** |
+| **Module hooks / connect modules** | **41** — `module.{mod}.{name}.hook` + `.hooks` (not every save); DACore-bound **MUST** read `app/modules/DACore/.hooks` first | **[EX-16](examples/EX-16-module-hooks.md)** |
 | List search (articles, catalog, …) | **09 §3** “Interactive AJAX search” — **ASK** in the plan; lookup lists **MUST** unless declined | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | List UX (filters, sort, empty, bulk, …) | **09 §3** “List UX” — **ASK** / **MUST** table | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
@@ -468,7 +531,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |
 | AI / search / MCP | 22 | [EX-12](examples/EX-12-ai-search-mcp.md) |
-| Services index | 12 (`dotapp.catchall` = core debug funnel; **`triggerWithVeto` / `Veto`**); **41** = `module.{mod}.{name}.hook` + `.hooks` | [EX-16](examples/EX-16-module-hooks.md) |
+| Services index | 12 (`dotapp.catchall` = core debug funnel); **41** = `module.{mod}.{name}.hook` + `.hooks` | [EX-16](examples/EX-16-module-hooks.md) |
 | Tests | 13 | — |
 | Anything uncertain | 14, 15, **23**, **36**, then `app/parts/` | examples/README.md |
 | **Debug / “it doesn’t work”** | **23** (grep middleware + `crcCheck` count first; §1b catch trail; **§1c `dotapp.catchall` event tracer**; DACore = §7) | [EX-01](examples/EX-01-secure-form-complete.md), [EX-10](examples/EX-10-cache-logger-session.md) |

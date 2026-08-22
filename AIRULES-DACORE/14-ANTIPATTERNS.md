@@ -8,7 +8,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 |-------|-------|
 | “This is basically Laravel” | DotApp is a separate BE+FE framework |
 | Copy Blade/Eloquent snippets | Use AIRULES syntax only |
-| Edit `app/parts` / `DotApp.php` / `dotapper.php` / `index.php` to “fix” something | **MUST NOT**, even if the user asks. Kernel is frozen. Implement in the module + `config.php` only. DACore §1 is **not** a licence to patch the kernel |
+| Edit `app/parts` to “fix” something | Ask user; edit module + `config.php` only |
 | Premium Cursor subagent without asking (Opus / GPT-5 / xhigh / cloud / best-of-N) | Inherit the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Composer 2.5 as the programmer | Composer 2.5 only for a pile of files; programming = parent model ([00](00-AGENT-CONTRACT.md) §2b) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
@@ -105,7 +105,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Trigger on every item save “just in case” | Fire only when `Use:` names a real consumer ([41](41-MODULE-HOOKS.md)) |
 | `shop.item.saved` / `{mod}.{noun}.{happened}` | `module.shop.sms_sent.hook` ([41](41-MODULE-HOOKS.md)) |
 | `Events::trigger` without `Hook:` / `Params:` / `Use:` | The five-line block above `trigger()` ([41](41-MODULE-HOOKS.md) §3) |
-| Treat listener `return false` as a veto | `trigger()` **ignores** returns. Pre-action stop = `triggerWithVeto()` + `new Veto($code, …)` ([41](41-MODULE-HOOKS.md)) |
+| Treat listener `return false` as a veto | `trigger()` **ignores** returns — persist is already done ([41](41-MODULE-HOOKS.md)) |
 | Patch another module (or DACore) to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
 | Invent `module.blog.*` from Shop / fire `dotapp.*` for business | Prefix = **this** module’s lowercase name ([41](41-MODULE-HOOKS.md)) |
 | `hooks.md` / `.hooks` under `assets/` | Filename **`.hooks`** at the module **root** — not a public page ([41](41-MODULE-HOOKS.md)) |

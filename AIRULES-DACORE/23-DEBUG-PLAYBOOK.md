@@ -67,7 +67,7 @@ Events::on('dotapp.catchall', function ($result, $eventname, ...$data) {
 
 **MUST NOT:** `Events::trigger('dotapp.catchall', …)` (core already does it); trigger other events from this listener; persist every event without an opt-in flag; log `$result` wholesale (secrets); push a DACore inbox notification per event ([37](37-DACORE-NOTIFICATIONS.md)). Canonical: [12](12-SERVICES.md) §2.
 
-**Hunting a missing business event:** open `app/modules/<Owner>/.hooks` (Fired section), then grep `Events::trigger(` in that module. If the name is not there, it was never fired — **MUST NOT** invent it. Ordinary saves may have **no** hook by design ([41](41-MODULE-HOOKS.md)). Catchall will only show names that were actually triggered.
+**Hunting a missing business event:** open `app/modules/<Owner>/.hooks` (Fired section), then grep `Events::trigger(` in that module. If the name is not there, it was never fired — **MUST NOT** invent it. For a module that plugs into the admin shell, start with **`app/modules/DACore/.hooks`**. Ordinary saves may have **no** hook by design ([41](41-MODULE-HOOKS.md) §6). Catchall will only show names that were actually triggered.
 
 ---
 

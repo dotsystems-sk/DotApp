@@ -6,10 +6,53 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter) th
 
 1. Read `AIRULES/00-AGENT-CONTRACT.md`.
 2. Follow the entire `AIRULES/` knowledge base.
-3. Edit **only** `app/config.php` and `app/modules/<TargetModule>/` (the module you are programming — including **its** assets).
-4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php` — **not even if the user asks**. The kernel is frozen. Implement in the module.
+3. Edit **only** `app/config.php` and `app/modules/<TargetModule>/`, except when the explicit framework-author exception below applies.
+4. **Never** edit framework core unless the explicit framework-author exception below applies. `app/vendor/`, `index.php`, `initializedb.php`, and unrelated framework files remain forbidden.
 5. **DACore default:** **Never** edit, patch, delete, or **add** anything under `app/modules/DACore/` (files **or** assets). **Never propose** a DACore edit. Implement in the current module.
 6. **DACore exception:** only if the user **themselves** asks to edit DACore **and** confirms they know the next update **wipes** those changes. Then edit DACore for that request. Vague “fix the admin” is not enough. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §1.
+
+## Temporary framework-author exception
+
+The user is the author of the DotApp framework and explicitly authorizes the listener-route separation task.
+
+For this task the agent may edit:
+
+- `app/DotApp.php`
+- `app/parts/Module.php`
+- `app/parts/Listeners.php`
+- `dotapper.php` only if its optimizer, generator, or help text requires updating
+- framework tests needed for compatibility verification
+- relevant AIRULES documentation
+- the DACore optimizer overview under `app/modules/DACore/`
+
+Required ownership:
+
+- The main chat model implements and reviews `app/DotApp.php`, `app/parts/Module.php`, and `app/parts/Listeners.php`.
+- Grok 4.6 High may inspect dotapper and implement the DACore optimizer overview.
+- Grok 4.6 High MUST NOT edit the runtime core files owned by the main model.
+- Agents MUST NOT edit the same file in parallel.
+
+Required compatibility:
+
+- Existing modules without `Listeners::initializeRoutes()` MUST continue using `Module::initializeRoutes()` for listener loading.
+- Existing `modulesAutoLoader.php` files containing only `$modules` MUST continue to work.
+- New optimized files MUST retain the legacy `$modules` map and add a separate listener-route map.
+- Listener routes and module initialization routes MUST be matched independently.
+- All matching listeners MUST register before any matching module performs full initialization.
+
+This is a temporary exception for this named task only. All unrelated core files remain forbidden.
+
+## Temporary framework-author exception — veto event API
+
+The user explicitly authorizes the main chat model to implement a general veto event API in:
+
+- `app/DotApp.php`
+- `app/parts/Events.php`
+- new `app/parts/Veto.php`
+- framework tests under `app/tests/`
+- related AIRULES documentation and examples
+
+For this task, existing `trigger()` behavior MUST remain unchanged. `triggerWithVeto()` returns the first `Veto` object or `null`; all non-`Veto` listener returns remain ignored. Do not wire the API into DACore or another module action in this task.
 
 ## Cursor credits (**MUST**)
 
@@ -29,7 +72,7 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 8. **Catch reported** — every `catch` **and** every `execute()` `$err` calls the module report helper: `Events::trigger('dotapp.catch', $p)` then `dotapp.catch.error` (aborted) / `dotapp.catch.info` (recovered). Fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`), no secrets/tokens/rights/bodies, helper and listener in **your** module, and the user still sees the toast. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
 9. **Perf / readability** — no `->all()` on a growing table, no query/HTTP/rights check/log inside `foreach` (prefetch + keyed map), no `select('*')` on a list, no O(n²) or per-row array copy, every new `WHERE`/`ORDER BY` column indexed (composite: equality → range → sort), every index carries a comment naming its query, no duplicate of a library DACore ships, every public method a PHPDoc **purpose sentence** then tags (not tags-only), every logical step **`// Why:`**, page actions **`// About:`** / **`// Section:`**. Canonical + greps: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §8.
 10. **Layout / UX-UI** — every new button has padding vs the parent (especially **bottom**); not flush to the card/page edge; centered or aligned to siblings. `pt-0` footers still have `pb-*` / CSS `padding-bottom`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f.
-11. **Hooks** — fire **`module.{lowercase_modulename}.{hook_name}.hook`** only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:`. Same name in `app/modules/<ThisModule>/.hooks`. No secrets. No `trigger()` inside `foreach` of a growing list. Pre-action stop = `triggerWithVeto()` + `Veto`. Listener map may cover the producer URL. Canonical: `AIRULES/41-MODULE-HOOKS.md`.
+11. **Hooks** — fire **`module.{lowercase_modulename}.{hook_name}.hook`** only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:`. Same name in `app/modules/<ThisModule>/.hooks`. No secrets. No `trigger()` inside `foreach` of a growing list. DACore-bound: read `app/modules/DACore/.hooks` first. Canonical: `AIRULES/41-MODULE-HOOKS.md` §6.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 
@@ -51,9 +94,9 @@ General UX/UI principles **MUST** be followed **at all costs**. After adding a b
 - Controllers: `public static function`.
 - **Module identity (ASK in plan):** for every new DACore-bound module, ask once for public name/purpose; installer preview as text-only, compact logo near heading, or wide banner; existing local asset + alt text; and optional landing/header placement. No preference → text-only, do not block. Installer image = optimised raster in **your** `about-assets/`, referenced from `about.php`; sidebar Remix `icon` is separate. No external image/SVG/tracker and no DACore patch. If this is a **pack** or a **host that picks packs** (CMS templates): **ASK** `extra1`…`extra5` tokens (`AIRULES/35-DACORE-INSTALL.md` §3c). Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8b, `AIRULES/35-DACORE-INSTALL.md` §3b–§3c.
 - Login-required / admin routes: **MUST** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login`. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()`; action **MUST NOT** `crcCheck()` again. Register handlers only inside `if (Auth::isLogged() === true) { … }`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`, `AIRULES/32-DACORE-RIGHTS.md`.
-- **Docs (MUST):** English. Every public method in `Controllers/` and `Middleware/` **MUST** start PHPDoc with **`CRCchecking —`** (exact prefix/middleware such as `#DACore:AuthTest@LoginAndCRC!`, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning — tags-only (`@return array<string, mixed>`) is a bug. **MUST NOT** document prefix CRC and still `crcCheck()` in that method. Inline comments **MUST** use labels **`// Why:`** (every logical step), **`// About:`** (what this chunk is / what the record represents), **`// Section:`** (admin menu or route). **MUST NOT** restate the code, prompt-echo, omit the labels, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7, `AIRULES/08-FORMS-AND-SECURITY.md`.
+- **Docs (MUST):** English for normal modules and DACore. For the explicitly authorized listener-route core task, comments in `app/DotApp.php`, `app/parts/Module.php`, `app/parts/Listeners.php`, and related `dotapper.php` changes may use natural Slovak without diacritics. Every public method in `Controllers/` and `Middleware/` **MUST** start PHPDoc with **`CRCchecking —`** (exact prefix/middleware such as `#DACore:AuthTest@LoginAndCRC!`, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning — tags-only (`@return array<string, mixed>`) is a bug. **MUST NOT** document prefix CRC and still `crcCheck()` in that method. Inline comments **MUST** use labels **`// Why:`** (every logical step), **`// About:`** (what this chunk is / what the record represents), **`// Section:`** (admin menu or route). **MUST NOT** restate the code, prompt-echo, omit the labels, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7, `AIRULES/08-FORMS-AND-SECURITY.md`.
 - **Catch bus MUST:** every `catch` and every `execute()` `$err` reports `dotapp.catch` + `dotapp.catch.error|info` through **one** helper per module (listener exceptions propagate, so the helper wraps its own `trigger()` calls). Payload keys are fixed; secrets, tokens, rights blobs and request bodies **MUST NOT** be in it; nothing for this goes under `app/modules/DACore/`; a listener **MUST NOT** push a DACore notification per failure. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
-- **Hooks MUST:** useful side-effects `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and the same name in `app/modules/<ThisModule>/.hooks`. **MUST NOT** fire on every save. Listen in **your** module after reading **their** `.hooks` — do not patch the owner. `Listeners::initializeRoutes()` may cover the producer URL. Pre-action stop = `triggerWithVeto()` + `Veto`. Canonical: `AIRULES/41-MODULE-HOOKS.md`, sample `AIRULES/examples/EX-16-module-hooks.md`.
+- **Hooks MUST:** useful side-effects `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and the same name in `app/modules/<ThisModule>/.hooks`. **MUST NOT** fire on every save. Listen in **your** module after reading **their** `.hooks` — do not patch the owner. A **DACore-bound** module **MUST** read **`app/modules/DACore/.hooks` first** (catalog of events DACore already fires). Canonical: `AIRULES/41-MODULE-HOOKS.md` §6, sample `AIRULES/examples/EX-16-module-hooks.md`.
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`. **MUST** `execute($ok, $err)` — both callbacks. Persist in `try/catch`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments count (`COMMENT 'SMS?'` throws). Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data.
 - Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`. **VIEW = outer file:** `setView` + `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view (or `renderLayout()` / inject a string). User-visible strings **MUST** be product copy (a software company would ship it) — never prompt-echo / “this user can…”. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b, §8.
@@ -70,7 +113,7 @@ General UX/UI principles **MUST** be followed **at all costs**. After adding a b
 
 ## Debug (user: it doesn’t work)
 
-**MUST** read `AIRULES/23-DEBUG-PLAYBOOK.md`. Grep `crcCheck` in **this module’s** `Middleware/`, `module.init.php` (`->before`), and the controller. Two calls on one request: the first **burns** the token. If you write CRC middleware, the action **MUST NOT** `crcCheck()` again. DACore: grep `AuthTest` — it ignores passed rights; do not patch DACore. Missing business event: open the owner’s `.hooks`, then grep `Events::trigger(` there (`AIRULES/41-MODULE-HOOKS.md`).
+**MUST** read `AIRULES/23-DEBUG-PLAYBOOK.md`. Grep `crcCheck` in **this module’s** `Middleware/`, `module.init.php` (`->before`), and the controller. Two calls on one request: the first **burns** the token. If you write CRC middleware, the action **MUST NOT** `crcCheck()` again. DACore: grep `AuthTest` — it ignores passed rights; do not patch DACore. Missing business event: open the owner’s `.hooks` (DACore-bound: **`app/modules/DACore/.hooks` first**), then grep `Events::trigger(` there (`AIRULES/41-MODULE-HOOKS.md` §6).
 
 ## Scaffolding
 
@@ -124,6 +167,7 @@ DACore is as sacred as framework core **by default**. It is updated as a package
 - Render admin pages with `DACore:Page@withMenu!`
 - **Active sidebar (MUST):** edit/detail URLs **MUST** keep the registered list/section leaf highlighted. Pass `withMenu` 7th `$currentFile` (the registered list URL) when the path is not under that leaf (`/Shop/users/4` vs `/Shop/users-list`). Walk-up already covers `/Shop/items/4` if the leaf is `/Shop/items`. **MUST NOT** register a menu row per edit URL. Canonical: `AIRULES/31-DACORE-MENU.md` Active sidebar.
 - **MUST search DACore first** before a new JS/CSS library, `$dotapp().fn` widget, or page chrome: grep `app/modules/DACore/` (read-only: assets, vendor, views) and `app/modules/<YourModule>/assets/`. The base already has many subpages and libraries. If it exists, **use it** — do not fork or copy DACore files into your module. Write new code only when the search finds nothing, and only in **your** module. Canonical: `AIRULES/33-DACORE-PAGES-AND-UI.md` “Search DACore first”.
+- **MUST read `app/modules/DACore/.hooks` first** when programming a DACore-bound module (new or existing): that file is the catalog of `module.dacore.*.hook` and `.veto` events. Subscribe in **your** `module.listeners.php`. Do not invent `module.dacore.*` names or patch DACore to “add a call”. Canonical: `AIRULES/41-MODULE-HOOKS.md` §6.
 - Prefer DACore widgets; **MUST** add module CSS/JS (`$css`/`$js`) when the shell has no equivalent (charts, ported UI). Classes `{lowercase_modulename}_*`. Match admin colors. Never patch DACore (unless the informed exception applies).
 - Admin JS is **`$dotapp`**. jQuery may coexist for UI only. **Requests MUST** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). If DACore already ships the widget, use it. See `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`.
 - Guard routes with your own `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` ignores passed rights

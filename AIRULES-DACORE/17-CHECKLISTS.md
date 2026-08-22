@@ -6,11 +6,12 @@
 - [ ] Read `00-AGENT-CONTRACT.md`
 - [ ] Read task-specific AIRULES doc (views/DB/forms/JS)
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
-- [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, `index.php`, other modules — **not even if asked** (kernel is frozen). DACore stays the informed exception in [00](00-AGENT-CONTRACT.md) §1 only.
+- [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, other modules
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
 - [ ] New visible module: asked once for public name/purpose, installer identity (text-only / compact logo / wide banner), existing local asset + alt text, optional landing/header placement and colours ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b)
 - [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
 - [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
+- [ ] **DACore-bound module:** read **`app/modules/DACore/.hooks`** (read-only) before scaffolding listeners — use the catalog DACore already fires; do not invent `module.dacore.*` ([41](41-MODULE-HOOKS.md) §6)
 
 ## Scaffold checklist
 
@@ -30,7 +31,7 @@
 - [ ] Methods are `public static`
 - [ ] Params via `$request->matchData()`
 - [ ] Login-required / admin routes: `{prefixUrl}/{ModuleName}/…` + `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`); handlers **only** inside `if (Auth::isLogged() === true)` — those pages **MUST NEVER** show to anonymous users ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
-- [ ] `initializeRoutes()` lists **only this module’s** prefixes (HTML + `/api/v1/auth|noauth/{Module}`). `Listeners::initializeRoutes()` may be narrower or `null` to inherit. Did **not** return `['*']` unless the user asked for a global hook. Did **not** `include` another module to list/describe it. After either list changed: `--optimize-modules` ([03](03-MODULES-AND-ROUTING.md))
+- [ ] `initializeRoutes()` lists **only this module’s** prefixes (HTML + `/api/v1/auth|noauth/{Module}`). Did **not** return `['*']` unless the user asked for a global hook. Did **not** `include` another module to list/describe it ([03](03-MODULES-AND-ROUTING.md))
 - [ ] Trap-prone spots have a short **English why** comment — not every line
 - [ ] No named routes / Laravel group APIs invented
 
@@ -126,6 +127,7 @@
 - [ ] Shell assets (`dotapp.js`, dotgrid, colors.css, core.css, modals, Notiflix) not re-added
 - [ ] Extra widgets (charts, ported controls) use **module** CSS/JS on `withMenu` `$css`/`$js` — classes `{lowercase_modulename}_*`, colors match the admin palette
 - [ ] **Searched DACore first** (read-only `app/modules/DACore/` assets/vendor/views + your module) before writing a new library/widget; reused what exists ([33](33-DACORE-PAGES-AND-UI.md))
+- [ ] **Read `app/modules/DACore/.hooks`** (Fired + Veto contracts) before writing listeners / audit / mail-SMS history / template-delete protection — subscribed in **this** module ([41](41-MODULE-HOOKS.md) §6)
 - [ ] Network calls use `$dotapp().form` / `load` / bridge — never `$.ajax` (jQuery UI widgets OK)
 - [ ] After save/toggle on the same page: `reply.html` patched + Notiflix toast — no `location.reload()`
 - [ ] In-flight: overlay on the form/list (Notiflix preferred **or** module preloaders); remove on success **and** error; no second tap/drag until done; works on desktop **and** mobile
@@ -166,7 +168,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - [ ] Upload endpoints do **not** `crcCheck()`
 - [ ] Read the catch trail: temporarily `Events::on('dotapp.catch', …)` in **your** module (or check the log) to see `operation`, `source`, `message` of the real failure instead of guessing ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 - [ ] Building a debugger / hunting a missing event: subscribe to core `dotapp.catchall` in **your** module (`function ($result, $eventname, ...$data)`), gated, own `try/catch` — **MUST NOT** trigger it yourself or add it under `app/modules/DACore/` ([23](23-DEBUG-PLAYBOOK.md) §1c)
-- [ ] Missing business event: open `app/modules/<Owner>/.hooks`, then grep `Events::trigger(` there — do **not** invent a name the owner never fires ([41](41-MODULE-HOOKS.md))
+- [ ] Missing business event: open `app/modules/<Owner>/.hooks`, then grep `Events::trigger(` there — do **not** invent a name the owner never fires. DACore-bound: start with **`app/modules/DACore/.hooks`** ([41](41-MODULE-HOOKS.md) §6)
 - [ ] Admin routes use `#Shop:Rights@check!` — not `#DACore:AuthTest@check!` as a rights guard
 - [ ] Did **not** “fix” it by editing `app/modules/DACore/`
 
@@ -216,7 +218,7 @@ Tick only the rows for the surface you touched.
 - [ ] **Catch reported:** grepped `catch (` and `execute(` in this chunk — each one reports `dotapp.catch` + `dotapp.catch.error|info` with the fixed payload and no secrets ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 - [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, duplicated DACore library, missing docblock, comments that restate the code)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning, no `dacore_*` write)
-- [ ] **Hooks:** grepped `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/`; pre-action stop uses `triggerWithVeto()` + `Veto`, not `return false` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
+- [ ] **Hooks:** grepped `Events::trigger(` and `Events::triggerWithVeto(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; `.veto` names sit under **Veto contracts**; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
 - [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)
