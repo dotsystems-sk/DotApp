@@ -70,4 +70,4 @@ After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** ever
 
 ## Extender (judge — not every method)
 
-Owner: `Extender::exists()` then immediate `return Extender::call(...)`. Extender: register in **`Listeners::register()`** before Module initialization; explicit target listener routes; own Module routes or `[]`; prefer `'Module:Controller@method!'`. **MUST NOT** use `['*']` just to attach, `.loaded` for initialize-time, Events, `$request`/secrets, duplicate registration, or patch DACore. `AIRULES/12-SERVICES.md` §10, EX-17.
+Owner: `Extender::exists()` then `Extender::call(...)`; ordinary result returns, only `isOriginal()` continues owner logic. Extender: register in **`Listeners::register()`** before Module initialization; explicit target listener routes; own Module routes or `[]`; prefer `'Module:Controller@method!'`. **MUST NOT** invent `next()`, return the marker, use `['*']` just to attach, `.loaded` for initialize-time, Events, `$request`/secrets, duplicate registration, or patch DACore. `AIRULES/12-SERVICES.md` §10, EX-17.

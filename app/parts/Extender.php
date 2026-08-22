@@ -29,6 +29,9 @@ final class Extender
     /** @var array<string, bool> */
     private static $activeCalls = [];
 
+    /** @var object|null */
+    private static $originalSignal;
+
     /**
      * Registers one replacement handler for an explicitly extendable method.
      *
@@ -81,6 +84,33 @@ final class Extender
     public static function exist(string $className, string $methodName): bool
     {
         return self::exists($className, $methodName);
+    }
+
+    /**
+     * Returns the unique signal telling an extension point to run its original logic.
+     *
+     * @return object Request-local identity marker; never expose it as an HTTP response.
+     */
+    public static function original()
+    {
+        if (self::$originalSignal === null) {
+            // Why: an object identity cannot collide with a legitimate scalar or array handler result.
+            self::$originalSignal = new class {
+            };
+        }
+
+        return self::$originalSignal;
+    }
+
+    /**
+     * Reports whether a replacement returned the exact original-logic signal.
+     *
+     * @param mixed $result Replacement return value.
+     * @return bool True only for the marker created by original().
+     */
+    public static function isOriginal($result): bool
+    {
+        return is_object($result) && $result === self::original();
     }
 
     /**

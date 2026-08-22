@@ -107,6 +107,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Listener `['*']` just to attach an Extender | Exact target URL surfaces; global only for a genuinely dynamic dependency after warning |
 | Register on `dotapp.module.Target.loaded` when the point may run in `initialize()` | Direct listener registration, or the earlier `.init.start` / `.loading` event |
 | Pass `$request` / tokens into `Extender::call` | Explicit ids, flags, already-safe scalars |
+| Public string/integer `Extender::ORIGINAL` sentinel | Unique `Extender::original()` marker checked with `isOriginal()` |
+| Return/serialize the `original()` marker | Continue the owner implementation locally; only ordinary results leave the method |
+| Add `next()` while only one extender is permitted | Use `original()`; there is no second handler in a strict single replacement |
 | `hooks.md` / `.hooks` under `assets/` | Filename **`.hooks`** at the module **root** — not a public page ([41](41-MODULE-HOOKS.md)) |
 
 ## Forms / frontend

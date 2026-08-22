@@ -90,6 +90,39 @@ Tester::addTest('test_extender_exist_exists_alias', function () {
     ];
 });
 
+Tester::addTest('test_extender_original_signal_runs_owner_fallback', function () {
+    $className = 'Dotsystems\\App\\Tests\\ExtenderProbe\\OriginalFallback';
+    $methodName = 'quote';
+    Extender::extend($className, $methodName, function () {
+        return Extender::original();
+    });
+
+    $extensionResult = Extender::call($className, $methodName);
+    $originalRan = false;
+    if (Extender::isOriginal($extensionResult)) {
+        $originalRan = true;
+        $finalResult = ['source' => 'original'];
+    } else {
+        $finalResult = $extensionResult;
+    }
+
+    $marker = Extender::original();
+    $passed = $originalRan
+        && $finalResult === ['source' => 'original']
+        && $marker === Extender::original()
+        && Extender::isOriginal($marker)
+        && Extender::isOriginal(new \stdClass()) === false
+        && Extender::isOriginal('__DOTAPP_EXTENDER_ORIGINAL__') === false
+        && Extender::isOriginal(['original' => true]) === false;
+
+    return [
+        'status' => $passed ? 1 : 0,
+        'info' => $passed ? 'Unique original signal lets the owner continue its fallback logic' : 'Extender original signal behavior mismatched',
+        'test_name' => 'Test Extender original fallback signal',
+        'context' => ['core' => true, 'extender' => true],
+    ];
+});
+
 Tester::addTest('test_extender_class_method_case_normalization', function () {
     $className = 'Dotsystems\\App\\Tests\\ExtenderProbe\\CaseTarget';
     $methodName = 'saveItem';

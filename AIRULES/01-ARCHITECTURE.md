@@ -130,7 +130,7 @@ Trailing `!` = skip DI. When using `!`, **do not** type-hint injectable services
 | `Crypto` | Encrypt/decrypt |
 | `Events` | Event bus (`trigger` / `triggerWithVeto`) |
 | `Veto` | Opt-in stop object — **only** with `triggerWithVeto()` ([12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md)) |
-| `Extender` | Opt-in **method replacement** — owner `exists()` / `call()`; extender registers in `Listeners::register()` on target listener routes; own Module routes or `[]` ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h) |
+| `Extender` | Opt-in **method replacement** — owner `exists()` / `call()`; ordinary result returns, `isOriginal()` continues owner logic; extender registers in `Listeners::register()` on target listener routes; own Module routes or `[]` ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h) |
 | `Renderer` | Templates |
 | `Translator` | i18n |
 | `Cache` / `Logger` | Cache / logs |

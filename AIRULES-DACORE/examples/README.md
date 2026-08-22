@@ -20,7 +20,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-13-schema-migrations.md](EX-13-schema-migrations.md) | SchemaBuilder, DDL, introspection; no `?` in `raw()` comments |
 | [EX-14-auth-and-2fa.md](EX-14-auth-and-2fa.md) | Login, permissions, 2FA (`$dotapp().twoFactor`), user creation; **`data(true)`** for password |
 | [EX-16-module-hooks.md](EX-16-module-hooks.md) | Fire `module.{mod}.{name}.hook` when useful (SMS/history), document in `.hooks`, listen from another module — [41](../41-MODULE-HOOKS.md) |
-| [EX-17-extender.md](EX-17-extender.md) | Judged `Extender` swap of a render/cart/export method (not every method, not Events/hooks) — [12](../12-SERVICES.md) §10, [00](../00-AGENT-CONTRACT.md) §2h |
+| [EX-17-extender.md](EX-17-extender.md) | Judged `Extender` swap of a render/cart/export method, including `original()` fallback (not every method, not Events/hooks) — [12](../12-SERVICES.md) §10, [00](../00-AGENT-CONTRACT.md) §2h |
 
 ## DACore admin layer
 

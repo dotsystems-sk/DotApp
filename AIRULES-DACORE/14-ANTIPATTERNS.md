@@ -113,6 +113,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Listener `['*']` just to attach | Exact target URL surfaces; global only when genuinely dynamic and warned |
 | `.loaded` when the point may run in target `initialize()` | Direct registration, or earlier `.init.start` / `.loading` |
 | Pass `$request` / tokens into `Extender::call` | Explicit ids, flags, already-safe scalars |
+| Public string/integer `Extender::ORIGINAL` sentinel | Unique `Extender::original()` marker checked with `isOriginal()` |
+| Return/serialize the `original()` marker | Continue the owner implementation locally; only ordinary results leave the method |
+| Add `next()` while only one extender is permitted | Use `original()`; there is no second handler in a strict single replacement |
 | Patch DACore to insert `Extender::call` | Only the **owner** of the target method opts in |
 | Invent `module.blog.*` from Shop / fire `dotapp.*` for business | Prefix = **this** module’s lowercase name ([41](41-MODULE-HOOKS.md)) |
 | `hooks.md` / `.hooks` under `assets/` | Filename **`.hooks`** at the module **root** — not a public page ([41](41-MODULE-HOOKS.md)) |

@@ -251,7 +251,7 @@ With RAW mode you get plain arrays — use PHP array functions instead.
 
 **Judge first.** **MUST NOT** opt in on every method. Offer Extender when another module would reasonably **replace this output** — especially **page/block HTML**, a **cart** drawn differently, an **export** / invoice built differently. Skip ordinary persist, CRC, decrypt, pager internals. Canonical writing law: [00](00-AGENT-CONTRACT.md) §2h.
 
-A method is extendable only when its owner checks `exists()` and **immediately** `return Extender::call(...)`. Registering a handler for a method that never calls `Extender` does nothing. There is **no original / next** — the replacement fully owns the result.
+A method is extendable only when its owner checks `exists()`, calls `Extender::call(...)`, and handles its result. Registering a handler for a method that never calls `Extender` does nothing. The replacement either returns the final result or returns `Extender::original()` to let the owner continue its original logic. There is no `next()` chain.
 
 | Method | Returns / throws |
 |--------|------------------|
@@ -259,6 +259,8 @@ A method is extendable only when its owner checks `exists()` and **immediately**
 | `Extender::exists($className, $methodName)` | `bool` — **canonical** probe. `\InvalidArgumentException` when the identifier is invalid. |
 | `Extender::exist($className, $methodName)` | alias of `exists()` — same return and throws. Prefer `exists()` in new code. |
 | `Extender::call($className, $methodName, ...$arguments)` | replacement return value, unchanged. `\LogicException` when none is registered or the same target re-enters `call()`. Handler `\Throwable` **propagates**. `\InvalidArgumentException` when the identifier is invalid. |
+| `Extender::original()` | unique request-local object marker asking the owner to continue its original logic. Never expose it as an HTTP response. |
+| `Extender::isOriginal($result)` | `bool` — true only for the exact marker created by `original()`. |
 
 `$className` is a fully qualified PHP class name (leading `\` stripped; the class is **not** autoloaded at register time). `$methodName` is a PHP method name. Keys are **case-insensitive**.
 
@@ -267,7 +269,7 @@ A method is extendable only when its owner checks `exists()` and **immediately**
 - a DotApp controller string `Module:Controller@method!` — validated with `stringToCallable()`, invoked with `DotApp::call()` (trailing `!` = no DI, same grammar as routes — [04](04-CONTROLLERS-AND-RESPONSES.md));
 - a native PHP callable — invoked with `call_user_func_array`, **no** DotApp DI.
 
-**One replacement only.** A second `extend()` for the same class+method throws. Do not catch-and-ignore that.
+**One replacement only.** A second `extend()` for the same class+method throws. Do not catch-and-ignore that. With one replacement, `next()` would mean the same thing as `original()`, so Extender deliberately has no chain API.
 
 **Boot:** `Extender::extend()` is request-local and **MUST** run before the owner can call `exists()` / `call()`. The canonical place is the extending module’s **`Listeners::register()`** (`module.listeners.php`): all matching listeners register before any matching Module initializes.
 
@@ -284,8 +286,15 @@ A method is extendable only when its owner checks `exists()` and **immediately**
 
 ```php
 if (Extender::exists(self::class, 'quote')) {
-    return Extender::call(self::class, 'quote', $cartId, $subtotal);
+    $result = Extender::call(self::class, 'quote', $cartId, $subtotal);
+    if (!Extender::isOriginal($result)) {
+        return $result;
+    }
 }
+
+// Original owner logic continues here.
 ```
 
-**MUST NOT:** spray `exists()`/`call()` on every persist/helper; fire `Events::trigger` / `triggerWithVeto` instead of Extender; wrap `call()` and still run the original; patch another module you do not own to add an extension point; from the replacement, call the same extendable method (recursion throws). Canonical writing law: [00](00-AGENT-CONTRACT.md) §2h.
+`original()` uses object identity rather than a public string or integer constant, so it cannot collide with a legitimate scalar or array result. The owner **MUST** test it with `isOriginal()` and **MUST NOT** serialize or return the marker to HTTP. A replacement that may return `original()` cannot declare a narrow PHP return type such as `: array`; keep the concrete result contract in PHPDoc.
+
+**MUST NOT:** spray `exists()`/`call()` on every persist/helper; fire `Events::trigger` / `triggerWithVeto` instead of Extender; run the original after an ordinary replacement result; patch another module you do not own to add an extension point; from the replacement, call the same extendable method (recursion throws). Canonical writing law: [00](00-AGENT-CONTRACT.md) §2h.

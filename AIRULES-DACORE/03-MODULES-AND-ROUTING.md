@@ -62,7 +62,7 @@ All matching listeners register before any matching module performs full initial
 2. `module.listeners.php` **MUST** only register cheap registry entries (`Events::on`, `Extender::extend`, middleware). **MUST NOT** query, log, HTTP, write files, load another module, or invoke the target.
 3. Another module’s description / license / changelog / **discovery flags** (`extra1`…`extra5`) is in DACore `dacore_modules` (filled at install from `about.php`). **MUST NOT** `include` / `require` / `eval` that module’s `about.php`, `module.init.php`, `Installation.php`, or `settings.php` just to render a list, drawer, or “pick a template” dropdown. Filter with `DACore:Plugins@listByExtra!` or `SELECT … WHERE extra1 = :flag` ([35](35-DACORE-INSTALL.md) §3c).
 4. **MUST NOT** `glob('app/modules/*')` or loop other module folders on a request to catalog them. **MUST NOT** `DotApp::call('OtherModule:…')` for that.
-5. **Extender:** judge first. Register `Extender::extend()` in `Listeners::register()` before Module initialization. Keep own URLs (or `[]`) in the Module map; target URLs in the listener map. Prefer a controller string. **MUST NOT** patch DACore. Canonical: [12](12-SERVICES.md) §10.
+5. **Extender:** judge first. Register `Extender::extend()` in `Listeners::register()` before Module initialization. Keep own URLs (or `[]`) in the Module map; target URLs in the listener map. Prefer a controller string. Owner handles `original()` with `isOriginal()`. **MUST NOT** patch DACore. Canonical: [12](12-SERVICES.md) §10.
 
 **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned which part wakes everywhere. DACore uses it for the app firewall — not a pattern to copy.
 
@@ -347,7 +347,7 @@ $dotApp->trigger('module.shop.sms_sent.hook', $result);
 
 To react to **another** module: read **their** `.hooks`, then `Events::on(...)` in **your** `module.listeners.php`. **MUST NOT** edit the owner (and **MUST NOT** edit DACore) to “add a call”. A **DACore-bound** module **MUST** read **`app/modules/DACore/.hooks` first**. Canonical: [41](41-MODULE-HOOKS.md) §6. Sample: [EX-16](examples/EX-16-module-hooks.md).
 
-To **replace** a judged output method: register `Extender::extend()` in `Listeners::register()` on target URL surfaces, not Events or Module `initialize()`. **MUST NOT** Extender every method or patch DACore. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h. Sample: [EX-17](examples/EX-17-extender.md).
+To **replace** a judged output method (one handler owns the result **or** returns `Extender::original()` so the owner continues): register `Extender::extend()` in `Listeners::register()` on target URL surfaces, not Events or Module `initialize()`. **MUST NOT** Extender every method or patch DACore. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h. Sample: [EX-17](examples/EX-17-extender.md).
 
 ---
 

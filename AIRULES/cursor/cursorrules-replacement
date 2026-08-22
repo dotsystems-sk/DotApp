@@ -106,7 +106,8 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   listener initializeRoutes() may cover the producer URL (omit/null inherits);
   react to another module by reading THEIR .hooks then Events::on in YOURS — do not patch them
 - Extender (AIRULES/12 §10, AIRULES/00 §2h): judge first — opt in on replaceable output
-  (page/block HTML, cart, export), NOT every method; owner exists()/immediate return call();
+  (page/block HTML, cart, export), NOT every method; owner exists()/call();
+  ordinary result returns, only isOriginal() continues; MUST NOT next() or return the marker;
   Extender::extend in Listeners::register() before Module initialize; target URLs in explicit
   listener routes; own Module routes or []; prefer 'Module:Controller@method!';
   MUST NOT .loaded for initialize-time, Events, $request/secrets, ['*'] just to attach, duplicate

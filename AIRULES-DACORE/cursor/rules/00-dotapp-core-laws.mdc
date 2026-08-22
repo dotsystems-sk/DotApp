@@ -26,7 +26,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 8. **Mail / inbox / SMS:** if the task sends email, operator notifications, or SMS, **read** `AIRULES/38` (mail), `AIRULES/37` (inbox), and `AIRULES/39` (SMS). Do not invent SMTP or a gateway.
 9. **DACore module identity:** in the plan, **ASK once** for public name/purpose; installer as text-only / compact logo / wide banner; local asset + alt; optional landing/header placement. Pack/host: **ASK** `extra1`…`extra5` (`AIRULES/35` §3c). `about.php` + your `about-assets/`; sidebar Remix icon is separate; never patch DACore. (`AIRULES/05` §8b, `AIRULES/35` §3b–§3c)
 10. **Module hooks (LAW):** fire `Events::trigger('module.{mod}.{hook_name}.hook')` only when another module could log/history/sync — **not** every save. Comment block + `app/modules/<YourModule>/.hooks`. (`AIRULES/41`)
-11. **Extender:** owner `exists()` + immediate `return call()`; extender `extend()` in `Listeners::register()` before Module initialization. Target listener routes; own Module routes or `[]`; controller string preferred. Not `.loaded` for initialize-time, Events, or DACore patch. (`AIRULES/12` §10)
+11. **Extender:** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues. Extender `extend()` in `Listeners::register()` before Module initialization. Target listener routes; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time, Events, or DACore patch. (`AIRULES/12` §10)
 
 ## Syntax locks
 
@@ -61,7 +61,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Finish gate (LAW): after every chunk grep `crcCheck` once, enc IDs, bound SQL, `data(true)`, middleware vs action / AuthTest, `Events::trigger` vs `.hooks`, `// Why:` / `// About:` / `// Section:` — then claim done. (`AIRULES/00` §2c, `AIRULES/41`, `AIRULES/25` §7)
 - Visible outcome (LAW): user always sees save/fail; DACore admin = search DACore then toast; public = mark the wrong field. (`AIRULES/00` §2d)
 - Module hooks (LAW): useful side-effects MUST `Events::trigger('module.{mod}.{name}.hook')` + Hook/Why/About/Params/Use block + `app/modules/<M>/.hooks` — NOT every save; NOT secrets; NOT patch the other module (`AIRULES/41`, EX-16)
-- Extender: owner `exists()` + immediate `return call()`; `extend()` in `Listeners::register()`; target listener routes; own Module routes or `[]`; controller string preferred — NOT `.loaded` for initialize-time, `['*']` just to attach, Events, `$request`/secrets, duplicate, or patch DACore (`AIRULES/12` §10, EX-17)
+- Extender: owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; `extend()` in `Listeners::register()`; target listener routes; own Module routes or `[]`; controller string preferred — NOT `next()`, marker response, `.loaded` for initialize-time, `['*']` just to attach, Events, `$request`/secrets, duplicate, or patch DACore (`AIRULES/12` §10, EX-17)
 - Before a new DACore admin library/widget: **MUST** grep `app/modules/DACore/` (read-only) and this module — reuse what exists (`AIRULES/33`)
 - DACore edit/detail: `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf — NOT a menu row per edit URL (`AIRULES/31`)
 - DACore zip: `install.php` is framework-only. Zip **MUST** rename it to `dainstall.php` and put live init in `init/`. A zip that still has `install.php` is **rejected**; without `dainstall.php` Installation **never runs**. (`AIRULES/00` §2e, `AIRULES/35`)

@@ -103,7 +103,8 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   MUST NOT fire on every save; MUST NOT old shop.item.saved shape; MUST NOT secrets/OTP/tokens on the bus;
   MUST NOT treat listener return as a veto; MUST NOT trigger() inside foreach of a growing list (one batch event);
   react to another module by reading THEIR .hooks then Events::on in YOURS — do not patch them or DACore
-- Extender (AIRULES/12 §10, AIRULES/00 §2h): judge first; owner exists()/immediate return call();
+- Extender (AIRULES/12 §10, AIRULES/00 §2h): judge first; owner exists()/call();
+  ordinary result returns, only isOriginal() continues; MUST NOT next() or return the marker;
   Extender::extend in Listeners::register() before Module initialize; target URLs in explicit
   listener routes; own Module routes or []; prefer 'Module:Controller@method!';
   MUST NOT .loaded for initialize-time, Events, $request/secrets, ['*'] just to attach,
