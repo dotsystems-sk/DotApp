@@ -67,6 +67,59 @@ Recommended right set for a module: one `administrator` plus fine-grained `area.
 
 **MUST (product copy):** `$name` and `$description` are what operators see on the rights screen. Write them as a software company would — capability only (`Shop administrator`, `Full access to the Shop module`). **MUST NOT** echo the ticket (`This user can use the AI assistant in the corner. They can hide the icon themselves.`). Hide-icon and similar preferences are **settings**, not extra sentences on the right. See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8.
 
+### Installer-managed user groups (DACore 1.0.8+)
+
+`Rights@createGroup!` groups entries in the **rights catalog**. It is not the group assigned to a user. A module that needs a ready-made user permission bundle **MUST** create that bundle only after all referenced rights exist:
+
+```php
+DotApp::call(
+    "DACore:Roles@createGroup!",
+    string $name,
+    string $description,
+    string $creator,
+    string $groupid,
+    array $rights
+): ?int
+```
+
+Each `$rights` row is an exact pair:
+
+```php
+$roleId = DotApp::call(
+    "DACore:Roles@createGroup!",
+    "Shop managers",
+    "Manage the catalog and fulfil orders.",
+    "Shop",
+    "managers",
+    [
+        ['module' => 'Shop', 'rightname' => 'items.view'],
+        ['module' => 'Shop', 'rightname' => 'items.edit'],
+        ['module' => 'Shop', 'rightname' => 'orders.fulfil'],
+    ]
+);
+```
+
+**Contract (MUST):**
+
+- Stable identity is `(creator, groupid)`, never the numeric role id. `groupid` is an internal installer token and **MUST NOT** be displayed as product copy.
+- Use a stable lowercase token such as `managers` or `catalog-editors`; never derive it from a translated label.
+- Calling `createGroup!` again updates that same group to the **exact** supplied right set and immediately rebuilds effective rights for every assigned user.
+- Every referenced `(module, rightname)` must already exist and be active. One missing pair returns `null`; the catalog update does not partially apply.
+- An empty `$rights` array is valid and produces an exact empty group. Ambiguous duplicate catalog rows for the same `(module, rightname)` fail closed.
+- Installer groups are always stored with `editable = 0`. DACore operators can see them but cannot rename, edit rights, or delete them.
+- Manual groups remain `editable = 1`.
+- A module **MUST NOT** write `users_roles_list`, `users_roles_rights`, `users_roles`, or `users_rights` directly.
+
+Assign, remove, and uninstall by the same stable identity:
+
+```php
+DotApp::call("DACore:Roles@assignGroup!", int $userId, string $creator, string $groupid): bool
+DotApp::call("DACore:Roles@removeGroup!", int $userId, string $creator, string $groupid): bool
+DotApp::call("DACore:Roles@deleteGroup!", string $creator, string $groupid): bool
+```
+
+`assignGroup!` preserves the user's other groups and is idempotent. `removeGroup!` removes only this group. Both set `rights_mode=group` and rebuild the materialized `{prefix}users_rights` set from all remaining groups, so stale manual rights are intentionally removed. An elevated group cannot be assigned to an active user without configured 2FA.
+
 ### Assigning and removing
 
 ```php
@@ -370,6 +423,26 @@ Your module **MUST NOT** expose a control, API, or installer step that clears th
 If the current operator has **no** 2FA method, dangerous actions below **MUST** be refused (do not “skip 2FA this once”).
 
 When you create or promote an operator, enable at least one method as part of that flow.
+
+### Per-user 2FA / IP policy and origin (DACore 1.0.9)
+
+DACore profiles store **origin** (which module created the account) and four allow flags. Origin is provenance, not a permission.
+
+- Default flags **allow**. Policy `0` hides the matching admin UI, rejects the POST, and clears the stored enrolment flag (`tfa_sms`, `tfa_email`, `tfa_auth`, or `tfa_firewall`). Policy `1` never turns on a globally disabled SMS or email channel.
+- Saving a user whose origin is **not** `dacore.*` from the admin UI requires an operator confirmation. The write still re-checks rights after confirm.
+- Adding an **installer-managed** group (`editable=0`) always confirms. Removing one requires the **current operator’s** step-up 2FA. An operator with no usable 2FA method cannot remove a managed group.
+- Self-service URL firewall pages are gone. Admin URL firewall and runtime checks remain. Self-service IP firewall is hidden/403 when `allow_firewall_ip=0`.
+- Plugins: `DotApp::call('DACore:UserPolicy@read'|'@apply'|'@findByExtra'|'@stampOrigin', …)`. Listen to `module.dacore.user_policy_changed.hook` (ids and changed keys only). Do not write `dacore_users_profiles` yourself.
+
+### Origin catalog and DACore login (DACore 1.0.10)
+
+Origins live in **`dacore_user_origins`** (autoincrement `id`, unique token, **`creator`** = module that registered it, **`dacore_login`** = DACore form allow-list). Profiles store **`origin_id`**. Email/username and Auth session remain global: origin is provenance, not a tenant store, permission or sandbox.
+
+- Install: check `UserPolicy@registerOrigin($token, 'Shop')` for `ok === true` + positive id. Create: exact bound id lookup, `stampOrigin`, then `read` exact token/id verification. Uninstall: check `removeOrigin` only for **your** unused rows.
+- Default catalog rows allow only `dacore.*` on the DACore form. **Compatibility caveat:** absent 1.0.10 catalog/schema returns allowed and settings save no-ops; missing profile/read failure falls back to `dacore.legacy`, which is normally allowed. Run the update, but still do not treat this form allow-list as a fail-closed module boundary.
+- A Shop login **and every Shop authenticated route gate** must fail closed on the exact Shop origin. A global session can originate from DACore, remember-me or another module. Ticking a token in DACore Settings neither authorizes nor isolates Shop routes.
+- `findByExtra` is global discovery, not ownership. Final access still requires a joined/bound origin predicate or module-owned membership.
+- Listing DACore operators (or another pack’s customers) from your UI is a **privilege leak**. A plugin that **replaces** DACore user admin is allowed only after **ASK** + explicit warning that a defect can expose the whole database. Code **MUST** stay non-escalatable ([42](42-DACORE-USER-ORIGIN.md), [24](24-ATTACK-VECTORS.md)).
 
 ### Dangerous actions MUST re-ask for a 2FA code
 

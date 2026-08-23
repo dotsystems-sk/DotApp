@@ -36,6 +36,10 @@ From project root:
 New module with visible UI: ask once for display name/purpose, optional logo/banner, placement, colours and alt text.
 Offer text-only/no custom branding; skip backend-only modules. Never invent or hotlink branding. AIRULES/05 §8b.
 
+## PHP VERSION (ASK IN PLAN)
+Default PHP 7.4+. When planning programming, ASK: stay on 7.4+ (DotApp default) or write for a higher version.
+No answer → 7.4+. MUST NOT ship match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they named a higher version. AIRULES/00 §2i.
+
 ## CONTROLLERS / ROUTES
 - public static methods extending \Dotsystems\App\Parts\Controller
 - Route strings: Module:Controller@method!
@@ -111,6 +115,9 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   Extender::extend in Listeners::register() before Module initialize; target URLs in explicit
   listener routes; own Module routes or []; prefer 'Module:Controller@method!';
   MUST NOT .loaded for initialize-time, Events, $request/secrets, ['*'] just to attach, duplicate
+- PHP 7.4+ (AIRULES/00 §2i): unless the plan named a higher version, fail on match / ?-> /
+  str_contains / str_starts_with / str_ends_with / union mixed / named args / promotion /
+  attributes / enum / readonly / never / first-class callables
 - Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
   (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
   then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);

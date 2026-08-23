@@ -1,6 +1,6 @@
 # EX-14 — Auth, permissions, 2FA
 
-Rules: [11](../11-AUTH-AND-CRYPTO.md), [19](../19-VALIDATION-AND-INPUT.md) (`data(true)` = original). Operator step-up: [32](../32-DACORE-RIGHTS.md) §6.
+Rules: [11](../11-AUTH-AND-CRYPTO.md), [19](../19-VALIDATION-AND-INPUT.md) (`data(true)` = original). Origin-scoped module identity: [42](../42-DACORE-USER-ORIGIN.md). Operator step-up: [32](../32-DACORE-RIGHTS.md) §6.
 
 **MUST** take the password from `$request->data(true)['data']`. `$request->data()` is `protect()`-escaped — `)`, `=`, `%` become a **different** password. **MUST** show `reply.message` on every failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`, error codes). Silent 400 is incomplete.
 
@@ -8,7 +8,9 @@ Rules: [11](../11-AUTH-AND-CRYPTO.md), [19](../19-VALIDATION-AND-INPUT.md) (`dat
 
 Privilege, secrets, lockout, SQL ownership, own-password proof: [11](../11-AUTH-AND-CRYPTO.md) §11. A public login/register **MUST** be mentioned to the user as bot-exposed (CAPTCHA is optional).
 
-## Login handler (secure form + all error codes)
+## Origin-scoped login handler (secure form + all error codes)
+
+Auth identity/session is global. This Shop example therefore checks `shop.checkout` immediately after successful credentials. The same check is repeated by 2FA and every Shop route gate below. A foreign-origin mismatch is deliberately indistinguishable from bad credentials.
 
 ```php
 use Dotsystems\App\DotApp;
@@ -19,9 +21,21 @@ use Dotsystems\App\Parts\Validator;
 public static function loginPost($request)
 {
     if (Auth::isLogged() || Auth::loggedStage() === 2) {
-        return DotApp::DotApp()->ajaxReply([
-            'status' => 0, 'errorNo' => 9, 'message' => 'Already signed in',
-        ], 200);
+        $existingId = (int) Auth::userId();
+        $existingPolicy = $existingId > 0
+            ? DotApp::call('DACore:UserPolicy@read', $existingId)
+            : null;
+        if (
+            is_array($existingPolicy)
+            && (string) ($existingPolicy['origin'] ?? '') === 'shop.checkout'
+            && (int) ($existingPolicy['origin_id'] ?? 0) > 0
+        ) {
+            return DotApp::DotApp()->ajaxReply([
+                'status' => 0, 'errorNo' => 9, 'message' => 'Already signed in',
+            ], 200);
+        }
+        // Why: a foreign global session must not be mistaken for Shop authentication.
+        Auth::logout();
     }
 
     if (!$request->crcCheck()) {
@@ -61,6 +75,22 @@ public static function loginPost($request)
             ]];
         }
 
+        $userId = (int) Auth::userId();
+        $policy = $userId > 0
+            ? DotApp::call('DACore:UserPolicy@read', $userId)
+            : null;
+        if (
+            !is_array($policy)
+            || (string) ($policy['origin'] ?? '') !== 'shop.checkout'
+            || (int) ($policy['origin_id'] ?? 0) < 1
+        ) {
+            // Why: Auth session is global; foreign/fallback origin must not survive this module login.
+            Auth::logout();
+            return ['code' => 200, 'body' => [
+                'status' => 0, 'errorNo' => 2, 'message' => 'Invalid email or password',
+            ]];
+        }
+
         if (Auth::loggedStage() === 2) {
             return ['code' => 200, 'body' => [
                 'status' => 1, 'twofactor' => 1, 'redirectTo' => '/shop/login/2fa',
@@ -89,6 +119,7 @@ Template + JS: see [EX-01-secure-form-complete.md](EX-01-secure-form-complete.md
 // middleware class: app/modules/Shop/Middleware/Gate.php
 namespace Dotsystems\App\Modules\Shop\Middleware;
 
+use Dotsystems\App\DotApp;
 use Dotsystems\App\Parts\Auth;
 use Dotsystems\App\Parts\Response;
 
@@ -97,6 +128,19 @@ class Gate extends \Dotsystems\App\Parts\ModuleMiddleware
     public static function check($request, array $rights = [])
     {
         if (!Auth::isLogged()) {
+            return Response::redirect('/shop/login', 302);
+        }
+        $userId = (int) Auth::userId();
+        $policy = $userId > 0
+            ? DotApp::call('DACore:UserPolicy@read', $userId)
+            : null;
+        if (
+            !is_array($policy)
+            || (string) ($policy['origin'] ?? '') !== 'shop.checkout'
+            || (int) ($policy['origin_id'] ?? 0) < 1
+        ) {
+            // Why: a session created by DACore/remember-me/another module is still global.
+            Auth::logout();
             return Response::redirect('/shop/login', 302);
         }
         if (!empty($rights) && !Auth::can($rights)) {   // OR semantics
@@ -134,7 +178,7 @@ try {
     $uri = TOTP::otpauth(Auth::attributes()['email'] ?? 'user', $secret);
     $qrDataUri = QR::imageToBase64(QR::generate($uri, ['level' => 'qrm'])->outputPNG());
 } catch (\Throwable $e) {
-    Logger::use()->error('2FA enrolment failed', ['msg' => $e->getMessage()]);
+    \Dotsystems\App\Modules\Shop\Libraries\CatchBus::reportCatch($e);
     return new Response(500, 'Could not start 2FA setup');
 }
 // persist $secret into your users table column tfa_auth_secret + set tfa_auth = 1
@@ -142,6 +186,19 @@ try {
 
 ```php
 // 2. confirmation step (user is in stage 2)
+$userId = (int) Auth::userId();
+$policy = $userId > 0
+    ? DotApp::call('DACore:UserPolicy@read', $userId)
+    : null;
+if (
+    !is_array($policy)
+    || (string) ($policy['origin'] ?? '') !== 'shop.checkout'
+    || (int) ($policy['origin_id'] ?? 0) < 1
+) {
+    Auth::logout();
+    return ['status' => 0, 'message' => 'Invalid email or password'];
+}
+
 $r = Auth::confirmTwoFactor(['tfa' => $code]);
 
 if ($r['confirmed'] !== true) {
@@ -153,6 +210,17 @@ if ($r['confirmed'] !== true) {
         5 => 'No two-factor method provided',
     ];
     return ['status' => 0, 'message' => $map[$r['error']] ?? 'Verification failed'];
+}
+
+// Why: repeat after stage transition; route middleware will enforce it on later requests too.
+$policy = DotApp::call('DACore:UserPolicy@read', (int) Auth::userId());
+if (
+    !is_array($policy)
+    || (string) ($policy['origin'] ?? '') !== 'shop.checkout'
+    || (int) ($policy['origin_id'] ?? 0) < 1
+) {
+    Auth::logout();
+    return ['status' => 0, 'message' => 'Invalid email or password'];
 }
 return ['status' => 1, 'redirectTo' => '/shop/'];
 ```
@@ -187,19 +255,72 @@ SMS and email codes are generated by core but **not sent** — deliver them your
 
 ## Creating a user
 
+The installer must already have registered `shop.checkout` and checked `{ok:true, origin_id>0}`. `Auth::createUser` does **not** return the id. Duplicate email/username is global across all origins and must not reveal that the row belongs to DACore/another module.
+
 ```php
+use Dotsystems\App\DotApp;
+use Dotsystems\App\Modules\Shop\Libraries\CatchBus;
+use Dotsystems\App\Parts\Auth;
+use Dotsystems\App\Parts\Config;
+use Dotsystems\App\Parts\DB;
+
 try {
     $r = Auth::createUser($username, $password, $email, ['created_by' => Auth::userId()]);
 } catch (\Throwable $e) {
-    return ['status' => 0, 'message' => 'Invalid email'];    // createUser throws on bad email
+    CatchBus::reportCatch($e);
+    return ['status' => 0, 'message' => 'Account could not be created'];
 }
 
-if ($r['error'] === 1) { return ['status' => 0, 'message' => 'User already exists']; }
+if ($r['error'] === 1) {
+    // Why: do not enumerate a DACore operator or another module's globally unique account.
+    return ['status' => 0, 'message' => 'Account could not be created'];
+}
 if ($r['error'] === 99) {
-    Logger::use()->error('createUser DB error', (array) ($r['error_data'] ?? []));
+    CatchBus::reportDb((array) ($r['error_data'] ?? []));
     return ['status' => 0, 'message' => 'Server error'];
 }
+
+try {
+    // Why: createUser returns no id. Table name is fixed from trusted config, never request input.
+    $prefix = (string) Config::app('dbPrefix');
+    if ($prefix === '') {
+        $prefix = (string) Config::get('db', 'prefix');
+    }
+    $usersTable = ($prefix !== '' ? $prefix : 'dotapp_') . 'users';
+    $rows = DB::module('RAW')->q(function ($qb) use ($usersTable, $email) {
+        $qb->raw(
+            'SELECT `id` FROM `' . $usersTable . '` WHERE `email` = :email LIMIT 1',
+            ['email' => $email]
+        );
+    })->all();
+    $userId = (int) ($rows[0]['id'] ?? 0);
+    if ($userId < 1) {
+        return ['status' => 0, 'message' => 'Account could not be created'];
+    }
+
+    $stamp = DotApp::call(
+        'DACore:UserPolicy@stampOrigin',
+        $userId,
+        'shop.checkout',
+        'Shop'
+    );
+    $policy = DotApp::call('DACore:UserPolicy@read', $userId);
+    if (
+        $stamp !== true
+        || !is_array($policy)
+        || (string) ($policy['origin'] ?? '') !== 'shop.checkout'
+        || (int) ($policy['origin_id'] ?? 0) < 1
+    ) {
+        // Why: do not report success with dacore.legacy or a foreign/fallback origin.
+        return ['status' => 0, 'message' => 'Account could not be created'];
+    }
+} catch (\Throwable $e) {
+    CatchBus::reportCatch($e);
+    return ['status' => 0, 'message' => 'Account could not be created'];
+}
 ```
+
+`CatchBus` above means this module’s one report helper ([18](../18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9), not a DACore file. The installer’s checked `registerOrigin` establishes that `Shop` owns the fixed token. Runtime still requires the exact token and a positive id. Define a safe compensating action for a partial create failure—never silently log in or expose the account.
 
 ---
 

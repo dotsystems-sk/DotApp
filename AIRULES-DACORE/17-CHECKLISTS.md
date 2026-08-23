@@ -8,10 +8,12 @@
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
 - [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, other modules
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
+- [ ] **PHP version:** asked whether to stay on **PHP 7.4+** (default) or write for a higher version; no answer → 7.4+ ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] New visible module: asked once for public name/purpose, installer identity (text-only / compact logo / wide banner), existing local asset + alt text, optional landing/header placement and colours ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b)
 - [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
 - [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
 - [ ] **DACore-bound module:** read **`app/modules/DACore/.hooks`** (read-only) before scaffolding listeners — use the catalog DACore already fires; do not invent `module.dacore.*` ([41](41-MODULE-HOOKS.md) §6)
+- [ ] **Custom register/login / user list / shop:** read [42](42-DACORE-USER-ORIGIN.md) — **ASK** exact token(s), DACore-form access (default no), and whether this module lists users. Account/session are global; origin is not a sandbox. Plan fail-closed checks on create, login, 2FA, every route gate and every list/write.
 
 ## Scaffold checklist
 
@@ -115,6 +117,23 @@
 - [ ] Privilege / records: no secret in read-only views; no escalate; SQL owner scope; own password needs current; public noauth **warned** for bots ([11](11-AUTH-AND-CRYPTO.md) §11)
 - [ ] Secrets not committed carelessly
 
+## User origin / custom identity checklist (LAW — [42](42-DACORE-USER-ORIGIN.md))
+
+- [ ] Origin token and creator match the exact regex; installer checks `registerOrigin` returned `ok === true` and positive `origin_id`
+- [ ] Registration knows `Auth::createUser` returns no id; after `error === 0` it performs a bound exact `SELECT id ... LIMIT 1`
+- [ ] Duplicate global email/username and foreign-origin collision return generic copy; no account enumeration or silent adoption/restamp
+- [ ] Create path checks `stampOrigin === true`, then `read()` exact expected token **and** registered positive id before success/session/hook
+- [ ] Login checks exact origin immediately after credentials and before 2FA redirect; any mismatch/fallback/error calls `Auth::logout()` and returns the bad-credentials message
+- [ ] Custom module allow-list does **not** accept `dacore.legacy` (it is also the missing-profile/schema/read-error fallback)
+- [ ] 2FA GET, 2FA success and **every authenticated module middleware** repeat the exact origin check; no gate relies only on `Auth::isLogged()`
+- [ ] User list/query INNER JOINs `dacore_users_profiles p`; binds `p.origin_id` and verifies expected token; missing profile is excluded; COUNT + LIMIT paging
+- [ ] Every profile/edit/delete/export/background action re-checks exact origin plus rights/ownership in PHP
+- [ ] `findByExtra` is not treated as authorization; final access is origin-scoped by joined query or module-owned membership
+- [ ] DACore `dacore_login` is described only as its form allow-list; module does not copy DACore’s missing-catalog fail-open compatibility
+- [ ] Uninstall checks `{ok}` from `removeOrigin`, stops/surfaces in-use/mismatch/error, and never silently maps accounts to `dacore.legacy`
+- [ ] Shop/custom registration fires its **own** documented hook only after stamp verification; does not assume `module.dacore.user_registered.hook`
+- [ ] No RCE/dynamic callable/include/unserialize/command input, cross-origin IDOR, rights grant above actor, or more-privileged mutation
+
 ## DACore checklist (when the task touches the admin)
 
 - [ ] No file under `app/modules/DACore/` was modified, added, or deleted — **unless** the user **themselves** asked to edit DACore **and** confirmed the update wipe ([00](00-AGENT-CONTRACT.md) §1)
@@ -135,6 +154,7 @@
 - [ ] Port of jQuery libraries: **searched DACore first**; user was **asked**; plugin was **rewritten** as `$dotapp().fn` (not a `$.fn` wrap). Playbook: 09 §4.C / EX-15. DACore widgets reused when they already exist.
 - [ ] Simple forms **prefer** `<dot-col any="12" md="6" ldesktop="6">` and `ri ri-*` icons (custom layout OK when porting)
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
+- [ ] Installer-managed user groups use `Roles@createGroup!` after their rights exist, stable `(creator, groupid)`, `editable=0`; assign/remove/delete via `Roles@*`; no saved numeric role id or direct `users_roles*` / `users_rights` write ([32](32-DACORE-RIGHTS.md) §1)
 - [ ] If this module has a sidebar: own `type => 0` header (one is ideal; more only if needed). **Asked** shared vs module-own before a new module. Many items: `type => 2` groups **or** header + one entry + `withMenu` `$menuId`. `menuid` starts with **this** module. Uninstall deletes only that prefix — not a host module’s menu ([31](31-DACORE-MENU.md))
 - [ ] Did **not** register a “Return back” row (DACore appends it on a branch `$menuId`)
 - [ ] Edit/detail admin pages keep the list/section leaf active: `withMenu` 7th `$currentFile` when the URL is not under that leaf — no extra menu row per edit URL ([31](31-DACORE-MENU.md))
@@ -209,7 +229,8 @@ Tick only the rows for the surface you touched.
 
 - [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::` / `#DACore:AuthTest@CRC!` / `LoginAndCRC!`), Controllers — **one** call per POST (API prefix **XOR** action). Not on GET/HTML login `before`. Not on `$request->upload()`. Action does **not** `crcCheck()` after a CRC prefix. New public controller/middleware methods start PHPDoc with **`CRCchecking —`** matching that layer ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
 - [ ] No plain record IDs in HTML/JSON (`value="7"`, `data-id="7"`, `{{ var: $id }}` as an id) — `{{ enc(Shop.item.id): $id }}` unique `$key2`; decrypt `=== false` rejected; PHP still `Auth::can` / ownership ([11](11-AUTH-AND-CRYPTO.md) §8)
-- [ ] Privilege / records grepped: secrets not in read-only views; SQL has owner (or can on that row); no escalate; public noauth bot **warning** if applicable ([11](11-AUTH-AND-CRYPTO.md) §11)
+- [ ] Privilege / records grepped: secrets not in read-only views; SQL has owner (or can on that row); no escalate; public noauth bot **warning** if applicable ([11](11-AUTH-AND-CRYPTO.md) §11); custom user UI filtered by **your** origin (or explicit ASK + warning before listing another origin) ([42](42-DACORE-USER-ORIGIN.md))
+- [ ] **Origin/global Auth:** grepped `createUser|registerOrigin|stampOrigin|UserPolicy@read|Auth::login|loggedStage|Auth::isLogged|findByExtra` plus user SQL. Checked register result, exact-id lookup, stamp+read equality, logout on mismatch, login+2FA+every gate, profile INNER JOIN + bound origin, generic duplicate/foreign replies ([42](42-DACORE-USER-ORIGIN.md))
 - [ ] Queries use bindings; no user input in SQL strings; `$qb->raw()` has no `?` except real bindings ([06](06-DATABASE.md))
 - [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, step-up 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate; rights via `#YourModule:Rights@check!` — **not** `#DACore:AuthTest@check!` ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
@@ -220,6 +241,7 @@ Tick only the rows for the surface you touched.
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning, no `dacore_*` write)
 - [ ] **Hooks:** grepped `Events::trigger(` and `Events::triggerWithVeto(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; `.veto` names sit under **Veto contracts**; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
 - [ ] **Extender (judge):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; marker is never returned/serialized; no `next()`; `extend()` in `Listeners::register()`; target listener routes explicit; own Module routes or `[]`; controller string preferred; no `['*']` just to attach; no `.loaded` for initialize-time; no `$request`/secrets, Events, duplicate, owner/DACore patch ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h)
+- [ ] **PHP 7.4+:** grepped the chunk for PHP 8+ syntax (`match`, `?->`, `str_contains`, `str_starts_with`, `str_ends_with`, `#[`, `enum `, `readonly `, `: mixed`) unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
 - [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)

@@ -113,6 +113,22 @@ try {
 
 Passwords are hashed internally (bcrypt via `DotApp::generatePasswordHash`). Never store plaintext. The `$password` argument **MUST** be the original string (`$request->data(true)`), not the protected copy.
 
+`Auth::createUser` **does not return the new user id**. Email and username are globally unique across every module/origin. A custom registration therefore **MUST NOT** adopt or restamp an existing row when it gets a duplicate. Use one generic refusal, and after `error === 0` resolve the exact new id with a bound `SELECT id ... LIMIT 1`.
+
+For a DACore-bound module that creates accounts:
+
+1. Installer calls `DACore:UserPolicy@registerOrigin` and verifies `ok === true` plus positive `origin_id`.
+2. Create path resolves the positive id, calls `stampOrigin`, then **re-reads** policy and requires exact token plus the registered positive id.
+3. Any failure aborts visibly; never continue with the profile default `dacore.legacy`.
+
+`stampOrigin() === true` alone is not proof: compatibility behavior can no-op on an existing different non-legacy origin. Full safe sequence: [42](42-DACORE-USER-ORIGIN.md) §2–§3.
+
+### Global Auth session vs module login
+
+An Auth session is application-wide, regardless of which form created it. A Shop/member route **MUST NOT** gate with only `Auth::isLogged()`. Its middleware must also enforce the exact server-side origin allow-list and normal rights/ownership. The same origin check runs immediately after login, before 2FA redirect, on the 2FA page, after 2FA success, and on every authenticated module route. Mismatch/error → immediate `Auth::logout()` + the same generic response as bad credentials.
+
+DACore `dacore_login` controls the DACore **form**, not global Auth sessions and not another module’s routes. Canonical: [42](42-DACORE-USER-ORIGIN.md).
+
 ---
 
 ## 5. Two-factor authentication

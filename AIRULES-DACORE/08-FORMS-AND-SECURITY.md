@@ -114,6 +114,8 @@ JSON from `ajaxReply` / `load()`: encrypt IDs in PHP **before** sending (`Crypto
 
 **MUST still authorize.** Unique `$key2` stops **type confusion** (product ≠ user). If one select lists many users, all under `Shop.user.id`, swapping one user token for another in **that same field** still works — `Auth::can()` and an ownership query are **required**. Do not skip rights because values are encrypted.
 
+A custom login/register/member form must account for **global** users and Auth session. Origin is not supplied isolation: the module checks exact token + positive `origin_id` after login, on 2FA, in every authenticated gate and every write/list query. Mismatch/error → `Auth::logout()` + generic failure. Registration checks catalog result, resolves the new id by a bound exact lookup, stamps, then re-reads equality. Encrypted ids do not stop listing DACore operators. Canonical: [42](42-DACORE-USER-ORIGIN.md).
+
 Full crypto contract: [11-AUTH-AND-CRYPTO.md](11-AUTH-AND-CRYPTO.md) §8. Renderer: [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md).
 
 ---

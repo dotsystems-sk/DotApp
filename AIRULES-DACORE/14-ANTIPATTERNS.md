@@ -12,6 +12,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Premium Cursor subagent without asking (Opus / GPT-5 / xhigh / cloud / best-of-N) | Inherit the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Composer 2.5 as the programmer | Composer 2.5 only for a pile of files; programming = parent model ([00](00-AGENT-CONTRACT.md) §2b) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
+| PHP 8+ syntax (`match`, `?->`, `str_contains`, union/`mixed`, named args, promotion, `enum`) without asking | Default **PHP 7.4+**; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2i) |
 | Silent save / empty `.after()` / invent a second toast instead of grepping DACore | Admin: search DACore then **toast**. Public: mark the wrong field ([00](00-AGENT-CONTRACT.md) §2d) |
 | SMS/mail/payment/lockout with no hook, or a trigger not listed in `.hooks` | Fire **`module.{mod}.{name}.hook`** when a future module would subscribe; document in `.hooks` ([41](41-MODULE-HOOKS.md)) |
 | Hook on every save / unlabeled `// turning SMS off…` | Judge first; comments **MUST** start with `Why:` / `About:` / `Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
@@ -122,6 +123,13 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Password / TOTP / CRC / request body on `Events::trigger` | Ids, counts, flags only ([41](41-MODULE-HOOKS.md), [24](24-ATTACK-VECTORS.md) §8) |
 | `Events::trigger` inside `foreach` of a growing list | One **batch** event after the loop ([41](41-MODULE-HOOKS.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md)) |
 | Skip a useful SMS/mail hook “for performance” | Unused `trigger()` is cheap; spraying every save is noise ([41](41-MODULE-HOOKS.md)) |
+| Shop admin `SELECT` all `{prefix}users` / list DACore operators | INNER JOIN `dacore_users_profiles`, bind expected `p.origin_id` + token, paginate, and re-check every write. A DACore-replacement UI needs an **ASK** + warning ([42](42-DACORE-USER-ORIGIN.md)) |
+| Treat origin as tenant DB, permission, sandbox, or module-local session | Users/email/username/Auth session are global; **your module** enforces exact origin in login, 2FA, every gate and list/write ([42](42-DACORE-USER-ORIGIN.md)) |
+| Custom login checks origin only once / route gate checks only `Auth::isLogged()` | Check after credentials, before/on/after 2FA and on every authenticated route; mismatch/error → `Auth::logout()` + generic failure ([42](42-DACORE-USER-ORIGIN.md)) |
+| Assume `Auth::createUser` returned id / fire-and-forget `registerOrigin` or `stampOrigin` | Check catalog id, bound exact id lookup, stamp, then `read` exact token/id before success ([42](42-DACORE-USER-ORIGIN.md)) |
+| Leave `dacore.legacy` on accounts your module created | Abort visibly; never authenticate/expose until stamp + re-read equality passes ([42](42-DACORE-USER-ORIGIN.md)) |
+| Treat `findByExtra` ids as ownership | Global discovery only; final access requires joined origin predicate or module-owned membership ([42](42-DACORE-USER-ORIGIN.md)) |
+| `eval` / `include` request path / grant `dotapp.root` from a shop form | Non-escalatable identity code ([24](24-ATTACK-VECTORS.md), [42](42-DACORE-USER-ORIGIN.md)) |
 
 ## Forms / frontend
 

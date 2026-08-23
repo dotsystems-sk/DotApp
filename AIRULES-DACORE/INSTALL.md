@@ -17,7 +17,7 @@ This guide wires the AI rulebook into a DotApp installation **that has the DACor
    - `dotapper.php`
    - `app/config.php`
    - `app/modules/`
-2. PHP CLI available (`php -v`).
+2. PHP CLI available (`php -v`). DotApp and default modules target **PHP 7.4+**. Agents **MUST ASK** before writing for a higher version (`00` §2i).
 3. Cursor IDE (recommended) or any agent that can read markdown + project rules.
 
 ## Note on shipping

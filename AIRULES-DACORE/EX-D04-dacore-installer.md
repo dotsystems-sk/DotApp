@@ -89,24 +89,7 @@ class Installation extends Installer
                     }
                 }
 
-                // ---------- 3. immutable installer-managed user group ----------
-                $managerRoleId = DotApp::call(
-                    "DACore:Roles@createGroup!",
-                    'Shop managers',
-                    'Manage the product catalog.',
-                    self::MODULE,
-                    'managers',
-                    [
-                        ['module' => self::MODULE, 'rightname' => 'items.view'],
-                        ['module' => self::MODULE, 'rightname' => 'items.edit'],
-                    ]
-                );
-                if ($managerRoleId === null) {
-                    $ok = false;
-                    $notes[] = 'installer user group failed';
-                }
-
-                // ---------- 4. menu (ASK: shared vs module-own — [31]) ----------
+                // ---------- 3. menu (ASK: shared vs module-own — [31]) ----------
                 // This sample is the **shared** tree: header + type 2 group + leaf.
                 // Module-own: header + one entry here; inner pages pass withMenu $menuId.
                 $sectionRights = json_encode(['dotapp.root', 'Shop.*']);
@@ -136,7 +119,7 @@ class Installation extends Installer
                     }
                 }
 
-                // ---------- 5. AI tools (optional, non-fatal) ----------
+                // ---------- 4. AI tools (optional, non-fatal) ----------
                 if (DB::schemaBuilder()->tableExists('dacore_ai_tools')) {
                     foreach (self::aiTools() as $toolid => $tool) {
                         if (DotApp::call("DACore:AITools@register", $toolid, $tool) !== true) {
@@ -147,7 +130,7 @@ class Installation extends Installer
                     $notes[] = 'dacore_ai_tools missing - AI tools skipped';
                 }
 
-                // ---------- 6. record ----------
+                // ---------- 5. record ----------
                 DotApp::call(
                     "DACore:Installations@insert!",
                     self::MODULE,
@@ -193,8 +176,7 @@ class Installation extends Installer
                     DotApp::call("DACore:AITools@delete", $toolid);
                 }
 
-                // Stable installer-managed user group, then rights-catalog cleanup
-                DotApp::call("DACore:Roles@deleteGroup!", self::MODULE, 'managers');
+                // rights + group + user assignments
                 DotApp::call("DACore:Rights@deleteGroup!", self::MODULE);
 
                 // menu - no unregister API exists, delete our own prefixed rows

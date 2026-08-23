@@ -48,6 +48,10 @@ Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` 
 | Create right | `DACore:Rights@createRight!` | `int\|null` |
 | Assign right to user | `DACore:Rights@assign!` | `bool` |
 | Remove right from user | `DACore:Rights@remove!` | `bool` |
+| Create/update immutable user group | `DACore:Roles@createGroup!` | `int\|null` |
+| Assign stable user group | `DACore:Roles@assignGroup!` | `bool` |
+| Remove stable user group | `DACore:Roles@removeGroup!` | `bool` |
+| Delete stable user group | `DACore:Roles@deleteGroup!` | `bool` |
 | Delete right(s) by creator | `DACore:Rights@deleteRight!` | `bool` |
 | Delete group + its rights | `DACore:Rights@deleteGroup!` | `bool` |
 | Render admin page | `DACore:Page@withMenu!` | `string` HTML |
@@ -60,6 +64,13 @@ Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` 
 | Add AI system context | `DACore:AI@addSystemContext` | `bool` |
 | Migration guard | `DACore:Installations@exist!` | `bool` |
 | List installed packs by `extra1`…`extra5` | `DACore:Plugins@listByExtra!` (1.0.26; not HTTP; empty token → `[]`) | `array` of `{module, version, extra1…extra5}` |
+| Read user origin / 2FA·IP flags / extra1…extra5 | `DACore:UserPolicy@read` (1.0.9; not HTTP) | `array` policy row |
+| Apply a whitelist policy patch | `DACore:UserPolicy@apply` | `{ok, message, changed, policy}` |
+| Find users by one extra slot (**global discovery; not origin authorization**) | `DACore:UserPolicy@findByExtra` | `{ok, user_ids, page, last_page, total}` |
+| Stamp origin on create (then **MUST re-read exact token/id**; true alone is not proof on a foreign non-legacy row) | `DACore:UserPolicy@stampOrigin` (1.0.10 also writes `origin_id`; optional `$creator`, but external modules **MUST pass it**) | `bool` |
+| Register / reuse a catalog origin | `DACore:UserPolicy@registerOrigin` (1.0.10; not HTTP) | `{ok, origin_id, message}` |
+| Remove an unused origin this creator owns | `DACore:UserPolicy@removeOrigin` | `{ok, message}` |
+| Bounded origin catalog (id, token, creator, dacore_login) | `DACore:UserPolicy@listOriginRows` | `list<array>` |
 | Error page body | `DotApp::call(Config::module("DACore","error403Page"))` | `string` |
 
 Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!` = no DI.
@@ -83,10 +94,14 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_email_senders` | Operator SMTP accounts (DACore-owned — **never write**; `Email@send` only) |
 | `dacore_email_templates` | Operator HTML templates (DACore-owned — **never write**) |
 | `dacore_sms_senders` | SMS driver registry (DACore-owned — **never write**; `Sms@registerSender` / `Sms@send` only) |
+| `dacore_user_origins` | Origin catalog (1.0.10): autoincrement `id`, unique token, **`creator`** (install/uninstall identity), **`dacore_login`**. Plugins **MUST** `UserPolicy@registerOrigin` / `@removeOrigin` — never write this table. |
+| `dacore_users_profiles` | Per-user display name, locale, **origin** token, **`origin_id`**, **allow_tfa_*** / **allow_firewall_ip**, and **extra1…extra5** (1.0.9–1.0.10). Plugins **MUST** use `DACore:UserPolicy@*` — never `UPDATE` this table from another module. |
 
 Framework tables it uses (does not own): `{prefix}users`, `{prefix}users_rights`, `{prefix}users_rights_groups`, `{prefix}users_rights_list`.
 
 **Note:** `dacore_ai_tools`, `dacore_chat` and `dacore_chat_messages` are **not** created by DACore's `1.0.0` installer. If you register AI tools, make sure the table exists (import from the DACore SQL dump) — see [36](36-DACORE-KNOWN-ISSUES.md).
+
+**Identity boundary:** `{prefix}users.email` / `username` and the Auth session are global. Origin fields exist on `dacore_users_profiles`, so origin-scoped lists must join that profile and bind the expected `origin_id`/token. `dacore_login` controls only the DACore form. Missing 1.0.10 catalog/schema returns allowed; missing profile/read failure falls back to allowed `dacore.legacy`. Module login/route gates must fail closed themselves and must not authorize `dacore.legacy`. Canonical: [42](42-DACORE-USER-ORIGIN.md).
 
 ---
 

@@ -13,6 +13,10 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter).
 
 When **planning** programming, **ASK** whether more expensive models may be used. If the user does not say yes: stay on **this** chat model. Subagents that write or plan code **MUST inherit** (`inherit`). **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. **Composer 2.5** is OK **only** for hunting a pile of files — **not** as the programmer. A bigger model is for a capability this one lacks (e.g. generate an image) — **ASK** if it costs extra. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2b.
 
+## PHP version (**MUST**)
+
+When **planning** programming, **ASK** whether to stay on **PHP 7.4+** (the DotApp default) or write for a higher version. If they do not name a higher version: **PHP 7.4+**. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, constructor promotion, attributes, `enum`, `readonly`, `str_contains` / `str_starts_with` / `str_ends_with`) unless they said yes. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
+
 ## Finish gate (**MUST** — law)
 
 After **every** code chunk (route, middleware, controller, query, form, view, JS) **and** before saying done: **MUST** grep this module — do not imagine the result. **MUST NOT** claim done if any row fails.
@@ -28,6 +32,7 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 9. **Perf / readability** — no `->all()` on a growing table, no query/HTTP/log inside `foreach` (prefetch + keyed map), no `select('*')` on a list, no O(n²) or per-row array copy, every new `WHERE`/`ORDER BY` column indexed (composite: equality → range → sort), every index carries a comment naming its query, every public method a PHPDoc **purpose sentence** then tags (not tags-only), every logical step **`// Why:`**, page actions **`// About:`** / **`// Section:`**. Canonical + greps: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §8.
 10. **Hooks** — useful side-effects fire `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`About:`/`Params:`/`Use:` + `.hooks`; not on every save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`. Pre-action stop = `triggerWithVeto()` + `Veto` (not `return false`). Listener map may cover the producer URL. Canonical: `AIRULES/41-MODULE-HOOKS.md`.
 11. **Extender** — judge first, **not** every method. Owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender `extend()` belongs in `Listeners::register()` before Module initialization. Target URLs in listener map; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time, Events, or `$request`/secrets. Canonical: `AIRULES/12-SERVICES.md` §10, `AIRULES/00-AGENT-CONTRACT.md` §2h.
+12. **PHP 7.4+** — unless the plan named a higher version: no `match`, `?->`, union/`mixed`, named args, constructor promotion, attributes, `enum`, `readonly`, `str_contains` / `str_starts_with` / `str_ends_with`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 
@@ -43,6 +48,7 @@ Every save / toggle / delete / form **MUST** tell the user what happened. Silent
 
 - Routes: `Module:Controller@method!` (`!` = no DI parameters in the method).
 - Controllers: `public static function`.
+- **PHP 7.4+ (ASK in plan):** default language is PHP 7.4+. **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
 - **Module identity (ASK in plan):** for a new module with visible UI, ask once for display name/purpose, optional logo/banner, placement, colours and alt text. Offer text-only/no custom branding; skip for backend-only modules. Never invent or hotlink branding. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8b.
 - Login-required routes: **MUST** prefix `/{ModuleName}/…` (subtree if the module has public pages). Cover HTML with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` (403). **POST API:** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the start of `initialize()`; action **MUST NOT** `crcCheck()` again. Register handlers only inside `if (Auth::isLogged() === true) { … }`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`.
 - **Docs (MUST):** English. Every public method in `Controllers/` and `Middleware/` **MUST** start PHPDoc with **`CRCchecking —`** (exact prefix/middleware, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning — tags-only (`@return array<string, mixed>`) is a bug. **MUST NOT** document prefix CRC and still `crcCheck()` in that method. Inline **`// Why:`** / **`// About:`** / **`// Section:`**. **MUST NOT** restate the code, prompt-echo, omit the labels, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7, `AIRULES/08-FORMS-AND-SECURITY.md`.

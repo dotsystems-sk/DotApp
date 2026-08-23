@@ -39,6 +39,10 @@ existing local asset + alt text; optional landing/header placement. No preferenc
 Installer image = optimised raster in YOUR about-assets/, referenced from about.php with real width/height.
 Sidebar Remix icon is separate. No external URL/SVG/tracker and NEVER patch app/modules/DACore/. AIRULES/05 §8b, AIRULES/35 §3b.
 
+## PHP VERSION (ASK IN PLAN)
+Default PHP 7.4+. When planning programming, ASK: stay on 7.4+ (DotApp default) or write for a higher version.
+No answer → 7.4+. MUST NOT ship match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they named a higher version. AIRULES/00 §2i.
+
 ## CONTROLLERS / ROUTES
 - public static methods extending \Dotsystems\App\Parts\Controller
 - Route strings: Module:Controller@method!
@@ -109,6 +113,9 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   listener routes; own Module routes or []; prefer 'Module:Controller@method!';
   MUST NOT .loaded for initialize-time, Events, $request/secrets, ['*'] just to attach,
   duplicate registration, or patch DACore to insert call()
+- PHP 7.4+ (AIRULES/00 §2i): unless the plan named a higher version, fail on match / ?-> /
+  str_contains / str_starts_with / str_ends_with / union mixed / named args / promotion /
+  attributes / enum / readonly / never / first-class callables
 - Event tracer (AIRULES/01, AIRULES/23 §1c): core fires `dotapp.catchall` on every trigger() except itself;
   listener in YOUR module = function ($result, $eventname, ...$data); subscribe, do NOT trigger it;
   cheap + own try/catch (a throw aborts the original event); never under app/modules/DACore/; no inbox flood

@@ -12,6 +12,8 @@ Correct + secure is not enough. Code you ship **MUST** also be **cheap** (I/O, m
 2. **Memory is bounded, input is not.** Anything that grows with the table (rows, files, uploads, AI text, log lines) is processed **page by page**, never “load it all and filter”. One request **MUST NOT** be able to allocate an unbounded array.
 3. **Readable beats clever.** Optimise the code path that **scales** (a loop over the whole table, a query per row, an index that is missing). **MUST NOT** obfuscate a 20-row loop to save microseconds. Every optimisation that is not obvious gets a **why** comment (§7).
 
+**PHP 7.4+:** module PHP **MUST** stay on the DotApp floor unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i). Typed properties and `fn` are fine. `match`, `?->`, union/`mixed` types, named arguments, constructor promotion, attributes, `enum`, `readonly`, and `str_contains` / `str_starts_with` / `str_ends_with` are **not**.
+
 ---
 
 ## 1. Algorithms and memory (**MUST**)
@@ -288,6 +290,7 @@ Part of the finish gate ([00](00-AGENT-CONTRACT.md) §2c). Grep **your module + 
 | 8 | `file_get_contents(`, `json_encode(` | a whole big file / an unbounded payload in memory |
 | 9 | new public methods | no PHPDoc **purpose sentence**; tags-only (`@return array<string, mixed>` with no description); missing `@param` / `@return` meaning; a `Controllers/` / `Middleware/` public method whose PHPDoc does **not** start with `CRCchecking —`; that line names a CRC prefix **and** the body still calls `crcCheck(` |
 | 10 | the diff, comment by comment | comments that restate the code or echo the prompt; a logical step with no `// Why:`; a new page action with no `// About:` / `// Section:`; leftover `TODO` / dead code |
+| 11 | `match (`, `?->`, `str_contains(`, `str_starts_with(`, `str_ends_with(`, `#[`, `enum `, `readonly `, `: mixed` | PHP 8+ syntax on a 7.4+ module unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i) |
 
 **MUST NOT** skip a **named** useful `module.{mod}.{name}.hook` “for performance” — unused `trigger()` is cheap. **MUST NOT** fire a hook on every save to dodge this row ([41](41-MODULE-HOOKS.md)).
 

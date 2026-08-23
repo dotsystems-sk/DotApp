@@ -28,7 +28,7 @@ Every row below is a **law**: that attack **MUST NOT** be possible in code you s
 | Rich-text / HTML field | Accept HTML only where the product needs it, only from a user with the mutate right, sanitised to a tag/attribute whitelist. `data(true)` for the original | [19](19-VALIDATION-AND-INPUT.md) |
 | DOM XSS | User text goes in with `.text()`. Never `.html()` a request/DB string. Search highlight escapes first, then wraps the match | [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 |
 | Template injection | User input is **data**, never template source. Never compile a string that contains `{{ }}` from input | [05](05-VIEWS-TEMPLATES-ASSETS.md) |
-| PHP code execution | No `eval`, no `$$var`, no `new $class`, no `call_user_func` with a callable named by the request. Method/route names come from a whitelist | — |
+| PHP code execution | No `eval`, no `$$var`, no `new $class`, no `call_user_func` with a callable named by the request. Method/route names come from a whitelist. Custom register/login **MUST** stay non-escalatable — a shop bug is not sandboxed by DACore ([42](42-DACORE-USER-ORIGIN.md)) | — |
 | Command injection | No `exec` / `shell_exec` / `system` / `passthru` / `proc_open` / backticks with request data. Unavoidable → fixed binary + `escapeshellarg()` | — |
 | Object injection | Never `unserialize()` a request, cookie, or DB blob. Use `json_decode($s, true)` | [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) |
 | XXE / XML bomb | Parse untrusted XML with `LIBXML_NONET`, reject `DOCTYPE` / external entities, cap size | — |
@@ -77,9 +77,11 @@ Every row below is a **law**: that attack **MUST NOT** be possible in code you s
 | Attack | Law (**MUST**) | Where |
 |--------|----------------|-------|
 | IDOR / swapped ciphertext | Ids to the browser are `{{ enc(Shop.item.id): $id }}` with a **unique `$key2`**; decrypt `=== false` → reject; **and** the query carries the owner predicate (`WHERE id = :id AND user_id = :uid`) | [11](11-AUTH-AND-CRYPTO.md) §8, §11 |
+| Cross-origin user IDOR | Users/session are global. Login + 2FA + every module gate require exact origin; mismatch logs out. Lists/writes INNER JOIN `dacore_users_profiles` and bind expected id/token. Missing/fallback profile fails closed. Listing another origin requires explicit DACore-replacement ASK + whole-DB warning | [42](42-DACORE-USER-ORIGIN.md) |
+| Account adoption / enumeration | Global duplicate email/username must not be restamped or reveal another origin. Registration/login use the same generic refusal; create resolves id only after success, then stamp + re-read equality | [42](42-DACORE-USER-ORIGIN.md) |
 | Wrong guard | Rights checked with **your own** `#YourModule:Rights@check!` — `#DACore:AuthTest@check!` **ignores the passed rights** | [32](32-DACORE-RIGHTS.md) |
 | Missing function-level check | `Auth::can()` on **every** action, not only where the menu or the view hides it | [11](11-AUTH-AND-CRYPTO.md) §3, [32](32-DACORE-RIGHTS.md) |
-| Privilege escalation | **MUST NOT** grant a right/group the actor lacks, mutate a more privileged operator, or promote a target into a tier the actor is not. Elevated targets and elevated groups = `dotapp.root` | [11](11-AUTH-AND-CRYPTO.md) §11, [32](32-DACORE-RIGHTS.md) §5 |
+| Privilege escalation | **MUST NOT** grant a right/group the actor lacks, mutate a more privileged operator, or promote a target into a tier the actor is not. Elevated targets and elevated groups = `dotapp.root`. **MUST NOT** grant DACore `users.*` / `dotapp.root` from a custom registration form | [11](11-AUTH-AND-CRYPTO.md) §11, [32](32-DACORE-RIGHTS.md) §5, [42](42-DACORE-USER-ORIGIN.md) |
 | Rights written behind DACore’s back | **MUST NOT** `INSERT`/`UPDATE` `users_rights*` / `dacore_*` yourself — go through what DACore exposes | [00](00-AGENT-CONTRACT.md) §1, [32](32-DACORE-RIGHTS.md) |
 | Secrets behind a read right | TOTP secret, otpauth/QR, recovery codes, hashes, API keys, reset tokens **MUST NOT** be loaded into a view/JSON unless the actor may **mutate** that factor | [11](11-AUTH-AND-CRYPTO.md) §11 |
 | Account takeover via own profile | Changing **own** password verifies the **current** password in PHP (`data(true)`); another user’s password / e-mail / 2FA is the elevated mutate | [11](11-AUTH-AND-CRYPTO.md) §11 |

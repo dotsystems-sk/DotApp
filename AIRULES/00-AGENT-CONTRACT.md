@@ -54,10 +54,11 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 8. **Module identity:** when planning a new module with visible UI, **ASK once** for display name/purpose, optional logo/banner, placement and colours. Offer text-only/no custom branding; do not block a backend-only module. See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b.
 9. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
 10. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
-11. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core bug.
-12. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md).
-13. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes (or `[]` for a listener-only module). `Listeners::initializeRoutes()` may list different producer/target prefixes (or `null` to inherit). **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned that this listener file registers on every request. After either map changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
-14. **Extender (judge):** **MUST NOT** Extender every method. Opt in when another module would reasonably **replace this output** (page/block HTML, cart, export). Owner `exists()` + `call()`; an ordinary result returns immediately, while `isOriginal()` alone continues owner logic. Register `extend()` in **`Listeners::register()`** before module initialization; put target URLs in `Listeners::initializeRoutes()`, not the Module map. Prefer a controller string handler. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
+11. **PHP version:** when **planning** programming, **ASK** whether to stay on **PHP 7.4+** (DotApp default) or write for a higher version. No answer → **7.4+**. See [§2i](#2i-php-version-must).
+12. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core bug.
+13. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md).
+14. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes (or `[]` for a listener-only module). `Listeners::initializeRoutes()` may list different producer/target prefixes (or `null` to inherit). **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned that this listener file registers on every request. After either map changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
+15. **Extender (judge):** **MUST NOT** Extender every method. Opt in when another module would reasonably **replace this output** (page/block HTML, cart, export). Owner `exists()` + `call()`; an ordinary result returns immediately, while `isOriginal()` alone continues owner logic. Register `extend()` in **`Listeners::register()`** before module initialization; put target URLs in `Listeners::initializeRoutes()`, not the Module map. Prefer a controller string handler. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 
 ### Dotapper-first rule
 
@@ -122,6 +123,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Perf / readability pass** | The greps in [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 | `->all()` on a growing table, a query/HTTP/log **inside** `foreach`, `select('*')` on a list, O(n²) lookup or array copy per row, a new `WHERE`/`ORDER BY` column with **no index**, an index with no comment naming its query, a public method with **tags-only PHPDoc** (`@return array<string, mixed>` and no purpose sentence), comments that restate the code |
 | **Hooks** | Grep `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/`; `return false` treated as a veto instead of `triggerWithVeto()` + `Veto` ([41](41-MODULE-HOOKS.md)) |
 | **Extender** | New page/cart/export renderer **or** `Extender::` in the chunk | Spray on every persist/helper; skipped opt-in on a judged swap; `extend()` delayed to Module `initialize()`; target URLs placed in the Module map; listener-only Module `[]` with omitted/`null` listener routes; `.loaded` used although the point may run during target `initialize()`; `call()` without owner `exists()`; ordinary result does not return immediately; `original()` marker returned/serialized instead of checked with `isOriginal()`; fake `NEXT`; `$request` / secrets in args; Events used to replace a method; `['*']` just to attach; patch of another module to insert `call()` ([12](12-SERVICES.md) §10, [§2h](#2h-extender-judge--not-every-method)) |
+| **PHP 7.4+** | Diff of new PHP | PHP 8+ syntax on a 7.4+ module: `match`, `?->`, union/`mixed` types, named args, constructor promotion, `#[…]`, `enum`, `readonly`, `never`, `str_contains` / `str_starts_with` / `str_ends_with` — unless the plan named a higher version ([§2i](#2i-php-version-must)) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
@@ -180,6 +182,20 @@ When the owner **does** opt in, mechanics are MUST:
 **MUST NOT** skip a render/cart/export surface the agent already judged as highly replaceable; spray Extender on every method; register the same target in both listener and Module initialization; use `trigger()` / `triggerWithVeto()` to replace a method; run the original after an ordinary replacement result; use a public scalar `ORIGINAL` sentinel or invent `next()`; patch another module to insert `Extender::call`.
 
 Canonical: [12](12-SERVICES.md) §10. Sample: [EX-17](examples/EX-17-extender.md).
+
+### 2i. PHP version (**MUST**)
+
+DotApp targets **PHP 7.4+**. Modules **MUST** default to that floor.
+
+**When planning programming, ASK in chat** (do not guess, do not skip):
+
+> Stay on PHP 7.4+ (the DotApp default), or write this work for a higher PHP version?
+
+If they do not name a higher version: **stay on 7.4+**. Typed properties, arrow functions (`fn`), `??=`, nullable types (`?int`), and `void` are fine.
+
+**MUST NOT** until they name a higher version: union types (`int|string`), `mixed`, named arguments, `match`, nullsafe `?->`, constructor property promotion, attributes `#[…]`, `enum`, `readonly`, `never`, first-class callables (`strlen(...)`), `str_contains` / `str_starts_with` / `str_ends_with` (use `strpos` / `substr`).
+
+A silent PHP 8+ upgrade “because it is nicer” is a **bug**.
 
 ---
 
@@ -281,6 +297,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend, and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
 21. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md).
 22. **Extender (judge — not every method):** opt in when another module would reasonably replace this **output** (page/block, cart, export). Owner: `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender: `extend()` in `Listeners::register()`, target URLs in `Listeners::initializeRoutes()`, own Module routes only (or `[]`), controller string preferred. **MUST NOT** use `.loaded` for an initialize-time point, spray on every method, invent `next()`, return the marker, use Events to replace a method, pass `$request`/secrets, or patch the owner. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
+23. **PHP version (MUST):** default **PHP 7.4+**. When **planning**, **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, promotion, attributes, `enum`, `readonly`, `str_contains`, …) unless they named a higher version. Canonical: [§2i](#2i-php-version-must).
 
 ---
 
@@ -319,6 +336,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Request: data() = protected; data(true) = original — MUST true for passwords/HTML/hashes
  * - Login-required routes: prefix /{Module}/… + Gate@login 403 Response; MUST register handlers inside Auth::isLogged()
  * - Comments: English; labels Why: / About: / Section: — not every line, not unlabeled
+ * - PHP: default 7.4+; ASK in the plan for a higher version — NOT match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they said yes (00 §2i)
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
  * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action, Events::trigger vs .hooks — 00 §2c / 41
  * - Visible outcome (LAW): user always sees save/fail; public = mark the wrong field; build your own toast — 00 §2d
@@ -355,6 +373,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 |------|--------|--------------------|
 | **Anything (always)** | **18** error handling / return values — incl. **§9 catch bus** (`dotapp.catch`) | — |
 | Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
+| Plan / PHP version | **00 §2i** — ASK 7.4+ (default) vs a higher PHP; no answer → 7.4+ | — |
 | **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware conflicts | [17](17-CHECKLISTS.md) Finish gate |
 | Stay-on-page save / errors | **00 §2d** visible outcome — mark the wrong field; your own toast/status | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |

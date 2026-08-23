@@ -70,3 +70,7 @@ After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** ever
 ## Extender (judge — not every method)
 
 **MUST NOT** Extender every method. Owner: `Extender::exists()` then `Extender::call(...)`; ordinary result returns, only `isOriginal()` continues owner logic. Extender: register `Extender::extend()` in **`Listeners::register()`** before Module initialization; explicit target URLs in `Listeners::initializeRoutes()`; own Module routes only or `[]`; prefer `'Module:Controller@method!'`. **MUST NOT** invent `next()`, return the marker, use `['*']` just to attach, `.loaded` for an initialize-time point, Events, `$request`/secrets, or duplicate registration. `AIRULES/12-SERVICES.md` §10, `AIRULES/00` §2h, EX-17.
+
+## PHP 7.4+ (ASK in the plan)
+
+Default language is **PHP 7.4+**. **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** `match`, `?->`, union/`mixed`, named args, constructor promotion, attributes, `enum`, `readonly`, `str_contains` / `str_starts_with` / `str_ends_with` unless they named a higher version. `AIRULES/00` §2i.

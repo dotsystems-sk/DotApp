@@ -13,6 +13,8 @@ Correct + secure is not enough. Code you ship **MUST** also be **cheap** (I/O, m
 3. **Readable beats clever.** Optimise the code path that **scales** (a loop over the whole table, a query per row, an index that is missing). **MUST NOT** obfuscate a 20-row loop to save microseconds. Every optimisation that is not obvious gets a **`// Why:`** comment (§7).
 4. **Optimise your module, not DACore.** Reuse what DACore already exposes (`DotApp::call("DACore:…")`, its assets, its page shell). **MUST NOT** patch, extend, or duplicate `app/modules/DACore/` for performance, and **MUST NOT** read or write `dacore_*` tables directly ([00](00-AGENT-CONTRACT.md) §1).
 
+**PHP 7.4+:** module PHP **MUST** stay on the DotApp floor unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i). Typed properties and `fn` are fine. `match`, `?->`, union/`mixed` types, named arguments, constructor promotion, attributes, `enum`, `readonly`, and `str_contains` / `str_starts_with` / `str_ends_with` are **not**.
+
 ---
 
 ## 1. Algorithms and memory (**MUST**)
@@ -298,6 +300,7 @@ Part of the finish gate ([00](00-AGENT-CONTRACT.md) §2c). Grep **your module + 
 | 9 | `$css`, `$js`, new assets | a library DACore already ships; a second file that could be one |
 | 10 | new public methods | no PHPDoc **purpose sentence**; tags-only (`@return array<string, mixed>` with no description); missing `@param` / `@return` meaning; a `Controllers/` / `Middleware/` public method whose PHPDoc does **not** start with `CRCchecking —`; that line names a CRC prefix **and** the body still calls `crcCheck(` |
 | 11 | the diff, comment by comment | comments that restate the code or echo the prompt; a logical step with no `// Why:`; a new page action with no `// About:` / `// Section:`; leftover `TODO` / dead code |
+| 12 | `match (`, `?->`, `str_contains(`, `str_starts_with(`, `str_ends_with(`, `#[`, `enum `, `readonly `, `: mixed` | PHP 8+ syntax on a 7.4+ module unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i) |
 
 **MUST NOT** skip a **named** useful `module.{mod}.{name}.hook` “for performance” — unused `trigger()` is cheap. **MUST NOT** fire a hook on every save to dodge this row ([41](41-MODULE-HOOKS.md)).
 

@@ -14,6 +14,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | SMS/mail/payment/lockout with no hook, or a trigger not listed in `.hooks` | Fire **`module.{mod}.{name}.hook`** when a future module would subscribe; document in `.hooks` ([41](41-MODULE-HOOKS.md)) |
 | Hook on every save / unlabeled `// turning SMS off…` | Judge first; comments **MUST** start with `Why:` / `About:` / `Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
+| PHP 8+ syntax (`match`, `?->`, `str_contains`, union/`mixed`, named args, promotion, `enum`) without asking | Default **PHP 7.4+**; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2i) |
 | Silent save / empty `.after()` / only a generic error when the field is known | Show success **and** fail; mark the wrong input ([00](00-AGENT-CONTRACT.md) §2d) |
 
 ## Controllers / routing

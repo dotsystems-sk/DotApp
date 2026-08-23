@@ -31,10 +31,16 @@ DotApp::call("DACore:Installations@insert!", string $module, string $installatio
 Inside one version callback, do it in this order:
 
 1. Create/alter **your own** tables
-2. `Rights@createGroup!` → `Rights@createRight!`
-3. `Menu@register` (needs the permission strings from step 2 in its `rights`)
-4. `AITools@register`
-5. `Installations@insert!` — only after everything above succeeded
+2. If the module creates accounts: `UserPolicy@registerOrigin` and require `{ok:true, origin_id>0}`
+3. `Rights@createGroup!` → `Rights@createRight!`
+4. `Roles@createGroup!` for every installer-managed user group (needs the rights from step 3)
+5. `Menu@register` (needs the permission strings from step 3 in its `rights`)
+6. `AITools@register`
+7. `Installations@insert!` — only after everything above succeeded
+
+`Rights@createGroup!` is the rights-catalog heading. `Roles@createGroup!` is the actual bundle assigned to users. Installer-created user groups **MUST** use stable `(creator, groupid)` identity and are automatically immutable (`editable = 0`). See [32](32-DACORE-RIGHTS.md) §1.
+
+If this module creates accounts (shop checkout, public register, import), **MUST** register in the installer with the same creator used on stamp/uninstall. **MUST** check `ok === true` and positive `origin_id`; a fire-and-forget call is a bug. Create flow is register → `Auth::createUser` → bound exact id lookup → `stampOrigin` → `read` exact token/id verification. Uninstall checks `removeOrigin` and stops/surfaces a refusal while profiles still use it. Canonical: [42](42-DACORE-USER-ORIGIN.md).
 
 ---
 
@@ -90,7 +96,30 @@ class Installation extends Installer
                     }
                 );
 
-                // ---- 2. rights ----
+                // ---- 2. account origin (required because this Shop creates customers) ----
+                $origin = DotApp::call(
+                    'DACore:UserPolicy@registerOrigin',
+                    'shop.checkout',
+                    'Shop'
+                );
+                if (
+                    !is_array($origin)
+                    || ($origin['ok'] ?? false) !== true
+                    || (int) ($origin['origin_id'] ?? 0) < 1
+                ) {
+                    $ok = false;
+                    $notes[] = 'shop.checkout origin failed';
+                    DotApp::call(
+                        "DACore:Installations@insert!",
+                        $module,
+                        $version,
+                        0,
+                        ['outcome' => 'failed', 'notes' => $notes]
+                    );
+                    return;
+                }
+
+                // ---- 3. rights ----
                 $groupId = DotApp::call("DACore:Rights@createGroup!", "Shop", "Shop");
                 if ($groupId === null) {
                     $ok = false;
@@ -120,7 +149,24 @@ class Installation extends Installer
                     }
                 }
 
-                // ---- 3. menu (ASK shared vs module-own — [31]) ----
+                // ---- 4. immutable installer-managed user group ----
+                $managerRoleId = DotApp::call(
+                    "DACore:Roles@createGroup!",
+                    "Shop managers",
+                    "Manage the product catalog.",
+                    "Shop",              // creator
+                    "managers",          // stable internal groupid, never a numeric id
+                    [
+                        ['module' => 'Shop', 'rightname' => 'items.view'],
+                        ['module' => 'Shop', 'rightname' => 'items.edit'],
+                    ]
+                );
+                if ($managerRoleId === null) {
+                    $ok = false;
+                    $notes[] = 'installer user group failed';
+                }
+
+                // ---- 5. menu (ASK shared vs module-own — [31]) ----
                 // Shared sample: header + type 2 + leaf. Many items: header + one entry, inner withMenu $menuId.
                 $menuRights = json_encode(['dotapp.root', 'Shop.administrator', 'Shop.items.view']);
 
@@ -149,14 +195,14 @@ class Installation extends Installer
                     }
                 }
 
-                // ---- 4. AI tools (optional) ----
+                // ---- 6. AI tools (optional) ----
                 foreach (self::aiTools() as $toolid => $tool) {
                     if (DotApp::call("DACore:AITools@register", $toolid, $tool) !== true) {
                         $notes[] = 'ai tool failed: ' . $toolid;   // non-fatal
                     }
                 }
 
-                // ---- 5. record the result ----
+                // ---- 7. record the result ----
                 DotApp::call(
                     "DACore:Installations@insert!",
                     $module,
@@ -190,6 +236,22 @@ class Installation extends Installer
                     DotApp::call("DACore:AITools@delete", $toolid);
                 }
 
+                $originRemoval = DotApp::call(
+                    'DACore:UserPolicy@removeOrigin',
+                    'shop.checkout',
+                    'Shop'
+                );
+                if (!is_array($originRemoval) || ($originRemoval['ok'] ?? false) !== true) {
+                    // Why: customer profiles still using this token must not be silently orphaned/remapped.
+                    Logger::use()->error('Shop origin cleanup refused', [
+                        'origin' => 'shop.checkout',
+                    ]);
+                    throw new \RuntimeException(
+                        'Shop cannot be removed while customer accounts still use its origin.'
+                    );
+                }
+
+                DotApp::call("DACore:Roles@deleteGroup!", "Shop", "managers");
                 DotApp::call("DACore:Rights@deleteGroup!", "Shop");
 
                 // No unregister API for menu items - remove them explicitly.
@@ -493,6 +555,10 @@ After DACore’s installer succeeds, it overwrites these stubs from `init/`. Unt
 - [ ] Pack/host discovery: extras **asked** when this module is a pack or a host that picks packs; tokens match the host contract ([35](35-DACORE-INSTALL.md) §3c)
 - [ ] `exist!` / `insert!` use the `!` suffix (instance methods)
 - [ ] Rights created before the menu that references them
+- [ ] Installer-managed user groups use `Roles@createGroup!` after every referenced right exists
+- [ ] Each installer group has a stable `(creator, groupid)` identity; no saved numeric role id
+- [ ] Module that creates accounts: checked `registerOrigin` (`ok === true`, positive id) in install; create does exact bound id lookup + `stampOrigin` + `read` token/id verification; uninstall checks `removeOrigin` and surfaces/stops on refusal ([42](42-DACORE-USER-ORIGIN.md))
+- [ ] `Roles@createGroup!` / `assignGroup!` / `removeGroup!` / `deleteGroup!` return values checked
 - [ ] `Menu@register` return value checked (`!== true`)
 - [ ] `Rights@createGroup!` / `createRight!` checked for `null`
 - [ ] Menu rights JSON contains `dotapp.root`

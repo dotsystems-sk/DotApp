@@ -1,5 +1,7 @@
 # 01 — Architecture
 
+DotApp is a **PHP 7.4+** framework. Modules default to that floor unless the user names a higher version in the plan ([00](00-AGENT-CONTRACT.md) §2i).
+
 ## Request lifecycle
 
 ```mermaid

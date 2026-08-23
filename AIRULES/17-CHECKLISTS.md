@@ -8,6 +8,7 @@
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
 - [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, `index.php`, other modules — **not even if asked** (kernel is frozen)
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
+- [ ] **PHP version:** asked whether to stay on **PHP 7.4+** (default) or write for a higher version; no answer → 7.4+ ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] New module has visible UI: asked once for display name/purpose, optional logo/banner, placement, colours and alt text; backend-only module skipped the question; “no custom branding” was offered ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b)
 - [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
 - [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
@@ -153,6 +154,7 @@ Tick only the rows for the surface you touched.
 - [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, tags-only PHPDoc, comments that restate the code)
 - [ ] **Hooks:** grepped `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/`; pre-action stop uses `triggerWithVeto()` + `Veto`, not `return false` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
 - [ ] **Extender (judge):** not on every method. If opted in: owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; marker is never returned/serialized; no `next()`; `extend()` in `Listeners::register()`; target URLs in explicit `Listeners::initializeRoutes()`; Module map has only own URLs or `[]`; controller string preferred; no listener `['*']` just to attach; no `.loaded` for initialize-time points; no `$request`/secrets; not Events; no duplicate registration ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h)
+- [ ] **PHP 7.4+:** grepped the chunk for PHP 8+ syntax (`match`, `?->`, `str_contains`, `str_starts_with`, `str_ends_with`, `#[`, `enum `, `readonly `, `: mixed`) unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, …)
 - [ ] No core file modifications in the diff

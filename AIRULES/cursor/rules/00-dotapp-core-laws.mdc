@@ -19,13 +19,14 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 2. Use `php dotapper.php` to create modules/controllers/models/middleware
 3. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
 4. **Cursor credits:** when planning programming, **ASK** before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only, not the coder. (`AIRULES/00` §2b)
-5. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core bug.
-6. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware (`AIRULES/00` §2c). Do not claim done without it.
-7. **Visible outcome (LAW):** user always sees save/fail. Public: mark the wrong field. Build your own toast. (`AIRULES/00` §2d)
-8. **Visible module identity:** in the plan, **ASK once** for name/purpose, optional logo/banner, placement, colours and alt text. Offer text-only/no branding; skip backend-only modules. Never invent/hotlink a mark. (`AIRULES/05` §8b)
-9. **Module hooks (LAW):** fire `Events::trigger('module.{mod}.{hook_name}.hook')` only when another module could log/history/sync — **not** every save. Comment block + `app/modules/<YourModule>/.hooks`. Pre-action stop = `triggerWithVeto()` + `Veto`. (`AIRULES/41`)
-10. **Do not wake other modules:** `Module::initializeRoutes()` = this module’s prefixes. `Listeners::initializeRoutes()` may be narrower or `null` to inherit. After either list changes: `php dotapper.php --optimize-modules`. (`AIRULES/03`)
-11. **Extender (judge — not every method):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues. Extender `extend()` in `Listeners::register()` before Module initialization. Target URLs in listener map; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time or Events. (`AIRULES/12` §10, `AIRULES/00` §2h)
+5. **PHP version:** when planning programming, **ASK** 7.4+ (default) vs a higher PHP. No answer → 7.4+. (`AIRULES/00` §2i)
+6. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core bug.
+7. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware (`AIRULES/00` §2c). Do not claim done without it.
+8. **Visible outcome (LAW):** user always sees save/fail. Public: mark the wrong field. Build your own toast. (`AIRULES/00` §2d)
+9. **Visible module identity:** in the plan, **ASK once** for name/purpose, optional logo/banner, placement, colours and alt text. Offer text-only/no branding; skip backend-only modules. Never invent/hotlink a mark. (`AIRULES/05` §8b)
+10. **Module hooks (LAW):** fire `Events::trigger('module.{mod}.{hook_name}.hook')` only when another module could log/history/sync — **not** every save. Comment block + `app/modules/<YourModule>/.hooks`. Pre-action stop = `triggerWithVeto()` + `Veto`. (`AIRULES/41`)
+11. **Do not wake other modules:** `Module::initializeRoutes()` = this module’s prefixes. `Listeners::initializeRoutes()` may be narrower or `null` to inherit. After either list changes: `php dotapper.php --optimize-modules`. (`AIRULES/03`)
+12. **Extender (judge — not every method):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues. Extender `extend()` in `Listeners::register()` before Module initialization. Target URLs in listener map; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time or Events. (`AIRULES/12` §10, `AIRULES/00` §2h)
 
 ## Syntax locks
 
@@ -59,6 +60,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Visible outcome (LAW): user always sees save/fail; public = mark the wrong field; build your own toast. (`AIRULES/00` §2d)
 - Module hooks (LAW): useful side-effects MUST `Events::trigger('module.{mod}.{name}.hook')` + Hook/Why/About/Params/Use block + `app/modules/<M>/.hooks` — NOT every save; NOT secrets; NOT patch the other module; pre-action stop = `triggerWithVeto()` + `Veto` (`AIRULES/41`, EX-16)
 - Extender (judge — not every method): owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; `extend()` in `Listeners::register()`; target listener routes; own Module routes or `[]`; controller string preferred — NOT `next()`, marker response, `.loaded` for initialize-time, global `['*']` just to attach, Events, `$request`/secrets, duplicate (`AIRULES/12` §10, EX-17)
+- PHP 7.4+ (ASK in the plan): default floor; no `match` / `?->` / union `mixed` / named args / promotion / attributes / `enum` / `readonly` / `str_contains` unless they named a higher version (`AIRULES/00` §2i)
 
 ## Never ignore return values (AIRULES/18)
 
