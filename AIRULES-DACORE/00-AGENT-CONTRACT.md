@@ -100,6 +100,23 @@ Required compatibility:
 
 The main chat model MUST implement and review this runtime core change.
 
+### Framework-author exception — installer insertion order
+
+The user explicitly authorizes removing `ksort` / `krsort` from module install/uninstall so callbacks run in `installer()` / `uninstaller()` PHP array order.
+
+Allowed paths for this task:
+
+- `app/parts/Installer.php`
+- framework tests under `app/tests/`
+- related AIRULES documentation and examples
+- DACore `Installation.php` only to drop a sort override that existed because of core `ksort`
+
+Required compatibility:
+
+- `install()` **MUST** `foreach` the map as written. **MUST NOT** `ksort`, `uksort`, `krsort`, or `usort` installer/uninstaller keys (`1.0.10` sorts before `1.0.9`).
+- `uninstall()` **MUST** reverse that written order (`array_reverse`, preserve keys), not `krsort`.
+- An optional `$version` ceiling/floor may skip keys with `version_compare`, but **MUST NOT** `break` in a way that assumes the map was sorted.
+
 ### DACore files — strict default, informed exception only
 
 **Default (MUST):** do **not** edit, patch, add, or delete anything under `app/modules/DACore/` — PHP, views, **assets**, menu rows, settings, anything. Implement in the **current** module only. Consume `DotApp::call("DACore:…")`.
@@ -125,7 +142,7 @@ See [§7](#7-dacore-is-sacred-same-rank-as-framework-core).
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
-6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. Develop with **`install.php`** and **live** root init files. Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when the user asks ([35](35-DACORE-INSTALL.md) §4–§5). A non-DACore module: no zip — `install.php` and copy the folder. **Create + zip in one ask:** [§2e](#2e-dacore-installable-zip-must--law). **MUST** keep `about.php` in the module root: every `Installation.php` version key **MUST** have a matching changelog entry. If the user did not supply the release notes, **ASK**.
+6. **Migrations:** list `installer()` keys in the order they must run. Core `install()` is `foreach` on that array — **MUST NOT** `ksort` / `uksort` / `krsort` / `usort` the map (`1.0.10` would run before `1.0.9`). After you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. Develop with **`install.php`** and **live** root init files. Pack `dainstall.php` + `init/` **only** for a **DACore-bound** module and only when the user asks ([35](35-DACORE-INSTALL.md) §4–§5). A non-DACore module: no zip — `install.php` and copy the folder. **Create + zip in one ask:** [§2e](#2e-dacore-installable-zip-must--law). **MUST** keep `about.php` in the module root: every `Installation.php` version key **MUST** have a matching changelog entry. If the user did not supply the release notes, **ASK**. Canonical: [07](07-SCHEMA-AND-INSTALL.md).
 7. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship SQL paging **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the admin shell is not a pager. **HTML / classes / `live(el, e)` / encrypted `data-page` / COUNT vs `paginate()['total']`:** follow [40-DACORE-LIST-PAGER.md](40-DACORE-LIST-PAGER.md) **as law**. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 8. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
 9. **Cursor credits:** when **planning** a programming task, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. See [§2b](#2b-cursor-credits--subagents-must).
@@ -397,6 +414,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Patch another module (or DACore) to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | DACore zip still containing `install.php`, or missing `dainstall.php` / `init/` | **MUST** [§2e](#2e-dacore-installable-zip-must--law) — installer **rejects** `install.php` and **never runs** Installation without `dainstall.php` |
+| Installer/uninstaller callback uses `return` to stop after a critical failure | **BUG:** callback returns are ignored. Report then throw a generic `RuntimeException`, or DACore may accept a broken install/delete the folder after partial cleanup ([35](35-DACORE-INSTALL.md) “failure propagation”) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
@@ -436,6 +454,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 23. **Extender (judge — not every method):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender `extend()` belongs in `Listeners::register()`, target URLs in listener map, own Module routes or `[]`, controller string preferred. **MUST NOT** use `.loaded` for initialize-time, spray on every method, invent `next()`, return the marker, use Events, pass `$request`/secrets, or patch the owner / DACore. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 24. **PHP version (MUST):** default **PHP 7.4+**. When **planning**, **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, promotion, attributes, `enum`, `readonly`, `str_contains`, …) unless they named a higher version. Canonical: [§2i](#2i-php-version-must).
 25. **User origin (MUST):** global users/email/session; origin is provenance, not isolation supplied by the framework. Your module **MUST** create and verify its catalog/profile mapping, use generic duplicate/foreign failures, enforce exact origin on login + 2FA + every route gate, and INNER JOIN the profile with a bound origin on lists/writes. DACore `dacore_login` is only its form allow-list. A DACore-replacement user admin **MUST** be asked and warned. No RCE, cross-origin IDOR, or grant of `dotapp.root` / DACore `users.*` from a custom form. Canonical: [42](42-DACORE-USER-ORIGIN.md).
+26. **Installer key order (MUST):** `installer()` / `uninstaller()` keys run in **PHP array insertion order** (`foreach`). **MUST NOT** `ksort`, `uksort`, `krsort`, or `usort` those maps — string sort runs `1.0.10` before `1.0.9` and breaks dependent schema. Put the next version **after** the last key. Uninstall is reverse of that written order. Canonical: [07](07-SCHEMA-AND-INSTALL.md).
+27. **Installer/uninstaller failure propagation (MUST):** migration callback return values are ignored. Critical failures **MUST** report then throw a generic `RuntimeException`; `return`, `return false`, or only writing status `0` does not stop DACore. Check public API returns, every DB execute, and the final installation-marker insert. An uninstall throw keeps the module folder/registry available for retry. Delete only this module’s menu prefix and stop before dependent destructive steps. Canonical: [35](35-DACORE-INSTALL.md).
 
 ---
 
@@ -582,7 +602,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Auth / 2FA / permissions | **11** (incl. §11 privilege / secrets / SQL owner / bot **warn**), **09** (`twoFactor`), **19** (`data(true)`), **32** | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | **Shop / custom register-login / user list** | **[42](42-DACORE-USER-ORIGIN.md)** — stamp origin, isolate by `origin_id`, ASK before a DACore-replacement admin, non-escalatable code | [11](11-AUTH-AND-CRYPTO.md), [24](24-ATTACK-VECTORS.md) |
 | **Any attack surface (input, auth, output, upload, public endpoint)** | **24** attack vectors — open the matching section, then §11 threat pass | [EX-01](examples/EX-01-secure-form-complete.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
-| **New table / migration / any loop or query you care about** | **25** performance — §1 memory, §2 I/O, **§3 indexes**, §4 column types, §5 big lists, §6 frontend | [EX-13](examples/EX-13-schema-migrations.md), [EX-04](examples/EX-04-database-crud.md) |
+| **New table / migration / any loop or query you care about** | **25** performance — §1 memory, §2 I/O, **§3 indexes**, §4 column types, §5 big lists, §6 frontend. **07** = `installer()` keys in written order, **no ksort** | [EX-13](examples/EX-13-schema-migrations.md), [EX-04](examples/EX-04-database-crud.md), [EX-D04](examples/EX-D04-dacore-installer.md) |
 | **Every file you write (CRCchecking + PHPDoc purpose + Why/About/Section)** | **25 §7** | [EX-01](examples/EX-01-secure-form-complete.md) |
 | Cache / logs / sessions | 20 | [EX-10](examples/EX-10-cache-logger-session.md) |
 | Email / SMS / QR | 21 | [EX-11](examples/EX-11-email-sms-qr.md) |

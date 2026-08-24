@@ -68,6 +68,33 @@ All matching listeners register before any matching module performs full initial
 
 Without `modulesAutoLoader.php`, DotApp still evaluates listener and module routes separately at runtime. Keep listeners cheap anyway.
 
+### Base translations for sleeping modules
+
+Menu rows and shared widget labels are translated while DACore renders them. A route-bound module may still be asleep at that point, so its full locale files registered in `initialize()` are not available.
+
+Override `baseLanguages()` only when the module owns menu or shared widget text that must remain translated while the module sleeps:
+
+```php
+public function baseLanguages()
+{
+    return [
+        ['file' => 'Shop:menu_sk.json', 'locale' => 'sk_sk'],
+        ['file' => 'Shop:menu_en.json', 'locale' => 'en_us'],
+    ];
+}
+```
+
+**MUST:**
+
+1. Keep these JSON files small: menu labels and shared widget text only (each file is capped at 256 KiB). Full page copy stays in the normal locale files registered by `initialize()`.
+2. Use only `Module:file.json` paths owned by this module and located under its `translations/` directory.
+3. Keep `baseLanguages()` pure: return descriptors only; no DB, HTTP, logging, routes, listeners, or Translator calls.
+4. Rebuild `modulesAutoLoader.php` after changing the descriptors or their JSON contents.
+
+The inherited method returns `[]`. An empty result does not scan `translations/`, inspect `module.init.php`, or wake the module. It deliberately keeps the legacy main-JSON behavior; therefore a menu label may change language when that module later wakes. That is a module-author configuration error, not a reason for a global filesystem scan.
+
+The optimizer compiles the small JSON files into an optional `$baseLanguages` map while keeping `$modulesAutoLoaderVersion = 2`. Old v2 files without this variable work unchanged. Runtime retains and applies only the active locale after matching modules initialize. It first flushes deferred main locale files, then intentionally lets the base catalog override duplicate main-JSON keys; the same overlay is restored after a late lazy module load. Without the optimizer, DotApp reads only active-locale base files from already declared module classes. Both modes use alphabetical module order; the first module alphabetically keeps a conflicting source key. Inside one module, a later descriptor may refine an earlier descriptor from that same module.
+
 ### Login-required routes (**MUST**)
 
 A page meant only for a logged-in user **MUST NEVER** render for an anonymous visitor. **Admin / DACore URLs: no exceptions.**

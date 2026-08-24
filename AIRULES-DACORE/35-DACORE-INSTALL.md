@@ -28,6 +28,8 @@ DotApp::call("DACore:Installations@insert!", string $module, string $installatio
 
 ## 2. Migration order that works
 
+**Across versions:** keys in `installer()` run in the order you write them (`foreach`). **MUST NOT** sort that array. Put `1.0.9` before `1.0.10` in the PHP source if 1.0.10 needs 1.0.9. Canonical: [07](07-SCHEMA-AND-INSTALL.md).
+
 Inside one version callback, do it in this order:
 
 1. Create/alter **your own** tables
@@ -51,6 +53,7 @@ If this module creates accounts (shop checkout, public register, import), **MUST
 namespace Dotsystems\App\Modules\Shop;
 
 use Dotsystems\App\DotApp;
+use Dotsystems\App\Modules\Shop\Libraries\CatchBus;
 use Dotsystems\App\Parts\DB;
 use Dotsystems\App\Parts\Installer;
 use Dotsystems\App\Parts\Logger;
@@ -203,13 +206,17 @@ class Installation extends Installer
                 }
 
                 // ---- 7. record the result ----
-                DotApp::call(
+                $recorded = DotApp::call(
                     "DACore:Installations@insert!",
                     $module,
                     $version,
                     $ok ? 1 : 0,
                     ['outcome' => $ok ? 'ok' : 'partial', 'notes' => $notes]
                 );
+                if ($recorded !== true || $ok !== true) {
+                    CatchBus::reportCatch(null, 'error', ['version' => $version], 'Shop installation failed');
+                    throw new \RuntimeException('Shop installation failed.');
+                }
             },
 
             '1.0.1' => function () {
@@ -223,7 +230,11 @@ class Installation extends Installer
                     $ok = false;
                     Logger::use()->error('Shop 1.0.1', $error);
                 });
-                DotApp::call("DACore:Installations@insert!", 'Shop', '1.0.1', $ok ? 1 : 0, ['outcome' => $ok ? 'ok' : 'failed']);
+                $recorded = DotApp::call("DACore:Installations@insert!", 'Shop', '1.0.1', $ok ? 1 : 0, ['outcome' => $ok ? 'ok' : 'failed']);
+                if ($recorded !== true || $ok !== true) {
+                    CatchBus::reportCatch(null, 'error', ['version' => '1.0.1'], 'Shop update failed');
+                    throw new \RuntimeException('Shop installation failed.');
+                }
             },
         ];
     }
@@ -243,29 +254,54 @@ class Installation extends Installer
                 );
                 if (!is_array($originRemoval) || ($originRemoval['ok'] ?? false) !== true) {
                     // Why: customer profiles still using this token must not be silently orphaned/remapped.
-                    Logger::use()->error('Shop origin cleanup refused', [
-                        'origin' => 'shop.checkout',
-                    ]);
-                    throw new \RuntimeException(
-                        'Shop cannot be removed while customer accounts still use its origin.'
-                    );
+                    CatchBus::reportCatch(null, 'error', [], 'Shop origin cleanup refused');
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
                 }
 
-                DotApp::call("DACore:Roles@deleteGroup!", "Shop", "managers");
-                DotApp::call("DACore:Rights@deleteGroup!", "Shop");
+                if (DotApp::call("DACore:Roles@deleteGroup!", "Shop", "managers") !== true) {
+                    CatchBus::reportCatch(null, 'error', [], 'Shop role cleanup failed');
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
+                if (DotApp::call("DACore:Rights@deleteGroup!", "Shop") !== true) {
+                    CatchBus::reportCatch(null, 'error', [], 'Shop rights cleanup failed');
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
 
                 // No unregister API for menu items - remove them explicitly.
+                $menuOk = false;
                 DB::module('RAW')->q(function ($qb) {
-                    $qb->raw("DELETE FROM `dacore_menu` WHERE `menuid` LIKE 'Shop.%'", []);
-                })->execute(null, function ($error) {
-                    Logger::use()->error('Shop menu cleanup', $error);
-                });
+                    $qb->raw(
+                        'DELETE FROM `dacore_menu` WHERE `menuid` LIKE :prefix',
+                        ['prefix' => 'Shop.%']
+                    );
+                })->execute(
+                    function () use (&$menuOk) {
+                        $menuOk = true;
+                    },
+                    function ($error) use (&$menuOk) {
+                        CatchBus::reportDb($error);
+                        $menuOk = false;
+                    }
+                );
+                if ($menuOk !== true) {
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
 
+                $tableOk = false;
                 DB::module('RAW')->q(function ($qb) {
                     $qb->raw("DROP TABLE IF EXISTS `shop_items`", []);
-                })->execute(null, function ($error) {
-                    Logger::use()->error('Shop drop table', $error);
-                });
+                })->execute(
+                    function () use (&$tableOk) {
+                        $tableOk = true;
+                    },
+                    function ($error) use (&$tableOk) {
+                        CatchBus::reportDb($error);
+                        $tableOk = false;
+                    }
+                );
+                if ($tableOk !== true) {
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
             },
         ];
     }
@@ -296,6 +332,20 @@ class Installation extends Installer
 ```
 
 Deleting `dacore_menu` rows directly is acceptable **only in an uninstaller**, because DACore offers no unregister API. Never do it during normal operation. Delete **only your** `menuid` prefix (`Shop.%`). An extension that added items under another module **MUST NOT** delete that host’s prefix. Own sidebar: register a `type => 0` header. **ASK** shared vs module-own before a new module; group with `type => 2` or use header + one entry ([31](31-DACORE-MENU.md)).
+
+### Installer/uninstaller failure propagation (**MUST**)
+
+`Installer::install()` and `Installer::uninstall()` invoke migration callbacks but do not inspect callback return values. DACore removes the plugin folder after `uninstall()` returns normally. Therefore:
+
+- **MUST NOT** use `return`, `return false`, or a failed status row to “stop” a critical installer/uninstaller callback. Those values are ignored by the outer lifecycle.
+- A critical API/DB failure **MUST** report through the module catch helper and then throw a generic `\RuntimeException`. The exception is the signal that prevents DACore from accepting the install or deleting the module folder.
+- The exception text **MUST NOT** include SQL, API messages, tokens, paths, rights, or request data. Detailed diagnostics stay in the catch trail.
+- Check every public cleanup API return (`=== true` / documented success shape), every `execute()` result, and the final `Installations@insert!` result.
+- Uninstall critical preconditions run before destructive cleanup. Example: an in-use registered origin must throw before groups, rights, menu rows, tables, or the module folder are removed.
+- Delete installer groups before their rights catalog. Delete only this module’s menu prefix. A failure stops immediately; do not continue into dependent destructive steps.
+- A final release migration **MUST** verify all required earlier migration markers. This catches an older callback that returned without recording success before DACore accepts the package.
+
+The finish gate must inspect the actual outer lifecycle (`Installer::install()` / `uninstall()` and DACore package removal), not assume a callback `return` aborts it.
 
 ---
 
@@ -441,6 +491,30 @@ DACore does **not** assign a global meaning to extra2–extra5. The **host** mod
 
 ---
 
+## 3d. Lazy extension providers and skin packages
+
+DACore owns bounded v1 registries for email/SMS/notification/webhook/IP-geo drivers, dashboard widgets and settings panels. A provider registers through the matching documented DACore controller, uses its exact module name as `creator`, supplies `contract_version => 1`, and keeps credentials in its own storage or the dedicated sender/endpoint record. It **MUST NOT** write `dacore_*` directly.
+
+- Provider runtime is a precise `Module:Controller@method` callable. DACore resolves it with `DotApp::call()` only when that service is enabled and requested; provider `module.init.php`, listeners and settings are not booted for discovery.
+- Keep stable provider keys. An existing key cannot be claimed by another `creator`.
+- New UI contributions and non-legacy orchestration are disabled by default. Enabling is an operator decision.
+- DACore module uninstall runs its creator-scoped cleanup for every extension registry, menu entry and selected-skin fallback. Cleanup is exact and idempotent; a provider must not issue its own broad DACore deletes.
+- Registry mutations refresh `app/modules/dacoreAutoLoader.php` only when that optimization file already exists. The generated file is cache/runtime output and **MUST NOT** be included in a package.
+
+An administration-skin package uses these `about.php` discovery slots:
+
+| Slot | Required value |
+|------|----------------|
+| `extra1` | `dacore.admin-skin` |
+| `extra2` | `v1` |
+| `extra3` | `css` or `shell-css` |
+
+Both modes provide `assets/dacore-skin/skin.css`. `shell-css` also provides `views/dacore-skin/page.view.php`. Paths are fixed, local to the skin module, and contain no external asset discovery. DACore still owns the outer document and mandatory runtime assets; a missing/incompatible shell falls back to the default DACore page. Installation never activates a skin automatically.
+
+Canonical contracts: [30](30-DACORE-OVERVIEW.md) §3a, [33](33-DACORE-PAGES-AND-UI.md) §11, [37](37-DACORE-NOTIFICATIONS.md), [38](38-DACORE-EMAIL.md), [39](39-DACORE-SMS.md), [42B](42-DACORE-UI-CONTRIBUTIONS.md), [43](43-DACORE-WEBHOOKS.md).
+
+---
+
 ## 4. Development vs DACore zip (**MUST**)
 
 **This is not about the DACore module.** Do **not** rename, move, blank, or wrap `app/modules/DACore/` with `dainstall.php` / `init/`. The zip rules below apply **only** to **your** modules that **plug into DACore** (`app/modules/Shop/` with admin pages, menu, rights). A module that is **not** for DACore is never packed this way.
@@ -566,5 +640,8 @@ After DACore’s installer succeeds, it overwrites these stubs from `init/`. Unt
 - [ ] `dacore_ai_tools` verified to exist before registering tools
 - [ ] Uninstaller removes tools, rights, menu rows and your tables
 - [ ] Menu uninstall deletes only **your** `menuid` prefix (not a host module’s `LIKE 'Other.%'`) ([31](31-DACORE-MENU.md))
+- [ ] Critical installer/uninstaller failures report then throw a generic `RuntimeException`; no silent `return` / `return false`
+- [ ] Public cleanup API returns, DB executes, and final `Installations@insert!` are checked; failure prevents package acceptance/folder deletion
+- [ ] Final release migration verifies required earlier success markers
 - [ ] New module: user was **asked** shared vs module-own; many items are grouped (`type => 2`) or module-own ([31](31-DACORE-MENU.md))
 - [ ] Every `execute()` has both callbacks ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md))

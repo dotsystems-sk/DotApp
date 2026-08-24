@@ -71,6 +71,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Controller/middleware public method with no `CRCchecking —` first line, or prefix CRC in PHPDoc **and** `crcCheck()` in the body | First line names the **real** layer; prefix **XOR** action ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md)) |
 | `// turning SMS off is dangerous` without the label | **`// Why:`** turning SMS off is a dangerous flag — … ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
+| `ksort` / `uksort` / `krsort` / `usort` on `installer()` / `uninstaller()` keys | `foreach` in written order; uninstall = `array_reverse` of that map. `1.0.10` sorts before `1.0.9` ([07](07-SCHEMA-AND-INSTALL.md)) |
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
 | `CREATE TABLE items` / `dotapp_items` / `dacore_*` for a module | `{lowercase_modulename}_items` (Shop → `shop_items`) |

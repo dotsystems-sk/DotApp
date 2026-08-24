@@ -307,37 +307,73 @@ class DotApper
         $_SERVER['REQUEST_METHOD'] = 'dotapper';
         $_SERVER['HTTP_HOST'] = 'localhost';
         $_SERVER['SCRIPT_NAME'] = '/index.php';
-        include("./index.php");
+        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+        // Why: CLI boot. Router::before([url, url/*]) pada v jadre; catch aby sme vypisali aspon zozbierane routy.
+        $bootPartial = false;
+        try {
+            include("./index.php");
+        } catch (\Throwable $e) {
+            $bootPartial = true;
+        }
+        if (!isset($dotApp) || !is_object($dotApp)) {
+            try {
+                $dotApp = \Dotsystems\App\DotApp::dotApp();
+            } catch (\Throwable $e) {
+                $dotApp = null;
+            }
+        }
+        $globalHooks = (is_object($dotApp) && isset($dotApp->dotapper['GlobalHooks']) && is_array($dotApp->dotapper['GlobalHooks']))
+            ? $dotApp->dotapper['GlobalHooks']
+            : null;
+        $routesByUrl = (is_object($dotApp) && isset($dotApp->dotapper['RouteByURL']) && is_array($dotApp->dotapper['RouteByURL']))
+            ? $dotApp->dotapper['RouteByURL']
+            : [];
+        $this->clrScr();
+        if ($bootPartial) {
+            echo $this->colorText("yellow", "Partial listing: hook registration failed in a module. Showing collected routes only.\n");
+        }
         if ($route === null) {
-            $this->clrScr();
-            $vystup = $this->colorText("green", "\n\n Global MIDDLEWARE ( before, after ) \n");
-            $vystup = $this->bgColorText("white", $vystup);
-            echo $vystup . "\n";
-            print_r($dotApp->dotapper['GlobalHooks']);
-
+            if (is_array($globalHooks) && $bootPartial === false) {
+                $vystup = $this->colorText("green", "\n\n Global MIDDLEWARE ( before, after ) \n");
+                $vystup = $this->bgColorText("white", $vystup);
+                echo $vystup . "\n";
+                try {
+                    print_r($globalHooks);
+                } catch (\Throwable $e) {
+                    echo $this->colorText("yellow", "Global middleware skipped (not printable).\n");
+                }
+            }
             $vystup = $this->colorText("green", "\n\n ALL ROUTES: \n");
             $vystup = $this->bgColorText("white", $vystup);
             echo $vystup . "\n";
-            print_r($dotApp->dotapper['RouteByURL']);
+            print_r($routesByUrl);
         }
         if ($route !== null) {
-            $this->clrScr();
-            $vystup = $this->colorText("green", "\n\n Global MIDDLEWARE ( before, after ) \n");
-            $vystup = $this->bgColorText("white", $vystup);
-            echo $vystup . "\n";
-            $vztahujuSa = array();
-            foreach ($dotApp->dotapper['GlobalHooks'] as $key => $hook) {
-                if ($dotApp->router->match_url($key, $route)) {
-                    if (isset($vztahujuSa[$key])) $vztahujuSa[$key] = $dotApp->router->doatpperMergeArrays($vztahujuSa[$key], $hook);
-                    if (!isset($vztahujuSa[$key])) $vztahujuSa[$key] = $hook;
+            if (is_array($globalHooks) && $bootPartial === false && is_object($dotApp) && isset($dotApp->router)) {
+                $vystup = $this->colorText("green", "\n\n Global MIDDLEWARE ( before, after ) \n");
+                $vystup = $this->bgColorText("white", $vystup);
+                echo $vystup . "\n";
+                $vztahujuSa = array();
+                try {
+                    foreach ($globalHooks as $key => $hook) {
+                        if (!is_string($key)) {
+                            continue;
+                        }
+                        if ($dotApp->router->match_url($key, $route)) {
+                            if (isset($vztahujuSa[$key])) $vztahujuSa[$key] = $dotApp->router->doatpperMergeArrays($vztahujuSa[$key], $hook);
+                            if (!isset($vztahujuSa[$key])) $vztahujuSa[$key] = $hook;
+                        }
+                    }
+                    print_r($vztahujuSa);
+                } catch (\Throwable $e) {
+                    echo $this->colorText("yellow", "Global middleware skipped (not printable).\n");
                 }
             }
-            print_r($vztahujuSa);
-            if (isset($dotApp->dotapper['RouteByURL'][$route])) {
+            if (isset($routesByUrl[$route])) {
                 $vystup = $this->colorText("green", "\n\n ROUTE: \"" . $route . "\"\n");
                 $vystup = $this->bgColorText("white", $vystup);
                 echo $vystup . "\n";
-                print_r($dotApp->dotapper['RouteByURL'][$route]);
+                print_r($routesByUrl[$route]);
             } else {
                 $vystup = $this->colorText("white", " ROUTE \"");
                 $vystupRouta = $this->colorText("red", $route);
@@ -624,6 +660,9 @@ class DotApper
             exit(1);
         }
 
+        // Why: Validate the embedded template before creating a partial module directory.
+        $moduleInitBody = $this->moduleInitTemplate();
+
         // 3. Create the module directory
         $this->createDir($modulePath);
         if (!is_dir($modulePath)) {
@@ -648,7 +687,7 @@ class DotApper
         $this->createDir($modulePath . "/views/layouts");
         $this->createDir($modulePath . "/tests");
 
-        $file_body = base64_decode($this->file_base("/module.init.php"));
+        $file_body = $moduleInitBody;
         $file_body = str_replace("#modulenumber", strtolower($i), $file_body);
         $file_body = str_replace("#modulenamelower", strtolower($moduleName), $file_body);
         $file_body = str_replace("#modulename", $moduleName, $file_body);
@@ -708,6 +747,41 @@ class DotApper
             . "Start with `AIRULES/00-AGENT-CONTRACT.md`.\n";
     }
 
+    /**
+     * Add the inactive base-language example to the generated module initializer.
+     *
+     * @return string Decoded module initializer template.
+     * @throws \RuntimeException When the embedded template cannot be decoded or patched safely.
+     */
+    private function moduleInitTemplate(): string
+    {
+        $template = base64_decode($this->file_base("/module.init.php"), true);
+        if ($template === false) {
+            throw new \RuntimeException("The module initializer template is invalid.");
+        }
+
+        // Why: Patch one stable class boundary instead of hand-editing the opaque Base64 payload.
+        $marker = "\n\t}\n\t\n\tnew Module(\$dotApp);";
+        $example = "\n\n"
+            . "\t\t// Optional base translations for menu and shared widget text.\n"
+            . "\t\t// Core reads these small JSON files even while this module sleeps.\n"
+            . "\t\t// Keep this method commented, or return [], to use only the main\n"
+            . "\t\t// translation files registered in initialize(). With that fallback,\n"
+            . "\t\t// menu language can change when the module wakes.\n"
+            . "\t\t// public function baseLanguages() {\n"
+            . "\t\t//\treturn [\n"
+            . "\t\t//\t\t['file' => '#modulename:menu_sk.json', 'locale' => 'sk_sk'],\n"
+            . "\t\t//\t];\n"
+            . "\t\t// }\n";
+
+        $rendered = str_replace($marker, $example . $marker, $template, $replacements);
+        if ($replacements !== 1) {
+            throw new \RuntimeException("The module initializer template boundary is invalid.");
+        }
+
+        return $rendered;
+    }
+
     private function createExampleModule(string $moduleName)
     {
         $moduleName = ucfirst($moduleName);
@@ -729,6 +803,9 @@ class DotApper
             echo "Module already exists: $modulePath\n";
             exit(1);
         }
+
+        // Why: Validate the embedded template before creating a partial module directory.
+        $moduleInitBody = $this->moduleInitTemplate();
 
         // 3. Create the module directory
         $this->createDir($modulePath);
@@ -753,7 +830,7 @@ class DotApper
         $this->createDir($modulePath . "/views");
         $this->createDir($modulePath . "/views/layouts");
 
-        $file_body = base64_decode($this->file_base("/module.init.php"));
+        $file_body = $moduleInitBody;
         $file_body = str_replace("#modulenamelower", strtolower($moduleName), $file_body);
         $file_body = str_replace("#modulename", $moduleName, $file_body);
         $this->createFile($modulePath . "/module.init.php", base64_encode($file_body));

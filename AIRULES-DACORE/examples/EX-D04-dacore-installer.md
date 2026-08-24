@@ -4,6 +4,8 @@ Rules: [35](../35-DACORE-INSTALL.md), [32](../32-DACORE-RIGHTS.md), [31](../31-D
 
 Order inside a version: **tables → rights → menu → AI tools → record result**.
 
+Across versions: `installer()` keys run in **written order** (`foreach`). **MUST NOT** `ksort` / `uksort` / `krsort` / `usort` that map — `1.0.10` sorts before `1.0.9`.
+
 ## `Installation.php`
 
 ```php
@@ -11,6 +13,7 @@ Order inside a version: **tables → rights → menu → AI tools → record res
 namespace Dotsystems\App\Modules\Shop;
 
 use Dotsystems\App\DotApp;
+use Dotsystems\App\Modules\Shop\Libraries\CatchBus;
 use Dotsystems\App\Parts\DB;
 use Dotsystems\App\Parts\Installer;
 use Dotsystems\App\Parts\Logger;
@@ -148,13 +151,17 @@ class Installation extends Installer
                 }
 
                 // ---------- 6. record ----------
-                DotApp::call(
+                $recorded = DotApp::call(
                     "DACore:Installations@insert!",
                     self::MODULE,
                     $version,
                     $ok ? 1 : 0,
                     ['outcome' => $ok ? 'ok' : 'partial', 'notes' => $notes]
                 );
+                if ($recorded !== true || $ok !== true) {
+                    CatchBus::reportCatch(null, 'error', ['version' => $version], 'Shop installation failed');
+                    throw new \RuntimeException('Shop installation failed.');
+                }
             },
 
             '1.0.1' => function () {
@@ -173,13 +180,17 @@ class Installation extends Installer
                     });
                 }
 
-                DotApp::call(
+                $recorded = DotApp::call(
                     "DACore:Installations@insert!",
                     self::MODULE,
                     $version,
                     $ok ? 1 : 0,
                     ['outcome' => $ok ? 'ok' : 'failed']
                 );
+                if ($recorded !== true || $ok !== true) {
+                    CatchBus::reportCatch(null, 'error', ['version' => $version], 'Shop update failed');
+                    throw new \RuntimeException('Shop installation failed.');
+                }
             },
         ];
     }
@@ -190,26 +201,58 @@ class Installation extends Installer
             '1.0.0' => function () {
                 // AI tools
                 foreach (array_keys(self::aiTools()) as $toolid) {
-                    DotApp::call("DACore:AITools@delete", $toolid);
+                    if (DotApp::call("DACore:AITools@delete", $toolid) !== true) {
+                        CatchBus::reportCatch(null, 'error', ['tool_id' => $toolid], 'Shop AI tool cleanup failed');
+                        throw new \RuntimeException('Shop uninstall cleanup failed.');
+                    }
                 }
 
                 // Stable installer-managed user group, then rights-catalog cleanup
-                DotApp::call("DACore:Roles@deleteGroup!", self::MODULE, 'managers');
-                DotApp::call("DACore:Rights@deleteGroup!", self::MODULE);
+                if (DotApp::call("DACore:Roles@deleteGroup!", self::MODULE, 'managers') !== true) {
+                    CatchBus::reportCatch(null, 'error', [], 'Shop role cleanup failed');
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
+                if (DotApp::call("DACore:Rights@deleteGroup!", self::MODULE) !== true) {
+                    CatchBus::reportCatch(null, 'error', [], 'Shop rights cleanup failed');
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
 
                 // menu - no unregister API exists, delete our own prefixed rows
+                $menuOk = false;
                 DB::module('RAW')->q(function ($qb) {
-                    $qb->raw("DELETE FROM `dacore_menu` WHERE `menuid` LIKE 'Shop.%'", []);
-                })->execute(null, function ($error) {
-                    Logger::use()->error('Shop menu cleanup', $error);
-                });
+                    $qb->raw(
+                        'DELETE FROM `dacore_menu` WHERE `menuid` LIKE :prefix',
+                        ['prefix' => 'Shop.%']
+                    );
+                })->execute(
+                    function () use (&$menuOk) {
+                        $menuOk = true;
+                    },
+                    function ($error) use (&$menuOk) {
+                        CatchBus::reportDb($error);
+                        $menuOk = false;
+                    }
+                );
+                if ($menuOk !== true) {
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
 
                 // our tables last
+                $tableOk = false;
                 DB::module('RAW')->q(function ($qb) {
                     $qb->raw("DROP TABLE IF EXISTS `shop_items`", []);
-                })->execute(null, function ($error) {
-                    Logger::use()->error('Shop drop table', $error);
-                });
+                })->execute(
+                    function () use (&$tableOk) {
+                        $tableOk = true;
+                    },
+                    function ($error) use (&$tableOk) {
+                        CatchBus::reportDb($error);
+                        $tableOk = false;
+                    }
+                );
+                if ($tableOk !== true) {
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
             },
         ];
     }

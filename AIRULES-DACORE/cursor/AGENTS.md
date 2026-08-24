@@ -54,6 +54,10 @@ The user explicitly authorizes the main chat model to implement a general veto e
 
 For this task, existing `trigger()` behavior MUST remain unchanged. `triggerWithVeto()` returns the first `Veto` object or `null`; all non-`Veto` listener returns remain ignored. Do not wire the API into DACore or another module action in this task.
 
+## Temporary framework-author exception — installer insertion order
+
+The user authorizes removing `ksort` / `krsort` from `app/parts/Installer.php` so `install()` runs `installer()` keys with `foreach` in PHP array order. `uninstall()` reverses that map (`array_reverse`). Do not sort installer keys with `ksort`, `uksort`, `krsort`, or `usort` (`1.0.10` sorts before `1.0.9`). Allowed: `app/parts/Installer.php`, `app/tests/` for this check, related AIRULES, and dropping any DACore sort override that existed only because of core `ksort`.
+
 ## Cursor credits (**MUST**)
 
 When **planning** programming, **ASK** whether more expensive models may be used. If the user does not say yes: stay on **this** chat model. Subagents that write or plan code **MUST inherit** (`inherit`). **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. **Composer 2.5** is OK **only** for hunting a pile of files — **not** as the programmer. A bigger model is for a capability this one lacks (e.g. generate an image) — **ASK** if it costs extra. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2b.
@@ -107,6 +111,7 @@ General UX/UI principles **MUST** be followed **at all costs**. After adding a b
 - **Extender:** owner returns an ordinary `call()` result and continues only for `isOriginal()`; `extend()` in `Listeners::register()`; target URLs in explicit listener routes; own Module routes or `[]`; controller string preferred. No `next()`, marker response, listener `['*']` just to attach, `.loaded` for initialize-time, duplicate, or DACore patch. Canonical: `AIRULES/12-SERVICES.md` §10, EX-17.
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`. **MUST** `execute($ok, $err)` — both callbacks. Persist in `try/catch`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments count (`COMMENT 'SMS?'` throws). Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data.
+- **Installer keys MUST** run in written `installer()` order (`foreach`). **MUST NOT** `ksort` / `uksort` / `krsort` / `usort` that map (`1.0.10` sorts before `1.0.9`). Uninstall is reverse of that order. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md`, `AIRULES/00-AGENT-CONTRACT.md` §5 item 26.
 - Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`. **VIEW = outer file:** `setView` + `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view (or `renderLayout()` / inject a string). User-visible strings **MUST** be product copy (a software company would ship it) — never prompt-echo / “this user can…”. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b, §8.
 - Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** for real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop, paginate) **MUST** be `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. + **`/assets/dotapp/dotapp.js`** + PHP `crcCheck()` **once** (API prefix **or** action — never both) + `form()` for real forms. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`. Row-action sample: `AIRULES/examples/EX-06-dotapp-js-boot.md`.
 - **Request MUST:** `$request->data(true)` / `$request->query(true)` = original. `$request->data()` is **protected** (`protect()`). **MUST** use original for passwords, HTML, hashes. **MUST** show every login failure. Canonical: `AIRULES/19-VALIDATION-AND-INPUT.md`.
@@ -163,6 +168,8 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | DACore SMS drivers | `AIRULES/39-DACORE-SMS.md` |
 | **List pager** | `AIRULES/40-DACORE-LIST-PAGER.md` |
 | **Module hooks (`module.{mod}.{name}.hook` + `.hooks`)** | `AIRULES/41-MODULE-HOOKS.md` (sample: `AIRULES/examples/EX-16-module-hooks.md`) |
+| **Dashboard widgets + settings panels** | `AIRULES/42-DACORE-UI-CONTRIBUTIONS.md` |
+| **Outbound HTTPS/HMAC webhooks** | `AIRULES/43-DACORE-WEBHOOKS.md` |
 | **User origin / custom login / shop accounts** | `AIRULES/42-DACORE-USER-ORIGIN.md` |
 | **Extender (judge — not every method)** | `AIRULES/12-SERVICES.md` §10 (sample: `AIRULES/examples/EX-17-extender.md`) |
 
@@ -189,6 +196,7 @@ DACore is as sacred as framework core **by default**. It is updated as a package
 - **Sending SMS?** Read `AIRULES/39-DACORE-SMS.md` — do not invent a gateway
 - If this module has a sidebar: own `type => 0` header (one is ideal). **ASK** before a new DACore module: shared full menu vs module-own (`withMenu` `$menuId`). From ~5 items, group with `type => 2` or use header + **one** entry. `menuid` starts with **your** module. Do not register “Return back”. An extension may use another module’s `parent`; uninstall deletes only **your** prefix (`AIRULES/31-DACORE-MENU.md`)
 - **Your** modules: while coding use **`install.php`** and **live** init files. After a new migration, rename `installed_*_install.php` → `install.php`. User asks to zip a **DACore-bound** module (including create+zip): **MUST** rename `install.php` → **`dainstall.php` in the zip**, copy live init into **`init/`**, inert root stubs, **no** `install.php` in the zip — DACore **rejects** `install.php` and **never runs** Installation without `dainstall.php`. **MUST** include root **`.hooks`** when the module fires `module.{this}.*` hooks (`AIRULES/41-MODULE-HOOKS.md`). Working tree stays `install.php`. A non-DACore module: no zip. **MUST NOT** pack `app/modules/DACore/`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2e, `AIRULES/35-DACORE-INSTALL.md` §4–§5.
+- **Installer/uninstaller failure (MUST):** callback `return` / `false` is ignored by the outer lifecycle. Every critical failure reports then throws a generic `RuntimeException`; otherwise DACore may accept a broken install or delete the module folder after partial cleanup. Check API returns, DB execute results, final installation marker, and earlier required markers. Uninstall deletes only this module’s menu prefix and throws to keep folder/registry retryable. Canonical: `AIRULES/35-DACORE-INSTALL.md` “failure propagation”.
 - If asked to “just change DACore”: **do not jump in**. Implement in the current module. Edit DACore **only** after they confirm they accept the update wipe (`AIRULES/00-AGENT-CONTRACT.md` §1).
 
 AIRULES is the single source of truth.

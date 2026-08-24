@@ -33,12 +33,29 @@ See [32](32-DACORE-RIGHTS.md) for the middleware to copy.
 `Controllers/Menu.php` has `register` and `generate` but **no delete**. An uninstaller must remove rows itself:
 
 ```php
+$ok = false;
 DB::module('RAW')->q(function ($qb) {
-    $qb->raw("DELETE FROM `dacore_menu` WHERE `menuid` LIKE 'Shop.%'", []);
-})->execute(null, function ($e) { Logger::use()->error('menu cleanup', $e); });
+    $qb->raw(
+        'DELETE FROM `dacore_menu` WHERE `menuid` LIKE :prefix',
+        ['prefix' => 'Shop.%']
+    );
+})->execute(
+    function () use (&$ok) {
+        $ok = true;
+    },
+    function ($error) use (&$ok) {
+        CatchBus::reportDb($error);
+        $ok = false;
+    }
+);
+if ($ok !== true) {
+    throw new \RuntimeException('Shop uninstall cleanup failed.');
+}
 ```
 
 This is the one sanctioned direct write to a DACore table, and only during uninstall. **`menuid` MUST start with your module name.** Uninstall **MUST** delete only that prefix (`Shop.%` from Shop, `Reports.%` from Reports). An extension that hung items under another module’s header **MUST NOT** `DELETE … LIKE 'HostModule.%'` — that destroys the host menu. See [31](31-DACORE-MENU.md).
+
+Callback `return` values do not stop uninstall. Every cleanup return and DB result must be checked; a failure reports and throws a generic exception so DACore keeps the module folder for retry ([35](35-DACORE-INSTALL.md)).
 
 ---
 

@@ -35,7 +35,7 @@ DACore `/dacore/sms-senders` is a **list**. The only action is **set as default*
 
 ### `Sms@listSenders!` → `list<array>`
 
-`id`, `token`, `sender_key`, `name`, `info`, `settings_url`, `supports_from`, `supports_status`, `is_default`, `available`. No credentials. No `extra1`–`extra3` — those are driver-private routing tokens.
+`id`, `token`, `sender_key`, `name`, `info`, `settings_url`, `supports_from`, `supports_status`, `is_default`, `available`. Only enabled, supported-contract drivers are returned. No credentials. No `extra1`–`extra3` — those are driver-private routing tokens.
 
 HTML may use encrypted `token`. **Store `sender_key`** in `{lowercase}_*` — never the auto-increment `id` (ids differ per install).
 
@@ -92,6 +92,8 @@ $reg = DotApp::call('DACore:Sms@registerSender!', [
     'controller_status' => 'supersms123:Provider@status',
     'controller_test'   => 'supersms123:Provider@test',
     'supports_from'     => 1,
+    'contract_version'  => 1,
+    'enabled'           => 1,
     'extra1'            => 'profile-key', // optional; non-secret routing token
     'extra2'            => '',
     'extra3'            => '',
@@ -108,6 +110,12 @@ DotApp::call('DACore:Sms@unregisterByCreator!', 'supersms123');
 ```
 
 `sender_key`: `[A-Za-z0-9][A-Za-z0-9._-]{0,49}`. `settings_url`: relative path starting with `/` (not `//`). Controllers: `Module:Controller@method`.
+
+`contract_version` is currently `1`; omitting it means the current v1 contract. DACore refuses unsupported versions. The module that first registers a `sender_key` owns it through `creator`; another creator cannot overwrite that key. `enabled=0` keeps the row for administration but removes it from list/default/send/status/test dispatch. Existing rows migrate as enabled v1.
+
+With optimization active, enabled sender metadata is compiled into the independent `dacoreAutoLoader.php`. Without it, the same resolver performs exact bound database queries. Registration, removal, default changes, and lifecycle changes refresh an existing snapshot. If refresh fails, DACore removes the stale file and immediately uses the database fallback.
+
+`{prefixUrl}/dacore/sms-senders` exposes two distinct states. **Enabled** is the global dispatch switch; **Active** means the driver was verified for SMS 2FA (`tested_at`). A disabled driver cannot be default or Active. Turning either state off requires graphical confirmation and PHP `StepUp::verify()`; a sender currently configured for SMS 2FA must first be removed from that channel in Settings. When the SMS feature is off, the list and POST actions do not query or mutate the driver registry.
 
 `extra1`–`extra3` are optional `varchar(64)` tokens (`[A-Za-z0-9._-]` or empty). Omitted extras stay unchanged on upsert. **MUST NOT** store API keys, passwords, signatures, or phone numbers there — credentials stay in the driver module.
 

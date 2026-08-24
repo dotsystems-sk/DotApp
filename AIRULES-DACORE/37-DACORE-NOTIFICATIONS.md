@@ -84,6 +84,114 @@ Uninstall **MUST NOT** delete inbox history (audit).
 
 ---
 
+## Orchestration (`Notifications@dispatch`)
+
+Explicit fan-out across named drivers. **No** policy engine, user preferences, implicit channels, workflow, retries, or queue. The global feature `notifications` defaults **off**.
+
+```php
+DotApp::call("DACore:Notifications@dispatch", [
+    'channels' => [
+        'inbox' => [
+            'module' => 'Shop',
+            'title' => 'New order #4821',
+            'body' => 'Paid 49.90 EUR.',
+            'topic' => 'operations',
+            'users' => [$operatorId],
+        ],
+        'email' => [
+            'id' => $senderToken,
+            'to' => $email,
+            'subject' => 'New order #4821',
+            'text' => 'Paid 49.90 EUR.',
+        ],
+        'sms' => [
+            'to' => $msisdn,
+            'text' => 'Order #4821 paid.',
+        ],
+    ],
+]): array
+```
+
+| Aspect | Detail |
+|--------|--------|
+| Returns | `['ok' => bool, 'channels' => [key => ['ok' => bool, 'errors' => string[]]], 'errors' => string[]]` |
+| `ok` | `true` only when **every** requested channel succeeded |
+| Feature off | Stable failure, **zero** `dacore_notification_drivers` reads, **zero** provider autoload, **zero** transport |
+| `push` | Unchanged inbox API. Does **not** consult this switch |
+| Throws | never |
+| HTTP | **no** public dispatch route — in-process `DotApp::call` only |
+| Cap | At most **8** explicit channels; payload JSON per channel ≤ 8192 bytes |
+
+Built-in adapters use the **same** `controller_dispatch` path as externals:
+
+| `driver_key` | Stored controller | Delegates to |
+|--------------|-------------------|--------------|
+| `inbox` | `DACore:Notifications@adapterInbox` | `Notifications@push` / `NotifyStore::push` (bool) |
+| `email` | `DACore:Notifications@adapterEmail` | `Email@send` (preserves `true\|list<string>`) |
+| `sms` | `DACore:Notifications@adapterSms` | `Sms@send` (preserves envelope) |
+
+Do **not** copy sender/template tables or SMTP/SMS gateways into this registry.
+
+### Registry (in-process, no HTTP)
+
+```php
+DotApp::call('DACore:Notifications@registerDriver', [...]);
+DotApp::call('DACore:Notifications@unregisterByCreator', 'Shop');
+DotApp::call('DACore:Notifications@listDrivers');
+DotApp::call('DACore:Notifications@setDriverEnabled', 'inbox', false);
+```
+
+| Rule | Detail |
+|------|--------|
+| Grammar | `driver_key` `[A-Za-z0-9][A-Za-z0-9._-]{0,49}`; controller `Module:Controller@method` |
+| Owner | `creator` is immutable; a second module cannot steal a key |
+| Contract | `contract_version` **must** be `1` |
+| Built-ins | `inbox` / `email` / `sms` stay `creator=DACore`; `unregisterByCreator('DACore')` is refused |
+| Deactivation | `setDriverEnabled(..., false)` fires `module.dacore.driver_deactivate.veto` with metadata only; no payload or credentials |
+| Cache | `notification_drivers` metadata only — **no** payloads, passwords, or bodies |
+| Resolve | One cache section **or** one bound `IN` query for all requested keys — never one query per channel |
+
+### Administration
+
+`{prefixUrl}/dacore/notification-drivers` is a root-only, separately lazy admin leaf. Its GET reads only a paginated metadata projection and never invokes `controller_dispatch`. When the feature is off, GET/POST do not query or mutate the registry. Enabling is immediate; disabling requires graphical confirmation and PHP `StepUp::verify()`, then still passes through the documented deactivation veto. Every action patches rows + pager and shows a toast without reloading.
+
+### Table (Installation owns the migration)
+
+```sql
+CREATE TABLE IF NOT EXISTS `dacore_notification_drivers` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `driver_key` varchar(50) NOT NULL,
+    `creator` varchar(64) NOT NULL,
+    `name` varchar(190) NOT NULL,
+    `controller_dispatch` varchar(190) NOT NULL,
+    `settings_url` varchar(255) NOT NULL DEFAULT '',
+    `contract_version` smallint(5) UNSIGNED NOT NULL DEFAULT 1,
+    `enabled` tinyint(1) NOT NULL DEFAULT 1,
+    `created_at` datetime NOT NULL,
+    `updated_at` datetime NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `driver_key` (`driver_key`),
+    KEY `creator` (`creator`),
+    -- Query: enabled contract-v1 lookup of explicit driver keys during Notifications@dispatch.
+    KEY `enabled_contract_key` (`enabled`,`contract_version`,`driver_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+```
+
+Seed rows (idempotent `INSERT IGNORE`):
+
+```sql
+INSERT IGNORE INTO `dacore_notification_drivers`
+(`driver_key`,`creator`,`name`,`controller_dispatch`,`settings_url`,`contract_version`,`enabled`,`created_at`,`updated_at`)
+VALUES
+('inbox','DACore','Inbox','DACore:Notifications@adapterInbox','',1,1,NOW(),NOW()),
+('email','DACore','Email','DACore:Notifications@adapterEmail','',1,1,NOW(),NOW()),
+('sms','DACore','SMS','DACore:Notifications@adapterSms','',1,1,NOW(),NOW())
+```
+
+Dispatch itself does not fire a business hook; the owning workflow remains responsible for its domain event. Driver deactivation uses the documented veto contract.
+
+---
+
 ## Wrong / Right
 
 | Wrong | Right |

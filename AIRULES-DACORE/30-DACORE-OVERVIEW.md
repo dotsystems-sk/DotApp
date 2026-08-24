@@ -61,6 +61,9 @@ Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` 
 | Push inbox notification | `DACore:Notifications@push` | `bool` |
 | Send mail via DACore senders | `DACore:Email@…!` ([38](38-DACORE-EMAIL.md)) | `true` / `string[]` / `{ok,…}` |
 | Send SMS via DACore drivers | `DACore:Sms@…!` ([39](39-DACORE-SMS.md)) | `{ok, message_id, message, errors}` |
+| Register IP geo driver | `DACore:IpGeoDriver@registerDriver!` (not HTTP) | `{ok, id, driver_key}` |
+| Unregister IP geo drivers by creator | `DACore:IpGeoDriver@unregisterByCreator!` | `bool` |
+| List / default IP geo driver | `DACore:IpGeoDriver@listDrivers!` / `@defaultDriver!` | `array` / `array\|null` |
 | Add AI system context | `DACore:AI@addSystemContext` | `bool` |
 | Migration guard | `DACore:Installations@exist!` | `bool` |
 | List installed packs by `extra1`…`extra5` | `DACore:Plugins@listByExtra!` (1.0.26; not HTTP; empty token → `[]`) | `array` of `{module, version, extra1…extra5}` |
@@ -94,6 +97,7 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_email_senders` | Operator SMTP accounts (DACore-owned — **never write**; `Email@send` only) |
 | `dacore_email_templates` | Operator HTML templates (DACore-owned — **never write**) |
 | `dacore_sms_senders` | SMS driver registry (DACore-owned — **never write**; `Sms@registerSender` / `Sms@send` only) |
+| `dacore_ip_geo_drivers` | IP geolocation driver registry (DACore-owned — **never write**; `IpGeoDriver@registerDriver` only). Reserved built-in key `dacore.default` / creator `DACore`. |
 | `dacore_user_origins` | Origin catalog (1.0.10): autoincrement `id`, unique token, **`creator`** (install/uninstall identity), **`dacore_login`**. Plugins **MUST** `UserPolicy@registerOrigin` / `@removeOrigin` — never write this table. |
 | `dacore_users_profiles` | Per-user display name, locale, **origin** token, **`origin_id`**, **allow_tfa_*** / **allow_firewall_ip**, and **extra1…extra5** (1.0.9–1.0.10). Plugins **MUST** use `DACore:UserPolicy@*` — never `UPDATE` this table from another module. |
 
@@ -102,6 +106,28 @@ Framework tables it uses (does not own): `{prefix}users`, `{prefix}users_rights`
 **Note:** `dacore_ai_tools`, `dacore_chat` and `dacore_chat_messages` are **not** created by DACore's `1.0.0` installer. If you register AI tools, make sure the table exists (import from the DACore SQL dump) — see [36](36-DACORE-KNOWN-ISSUES.md).
 
 **Identity boundary:** `{prefix}users.email` / `username` and the Auth session are global. Origin fields exist on `dacore_users_profiles`, so origin-scoped lists must join that profile and bind the expected `origin_id`/token. `dacore_login` controls only the DACore form. Missing 1.0.10 catalog/schema returns allowed; missing profile/read failure falls back to allowed `dacore.legacy`. Module login/route gates must fail closed themselves and must not authorize `dacore.legacy`. Canonical: [42](42-DACORE-USER-ORIGIN.md).
+
+### 3a. Lazy DACore extension cache
+
+DACore extension registries have their own generated cache: `app/modules/dacoreAutoLoader.php`. It is deliberately independent from framework `app/modules/modulesAutoLoader.php`:
+
+- `modulesAutoLoader.php` owns module/listener route matching and framework base-language data.
+- `dacoreAutoLoader.php` owns only bounded DACore extension metadata and common feature switches.
+- The database is the mutable source of truth. The generated PHP file is a versioned snapshot (`$dacoreAutoLoaderVersion` + `$dacoreRegistrySections`). Adding meaning to a previously empty section requires a format bump so an older “known empty” snapshot falls back to the database instead of suppressing new providers.
+- The file is included only when a DACore extension service is first requested. Normal requests that never resolve a driver, skin, widget, or settings panel do no work for it.
+- Missing, old, or malformed cache files fall back to the same bounded DB readers. Optimization may change I/O and latency only; **MUST NOT** change results.
+- A valid empty section means “known and no providers”; it does not trigger a DB query.
+- Building the snapshot **MUST NOT** include a foreign `module.init.php`. Registry rows store the lazy controller/provider metadata.
+- Registry/settings mutations rebuild the DACore snapshot only when it already exists. Removing optimization is an explicit opt-out and must not be silently undone.
+- The root Settings form requires PHP step-up before an enabled capability group is turned off or the selected administration skin changes. The OTP modal is UX only; `Settings::settingsSave()` compares canonical DB state and verifies the code before any extension setting is persisted.
+- DACore's Optimization page builds/removes both independent files. CLI `php dotapper.php --optimize-modules` remains framework-only and **does not** create `dacoreAutoLoader.php`.
+- Generated `dacoreAutoLoader.php` is runtime output, not a package source file; do not add it to a module ZIP.
+
+The stable sections are `feature_switches`, `email_drivers`, `sms_drivers`, `notification_drivers`, `webhook_drivers`, `ip_geo_drivers`, `admin_skins`, `dashboard_widgets`, and `settings_panels`. Provider contracts add versioned rows to these sections; they do not add route maps to the framework loader.
+
+**IP geolocation drivers (contract v1).** `IpGeo::lookup()` keeps the `present()` view shape (`ip`, `private`, `hasMap`, `hasIsp`, `hasLocation`, `lat`, `lon`, `isp`, `location`, `hint`). When the `ip_geo` feature switch is off, lookup returns that shape with a disabled hint and must not read `dacore_ip_geo`, `dacore_ip_geo_drivers`, autoload a provider, or call the network. Invalid and private IPs also skip the network. When enabled, lookup uses the local `dacore_ip_geo` cache, then dispatches the default enabled contract-v1 driver via `DotApp::call` (`controller_lookup`). The built-in callable is `DACore:IpGeoDriver@lookupDefault!` (ipwho.is, then ipapi.co over verified HTTPS with redirects and proxies disabled). Driver results are whitelisted to `ok`, `lat`, `lon`, `city`, `region`, `country`, `isp`. External controllers receive only the IP and `{driver_key, creator}`. The built-in `dacore.default` / creator `DACore` row cannot be unregistered. Disabling an enabled provider first fires `module.dacore.driver_deactivate.veto` without an IP or provider response.
+
+The root-only `{prefixUrl}/dacore/ip-geolocation` leaf paginates metadata without invoking providers. Feature-off GET/POST skip the registry. Disabling or changing the global default requires graphical confirmation and PHP `StepUp::verify()`; actions patch rows + pager and toast without reloading.
 
 ---
 
@@ -224,8 +250,10 @@ Reminder from [12](12-SERVICES.md): `trigger()` **ignores listener return values
 | Admin pages, dotgrid, tables | [33](33-DACORE-PAGES-AND-UI.md) | [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | AI tools | [34](34-DACORE-AI-TOOLS.md) | [EX-D03](examples/EX-D03-dacore-ai-tool.md) |
 | Installer wiring | [35](35-DACORE-INSTALL.md) (incl. §3c extras) | [EX-D04](examples/EX-D04-dacore-installer.md) |
-| Inbox notifications | [37](37-DACORE-NOTIFICATIONS.md) | [EX-D05](examples/EX-D05-dacore-notifications.md) |
+| Inbox + notification drivers | [37](37-DACORE-NOTIFICATIONS.md) | [EX-D05](examples/EX-D05-dacore-notifications.md) |
 | Outgoing mail (DACore senders) | [38](38-DACORE-EMAIL.md) | [EX-D06](examples/EX-D06-dacore-email.md) |
 | Outgoing SMS (DACore drivers) | [39](39-DACORE-SMS.md) | [EX-D07](examples/EX-D07-dacore-sms.md) |
 | List pager (HTML, classes, AJAX) | [40](40-DACORE-LIST-PAGER.md) | [EX-D08](examples/EX-D08-list-pager.md) |
+| Dashboard widgets + settings panels | [42](42-DACORE-UI-CONTRIBUTIONS.md) | — |
+| Outbound HTTPS/HMAC webhooks | [43](43-DACORE-WEBHOOKS.md) | — |
 | DACore quirks | [36](36-DACORE-KNOWN-ISSUES.md) | — |

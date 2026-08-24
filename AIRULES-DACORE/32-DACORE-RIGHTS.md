@@ -430,7 +430,7 @@ DACore profiles store **origin** (which module created the account) and four all
 
 - Default flags **allow**. Policy `0` hides the matching admin UI, rejects the POST, and clears the stored enrolment flag (`tfa_sms`, `tfa_email`, `tfa_auth`, or `tfa_firewall`). Policy `1` never turns on a globally disabled SMS or email channel.
 - Saving a user whose origin is **not** `dacore.*` from the admin UI requires an operator confirmation. The write still re-checks rights after confirm.
-- Adding an **installer-managed** group (`editable=0`) always confirms. Removing one requires the **current operator’s** step-up 2FA. An operator with no usable 2FA method cannot remove a managed group.
+- Adding or removing an **installer-managed** group (`editable=0`) requires the **current operator’s** step-up 2FA. An operator with no usable 2FA method cannot change a managed group.
 - Self-service URL firewall pages are gone. Admin URL firewall and runtime checks remain. Self-service IP firewall is hidden/403 when `allow_firewall_ip=0`.
 - Plugins: `DotApp::call('DACore:UserPolicy@read'|'@apply'|'@findByExtra'|'@stampOrigin', …)`. Listen to `module.dacore.user_policy_changed.hook` (ids and changed keys only). Do not write `dacore_users_profiles` yourself.
 

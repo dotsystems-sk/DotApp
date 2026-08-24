@@ -59,6 +59,7 @@ use Dotsystems\App\Parts\DI;
 use Dotsystems\App\Parts\Limiter;
 use Dotsystems\App\Parts\Response;
 use Dotsystems\App\Parts\Middleware;
+use Dotsystems\App\Parts\Module;
 use Dotsystems\App\Parts\Veto;
 
 global $translator;
@@ -112,6 +113,8 @@ class DotApp {
     public $customRenderer;
     public $proxyServery = ['*'];
     private $runFromCacheBlocked = false;
+    private $baseLanguageLocale = null;
+    private $activeBaseLanguages = [];
     
 	
 	public function __debugInfo() {
@@ -1517,6 +1520,11 @@ class DotApp {
                     include(__ROOTDIR__."/app/modules/modulesAutoLoader.php");
                     // Why: poskodena alebo rucne pisana cache nesmie pustit warning cez foreach.
                     $modules = isset($modules) && is_array($modules) ? $modules : [];
+                    // Why: old version 2 caches have no optional base-language section.
+                    $baseLanguageMaps = isset($baseLanguages) && is_array($baseLanguages)
+                        ? $baseLanguages
+                        : [];
+                    unset($baseLanguages);
                     // Why: stara cache ma iba $modules, preto listenerom nechame rovnaku mapu ako doteraz.
                     $listenerModuly = $dotapp->moduleListenerRoutes(
                         $modules,
@@ -1542,6 +1550,9 @@ class DotApp {
                     foreach ($nacitaj as $modul) {
                         $this->load_module($modul);
                     }
+                    // Why: matched modules may set the final locale during initialize(), so base maps apply afterwards.
+                    $this->applyActiveBaseLanguages($baseLanguageMaps);
+                    unset($baseLanguageMaps);
                     $this->thendata = ""; // Clear thendata after loading modules
                     /*  Ak boli nacitane vsetky moduly. Moze sa hodit ak sa modul ptorebuje rozhodnut ci on vygeneruje korenovy router
                         Napriklad na dotapp.modules.loaded si modul overi ci uz je obsadena routa napriklad get / a ak nie je, sam ju vygeneruje alebo presmeruje.
@@ -1552,6 +1563,8 @@ class DotApp {
                 $izolovane();
             } else {
                 $moduly = glob(__ROOTDIR__."/app/modules/*", GLOB_ONLYDIR); // Get all module directories
+                $moduly = is_array($moduly) ? $moduly : [];
+                $moduleNames = array_map('basename', $moduly);
                 $dotapp = $this; // Reference to the current instance
                 foreach ($moduly as $modul) {
                     $this->load_module_listeners($modul);
@@ -1561,6 +1574,13 @@ class DotApp {
                 foreach ($moduly as $modul) {
                     $this->load_module($modul);
                 }
+                // Why: without the optimizer, compile only the final active locale from already declared module classes.
+                $baseLanguageMaps = Module::compileBaseLanguagesForModules(
+                    $moduleNames,
+                    Translator::getLocale()
+                );
+                $this->applyActiveBaseLanguages($baseLanguageMaps);
+                unset($baseLanguageMaps);
                 $this->thendata = ""; // Clear thendata after loading modules
                 /*  Ak boli nacitane vsetky moduly. Moze sa hodit ak sa modul ptorebuje rozhodnut ci on vygeneruje korenovy router
                     Napriklad na dotapp.modules.loaded si modul overi ci uz je obsadena routa napriklad get / a ak nie je, sam ju vygeneruje alebo presmeruje.
@@ -1613,6 +1633,61 @@ class DotApp {
         return $modules;
     }
 
+    /**
+     * Apply only the final active locale from a compiled base-language cache.
+     *
+     * The base catalog is intentionally applied after module initialization so
+     * common menu and widget text remains stable when a module wakes.
+     *
+     * @param mixed $baseLanguageMaps Compiled locale maps from cache or live module descriptors.
+     * @return void
+     */
+    private function applyActiveBaseLanguages($baseLanguageMaps) {
+        if (!is_array($baseLanguageMaps) || $baseLanguageMaps === []) {
+            return;
+        }
+
+        $locale = strtolower(Translator::getLocale());
+        $active = isset($baseLanguageMaps[$locale]) && is_array($baseLanguageMaps[$locale])
+            ? $baseLanguageMaps[$locale]
+            : [];
+        unset($baseLanguageMaps);
+
+        $translations = [];
+        foreach ($active as $source => $translation) {
+            if ((is_string($source) || is_int($source)) && is_string($translation)) {
+                $translations[(string) $source] = $translation;
+            }
+        }
+        unset($active);
+
+        if ($translations !== []) {
+            $this->baseLanguageLocale = $locale;
+            $this->activeBaseLanguages = $translations;
+            $this->reapplyActiveBaseLanguages();
+        }
+        unset($translations);
+    }
+
+    /**
+     * Flush pending main locale files and restore the active base overlay.
+     *
+     * This also runs after a module is loaded lazily, preserving base-language
+     * precedence when that module queues its main JSON after application boot.
+     *
+     * @return void
+     */
+    private function reapplyActiveBaseLanguages() {
+        if ($this->activeBaseLanguages === []
+            || $this->baseLanguageLocale !== strtolower(Translator::getLocale())) {
+            return;
+        }
+
+        // Why: loadLocaleFile() is deferred; flush it before the base map intentionally overrides duplicates.
+        Translator::all($this->baseLanguageLocale);
+        Translator::loadLocaleArray($this->activeBaseLanguages, $this->baseLanguageLocale);
+    }
+
     function load_module($modul) {
         $modul = str_replace(__ROOTDIR__."/app/modules/","",$modul);
         $moduleName = $modul;
@@ -1646,6 +1721,9 @@ class DotApp {
         if (file_exists($modullng2)) {
             include $modullng2;
         }
+
+        // Why: a module loaded after boot may queue main JSON that must remain below the base overlay.
+        $this->reapplyActiveBaseLanguages();
     }
 
     function load_module_listeners($modul) {

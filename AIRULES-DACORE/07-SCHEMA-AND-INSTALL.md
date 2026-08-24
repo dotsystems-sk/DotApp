@@ -15,6 +15,10 @@
 
 **MUST:** `$qb->raw()` treats **every** `?` as a placeholder, including SQL comments and `COMMENT 'SMS?'`. **MUST NOT** put `?` in CREATE/ALTER strings unless it is a real binding. Canonical: [06-DATABASE.md](06-DATABASE.md) “Raw SQL”.
 
+**MUST:** `installer()` / `uninstaller()` keys run in **written PHP array order**. **MUST NOT** `ksort` / `uksort` / `krsort` / `usort` those maps (`1.0.10` sorts before `1.0.9`). Canonical: [00](00-AGENT-CONTRACT.md) §5 item 26.
+
+**MUST:** callback return values do not stop `Installer::install()` / `uninstall()`. A critical failure reports to the module catch bus and throws a generic `RuntimeException`; `return false` or a bare `return` after failure is a silent partial install/uninstall. DACore modules additionally follow [35](35-DACORE-INSTALL.md) “Installer/uninstaller failure propagation”.
+
 ---
 
 ## 1. Versioned `Installation.php` (portable, no DACore dependency)
@@ -25,9 +29,9 @@
 <?php
 namespace Dotsystems\App\Modules\Shop;
 
+use Dotsystems\App\Modules\Shop\Libraries\CatchBus;
 use Dotsystems\App\Parts\DB;
 use Dotsystems\App\Parts\Installer;
-use Dotsystems\App\Parts\Logger;
 
 class Installation extends Installer
 {
@@ -37,6 +41,7 @@ class Installation extends Installer
             '1.0.0' => function () {
                 if (self::alreadyDone('1.0.0')) { return; }
 
+                $ok = false;
                 DB::module('RAW')->q(function ($qb) {
                     $qb->raw(
                         "CREATE TABLE IF NOT EXISTS `shop_items` (
@@ -50,21 +55,36 @@ class Installation extends Installer
                         []
                     );
                 })->execute(
-                    function () { self::markDone('1.0.0'); },
-                    function ($error) {
-                        Logger::use()->error('Shop 1.0.0 failed', $error);
+                    function () use (&$ok) {
+                        $ok = true;
+                    },
+                    function ($error) use (&$ok) {
+                        CatchBus::reportDb($error);
+                        $ok = false;
                     }
                 );
+                if ($ok !== true || self::markDone('1.0.0') !== true) {
+                    throw new \RuntimeException('Shop installation failed.');
+                }
             },
 
             '1.0.1' => function () {
                 if (self::alreadyDone('1.0.1')) { return; }
+                $ok = false;
                 DB::module('RAW')->q(function ($qb) {
                     $qb->raw("ALTER TABLE `shop_items` ADD `price` DECIMAL(10,2) NOT NULL DEFAULT 0", []);
                 })->execute(
-                    function () { self::markDone('1.0.1'); },
-                    function ($error) { Logger::use()->error('Shop 1.0.1 failed', $error); }
+                    function () use (&$ok) {
+                        $ok = true;
+                    },
+                    function ($error) use (&$ok) {
+                        CatchBus::reportDb($error);
+                        $ok = false;
+                    }
                 );
+                if ($ok !== true || self::markDone('1.0.1') !== true) {
+                    throw new \RuntimeException('Shop installation failed.');
+                }
             },
         ];
     }
@@ -73,16 +93,30 @@ class Installation extends Installer
     {
         return [
             '1.0.0' => function () {
-                DB::module('RAW')->q(fn($qb) => $qb->raw('DROP TABLE IF EXISTS `shop_items`', []))
-                    ->execute(null, function ($e) { Logger::use()->error('drop failed', $e); });
+                $ok = false;
+                DB::module('RAW')->q(function ($qb) {
+                    $qb->raw('DROP TABLE IF EXISTS `shop_items`', []);
+                })->execute(
+                    function () use (&$ok) {
+                        $ok = true;
+                    },
+                    function ($error) use (&$ok) {
+                        CatchBus::reportDb($error);
+                        $ok = false;
+                    }
+                );
+                if ($ok !== true) {
+                    throw new \RuntimeException('Shop uninstall cleanup failed.');
+                }
             },
         ];
     }
 
     // ---- module-owned idempotency (no DACore dependency) ----
 
-    private static function ensureTable(): void
+    private static function ensureTable(): bool
     {
+        $ok = false;
         DB::module('RAW')->q(function ($qb) {
             $qb->raw(
                 "CREATE TABLE IF NOT EXISTS `shop_installations` (
@@ -95,12 +129,23 @@ class Installation extends Installer
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
                 []
             );
-        })->execute(null, function ($e) { Logger::use()->error('installations table', $e); });
+        })->execute(
+            function () use (&$ok) {
+                $ok = true;
+            },
+            function ($error) use (&$ok) {
+                CatchBus::reportDb($error);
+                $ok = false;
+            }
+        );
+        return $ok;
     }
 
     private static function alreadyDone(string $version): bool
     {
-        self::ensureTable();
+        if (self::ensureTable() !== true) {
+            throw new \RuntimeException('Shop installation failed.');
+        }
         $rows = DB::module('RAW')->q(function ($qb) use ($version) {
             $qb->raw(
                 'SELECT 1 AS ok FROM `shop_installations` WHERE `installation_id` = :v AND `status` = 1 LIMIT 1',
@@ -110,15 +155,25 @@ class Installation extends Installer
         return !empty($rows);
     }
 
-    private static function markDone(string $version): void
+    private static function markDone(string $version): bool
     {
+        $ok = false;
         DB::module('RAW')->q(function ($qb) use ($version) {
             $qb->insert('shop_installations', [
                 'installation_id' => $version,
                 'installed_at' => date('Y-m-d H:i:s'),
                 'status' => 1,
             ]);
-        })->execute(null, function ($e) { Logger::use()->error('markDone', $e); });
+        })->execute(
+            function () use (&$ok) {
+                $ok = true;
+            },
+            function ($error) use (&$ok) {
+                CatchBus::reportDb($error);
+                $ok = false;
+            }
+        );
+        return $ok;
     }
 }
 ```
@@ -126,12 +181,12 @@ class Installation extends Installer
 ### Running migrations
 
 ```php
-Installation::module('Shop')->install();          // all versions, ascending
-Installation::module('Shop')->install('1.0.1');   // up to and including 1.0.1
-Installation::module('Shop')->uninstall();        // descending
+Installation::module('Shop')->install();          // all keys, written order
+Installation::module('Shop')->install('1.0.1');   // keys with version_compare <= 1.0.1, still written order
+Installation::module('Shop')->uninstall();        // reverse of uninstaller() written order
 ```
 
-Ordering: `install()` sorts keys ascending and stops when `version_compare($ver, $target, '<=')` fails. `uninstall()` runs descending with `>=`.
+**MUST — installer key order (law):** `install()` is `foreach` on `installer()` **as you wrote the keys**. **MUST NOT** `ksort`, `uksort`, `krsort`, or `usort` that map (or a copy of it). PHP string sort runs `1.0.10` **before** `1.0.9`, so an origin-catalog step can ALTER `AFTER origin` before the origin column exists. Append the next version **after** the last key. `uninstall()` reverses that written order (`array_reverse`, keep keys) — **MUST NOT** `krsort`. An optional `$version` argument may **skip** keys with `version_compare`; it **MUST NOT** `break` as if the map were sorted. Canonical: [00](00-AGENT-CONTRACT.md) §5 item 26.
 
 ### One-shot `install.php`
 

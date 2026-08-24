@@ -112,8 +112,10 @@ abstract class Module {
                 define('__DOTAPPER_OPTIMIZER__', 1);
             }
             $moduly = glob(__ROOTDIR__ . "/app/modules/*", GLOB_ONLYDIR); // Get all module directories
+            $moduly = is_array($moduly) ? $moduly : [];
             $routyModulov = [];
             $routyListenerov = [];
+            $baseLanguageDescriptors = [];
             foreach ($moduly as $modul) {
                 $modulinit = $modul . '/module.init.php';
                 $modulName = str_replace("\\", "/", $modul);
@@ -133,6 +135,7 @@ abstract class Module {
                         throw new \InvalidArgumentException("initializeRoutes() must return a one-dimensional array of strings in module {$objekt->modulename}");
                     }
                     $routyModulov[$modulName] = $routes;
+                    $baseLanguageDescriptors[$modulName] = $objekt->baseLanguages();
 
                     // Why: listener moze pocuvat na inych routach a pritom nema zobudit initialize() celeho modulu.
                     $listenerRoutes = $routes;
@@ -155,12 +158,9 @@ abstract class Module {
                 }
             }
 
-            // Why: $modules ostava pre stare jadro, nove jadro navyse rozlisi listener mapu a jej verziu.
-            $phpCode = "<?php\n"
-                . "\$modules = " . var_export($routyModulov, true) . ";\n"
-                . "\$listeners = " . var_export($routyListenerov, true) . ";\n"
-                . "\$modulesAutoLoaderVersion = 2;\n"
-                . " ?>";
+            // Why: Compile small base catalogs once so sleeping modules do not read translation JSON at runtime.
+            $baseLanguages = self::compileBaseLanguages($baseLanguageDescriptors);
+            $phpCode = self::buildOptimizerCode($routyModulov, $routyListenerov, $baseLanguages);
             file_put_contents(__ROOTDIR__ . "/app/modules/modulesAutoLoader.php", $phpCode);
             return true;
         } catch (\Exception $e) {
@@ -357,6 +357,271 @@ abstract class Module {
         // Napriklad nejaky URL match aby sa nenacitavala logika ak sa routy netykaju modulu.
         // Defaultne vracia stale TRUE aby sa inicializacia vykonala.
         return ['*'];
+    }
+
+    /**
+     * Return small locale files needed before this module initializes.
+     *
+     * An empty array keeps the legacy behavior where only translation files
+     * registered by initialize() are available.
+     *
+     * @return array<int, array{file: string, locale: string}> Base translation descriptors.
+     */
+    public function baseLanguages() {
+        return [];
+    }
+
+    /**
+     * Normalize safe base-language descriptors owned by one module.
+     *
+     * Invalid rows are ignored so a broken optional catalog cannot block the
+     * application or the route optimizer.
+     *
+     * @param mixed $descriptors Candidate descriptor rows.
+     * @param string $moduleName Module that owns every referenced JSON file.
+     * @return array<int, array{file: string, locale: string}> Valid normalized rows.
+     */
+    public static function validateBaseLanguages($descriptors, $moduleName) {
+        if (!is_array($descriptors) || !is_string($moduleName) || $moduleName === '') {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($descriptors as $descriptor) {
+            if (!is_array($descriptor)
+                || !isset($descriptor['file'], $descriptor['locale'])
+                || !is_string($descriptor['file'])
+                || !is_string($descriptor['locale'])) {
+                continue;
+            }
+
+            $file = trim($descriptor['file']);
+            $locale = strtolower(trim($descriptor['locale']));
+            $prefix = $moduleName . ':';
+            if (strpos($file, $prefix) !== 0
+                || preg_match('/^[a-z]{2,3}_[a-z]{2,3}$/', $locale) !== 1) {
+                continue;
+            }
+
+            $relative = substr($file, strlen($prefix));
+            if ($relative === ''
+                || substr($relative, 0, 1) === '/'
+                || strpos($relative, "\\") !== false
+                || strpos($relative, "\0") !== false
+                || strpos($relative, ':') !== false
+                || preg_match('~(^|/)\.\.(/|$)~', $relative) === 1
+                || strtolower(pathinfo($relative, PATHINFO_EXTENSION)) !== 'json') {
+                continue;
+            }
+
+            $normalized[] = [
+                'file' => $file,
+                'locale' => $locale
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Compile module-owned base JSON files into deterministic locale maps.
+     *
+     * Modules are merged alphabetically and the first module keeps a key when
+     * another module defines the same source text.
+     *
+     * @param array<string, mixed> $descriptorsByModule Descriptor rows keyed by module name.
+     * @param string|null $onlyLocale Optional active locale for non-optimized loading.
+     * @return array<string, array<string, string>> Compiled maps keyed by locale.
+     */
+    public static function compileBaseLanguages($descriptorsByModule, $onlyLocale = null) {
+        if (!is_array($descriptorsByModule)) {
+            return [];
+        }
+
+        $onlyLocale = is_string($onlyLocale) && $onlyLocale !== ''
+            ? strtolower($onlyLocale)
+            : null;
+        ksort($descriptorsByModule, SORT_STRING);
+        $moduleMaps = [];
+
+        foreach ($descriptorsByModule as $moduleName => $descriptors) {
+            if (!is_string($moduleName) || preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $moduleName) !== 1) {
+                continue;
+            }
+
+            $moduleMaps[$moduleName] = [];
+            $rows = self::validateBaseLanguages($descriptors, $moduleName);
+            foreach ($rows as $row) {
+                $locale = $row['locale'];
+                if ($onlyLocale !== null && $locale !== $onlyLocale) {
+                    continue;
+                }
+
+                $path = self::resolveBaseLanguagePath($row['file'], $moduleName);
+                if ($path === null) {
+                    continue;
+                }
+
+                $size = filesize($path);
+                if ($size === false || $size > 262144) {
+                    continue;
+                }
+
+                $json = file_get_contents($path);
+                if ($json === false) {
+                    continue;
+                }
+
+                $translations = json_decode($json, true);
+                if (!is_array($translations) || json_last_error() !== JSON_ERROR_NONE) {
+                    continue;
+                }
+
+                // Why: Later files from the same module may refine that module's own base catalog.
+                foreach ($translations as $source => $translation) {
+                    if ((!is_string($source) && !is_int($source)) || !is_string($translation)) {
+                        continue;
+                    }
+                    $moduleMaps[$moduleName][$locale][strtolower((string) $source)] = $translation;
+                }
+            }
+        }
+
+        return self::mergeBaseLanguageModuleMaps($moduleMaps);
+    }
+
+    /**
+     * Compile base languages from module classes that are already declared.
+     *
+     * Optimization-mode instances return before installation and initialize(),
+     * so reading descriptors does not wake a module.
+     *
+     * @param array<int, string> $moduleNames Installed module names.
+     * @param string|null $onlyLocale Optional active locale to limit JSON I/O.
+     * @return array<string, array<string, string>> Compiled locale maps.
+     */
+    public static function compileBaseLanguagesForModules($moduleNames, $onlyLocale = null) {
+        if (!is_array($moduleNames)) {
+            return [];
+        }
+
+        sort($moduleNames, SORT_STRING);
+        $descriptorsByModule = [];
+        foreach ($moduleNames as $moduleName) {
+            if (!is_string($moduleName) || preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $moduleName) !== 1) {
+                continue;
+            }
+
+            $className = "Dotsystems\\App\\Modules\\" . $moduleName . "\\Module";
+            if (!class_exists($className, false)) {
+                continue;
+            }
+
+            // Why: Reuse the optimizer's inert constructor path without including module.init.php again.
+            $module = new $className(null, true);
+            $descriptorsByModule[$moduleName] = $module->baseLanguages();
+        }
+
+        return self::compileBaseLanguages($descriptorsByModule, $onlyLocale);
+    }
+
+    /**
+     * Merge already decoded module maps with deterministic first-module precedence.
+     *
+     * @param array<string, array<string, array<string, string>>> $moduleMaps Locale maps keyed by module.
+     * @return array<string, array<string, string>> Merged locale maps.
+     */
+    public static function mergeBaseLanguageModuleMaps($moduleMaps) {
+        if (!is_array($moduleMaps)) {
+            return [];
+        }
+
+        ksort($moduleMaps, SORT_STRING);
+        $merged = [];
+        foreach ($moduleMaps as $localeMaps) {
+            if (!is_array($localeMaps)) {
+                continue;
+            }
+            foreach ($localeMaps as $locale => $translations) {
+                if (!is_string($locale) || !is_array($translations)) {
+                    continue;
+                }
+                $locale = strtolower($locale);
+                if (!isset($merged[$locale])) {
+                    $merged[$locale] = [];
+                }
+                foreach ($translations as $source => $translation) {
+                    if ((!is_string($source) && !is_int($source)) || !is_string($translation)) {
+                        continue;
+                    }
+                    $source = strtolower((string) $source);
+                    if (!array_key_exists($source, $merged[$locale])) {
+                        $merged[$locale][$source] = $translation;
+                    }
+                }
+            }
+        }
+
+        ksort($merged, SORT_STRING);
+        foreach ($merged as &$translations) {
+            ksort($translations, SORT_STRING);
+        }
+        unset($translations);
+
+        return $merged;
+    }
+
+    /**
+     * Resolve one modular JSON path inside its owner's translations directory.
+     *
+     * @param string $file Modular file descriptor.
+     * @param string $moduleName Owning module name.
+     * @return string|null Canonical file path or null when containment fails.
+     */
+    private static function resolveBaseLanguagePath($file, $moduleName) {
+        $prefix = $moduleName . ':';
+        $relative = substr($file, strlen($prefix));
+        $translationsRoot = realpath(__ROOTDIR__ . "/app/modules/" . $moduleName . "/translations");
+        if ($translationsRoot === false) {
+            return null;
+        }
+
+        $candidate = realpath(
+            $translationsRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative)
+        );
+        if ($candidate === false || !is_file($candidate) || !is_readable($candidate)) {
+            return null;
+        }
+
+        $root = strtolower(str_replace("\\", '/', $translationsRoot)) . '/';
+        $resolved = strtolower(str_replace("\\", '/', $candidate));
+        if (strpos($resolved, $root) !== 0) {
+            return null;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * Build the backward-compatible version 2 optimizer payload.
+     *
+     * @param array<string, array<int, string>> $modules Module route map.
+     * @param array<string, array<int, string>> $listeners Listener route map.
+     * @param array<string, array<string, string>> $baseLanguages Optional compiled locale maps.
+     * @return string Generated PHP cache source.
+     */
+    private static function buildOptimizerCode($modules, $listeners, $baseLanguages) {
+        // Why: $modules remains the legacy contract and the optional language map does not change version 2.
+        $phpCode = "<?php\n"
+            . "\$modules = " . var_export($modules, true) . ";\n"
+            . "\$listeners = " . var_export($listeners, true) . ";\n";
+        if (is_array($baseLanguages) && $baseLanguages !== []) {
+            $phpCode .= "\$baseLanguages = " . var_export($baseLanguages, true) . ";\n";
+        }
+        $phpCode .= "\$modulesAutoLoaderVersion = 2;\n"
+            . " ?>";
+
+        return $phpCode;
     }
 
     public static function willInitilaize() {

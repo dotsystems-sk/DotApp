@@ -747,48 +747,35 @@ class Installer {
     }
 
     /**
-     * Installs migrations for the module.
+     * Installs migrations for the module in installer() array order.
      *
-     * @param string|null $version Optional version to install up to
+     * @param string|null $version Optional version to install up to (inclusive). Null runs every key.
      */
     public function install($version = null) {
         $migrations = static::installer();
-        ksort($migrations);
-        if ($version === null) {
-            foreach ($migrations as $ver => $migration) {
-                $migration();
+        // Why: ksort/uksort reorders 1.0.10 before 1.0.9. The PHP array is the run order.
+        foreach ($migrations as $ver => $migration) {
+            if ($version !== null && version_compare((string) $ver, (string) $version, '>')) {
+                continue;
             }
-        } else {
-            foreach ($migrations as $ver => $migration) {
-                if (version_compare($ver, $version, '<=')) {
-                    $migration();
-                } else {
-                    break;
-                }
-            }
+            $migration();
         }
     }
 
     /**
-     * Uninstalls migrations for the module.
+     * Uninstalls migrations in reverse installer() array order.
      *
-     * @param string|null $version Optional version to uninstall down to
+     * @param string|null $version Optional version floor (inclusive). Null runs every key.
      */
     public function uninstall($version = null) {
         $migrations = static::uninstaller();
-        krsort($migrations);
-        if ($version === null) {
-            foreach ($migrations as $ver => $migration) {
-                $migration();
+        // Why: reverse of definition order, not krsort (1.0.9 would uninstall before 1.0.10).
+        $migrations = array_reverse($migrations, true);
+        foreach ($migrations as $ver => $migration) {
+            if ($version !== null && version_compare((string) $ver, (string) $version, '<')) {
+                continue;
             }
-        } else {
-            foreach ($migrations as $ver => $migration) {
-                if (version_compare($ver, $version, '>=')) {
-                    $migration();
-                } else {
-                    break;
-                }
-            }
+            $migration();
         }
     }
 

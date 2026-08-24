@@ -32,7 +32,7 @@ CLI-only: non-CLI HTTP requests get 403.
 | Create .htaccess | `--create-htaccess` | Write root `.htaccess` |
 | List routes | `--list-routes` | Boot app, print routes |
 | List one route | `--list-route=<path>` | e.g. `--list-route=/` |
-| Optimize modules | `--optimize-modules` | Write versioned init + listener maps to `app/modules/modulesAutoLoader.php` |
+| Optimize modules | `--optimize-modules` | Write versioned init + listener maps and optional compiled base languages to `app/modules/modulesAutoLoader.php` |
 | Core tests | `--test` | Framework tests, or module tests if `--module` set |
 | All module tests | `--test-modules` | All modules' tests |
 | Prepare DB SQL | `--prepare-database[=prefix]` | Export prefixed SQL file (interactive) |
@@ -72,6 +72,8 @@ Files:
 - `views/clean.view.php`, `views/layouts/example.layout.php`
 - `AI_RULES.md` — a short pointer: if `/AIRULES` exists in the project root, follow it (start with `00-AGENT-CONTRACT.md`)
 
+The generated `module.init.php` includes an inactive, fully commented `baseLanguages()` example. Uncomment it only after adding the referenced small menu/widget translation JSON. Leaving it commented, or returning `[]`, keeps the normal translation files registered by `initialize()` as the fallback.
+
 Dotapper does **not** embed or generate `AIRULES/`. The rulebook ships with the framework.
 
 Module name is `ucfirst()`'d. Namespaces: `Dotsystems\App\Modules\{Name}\…`
@@ -105,7 +107,7 @@ Commands that ask `[Y/n]:` (Enter = yes): `--install`, `--update`, `--prepare-da
 
 1. Always `Set-Location` to project root before running.
 2. Prefer generators over hand-written skeletons.
-3. After changing `Module::initializeRoutes()` or `Listeners::initializeRoutes()`, run `--optimize-modules`. The generated v2 file keeps legacy `$modules`, adds `$listeners`, and sets `$modulesAutoLoaderVersion = 2`; old files containing only `$modules` still work.
+3. After changing `Module::initializeRoutes()`, `Listeners::initializeRoutes()`, `Module::baseLanguages()`, or a referenced base-language JSON, run `--optimize-modules`. The generated v2 file keeps legacy `$modules`, adds `$listeners`, may add compiled `$baseLanguages`, and sets `$modulesAutoLoaderVersion = 2`; old files containing only `$modules` still work.
 4. Review generated stubs — they contain example comments; replace with real code.
 5. Expect exit quirks (see [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md)); judge success by printed messages and files created.
 

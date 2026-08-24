@@ -367,3 +367,21 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | Hardcoding `/dacore` | `Config::module("DACore","prefixUrl")` |
 | Assuming a missing layout throws | It returns `""` — check it |
 | Trying to rewrite HTML from `.rendered` | Listener return values are discarded |
+
+---
+
+## 11. Administration skin packages
+
+DACore discovers optional skins from installed package metadata; the skin module does not patch DACore and does not boot merely for discovery:
+
+- `extra1 = dacore.admin-skin`
+- `extra2 = v1`
+- `extra3 = css` or `shell-css`
+- required local file: `assets/dacore-skin/skin.css`
+- `shell-css` also requires `views/dacore-skin/page.view.php`
+
+The operator explicitly selects a skin in DACore settings. Installation never activates one. Empty selection is the non-removable DACore default. The global Skins switch can disable the selected package without deleting its selection.
+
+A CSS skin changes presentation only. A `shell-css` view receives the same escaped/pre-rendered shell variables as DACore (`templatedata`, `defaultUrl`, `DACoreMenuLeft`, `navbar`, `title`, trusted module `body`, and `aichatdiv`) and returns only the common body skeleton — never `<html>`, `<head>`, core styles, `$dotapp`, Notiflix, or shell scripts. DACore wraps that fragment in its own document and runtime assets.
+
+CSS order is fixed: DACore core → selected skin → page-specific styles. Missing, incompatible, uninstalled, empty, or throwing skin views fall back to the built-in DACore shell. Skin assets are local module files only: no external CSS, SVG, tracker, or runtime download.

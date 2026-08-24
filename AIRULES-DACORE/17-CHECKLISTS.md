@@ -60,6 +60,7 @@
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
 - [ ] `$qb->raw()` has no `?` except real bindings (not in comments / `COMMENT '…'`) ([06](06-DATABASE.md))
 - [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
+- [ ] **Installer keys:** new version appended **after** the last `installer()` key; no `ksort` / `uksort` / `krsort` / `usort` on that map ([07](07-SCHEMA-AND-INSTALL.md), [00](00-AGENT-CONTRACT.md) §5 item 26)
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items`, `dotapp_*`, or `dacore_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 - [ ] Growing lists (users, logs, items, orders) use COUNT + LIMIT + the [40](40-DACORE-LIST-PAGER.md) pager on **first ship** — not `->all()`, not `paginate()['total']` as last_page, not “few rows now”
@@ -163,6 +164,9 @@
 - [ ] Root init files were **not** blanked unless packing a zip
 - [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs**
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
+- [ ] Installer/uninstaller critical failure reports then throws generic `RuntimeException`; no `return`/`false` mistaken for lifecycle abort ([35](35-DACORE-INSTALL.md))
+- [ ] Final migration verifies required earlier success markers and checks its `Installations@insert!` return
+- [ ] Uninstall failure leaves the module folder/registry retryable; own menu prefix is deleted only after critical preconditions pass
 - [ ] Inbox events use `DACore:Notifications@push` on the event (`!== true` checked) — not installer, not every request, not `INSERT` into `dacore_notifications*` ([37](37-DACORE-NOTIFICATIONS.md))
 - [ ] Outgoing mail uses `DACore:Email@send` with an **encrypted** sender id (`!== true` checked) unless the user declined DACore senders — **asked** at plan time ([38](38-DACORE-EMAIL.md))
 - [ ] Outgoing SMS uses `DACore:Sms@send` with a **sender_key** (`ok === true` checked) unless the user declined DACore drivers — **asked** at plan time ([39](39-DACORE-SMS.md))
@@ -291,6 +295,7 @@ Tick only the rows for the surface you touched.
 - DACore zip still contains `install.php`, or is missing `dainstall.php` / `init/` — installer rejects it / Installation never runs ([00](00-AGENT-CONTRACT.md) §2e)
 - DACore-bound **your-module** uses `dainstall.php` / inert root **while still coding** (that is zip-only)
 - New `Installation.php` version left as `installed_*_install.php` (next load will not run it)
+- `ksort` / `uksort` / `krsort` / `usort` on `installer()` or `uninstaller()` keys (`1.0.10` would run before `1.0.9`)
 - `dainstall.php` / `init/` / inert stubs applied to `app/modules/DACore/` itself
 - Root `module.init.php` blanked without the user asking to export
 - `execute()` called with a single callback

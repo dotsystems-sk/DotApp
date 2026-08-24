@@ -36,6 +36,48 @@ namespace Dotsystems\App\Parts;
 use \Dotsystems\App\DotApp;
 use \Dotsystems\App\Parts\Input;
 
+/**
+ * Thrown when a template contains a known malformed, mismatched, or unclosed
+ * control directive. Messages include the directive name and template line only.
+ * Template data (variable values, source snippets) is never included.
+ */
+class RendererSyntaxException extends \Exception
+{
+    /** @var string */
+    private $directive;
+
+    /** @var int */
+    private $templateLine;
+
+    /**
+     * @param string $directive Directive name such as "foreach" or "/if"
+     * @param int    $templateLine 1-based line in the template source
+     * @param string $message Human-readable error without template data
+     */
+    public function __construct($directive, $templateLine, $message)
+    {
+        $this->directive = (string) $directive;
+        $this->templateLine = (int) $templateLine;
+        parent::__construct($message);
+    }
+
+    /**
+     * @return string
+     */
+    public function getDirective()
+    {
+        return $this->directive;
+    }
+
+    /**
+     * @return int
+     */
+    public function getTemplateLine()
+    {
+        return $this->templateLine;
+    }
+}
+
 class Renderer
 {
     private static $instancie = array();
@@ -108,7 +150,8 @@ class Renderer
 		* @useCssCache - Pouzijeme cache pre CSS ? + objekt cache
 		*
 	*/
-    private $renderedCssFiles;
+    private $useCssCache = false;
+    private $renderedCssFiles = array();
     /*
 		*
 		* @renderedCssFiles - Pole so zoznamom vyrenderovanych a minimalizovanych CSS suborov pripojenych do aktualnej sablony CSS
@@ -137,6 +180,20 @@ class Renderer
 	*/
     private $dirw;
 
+    /**
+     * Request-global value filters for {{ var: $x | filter }} pipelines.
+     * Shared across Renderer instances, same as addRenderer/addBlock.
+     * Built-ins are seeded once; addFilter() adds or replaces names.
+     *
+     * @var array<string, callable>
+     */
+    private static $valueFilters = array();
+
+    /**
+     * @var bool
+     */
+    private static $builtinFiltersReady = false;
+
     function __construct($dotapp = null, $name = false)
     {
         $this->dotapp = DotApp::dotApp();
@@ -144,6 +201,7 @@ class Renderer
         $this->dotApp = DotApp::dotApp();
         $this->DotApp = DotApp::dotApp();
         $this->blocks_renderer(1);
+        $this->registerBuiltinFilters();
         if (is_string($name) && !isset(self::$instancie[$name])) self::$instancie[$name] = $this;
     }
 
@@ -220,6 +278,139 @@ class Renderer
         DotApp::DotApp()->customRenderer->addBlock($name, $blockFn);
     }
 
+    /**
+     * Registers a value filter used by {{ var: $x | name }} pipelines.
+     * Complementary to addRenderer(): filters transform a single value at
+     * echo-time; renderers rewrite whole template documents earlier in the pipeline.
+     *
+     * Names must match [A-Za-z_][A-Za-z0-9_]* and are stored in a case-sensitive
+     * request-global allowlist shared by every Renderer instance. Duplicate names
+     * replace the previous callable. The callable receives the current value as
+     * the first argument, then any parsed filter arguments. It must not be
+     * invoked via eval() or by interpolating the filter name into generated PHP
+     * as a function call.
+     *
+     * @param string   $name     Filter name as used after the pipe
+     * @param callable $filterFn function ($value, ...$args)
+     * @return $this
+     */
+    public function addFilter($name, $filterFn)
+    {
+        return $this->add_filter($name, $filterFn);
+    }
+
+    /**
+     * Snake_case alias of addFilter().
+     *
+     * @param string   $name
+     * @param callable $filterFn
+     * @return $this
+     */
+    public function add_filter($name, $filterFn)
+    {
+        if (!is_string($name) || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
+            throw new \InvalidArgumentException('Filter name must be a PHP identifier.');
+        }
+        if (!is_callable($filterFn)) {
+            throw new \InvalidArgumentException('Filter must be callable.');
+        }
+        self::$valueFilters[$name] = $filterFn;
+        return $this;
+    }
+
+    /**
+     * Returns a registered filter callable, or false when unknown.
+     *
+     * @param string $name
+     * @return callable|false
+     */
+    public function getFilter($name)
+    {
+        return $this->get_filter($name);
+    }
+
+    /**
+     * Snake_case alias of getFilter().
+     *
+     * @param string $name
+     * @return callable|false
+     */
+    public function get_filter($name)
+    {
+        if (!is_string($name) || !isset(self::$valueFilters[$name])) {
+            return false;
+        }
+        return self::$valueFilters[$name];
+    }
+
+    /**
+     * Seeds the built-in value filters once per request. Later Renderer
+     * instances share this table; addFilter() on one instance is visible to others.
+     *
+     * @return void
+     */
+    private function registerBuiltinFilters()
+    {
+        if (self::$builtinFiltersReady) {
+            return;
+        }
+        self::$builtinFiltersReady = true;
+        $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+        self::$valueFilters['escape'] = function ($value) {
+            if (is_array($value) || is_object($value)) {
+                $value = json_encode($value);
+            }
+            return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        };
+        self::$valueFilters['default'] = function ($value, $fallback = '') {
+            if ($value === null || $value === false || $value === '') {
+                return $fallback;
+            }
+            return $value;
+        };
+        self::$valueFilters['number'] = function ($value, $decimals = 0) {
+            return number_format((float) $value, (int) $decimals, '.', ',');
+        };
+        self::$valueFilters['date'] = function ($value, $format = 'Y-m-d H:i:s') {
+            if ($value === null || $value === '') {
+                return '';
+            }
+            if (!is_numeric($value)) {
+                $parsed = strtotime((string) $value);
+                if ($parsed === false) {
+                    return '';
+                }
+                $value = $parsed;
+            }
+            return date((string) $format, (int) $value);
+        };
+        self::$valueFilters['join'] = function ($value, $separator = ',') {
+            if (is_array($value)) {
+                return implode((string) $separator, $value);
+            }
+            return (string) $value;
+        };
+        self::$valueFilters['json'] = function ($value) use ($jsonFlags) {
+            $json = json_encode($value, $jsonFlags);
+            return $json === false ? 'null' : $json;
+        };
+        self::$valueFilters['urlencode'] = function ($value) {
+            return rawurlencode((string) $value);
+        };
+        self::$valueFilters['upper'] = function ($value) {
+            if (function_exists('mb_strtoupper')) {
+                return mb_strtoupper((string) $value, 'UTF-8');
+            }
+            return strtoupper((string) $value);
+        };
+        self::$valueFilters['lower'] = function ($value) {
+            if (function_exists('mb_strtolower')) {
+                return mb_strtolower((string) $value, 'UTF-8');
+            }
+            return strtolower((string) $value);
+        };
+    }
+
     public function custom_renderers()
     {
         return (DotApp::DotApp()->customRenderer->customRenderers());
@@ -289,26 +480,7 @@ class Renderer
         } else {
 
             $this->add_renderer("dotapp.block", function ($code, $variables = []) {
-
-                $pattern = '/\{\{\s*block:([\w.-]+)(?:\((.*?)\))?\s*\}\}(.*?)\{\{\s*\/block:\1\s*\}\}/s';
-
-                if (preg_match_all($pattern, $code, $matches, PREG_SET_ORDER)) {
-                    foreach ($matches as $match) {
-                        $fullMatch = $match[0];
-                        $blockName = $match[1];
-                        $blockVariables = isset($match[2]) && !empty($match[2]) ? explode(',', $match[2]) : [];
-                        $innerContent = $match[3];
-
-                        if (is_callable($this->dotApp->customRenderer->blocks($blockName))) {
-                            $replacement = $this->dotApp->customRenderer->blocks($blockName)($innerContent, $blockVariables, $variables);
-                            $code = str_replace($fullMatch, $replacement, $code);
-                        } else {
-                            $replacement = "{{ blockerror:" . $block . " }} Undefined callable function ! {{ /blockerror:" . $block . " }}";
-                            $code = str_replace($fullMatch, $replacement, $code);
-                        }
-                    }
-                }
-                return ($code);
+                return $this->processStandardBlocks($code, $variables);
             });
         }
         return ($this);
@@ -898,6 +1070,7 @@ class Renderer
     public function renderLayoutCode(callable $renderer = null)
     {
         $this->renderedCode = "";
+        $cachename = null;
 
         if (isset($this->layout) && $this->layout != "") {
             /*
@@ -955,31 +1128,15 @@ class Renderer
          * * Logic: This function "cuts" the block out of HTML and stores it in $block['item'].
          * Usage in same file: foreach($data as $d) echo $block['item']->set("name", $d)->html();
          */
-        $render_private_block = function ($code) {
-            $pattern = '/\{\{\s*privateblock:(.*?)\s*\}\}(.*?)\{\{\s*\/privateblock\s*\}\}/si';
-            if (preg_match_all($pattern, $code, $matches, PREG_SET_ORDER)) {
-                $replacement = '<?php $block = array(); ?>' . "\n";
-
-                $code = $replacement . $code;
-                // $matches contains all matched blocks
-                foreach ($matches as $match) {
-                    $replacement = '<?php $block["' . $match[1] . '"] = new \Dotsystems\App\Parts\PrivateBlock(base64_decode("' . base64_encode($match[2]) . '")); ?>' . "\n";
-                    $code = str_replace($match[0], $replacement, $code);
-                }
-            }
-
-            return ($code);
-        };
-
         if ($renderer === null) {
             $this->renderedCode = $layoutcode;
-            $this->renderedCode = $render_private_block($this->renderedCode);
+            $this->renderedCode = $this->processPrivateBlocks($this->renderedCode);
             foreach ($this->custom_renderers() as $rkey => $custom_renderer) {
                 $this->renderedCode = $custom_renderer($this->renderedCode, $this->getLayoutVars());
             }
         } else {
             $this->renderedCode = $renderer($layoutcode);
-            $this->renderedCode = $render_private_block($this->renderedCode);
+            $this->renderedCode = $this->processPrivateBlocks($this->renderedCode);
             foreach ($this->custom_renderers() as $rkey => $custom_renderer) {
                 $this->renderedCode = $custom_renderer($this->renderedCode, $this->getViewVars());
             }
@@ -991,7 +1148,7 @@ class Renderer
 			Az ked uz mame kod minimalizovany vlozime {{generatorinfo}}
 		*/
 
-        if ($this->useCache == true) {
+        if ($this->useCache == true && $cachename !== null) {
             $this->cache->cachePageSave($cachename, $this->renderedCode);
         }
 
@@ -1018,10 +1175,10 @@ class Renderer
             $loadedviewcode = $this->concatInnerLayouts("", $loadedviewcode);
 
             if (isset($this->layout) && $this->layout != "") {
+                // Content substitution only. Custom renderers run once afterwards
+                // inside renderLayoutCode() on the combined document. Running them
+                // here as well would process layout tags twice.
                 $renderer = function ($code) use ($loadedviewcode) {
-                    foreach ($this->custom_renderers() as $rkey => $custom_renderer) {
-                        $code = $custom_renderer($code, $this->getViewVars());
-                    }
                     return (str_replace("{{ content }}", $code, $loadedviewcode));
                 };
                 $this->renderLayoutCode($renderer);
@@ -1063,6 +1220,25 @@ class Renderer
         $preneseneFn = array();
         $preneseneFn['encrypt'] = function ($text, $key2 = "") {
             return $this->dotApp->encrypt($text, $key2);
+        };
+        $filters = self::$valueFilters;
+        $preneseneFn['filter'] = function ($value, $pipeline) use ($filters) {
+            if (!is_array($pipeline)) {
+                return $value;
+            }
+            foreach ($pipeline as $step) {
+                if (!is_array($step) || !isset($step[0])) {
+                    continue;
+                }
+                $name = $step[0];
+                $args = (isset($step[1]) && is_array($step[1])) ? $step[1] : array();
+                if (!isset($filters[$name]) || !is_callable($filters[$name])) {
+                    continue;
+                }
+                array_unshift($args, $value);
+                $value = call_user_func_array($filters[$name], $args);
+            }
+            return $value;
         };
 
         $isolated_renderer = new RenderingIsolator($preneseneFn);
@@ -1137,172 +1313,15 @@ class Renderer
 
     public function updateLayoutContentData($layoutdata = null)
     {
-        // 2025 verzia, doplnene encryption priamo do sablonovacieho systemu 
-        /*$patterns = [
-
-            '/\{\{\_\s*var:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $translator($' . $matches[1] . '); ?>';
-            },
-            '/\{\{\_\s*"([^"]*)"\s*\}\}/' => function ($matches) {
-                return '<?php echo $translator("' . $matches[1] . '"); ?>';
-            },
-
-            '/\{\{\s*var:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $' . $matches[1] . '; ?>';
-            },
-
-            '/\{\{\s+if\s+(.+?)\s+\}\}/' => function ($matches) {
-                return '<?php if (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+elseif\s+(.+?)\s+\}\}/' => function ($matches) {
-                return '<?php elseif (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+else\s+\}\}/' => function ($matches) {
-                return '<?php else: ?>';
-            },
-            '/\{\{\s+\/if\s+\}\}/' => function ($matches) {
-                return '<?php endif; ?>';
-            },
-
-            '/\{\{\s*foreach\s+((?:\$\w+|\$\w+\[\'\w+\'\])+(?:\[\'.*?\'\])*(?:\s+as\s+\$\w+))\s*\}\}/' => function ($matches) {
-                return '<?php foreach (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+\/foreach\s+\}\}/' => function ($matches) {
-                return '<?php endforeach; ?>';
-            },
-
-            '/\{\{\s+while\s+(.+?)\s+\}\}/' => function ($matches) {
-                return '<?php while (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+\/while\s+\}\}/' => function ($matches) {
-                return '<?php endwhile; ?>';
-            },
-
-            '/\{\{\s*enc:\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[1] . '); ?>';
-            },
-            '/\{\{\s*enc\(([^)]+)\):\s*\$(?!_)(\w+(?:\[\'.*?\'\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[2] . ', "' . $matches[1] . '"); ?>';
-            },
-            '/\{\{\s*enc:\s*"([^"]*)"\s*\}\}/' => function ($matches) {
-                return $this->dotApp->encrypt($matches[1]);
-            },
-            '/\{\{\s*enc\(([^)]+)\):\s*"([^"]*)"\s*\}\}/' => function ($matches) use ($dotapp) {
-                $key = $matches[1];
-                $string = $matches[2];
-                return $this->dotApp->encrypt($string, $key);
-            },
-        ];*/
-
-        // Update 05/2026
-        $patterns = [
-            /*
-                Prekladač jazyka
-                {{_ var: $variable }} -> '<?php echo $translator($variable); ?>'
-                {{_ "text" }} -> '<?php echo $translator("text"); ?>'
-            */
-            '/\{\{\_\s*var:\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $translator($' . $matches[1] . '); ?>';
-            },
-            '/\{\{\_\s*"([^"]*)"\s*\}\}/' => function ($matches) {
-                return '<?php echo $translator("' . $matches[1] . '"); ?>';
-            },
-
-            /* Premenné, syntax
-            {{ var: $variableName }}
-            */
-            '/\{\{\s*var:\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $' . $matches[1] . '; ?>';
-            },
-
-            /* IF podmienka, syntax
-            {{ if $condition }}
-                Nieco sem
-            {{ elseif $otherCondition }}
-                Nieco sem
-            {{ else }}
-                Nieco sem
-            {{ /if }}
-            */
-            '/\{\{\s+if\s+(.+?)\s+\}\}/' => function ($matches) {
-                return '<?php if (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+elseif\s+(.+?)\s+\}\}/' => function ($matches) {
-                return '<?php elseif (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+else\s+\}\}/' => function ($matches) {
-                return '<?php else: ?>';
-            },
-            '/\{\{\s+\/if\s+\}\}/' => function ($matches) {
-                return '<?php endif; ?>';
-            },
-
-            /*
-            Foreach príklad:
-            {{ foreach $items as $item }}
-                <li>{{ var: $item }}</li>
-            {{ /foreach }}
-            */
-            '/\{\{\s*foreach\s+((?:\$\w+|\$\w+\[\'\w+\'\])+(?:\[(?:\'.*?\'|\d+)\])*(?:\s+as\s+\$\w+))\s*\}\}/' => function ($matches) {
-                return '<?php foreach (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+\/foreach\s+\}\}/' => function ($matches) {
-                return '<?php endforeach; ?>';
-            },
-
-            /*
-                {{ while $index < count($items) }}
-                <li>{{ var: $items[$index] }}</li>
-                <?php $index++; ?>
-            {{ /while }}
-            */
-            '/\{\{\s+while\s+(.+?)\s+\}\}/' => function ($matches) {
-                return '<?php while (' . $matches[1] . '): ?>';
-            },
-            '/\{\{\s+\/while\s+\}\}/' => function ($matches) {
-                return '<?php endwhile; ?>';
-            },
-
-            /* Šifrovanie, syntax
-                {{ enc: $variableName }} -> Vráti výsledok $dotapp->encrypt($variableName)
-                {{ enc(key): $variableName }} -> Vráti výsledok $dotapp->encrypt($variableName, "key")
-                {{ enc: "string" }} -> Vráti výsledok $dotapp->encrypt("string")
-                {{ enc(key): "string" }} -> Vráti výsledok $dotapp->encrypt("string", "key")
-
-                Skarede riesenie, ale jednoduche a ucelove. Pravdepodobnost klizie miziva az nulova.
-            */
-            '/\{\{\s*enc:\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[1] . '); ?>';
-            },
-            '/\{\{\s*enc\(([^)]+)\):\s*\$(?!_)(\w+(?:\[(?:\'.*?\'|\d+)\])*)\s*\}\}/' => function ($matches) {
-                return '<?php echo $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt($' . $matches[2] . ', "' . $matches[1] . '"); ?>';
-            },
-            '/\{\{\s*enc:\s*"([^"]*)"\s*\}\}/' => function ($matches) {
-                return $this->dotApp->encrypt($matches[1]);
-            },
-            '/\{\{\s*enc\(([^)]+)\):\s*"([^"]*)"\s*\}\}/' => function ($matches) use ($dotapp) {
-                $key = $matches[1];
-                $string = $matches[2];
-                return $this->dotApp->encrypt($string, $key);
-            },
-        ];
-
-        /*
-            Nahradíme patterny
-        */
+        // Deterministic compile of known control/output directives. Unknown
+        // {{ ... }} tags are left intact for CSRF, formName, Bridge, and custom renderers.
         if (isset($layoutdata)) {
-            $extracted = $this->extract_code($layoutdata);
-            foreach ($patterns as $pattern => $handler) {
-                $layoutdata = preg_replace_callback($pattern, $handler, $layoutdata);
-            }
+            $layoutdata = $this->compileDirectives($layoutdata);
             $layoutdata = $this->dotApp->bridge->dotBridge($layoutdata);
             return $layoutdata;
         }
 
-        $extracted = $this->extract_code($this->renderedCode);
-        foreach ($patterns as $pattern => $handler) {
-            $this->renderedCode = preg_replace_callback($pattern, $handler, $this->renderedCode);
-        }
+        $this->renderedCode = $this->compileDirectives($this->renderedCode);
 
         /*
             Ak niekomu staci obycajny CSRF token, aj ked ja to povazujem za zobracinu tak nech sa paci.
@@ -1382,6 +1401,1148 @@ class Renderer
         }, $html);*/
     }
 
+    /**
+     * Extracts {{ privateblock:name }} fragments. Nesting is rejected: the closer
+     * has no name, so a second open while one is open cannot be paired safely.
+     * Sequential (non-nested) privateblocks remain valid. Names use the same
+     * safe dotted/dashed format as standard blocks and are written with var_export.
+     *
+     * @param string $code
+     * @return string
+     */
+    private function processPrivateBlocks($code)
+    {
+        $tags = $this->dsCollectPrivateBlockTags($code);
+        $pairs = array();
+        $open = null;
+        foreach ($tags as $tag) {
+            if ($tag['kind'] === 'open') {
+                if ($open !== null) {
+                    $this->dsThrow('privateblock', $tag['line'], 'Nested "privateblock" is not supported.');
+                }
+                $open = $tag;
+            } else {
+                if ($open === null) {
+                    $this->dsThrow('/privateblock', $tag['line'], 'Unexpected "/privateblock" with no open "privateblock".');
+                }
+                $pairs[] = array(
+                    'name' => $open['name'],
+                    'start' => $open['start'],
+                    'end' => $tag['end'],
+                    'inner' => substr($code, $open['end'], $tag['start'] - $open['end']),
+                );
+                $open = null;
+            }
+        }
+        if ($open !== null) {
+            $this->dsThrow('privateblock', $open['line'], 'Unclosed "privateblock" directive.');
+        }
+        if (empty($pairs)) {
+            return $code;
+        }
+        for ($n = count($pairs) - 1; $n >= 0; $n--) {
+            $pair = $pairs[$n];
+            $replacement = '<?php $block[' . var_export($pair['name'], true) . '] = new \\Dotsystems\\App\\Parts\\PrivateBlock(base64_decode("' . base64_encode($pair['inner']) . '")); ?>';
+            $code = substr($code, 0, $pair['start']) . $replacement . substr($code, $pair['end']);
+        }
+        return '<?php $block = array(); ?>' . "\n" . $code;
+    }
+
+    /**
+     * @param string $code
+     * @return array<int, array<string, mixed>>
+     */
+    private function dsCollectPrivateBlockTags($code)
+    {
+        $tags = array();
+        $len = strlen($code);
+        $i = 0;
+        while ($i < $len) {
+            if ($this->dsAtPhpOpen($code, $i, $len)) {
+                $i = $this->dsSkipPhpIsland($code, $i, $len);
+                continue;
+            }
+            if ($i + 1 < $len && $code[$i] === '{' && $code[$i + 1] === '{') {
+                $end = $this->dsFindTagEnd($code, $i, $len);
+                if ($end === false) {
+                    break;
+                }
+                $inner = trim(substr($code, $i + 2, $end - 2 - ($i + 2)));
+                $line = $this->dsLineAt($code, $i);
+                if (preg_match('/^privateblock:(.+)$/s', $inner, $m)) {
+                    $name = trim($m[1]);
+                    if (!preg_match('/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/', $name)) {
+                        $this->dsThrow('privateblock', $line, 'Malformed "privateblock" name.');
+                    }
+                    $tags[] = array(
+                        'kind' => 'open',
+                        'name' => $name,
+                        'start' => $i,
+                        'end' => $end,
+                        'line' => $line,
+                    );
+                } elseif (preg_match('/^\/privateblock$/i', $inner)) {
+                    $tags[] = array(
+                        'kind' => 'close',
+                        'start' => $i,
+                        'end' => $end,
+                        'line' => $line,
+                    );
+                }
+                $i = $end;
+                continue;
+            }
+            $i++;
+        }
+        return $tags;
+    }
+
+    /**
+     * LIFO stack check for {{ block:name }} / {{ /block:name }}. Same-name and
+     * different-name nesting is allowed; crossing, orphan, and unclosed tags throw.
+     *
+     * @param string $code
+     * @return void
+     */
+    private function dsValidateBlockTags($code)
+    {
+        $tags = $this->dsCollectBlockTags($code);
+        $stack = array();
+        foreach ($tags as $tag) {
+            if ($tag['kind'] === 'open') {
+                $stack[] = $tag;
+                continue;
+            }
+            if (empty($stack)) {
+                $this->dsThrow('/block', $tag['line'], 'Unexpected "/block" with no open "block".');
+            }
+            $top = $stack[count($stack) - 1];
+            if ($top['name'] !== $tag['name']) {
+                $this->dsThrow('/block', $tag['line'], 'Unexpected "/block" (expected "/block:' . $top['name'] . '").');
+            }
+            array_pop($stack);
+        }
+        if (!empty($stack)) {
+            $top = $stack[count($stack) - 1];
+            $this->dsThrow('block', $top['line'], 'Unclosed "block" directive.');
+        }
+    }
+
+    /**
+     * @param string $code
+     * @return array<int, array<string, mixed>>
+     */
+    private function dsCollectBlockTags($code)
+    {
+        $tags = array();
+        $len = strlen($code);
+        $i = 0;
+        while ($i < $len) {
+            if ($this->dsAtPhpOpen($code, $i, $len)) {
+                $i = $this->dsSkipPhpIsland($code, $i, $len);
+                continue;
+            }
+            if ($i + 1 < $len && $code[$i] === '{' && $code[$i + 1] === '{') {
+                $end = $this->dsFindTagEnd($code, $i, $len);
+                if ($end === false) {
+                    break;
+                }
+                $inner = trim(substr($code, $i + 2, $end - 2 - ($i + 2)));
+                $line = $this->dsLineAt($code, $i);
+                if (preg_match('/^block:([A-Za-z0-9_.-]+)(?:\s*\((.*)\s*\)\s*)?$/s', $inner, $m)) {
+                    $argStr = isset($m[2]) ? $m[2] : '';
+                    $tags[] = array(
+                        'kind' => 'open',
+                        'name' => $m[1],
+                        'args' => $this->dsParseBlockArgs($argStr),
+                        'start' => $i,
+                        'end' => $end,
+                        'line' => $line,
+                    );
+                } elseif (preg_match('/^\/block:([A-Za-z0-9_.-]+)$/', $inner, $m)) {
+                    $tags[] = array(
+                        'kind' => 'close',
+                        'name' => $m[1],
+                        'start' => $i,
+                        'end' => $end,
+                        'line' => $line,
+                    );
+                }
+                $i = $end;
+                continue;
+            }
+            $i++;
+        }
+        return $tags;
+    }
+
+    /**
+     * Stack-based {{ block:name }} processor. Innermost same-name pairs are
+     * resolved first so nested identical block names work. Arguments honor
+     * quotes, so commas and spaces inside "..." or '...' stay in one argument.
+     * Handler signature is unchanged: fn($innerContent, $blockVariables, $variables).
+     *
+     * @param string $code
+     * @param array  $variables
+     * @return string
+     */
+    private function processStandardBlocks($code, $variables)
+    {
+        $guard = 0;
+        while ($guard < 10000) {
+            $guard++;
+            $this->dsValidateBlockTags($code);
+            $pair = $this->dsFindInnermostBlock($code);
+            if ($pair === null) {
+                break;
+            }
+            $blockName = $pair['name'];
+            $handler = $this->dotApp->customRenderer->blocks($blockName);
+            if (is_callable($handler)) {
+                $replacement = $handler($pair['inner'], $pair['args'], $variables);
+            } else {
+                $replacement = "{{ blockerror:" . $blockName . " }} Undefined callable function ! {{ /blockerror:" . $blockName . " }}";
+            }
+            $code = substr($code, 0, $pair['start']) . $replacement . substr($code, $pair['end']);
+        }
+        return $code;
+    }
+
+    /**
+     * Finds the innermost complete {{ block:name }} ... {{ /block:name }} pair.
+     *
+     * @param string $code
+     * @return array<string, mixed>|null
+     */
+    private function dsFindInnermostBlock($code)
+    {
+        $tags = $this->dsCollectBlockTags($code);
+
+        $pairs = array();
+        $stack = array();
+        foreach ($tags as $tag) {
+            if ($tag['kind'] === 'open') {
+                $stack[] = $tag;
+            } else {
+                if (empty($stack)) {
+                    continue;
+                }
+                $open = $stack[count($stack) - 1];
+                if ($open['name'] !== $tag['name']) {
+                    continue;
+                }
+                array_pop($stack);
+                $pairs[] = array(
+                    'name' => $open['name'],
+                    'args' => $open['args'],
+                    'start' => $open['start'],
+                    'end' => $tag['end'],
+                    'inner' => substr($code, $open['end'], $tag['start'] - $open['end']),
+                );
+            }
+        }
+        foreach ($pairs as $pair) {
+            $containsOther = false;
+            foreach ($pairs as $other) {
+                if ($other['start'] === $pair['start'] && $other['end'] === $pair['end']) {
+                    continue;
+                }
+                if ($other['start'] >= $pair['start'] && $other['end'] <= $pair['end']) {
+                    $containsOther = true;
+                    break;
+                }
+            }
+            if (!$containsOther) {
+                return $pair;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Quote-aware split of block arguments on commas.
+     *
+     * @param string $argStr
+     * @return array<int, string>
+     */
+    private function dsParseBlockArgs($argStr)
+    {
+        $argStr = trim($argStr);
+        if ($argStr === '') {
+            return array();
+        }
+        $args = array();
+        $current = '';
+        $quote = null;
+        $escape = false;
+        $len = strlen($argStr);
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $argStr[$i];
+            if ($escape) {
+                $current .= $ch;
+                $escape = false;
+                continue;
+            }
+            if ($quote !== null) {
+                if ($ch === '\\') {
+                    $escape = true;
+                    continue;
+                }
+                if ($ch === $quote) {
+                    $quote = null;
+                    continue;
+                }
+                $current .= $ch;
+                continue;
+            }
+            if ($ch === '"' || $ch === "'") {
+                $quote = $ch;
+                continue;
+            }
+            if ($ch === ',') {
+                $args[] = trim($current);
+                $current = '';
+                continue;
+            }
+            $current .= $ch;
+        }
+        $args[] = trim($current);
+        return $args;
+    }
+
+    /**
+     * Compiles known DotApp directives into PHP. PHP islands, {{ raw }}, and
+     * unknown tags are left unchanged. Throws RendererSyntaxException on
+     * malformed, mismatched, or unclosed known control directives.
+     *
+     * @param string $code
+     * @return string
+     */
+    private function compileDirectives($code)
+    {
+        if (!is_string($code) || $code === '') {
+            return $code;
+        }
+        $len = strlen($code);
+        $i = 0;
+        $out = '';
+        $stack = array();
+        $rawDepth = 0;
+        $commentDepth = 0;
+        $loopSeq = 0;
+        $rawOpenLine = 1;
+        $commentOpenLine = 1;
+
+        while ($i < $len) {
+            if ($this->dsAtPhpOpen($code, $i, $len)) {
+                $phpEnd = $this->dsSkipPhpIsland($code, $i, $len);
+                if ($commentDepth === 0) {
+                    $out .= substr($code, $i, $phpEnd - $i);
+                }
+                $i = $phpEnd;
+                continue;
+            }
+
+            if ($i + 1 < $len && $code[$i] === '{' && $code[$i + 1] === '{') {
+                $tagEnd = $this->dsFindTagEnd($code, $i, $len);
+                if ($tagEnd === false) {
+                    $out .= $code[$i];
+                    $i++;
+                    continue;
+                }
+                $innerRaw = substr($code, $i + 2, $tagEnd - 2 - ($i + 2));
+                $inner = trim($innerRaw);
+                $line = $this->dsLineAt($code, $i);
+
+                if ($commentDepth > 0) {
+                    if (preg_match('/^comment$/i', $inner)) {
+                        $commentDepth++;
+                    } elseif (preg_match('/^\/comment$/i', $inner)) {
+                        $commentDepth--;
+                    }
+                    $i = $tagEnd;
+                    continue;
+                }
+
+                if ($rawDepth > 0) {
+                    if (preg_match('/^raw$/i', $inner)) {
+                        $rawDepth++;
+                        $i = $tagEnd;
+                        continue;
+                    }
+                    if (preg_match('/^\/raw$/i', $inner)) {
+                        $rawDepth--;
+                        $i = $tagEnd;
+                        continue;
+                    }
+                    $out .= substr($code, $i, $tagEnd - $i);
+                    $i = $tagEnd;
+                    continue;
+                }
+
+                $rawBefore = $rawDepth;
+                $commentBefore = $commentDepth;
+                $compiled = $this->dsCompileTag($inner, $line, $stack, $rawDepth, $commentDepth, $loopSeq);
+                if ($rawBefore === 0 && $rawDepth > 0) {
+                    $rawOpenLine = $line;
+                }
+                if ($commentBefore === 0 && $commentDepth > 0) {
+                    $commentOpenLine = $line;
+                }
+                if ($compiled === null) {
+                    $out .= substr($code, $i, $tagEnd - $i);
+                } else {
+                    $out .= $compiled;
+                }
+                $i = $tagEnd;
+                continue;
+            }
+
+            if ($commentDepth === 0) {
+                $out .= $code[$i];
+            }
+            $i++;
+        }
+
+        if ($commentDepth > 0) {
+            $this->dsThrow('comment', $commentOpenLine, 'Unclosed "comment" directive.');
+        }
+        if ($rawDepth > 0) {
+            $this->dsThrow('raw', $rawOpenLine, 'Unclosed "raw" directive.');
+        }
+        if (!empty($stack)) {
+            $top = $stack[count($stack) - 1];
+            $this->dsThrow($top['kind'], $top['line'], 'Unclosed "' . $top['kind'] . '" directive.');
+        }
+        return $out;
+    }
+
+    /**
+     * Compiles one trimmed tag inner body, or returns null to keep the original tag.
+     *
+     * @param string $inner
+     * @param int    $line
+     * @param array  $stack
+     * @param int    $rawDepth
+     * @param int    $commentDepth
+     * @param int    $loopSeq
+     * @return string|null
+     */
+    private function dsCompileTag($inner, $line, array &$stack, &$rawDepth, &$commentDepth, &$loopSeq)
+    {
+        if (preg_match('/^raw$/i', $inner)) {
+            $rawDepth++;
+            return '';
+        }
+        if (preg_match('/^\/raw$/i', $inner)) {
+            $this->dsThrow('raw', $line, 'Unexpected "/raw" with no open "raw".');
+        }
+        if (preg_match('/^comment$/i', $inner)) {
+            $commentDepth++;
+            return '';
+        }
+        if (preg_match('/^\/comment$/i', $inner)) {
+            $this->dsThrow('comment', $line, 'Unexpected "/comment" with no open "comment".');
+        }
+
+        if (preg_match('/^var\s*:\s*(.+)$/s', $inner, $m)) {
+            $parsed = $this->dsParseValueAndFilters(trim($m[1]), $line, 'var');
+            return $this->dsEmitEcho($parsed['php'], $parsed['filters']);
+        }
+
+        if (preg_match('/^_\s*(.+)$/s', $inner, $m)) {
+            $rest = trim($m[1]);
+            if (preg_match('/^var\s*:\s*(.+)$/s', $rest, $vm)) {
+                $parsed = $this->dsParseValueAndFilters(trim($vm[1]), $line, '_');
+                return $this->dsEmitEcho('$translator(' . $parsed['php'] . ')', $parsed['filters']);
+            }
+            if ($rest === '' || $rest[0] !== '"') {
+                return null;
+            }
+            $parsed = $this->dsParseValueAndFilters($rest, $line, '_');
+            if ($parsed['kind'] !== 'literal') {
+                $this->dsThrow('_', $line, 'Malformed translation directive.');
+            }
+            return $this->dsEmitEcho('$translator(' . $parsed['php'] . ')', $parsed['filters']);
+        }
+
+        if (preg_match('/^enc(\((.*)\))?\s*:\s*(.+)$/s', $inner, $m)) {
+            $keyRaw = isset($m[2]) ? trim($m[2]) : '';
+            $parsed = $this->dsParseValueAndFilters(trim($m[3]), $line, 'enc');
+            $encName = '$dotapp236365b0b1631351e99daf046d18d2bcEcnrypt';
+            if ($parsed['kind'] === 'literal') {
+                $plain = $parsed['literal'];
+                $encrypted = ($keyRaw === '')
+                    ? $this->dotApp->encrypt($plain)
+                    : $this->dotApp->encrypt($plain, $keyRaw);
+                if (empty($parsed['filters'])) {
+                    return (string) $encrypted;
+                }
+                return $this->dsEmitEcho(var_export((string) $encrypted, true), $parsed['filters']);
+            }
+            if ($keyRaw === '') {
+                $expr = $encName . '(' . $parsed['php'] . ')';
+            } else {
+                $expr = $encName . '(' . $parsed['php'] . ', ' . var_export($keyRaw, true) . ')';
+            }
+            return $this->dsEmitEcho($expr, $parsed['filters']);
+        }
+
+        if (preg_match('/^if\s+(.+)$/s', $inner, $m)) {
+            $stack[] = array('kind' => 'if', 'line' => $line, 'hasElse' => false, 'foreachElse' => false);
+            return '<?php if (' . trim($m[1]) . '): ?>';
+        }
+        if (preg_match('/^elseif\s+(.+)$/s', $inner, $m)) {
+            $this->dsExpectTop($stack, 'if', $line, 'elseif');
+            $top = &$stack[count($stack) - 1];
+            if (!empty($top['hasElse'])) {
+                $this->dsThrow('elseif', $line, 'Unexpected "elseif" after "else".');
+            }
+            unset($top);
+            return '<?php elseif (' . trim($m[1]) . '): ?>';
+        }
+        if (preg_match('/^else$/i', $inner)) {
+            if (empty($stack)) {
+                $this->dsThrow('else', $line, 'Unexpected "else" with no open "if" or "foreach".');
+            }
+            $top = &$stack[count($stack) - 1];
+            if ($top['kind'] === 'foreach' && empty($top['foreachElse'])) {
+                $top['foreachElse'] = true;
+                $php = '<?php endforeach; if (empty(' . $top['anyRef'] . ')): ?>';
+                unset($top);
+                return $php;
+            }
+            if ($top['kind'] === 'if' && empty($top['hasElse'])) {
+                $top['hasElse'] = true;
+                unset($top);
+                return '<?php else: ?>';
+            }
+            $this->dsThrow('else', $line, 'Unexpected "else".');
+        }
+        if (preg_match('/^\/if$/i', $inner)) {
+            $this->dsExpectTop($stack, 'if', $line, '/if');
+            array_pop($stack);
+            return '<?php endif; ?>';
+        }
+
+        if (preg_match('/^foreach\s+(.+)$/s', $inner, $m)) {
+            $parsed = $this->dsParseForeach(trim($m[1]));
+            if ($parsed === false) {
+                $this->dsThrow('foreach', $line, 'Malformed "foreach" directive.');
+            }
+            $id = $loopSeq++;
+            $S = '$__ds_src_' . $id;
+            $C = '$__ds_cnt_' . $id;
+            $P = '$__ds_par_' . $id;
+            $I = '$__ds_i_' . $id;
+            $A = '$__ds_any_' . $id;
+            $as = ($parsed['key'] !== null) ? ($parsed['key'] . ' => ' . $parsed['value']) : $parsed['value'];
+            $stack[] = array(
+                'kind' => 'foreach',
+                'line' => $line,
+                'hasElse' => false,
+                'foreachElse' => false,
+                'parentRef' => $P,
+                'anyRef' => $A,
+            );
+            return '<?php ' . $S . ' = isset(' . $parsed['source'] . ') ? ' . $parsed['source'] . ' : array(); '
+                . 'if (!is_array(' . $S . ') && !(' . $S . ' instanceof \\Traversable)) { ' . $S . ' = array(); } '
+                . 'if (' . $S . ' instanceof \\Traversable && !is_array(' . $S . ')) { ' . $S . ' = iterator_to_array(' . $S . '); } '
+                . $C . ' = count(' . $S . '); '
+                . $P . ' = isset($loop) ? $loop : null; '
+                . $I . ' = 0; '
+                . $A . ' = false; '
+                . '$loop = array(\'index\' => 0, \'iteration\' => 1, \'first\' => 1, \'last\' => (' . $C . ' <= 1 ? 1 : 0), \'count\' => ' . $C . ', \'parent\' => ' . $P . '); '
+                . 'foreach (' . $S . ' as ' . $as . '): '
+                . $A . ' = true; '
+                . '$loop[\'index\'] = ' . $I . '; '
+                . '$loop[\'iteration\'] = ' . $I . ' + 1; '
+                . '$loop[\'first\'] = (' . $I . ' === 0) ? 1 : 0; '
+                . '$loop[\'last\'] = (' . $I . ' === ' . $C . ' - 1) ? 1 : 0; '
+                . '$loop[\'count\'] = ' . $C . '; '
+                . '$loop[\'parent\'] = ' . $P . '; '
+                . $I . '++; ?>';
+        }
+        if (preg_match('/^\/foreach$/i', $inner)) {
+            $this->dsExpectTop($stack, 'foreach', $line, '/foreach');
+            $top = array_pop($stack);
+            if (!empty($top['foreachElse'])) {
+                return '<?php endif; $loop = ' . $top['parentRef'] . '; ?>';
+            }
+            return '<?php endforeach; $loop = ' . $top['parentRef'] . '; ?>';
+        }
+
+        if (preg_match('/^while\s+(.+)$/s', $inner, $m)) {
+            $stack[] = array('kind' => 'while', 'line' => $line, 'hasElse' => false, 'foreachElse' => false);
+            return '<?php while (' . trim($m[1]) . '): ?>';
+        }
+        if (preg_match('/^\/while$/i', $inner)) {
+            $this->dsExpectTop($stack, 'while', $line, '/while');
+            array_pop($stack);
+            return '<?php endwhile; ?>';
+        }
+
+        if (preg_match('/^break(?:\s+(.+))?$/s', $inner, $m)) {
+            if (!$this->dsStackHasLoop($stack)) {
+                $this->dsThrow('break', $line, '"break" is only valid inside a loop.');
+            }
+            if (!isset($m[1]) || trim($m[1]) === '') {
+                return '<?php break; ?>';
+            }
+            return '<?php if (' . trim($m[1]) . ') break; ?>';
+        }
+        if (preg_match('/^continue(?:\s+(.+))?$/s', $inner, $m)) {
+            if (!$this->dsStackHasLoop($stack)) {
+                $this->dsThrow('continue', $line, '"continue" is only valid inside a loop.');
+            }
+            if (!isset($m[1]) || trim($m[1]) === '') {
+                return '<?php continue; ?>';
+            }
+            return '<?php if (' . trim($m[1]) . ') continue; ?>';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array  $stack
+     * @param string $kind
+     * @param int    $line
+     * @param string $found
+     * @return void
+     */
+    private function dsExpectTop(array $stack, $kind, $line, $found)
+    {
+        if (empty($stack)) {
+            $this->dsThrow($found, $line, 'Unexpected "' . $found . '" with no open "' . $kind . '".');
+        }
+        $top = $stack[count($stack) - 1];
+        if ($top['kind'] !== $kind) {
+            $this->dsThrow($found, $line, 'Unexpected "' . $found . '" (expected "/' . $top['kind'] . '").');
+        }
+    }
+
+    /**
+     * @param array $stack
+     * @return bool
+     */
+    private function dsStackHasLoop(array $stack)
+    {
+        for ($n = count($stack) - 1; $n >= 0; $n--) {
+            if ($stack[$n]['kind'] === 'while') {
+                return true;
+            }
+            if ($stack[$n]['kind'] === 'foreach' && empty($stack[$n]['foreachElse'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param string $directive
+     * @param int    $line
+     * @param string $message
+     * @return void
+     */
+    private function dsThrow($directive, $line, $message)
+    {
+        throw new RendererSyntaxException(
+            $directive,
+            $line,
+            $message . ' (directive "' . $directive . '", template line ' . (int) $line . ')'
+        );
+    }
+
+    /**
+     * @param string $code
+     * @param int    $pos
+     * @return int
+     */
+    private function dsLineAt($code, $pos)
+    {
+        if ($pos <= 0) {
+            return 1;
+        }
+        if ($pos > strlen($code)) {
+            $pos = strlen($code);
+        }
+        return substr_count($code, "\n", 0, $pos) + 1;
+    }
+
+    /**
+     * Quote-aware search for the `}}` that closes a tag starting at `$start` (`{{`).
+     *
+     * @param string $code
+     * @param int    $start
+     * @param int    $len
+     * @return int|false Position after closing braces
+     */
+    private function dsFindTagEnd($code, $start, $len)
+    {
+        $i = $start + 2;
+        $quote = null;
+        $escape = false;
+        while ($i < $len - 1) {
+            $ch = $code[$i];
+            if ($quote !== null) {
+                if ($escape) {
+                    $escape = false;
+                    $i++;
+                    continue;
+                }
+                if ($ch === '\\') {
+                    $escape = true;
+                    $i++;
+                    continue;
+                }
+                if ($ch === $quote) {
+                    $quote = null;
+                }
+                $i++;
+                continue;
+            }
+            if ($ch === "'" || $ch === '"') {
+                $quote = $ch;
+                $i++;
+                continue;
+            }
+            if ($ch === '}' && $code[$i + 1] === '}') {
+                return $i + 2;
+            }
+            $i++;
+        }
+        return false;
+    }
+
+    /**
+     * @param string $code
+     * @param int    $i
+     * @param int    $len
+     * @return bool
+     */
+    private function dsAtPhpOpen($code, $i, $len)
+    {
+        if ($i + 1 >= $len || $code[$i] !== '<' || $code[$i + 1] !== '?') {
+            return false;
+        }
+        if ($i + 4 < $len && strtolower(substr($code, $i, 5)) === '<?xml') {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param string $code
+     * @param int    $i
+     * @param int    $len
+     * @return int
+     */
+    private function dsSkipPhpIsland($code, $i, $len)
+    {
+        if ($i >= $len) {
+            return $len;
+        }
+        $slice = substr($code, $i);
+        if ($slice === '') {
+            return $len;
+        }
+        $adjust = 0;
+        $scan = $slice;
+        if (strncmp($slice, '<?php', 5) !== 0 && strncmp($slice, '<?=', 3) !== 0 && strncmp($slice, '<?', 2) === 0) {
+            $scan = '<?php' . substr($slice, 2);
+            $adjust = 3;
+        }
+        $tokens = @token_get_all($scan);
+        if (!is_array($tokens) || $tokens === array()) {
+            return $len;
+        }
+        $offset = 0;
+        foreach ($tokens as $token) {
+            if (is_array($token)) {
+                $offset += strlen($token[1]);
+                if ($token[0] === T_CLOSE_TAG) {
+                    $mapped = $offset - $adjust;
+                    if ($mapped < 2) {
+                        $mapped = 2;
+                    }
+                    $end = $i + $mapped;
+                    return ($end > $len) ? $len : $end;
+                }
+            } else {
+                $offset += strlen((string) $token);
+            }
+        }
+        return $len;
+    }
+
+    /**
+     * @param string $s
+     * @param int    $i
+     * @param int    $len
+     * @return void
+     */
+    private function dsSkipWs($s, &$i, $len)
+    {
+        while ($i < $len && ($s[$i] === ' ' || $s[$i] === "\t" || $s[$i] === "\n" || $s[$i] === "\r")) {
+            $i++;
+        }
+    }
+
+    /**
+     * Parses $ident[index]... including quoted, numeric, and nested $dynamic indexes.
+     *
+     * @param string $s
+     * @param int    $i
+     * @param int    $len
+     * @return string|false
+     */
+    private function dsParseVarPath($s, &$i, $len)
+    {
+        $start = $i;
+        if ($i >= $len || $s[$i] !== '$') {
+            return false;
+        }
+        $i++;
+        if ($i >= $len || $s[$i] === '_') {
+            $i = $start;
+            return false;
+        }
+        $identStart = $s[$i];
+        if (!(($identStart >= 'A' && $identStart <= 'Z') || ($identStart >= 'a' && $identStart <= 'z'))) {
+            $i = $start;
+            return false;
+        }
+        $i++;
+        while ($i < $len) {
+            $ch = $s[$i];
+            if (($ch >= 'A' && $ch <= 'Z') || ($ch >= 'a' && $ch <= 'z') || ($ch >= '0' && $ch <= '9') || $ch === '_') {
+                $i++;
+                continue;
+            }
+            break;
+        }
+        while ($i < $len && $s[$i] === '[') {
+            $i++;
+            $this->dsSkipWs($s, $i, $len);
+            if ($i < $len && $s[$i] === '$') {
+                if ($this->dsParseVarPath($s, $i, $len) === false) {
+                    $i = $start;
+                    return false;
+                }
+            } elseif ($i < $len && ($s[$i] === "'" || $s[$i] === '"')) {
+                if (!$this->dsSkipQuoted($s, $i, $len)) {
+                    $i = $start;
+                    return false;
+                }
+            } elseif ($i < $len && $s[$i] >= '0' && $s[$i] <= '9') {
+                while ($i < $len && $s[$i] >= '0' && $s[$i] <= '9') {
+                    $i++;
+                }
+            } else {
+                $i = $start;
+                return false;
+            }
+            $this->dsSkipWs($s, $i, $len);
+            if ($i >= $len || $s[$i] !== ']') {
+                $i = $start;
+                return false;
+            }
+            $i++;
+        }
+        return substr($s, $start, $i - $start);
+    }
+
+    /**
+     * @param string $s
+     * @param int    $i
+     * @param int    $len
+     * @return bool
+     */
+    private function dsSkipQuoted($s, &$i, $len)
+    {
+        if ($i >= $len) {
+            return false;
+        }
+        $q = $s[$i];
+        if ($q !== "'" && $q !== '"') {
+            return false;
+        }
+        $i++;
+        $escape = false;
+        while ($i < $len) {
+            $ch = $s[$i];
+            if ($escape) {
+                $escape = false;
+                $i++;
+                continue;
+            }
+            if ($ch === '\\') {
+                $escape = true;
+                $i++;
+                continue;
+            }
+            if ($ch === $q) {
+                $i++;
+                return true;
+            }
+            $i++;
+        }
+        return false;
+    }
+
+    /**
+     * Parses a value (variable path or quoted literal) plus an optional filter pipeline.
+     *
+     * @param string $s
+     * @param int    $line
+     * @param string $directive
+     * @return array<string, mixed>
+     */
+    private function dsParseValueAndFilters($s, $line, $directive)
+    {
+        $s = trim($s);
+        $len = strlen($s);
+        $i = 0;
+        $kind = 'path';
+        $php = '';
+        $literal = null;
+        if ($i < $len && $s[$i] === '"') {
+            $start = $i;
+            if (!$this->dsSkipQuoted($s, $i, $len)) {
+                $this->dsThrow($directive, $line, 'Unclosed string in "' . $directive . '".');
+            }
+            $quoted = substr($s, $start, $i - $start);
+            $literal = stripcslashes(substr($quoted, 1, -1));
+            $php = var_export($literal, true);
+            $kind = 'literal';
+        } elseif ($i < $len && $s[$i] === '$') {
+            $path = $this->dsParseVarPath($s, $i, $len);
+            if ($path === false) {
+                $this->dsThrow($directive, $line, 'Malformed variable path in "' . $directive . '".');
+            }
+            $php = $path;
+        } else {
+            $this->dsThrow($directive, $line, 'Malformed "' . $directive . '" value.');
+        }
+        $this->dsSkipWs($s, $i, $len);
+        $filters = array();
+        while ($i < $len && $s[$i] === '|') {
+            $i++;
+            $this->dsSkipWs($s, $i, $len);
+            $nameStart = $i;
+            if ($i >= $len || !preg_match('/[A-Za-z_]/', $s[$i])) {
+                $this->dsThrow($directive, $line, 'Malformed filter name.');
+            }
+            $i++;
+            while ($i < $len && preg_match('/[A-Za-z0-9_]/', $s[$i])) {
+                $i++;
+            }
+            $fname = substr($s, $nameStart, $i - $nameStart);
+            if (!isset(self::$valueFilters[$fname])) {
+                $this->dsThrow($fname, $line, 'Unknown filter "' . $fname . '".');
+            }
+            $this->dsSkipWs($s, $i, $len);
+            $args = array();
+            if ($i < $len && $s[$i] === '(') {
+                $i++;
+                $args = $this->dsParseFilterArgs($s, $i, $len, $line, $fname);
+            }
+            $filters[] = array('name' => $fname, 'args' => $args);
+            $this->dsSkipWs($s, $i, $len);
+        }
+        if ($i !== $len) {
+            $this->dsThrow($directive, $line, 'Unexpected trailing content in "' . $directive . '".');
+        }
+        return array('kind' => $kind, 'php' => $php, 'filters' => $filters, 'literal' => $literal);
+    }
+
+    /**
+     * @param string $s
+     * @param int    $i
+     * @param int    $len
+     * @param int    $line
+     * @param string $fname
+     * @return array<int, array<string, mixed>>
+     */
+    private function dsParseFilterArgs($s, &$i, $len, $line, $fname)
+    {
+        $args = array();
+        $this->dsSkipWs($s, $i, $len);
+        if ($i < $len && $s[$i] === ')') {
+            $i++;
+            return $args;
+        }
+        while ($i < $len) {
+            $this->dsSkipWs($s, $i, $len);
+            if ($i < $len && ($s[$i] === '"' || $s[$i] === "'")) {
+                $start = $i;
+                if (!$this->dsSkipQuoted($s, $i, $len)) {
+                    $this->dsThrow($fname, $line, 'Unclosed filter argument string.');
+                }
+                $quoted = substr($s, $start, $i - $start);
+                $val = stripcslashes(substr($quoted, 1, -1));
+                $args[] = array('t' => 'lit', 'v' => $val);
+            } elseif ($i < $len && $s[$i] === '$') {
+                $path = $this->dsParseVarPath($s, $i, $len);
+                if ($path === false) {
+                    $this->dsThrow($fname, $line, 'Malformed variable filter argument.');
+                }
+                $args[] = array('t' => 'php', 'v' => $path);
+            } elseif ($i + 3 < $len && strtolower(substr($s, $i, 4)) === 'true' && ($i + 4 >= $len || !preg_match('/[A-Za-z0-9_]/', $s[$i + 4]))) {
+                $args[] = array('t' => 'lit', 'v' => true);
+                $i += 4;
+            } elseif ($i + 4 < $len && strtolower(substr($s, $i, 5)) === 'false' && ($i + 5 >= $len || !preg_match('/[A-Za-z0-9_]/', $s[$i + 5]))) {
+                $args[] = array('t' => 'lit', 'v' => false);
+                $i += 5;
+            } elseif ($i + 3 < $len && strtolower(substr($s, $i, 4)) === 'null' && ($i + 4 >= $len || !preg_match('/[A-Za-z0-9_]/', $s[$i + 4]))) {
+                $args[] = array('t' => 'lit', 'v' => null);
+                $i += 4;
+            } elseif ($i < $len && ($s[$i] === '-' || ($s[$i] >= '0' && $s[$i] <= '9'))) {
+                $numStart = $i;
+                if ($s[$i] === '-') {
+                    $i++;
+                }
+                while ($i < $len && $s[$i] >= '0' && $s[$i] <= '9') {
+                    $i++;
+                }
+                if ($i < $len && $s[$i] === '.') {
+                    $i++;
+                    while ($i < $len && $s[$i] >= '0' && $s[$i] <= '9') {
+                        $i++;
+                    }
+                    $args[] = array('t' => 'lit', 'v' => (float) substr($s, $numStart, $i - $numStart));
+                } else {
+                    $args[] = array('t' => 'lit', 'v' => (int) substr($s, $numStart, $i - $numStart));
+                }
+            } else {
+                $this->dsThrow($fname, $line, 'Malformed filter argument.');
+            }
+            $this->dsSkipWs($s, $i, $len);
+            if ($i < $len && $s[$i] === ',') {
+                $i++;
+                continue;
+            }
+            if ($i < $len && $s[$i] === ')') {
+                $i++;
+                return $args;
+            }
+            $this->dsThrow($fname, $line, 'Malformed filter argument list.');
+        }
+        $this->dsThrow($fname, $line, 'Unclosed filter argument list.');
+        return $args;
+    }
+
+    /**
+     * @param string $phpExpr
+     * @param array  $filters
+     * @return string
+     */
+    private function dsEmitEcho($phpExpr, array $filters)
+    {
+        if (empty($filters)) {
+            return '<?php echo ' . $phpExpr . '; ?>';
+        }
+        return '<?php echo $__ds_filter(' . $phpExpr . ', ' . $this->dsExportFilters($filters) . '); ?>';
+    }
+
+    /**
+     * @param array $filters
+     * @return string
+     */
+    private function dsExportFilters(array $filters)
+    {
+        $chunks = array();
+        foreach ($filters as $f) {
+            $args = array();
+            foreach ($f['args'] as $a) {
+                if ($a['t'] === 'php') {
+                    $args[] = $a['v'];
+                } else {
+                    $args[] = var_export($a['v'], true);
+                }
+            }
+            $chunks[] = 'array(' . var_export($f['name'], true) . ', array(' . implode(', ', $args) . '))';
+        }
+        return 'array(' . implode(', ', $chunks) . ')';
+    }
+
+    /**
+     * @param string $expr
+     * @return array<string, mixed>|false
+     */
+    private function dsParseForeach($expr)
+    {
+        $expr = trim($expr);
+        $len = strlen($expr);
+        if ($len >= 2 && $expr[0] === '(' && substr($expr, -1) === ')') {
+            $inner = substr($expr, 1, -1);
+            $depth = 0;
+            $ok = true;
+            $il = strlen($inner);
+            for ($k = 0; $k < $il; $k++) {
+                if ($inner[$k] === "'" || $inner[$k] === '"') {
+                    if (!$this->dsSkipQuoted($inner, $k, $il)) {
+                        $ok = false;
+                        break;
+                    }
+                    $k--;
+                } elseif ($inner[$k] === '(') {
+                    $depth++;
+                } elseif ($inner[$k] === ')') {
+                    $depth--;
+                    if ($depth < 0) {
+                        $ok = false;
+                        break;
+                    }
+                }
+            }
+            if ($ok && $depth === 0) {
+                $expr = trim($inner);
+                $len = strlen($expr);
+            }
+        }
+        $i = 0;
+        $src = $this->dsParseVarPath($expr, $i, $len);
+        if ($src === false) {
+            return false;
+        }
+        $this->dsSkipWs($expr, $i, $len);
+        if ($i + 2 > $len || strtolower(substr($expr, $i, 2)) !== 'as') {
+            return false;
+        }
+        if ($i + 2 < $len) {
+            $after = $expr[$i + 2];
+            if (($after >= 'A' && $after <= 'Z') || ($after >= 'a' && $after <= 'z') || ($after >= '0' && $after <= '9') || $after === '_') {
+                return false;
+            }
+        }
+        $i += 2;
+        $this->dsSkipWs($expr, $i, $len);
+        $first = $this->dsParseVarPath($expr, $i, $len);
+        if ($first === false || strpos($first, '[') !== false) {
+            return false;
+        }
+        $this->dsSkipWs($expr, $i, $len);
+        $key = null;
+        $val = $first;
+        if ($i + 1 < $len && $expr[$i] === '=' && $expr[$i + 1] === '>') {
+            $i += 2;
+            $this->dsSkipWs($expr, $i, $len);
+            $second = $this->dsParseVarPath($expr, $i, $len);
+            if ($second === false || strpos($second, '[') !== false) {
+                return false;
+            }
+            $key = $first;
+            $val = $second;
+            $this->dsSkipWs($expr, $i, $len);
+        }
+        if ($i !== $len) {
+            return false;
+        }
+        return array('source' => $src, 'key' => $key, 'value' => $val);
+    }
+
     private function extract_code($code)
     {
         $pattern = '/(<\?(php|=)?(?:[^\'"\\\\]|\\\\.|\'(?:\\\\.|[^\'])*\'|"(?:\\\\.|[^"])*")*?\?>)/s';
@@ -1402,6 +2563,7 @@ class Renderer
         $navrat = array();
         $startpos = 0;
         $doCycle = 1;
+        $pozicia_end = false;
         while ($doCycle == 1 && (($pozicia = strpos($content, $startstr, $startpos)) !== false)) {
             $startpos = $pozicia + strlen($startstr) + 1;
             if ($startpos > strlen($content)) {
@@ -1429,6 +2591,7 @@ class Renderer
         $startpos = 0;
         $doCycle = 1;
         $keyForArray = 0;
+        $pozicia_end = false;
         while ($doCycle == 1 && (($pozicia = strpos($content, $startstr, $startpos)) !== false)) {
             $startpos = $pozicia + strlen($startstr) + 1;
             if ($startpos > strlen($content)) {
@@ -1525,6 +2688,82 @@ class RenderingIsolator
         return [
             'publicData' => 'This is just part of dotapp. Nothing to see !'
         ];
+    }
+
+    /**
+     * Values that must not be extracted into the template sandbox.
+     * Closures, invokable objects, and callable arrays are rejected.
+     * Plain strings that happen to match PHP function names (time, key, count, copy)
+     * are kept. Extract keys must be valid PHP variable names.
+     *
+     * @param mixed $var
+     * @param bool  $isKey
+     * @return bool True when the value/key should be skipped
+     */
+    public static function isRejectedExtractValue($var, $isKey = false)
+    {
+        if ($isKey) {
+            if (is_int($var)) {
+                return true;
+            }
+            if (!is_string($var) || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $var)) {
+                return true;
+            }
+            return false;
+        }
+        if ($var instanceof \Closure) {
+            return true;
+        }
+        if (is_object($var)) {
+            if (is_callable($var)) {
+                return true;
+            }
+            foreach ((array) $var as $item) {
+                if (self::isRejectedExtractValue($item, false)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (is_array($var)) {
+            if (self::isCallableArrayPair($var)) {
+                return true;
+            }
+            foreach ($var as $item) {
+                if (self::isRejectedExtractValue($item, false)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    /**
+     * True for [$object, 'method'] / ['Class', 'method'] callable pairs, not for
+     * ordinary lists such as ['time', 'count'].
+     *
+     * @param array $var
+     * @return bool
+     */
+    private static function isCallableArrayPair($var)
+    {
+        if (!is_array($var) || count($var) !== 2) {
+            return false;
+        }
+        if (!array_key_exists(0, $var) || !array_key_exists(1, $var)) {
+            return false;
+        }
+        if (!is_string($var[1])) {
+            return false;
+        }
+        if (is_object($var[0]) && method_exists($var[0], $var[1])) {
+            return true;
+        }
+        if (is_string($var[0]) && class_exists($var[0], false) && method_exists($var[0], $var[1])) {
+            return true;
+        }
+        return false;
     }
 
     public function escapePHP($code)
@@ -1709,7 +2948,7 @@ class RenderingIsolator
                 if ($insidePhp) {
                     $phpCode .= $token;
                 } else {
-                    $sanitizedContent += $token;
+                    $sanitizedContent .= $token;
                 }
             }
         }
@@ -1737,26 +2976,12 @@ class RenderingIsolator
                 return true;
             };
 
-            $recursively_noncallable_check = function ($var) use (&$recursively_noncallable_check) {
-                if (is_callable($var)) return false;
-                if (is_array($var)) {
-                    foreach ($var as $value) {
-                        if (!$recursively_noncallable_check($value)) return false;
-                    }
-                }
-                if (is_object($var)) {
-                    foreach ((array)$var as $value) {
-                        if (!$recursively_noncallable_check($value)) return false;
-                    }
-                }
-                if (is_string($var) && function_exists($var) && in_array($var, self::phpsandbox_disabled())) {
-                    return false;
-                }
-                return true;
+            $recursively_noncallable_check = function ($var, $isKey = false) use (&$recursively_noncallable_check) {
+                return !RenderingIsolator::isRejectedExtractValue($var, $isKey);
             };
 
             foreach ($vars as $vkey => $vvalue) {
-                if ($recursively_noncallable_check($vvalue) && $recursively_noncallable_check($vkey)) {
+                if ($recursively_noncallable_check($vvalue, false) && $recursively_noncallable_check($vkey, true)) {
                     $$vkey = $vvalue;
                 }
             }
@@ -1767,16 +2992,21 @@ class RenderingIsolator
             $code = $namespace . $code;
 
             $dotapp236365b0b1631351e99daf046d18d2bcEcnrypt = $this->preneseneFn['encrypt'];
+            $__ds_filter = isset($this->preneseneFn['filter']) ? $this->preneseneFn['filter'] : function ($v) {
+                return $v;
+            };
 
-            $userkey = defined('__ENC_KEY__') ? __ENC_KEY__ : '';
+            $userkey = defined('__ENC_KEY__') ? constant('__ENC_KEY__') : '';
             $renderToFile = defined('__RENDER_TO_FILE__') && __RENDER_TO_FILE__;
 
             if ($renderToFile) {
                 $file_i = 0;
-                $filename = __ROOTDIR__ . '/app/runtime/generator/rendering_' . md5($userkey . DSM::use()->session_id() . $userkey) . '_' . $file_i . '.php';
+                $sessionId = (string) DSM::use()->session_id();
+                $renderHash = md5($userkey . $sessionId . $userkey);
+                $filename = __ROOTDIR__ . '/app/runtime/generator/rendering_' . $renderHash . '_' . $file_i . '.php';
                 while (!$canrewrite($filename)) {
                     $file_i++;
-                    $filename = __ROOTDIR__ . '/app/runtime/generator/rendering_' . md5($userkey . DSM::use()->session_id() . $userkey) . '_' . $file_i . '.php';
+                    $filename = __ROOTDIR__ . '/app/runtime/generator/rendering_' . $renderHash . '_' . $file_i . '.php';
                 }
 
                 try {
@@ -1840,38 +3070,7 @@ class PrivateBlock
 
     public function set($name, $value)
     {
-        $recursively_noncallable_check = function ($var) use (&$recursively_noncallable_check) {
-            if (is_callable($var)) {
-                return false;
-            }
-
-            if (is_array($var)) {
-                foreach ($var as $value) {
-                    if (!$recursively_noncallable_check($value)) {
-                        return false;
-                    }
-                }
-            }
-
-            if (is_object($var)) {
-                foreach ($var as $property => $value) {
-                    if (!$recursively_noncallable_check($value)) {
-                        return false;
-                    }
-                }
-            }
-
-            if (is_string($var)) {
-                if (function_exists($var)) {
-                    if (in_array($var, RenderingIsolator::phpsandbox_disabled())) {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        };
-        if ($recursively_noncallable_check($value) && $recursively_noncallable_check($name)) {
+        if (!RenderingIsolator::isRejectedExtractValue($value, false) && !RenderingIsolator::isRejectedExtractValue($name, true)) {
             $this->variables[$name] = $value;
         }
         return $this;
@@ -1896,6 +3095,7 @@ class PrivateBlock
             $html .= "\n" . str_replace("{{ var: $", "{{ var: $" . $this->id, $this->block);
             $html = str_replace("{{_ var: $", "{{_ var: $" . $this->id, $html);
             $html = str_replace("{{ foreach $", "{{ foreach $" . $this->id, $html);
+            $html = str_replace("{{ foreach ($", "{{ foreach ($" . $this->id, $html);
 
             return ($html);
         }
