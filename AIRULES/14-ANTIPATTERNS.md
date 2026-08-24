@@ -15,6 +15,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Hook on every save / unlabeled `// turning SMS off…` | Judge first; comments **MUST** start with `Why:` / `About:` / `Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
 | PHP 8+ syntax (`match`, `?->`, `str_contains`, union/`mixed`, named args, promotion, `enum`) without asking | Default **PHP 7.4+**; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2i) |
+| Short plan (“Settings + list + edit”) for a new module / first surface / rewrite | Extremely detailed inventory: every nav item, page, tab, control ([00](00-AGENT-CONTRACT.md) §2k, [45](45-MODULE-PLANNING.md)) |
+| New compact law only under `.cursor/rules/` | Write `AIRULES/cursor/rules/*.mdc` first; agent copies the mirror ([00](00-AGENT-CONTRACT.md) §2l) |
 | Silent save / empty `.after()` / only a generic error when the field is known | Show success **and** fail; mark the wrong input ([00](00-AGENT-CONTRACT.md) §2d) |
 
 ## Controllers / routing
@@ -41,6 +43,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Assume auto-escape | Escape in PHP; `var:` is raw |
 | Prompt-echo labels / help (“this user can…”) | Product copy a vendor would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | Stock `.cursorrules` template examples | Trust AIRULES + Renderer.php |
+| `$html .= '<table'` / `listHtml()` / `iconsHtml()` / `treeHtml()` factory in a Controller or Library | `Renderer` + `.layout.php`; PHP prepares data. PHP markup **only** when a template cannot do that **one** piece and `// Why:` names the problem ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1c, [00](00-AGENT-CONTRACT.md) §2j) |
 
 ## Database
 
@@ -73,6 +76,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
 | `CREATE TABLE items` / `dotapp_items` for a module | `{lowercase_modulename}_items` (Shop → `shop_items`) |
+| `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` | Probe `SHOW TABLES LIKE` / `information_schema` (`DATABASE()` + bindings), then `CREATE`/`ALTER` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0) |
 
 ## Return values / error handling
 

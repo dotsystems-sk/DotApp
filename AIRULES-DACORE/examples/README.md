@@ -26,14 +26,16 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 
 | File | Open when |
 |------|-----------|
-| [EX-D01-dacore-module-skeleton.md](EX-D01-dacore-module-skeleton.md) | New admin module: `{prefixUrl}/Shop/…` + `Gate@login` 403, routes inside `Auth::isLogged()`, rights, **AJAX list pager**. **ASK** shared vs module-own menu first ([31](../31-DACORE-MENU.md)) |
+| [EX-D01-dacore-module-skeleton.md](EX-D01-dacore-module-skeleton.md) | New admin module: `{prefixUrl}/Shop/…` + `Gate@login` 403, routes inside `Auth::isLogged()`, rights, **AJAX list pager**. **ASK** shared nested vs module-own first; **no answer → shared nested** ([31](../31-DACORE-MENU.md)) |
 | [EX-D02-dacore-admin-page.md](EX-D02-dacore-admin-page.md) | Admin page: table, **AJAX pager**, dotgrid form, secure save, page JS |
 | [EX-D03-dacore-ai-tool.md](EX-D03-dacore-ai-tool.md) | AI tool: register, write + `ui_events`, `DACore.AI.UIEvent` page refresh |
-| [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | `Installation.php`; develop with `install.php`; pack `dainstall.php` + `init/` only when asked; no `?` in `raw()` comments |
+| [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) | `Installation.php`; develop with `install.php`; pack only with [EX-D09](EX-D09-dacore-pack-zip.md) when asked; no `?` in `raw()` comments |
 | [EX-D05-dacore-notifications.md](EX-D05-dacore-notifications.md) | Inbox: `DACore:Notifications@push` on an event ([37](../37-DACORE-NOTIFICATIONS.md)) |
 | [EX-D06-dacore-email.md](EX-D06-dacore-email.md) | Outgoing mail — open with [38](../38-DACORE-EMAIL.md) |
 | [EX-D07-dacore-sms.md](EX-D07-dacore-sms.md) | Outgoing SMS — open with [39](../39-DACORE-SMS.md) |
 | [EX-D08-list-pager.md](EX-D08-list-pager.md) | Admin list pager — open with [40](../40-DACORE-LIST-PAGER.md) |
+| [EX-D09-dacore-pack-zip.md](EX-D09-dacore-pack-zip.md) | **Canonical DACore zip packer** — copy `.php.txt` → `dacore-pack-zip.php`, run, delete. **MUST NOT** invent a packer |
+| [EX-D10-stepup-2fa-modal.md](EX-D10-stepup-2fa-modal.md) | Step-up 2FA modal (plugin-installer chrome). **ASK** first; default no |
 
 Theory lives in `0x`–`2x` (framework), `3x` (DACore), and **[41](../41-MODULE-HOOKS.md)** (module hooks). These files are **executable patterns**.
 

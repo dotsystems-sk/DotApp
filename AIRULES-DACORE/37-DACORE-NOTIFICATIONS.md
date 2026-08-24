@@ -157,6 +157,8 @@ DotApp::call('DACore:Notifications@setDriverEnabled', 'inbox', false);
 
 ### Table (Installation owns the migration)
 
+This is the **live DACore column list**, not the installer pattern for your module. Your `Installation.php` **MUST** probe then `CREATE TABLE` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0).
+
 ```sql
 CREATE TABLE IF NOT EXISTS `dacore_notification_drivers` (
     `id` int(11) NOT NULL AUTO_INCREMENT,

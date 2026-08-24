@@ -4,6 +4,8 @@ Canonical admin pager for DACore-bound modules. Copy this contract. Do **not** i
 
 **Open this file** when the screen lists records that can grow. Other docs point here: [00](00-AGENT-CONTRACT.md) §2 item 7, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §3. Copy-paste: [EX-D08](examples/EX-D08-list-pager.md).
 
+**HTML (MUST — law):** row markup and pager **chrome** (summary + nav wrap) are layouts via `Renderer` ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1c, [00](00-AGENT-CONTRACT.md) §2j). PHP prepares pager vars. The only PHP markup in this contract is the `DACore:Page@paginate!` `<li>` callback.
+
 Reference implementation (read-only pattern): `DACoreDebugger` history — `Libraries/HistoryStore.php` `pagerHtml()`, `assets/js/history.js`. DACore chrome: `dacore-list-pager*` in `app/modules/DACore/assets/css/pages/dotapp-ui/users.css` (consume the CSS; **MUST NOT** edit DACore).
 
 ---

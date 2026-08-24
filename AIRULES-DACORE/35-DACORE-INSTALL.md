@@ -4,6 +4,8 @@ With DACore present, migrations use **DACore's** install tracking instead of the
 
 **MUST:** tables **your** module creates are still `{lowercase_modulename}_*` (Shop → `shop_items`). Never name them `dacore_*` (DACore-owned) or `dotapp_*` (core).
 
+**MUST:** installer DDL is probe-then-CREATE/ALTER ([07](07-SCHEMA-AND-INSTALL.md) §0). **MUST NOT** `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`. Copy `mysqlTableExists` / `mysqlColumnExists` into **this** `Installation.php`. **MUST NOT** call DACore `SetupGuard`.
+
 ---
 
 ## 1. Tracking API
@@ -29,6 +31,8 @@ DotApp::call("DACore:Installations@insert!", string $module, string $installatio
 ## 2. Migration order that works
 
 **Across versions:** keys in `installer()` run in the order you write them (`foreach`). **MUST NOT** sort that array. Put `1.0.9` before `1.0.10` in the PHP source if 1.0.10 needs 1.0.9. Canonical: [07](07-SCHEMA-AND-INSTALL.md).
+
+**Version keys MUST be quoted text in the source (DACore zip scan — MUST):** DACore does **not** execute `Installation.php` when it validates a plugin zip. It **greps the file as text** for quoted semver array keys (`'1.0.0' =>` or `"1.0.0" =>`, two- or three-part numbers). **Every** `installer()` key **MUST** be that literal in the PHP file (same rule for `uninstaller()` keys). A zip with none is rejected (`Installation.php has no version keys`, package version `0.0.0`). **MUST NOT** use `self::VERSION`, `self::ANY_CONST`, `static::…`, `ClassName::CONST`, variables, concatenation, or any other expression as the **array key**. PHP would resolve it at runtime; the scanner would not see it. Keep constants **inside** the callback (`Installations@exist!` / `@insert!`). Changelog keys in `about.php` **MUST** match those quoted installer keys. When the user asks for an install zip, pack with [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → `dacore-pack-zip.php` → run → delete). **MUST NOT** invent a packer. Canonical: [00](00-AGENT-CONTRACT.md) §5 item 27, [§5](#5-pack-an-installable-zip-dacore-modules-only-and-only-when-the-user-asks).
 
 Inside one version callback, do it in this order:
 
@@ -63,6 +67,7 @@ class Installation extends Installer
     public static function installer()
     {
         return [
+            // Why: quoted literal so DACore's zip scanner sees the version (it does not execute PHP).
             '1.0.0' => function () {
                 $module = 'Shop';
                 $version = '1.0.0';
@@ -75,29 +80,32 @@ class Installation extends Installer
                 $notes = [];
 
                 // ---- 1. tables ----
+                // Why: probe first — older MySQL errors on CREATE TABLE IF NOT EXISTS ([07](07-SCHEMA-AND-INSTALL.md) §0).
                 // $qb->raw() counts every ? as a placeholder — including COMMENT 'SMS?'. Never put ? in comments.
-                DB::module('RAW')->q(function ($qb) {
-                    $qb->raw(
-                        "CREATE TABLE IF NOT EXISTS `shop_items` (
-                            `id` INT NOT NULL AUTO_INCREMENT,
-                            `title` VARCHAR(200) NOT NULL,
-                            `sku` VARCHAR(64) NOT NULL DEFAULT '',
-                            `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
-                            `active` TINYINT(1) NOT NULL DEFAULT 1,
-                            `created_at` DATETIME NOT NULL,
-                            PRIMARY KEY (`id`),
-                            KEY `active_idx` (`active`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-                        []
+                if (self::mysqlTableExists('shop_items') !== true) {
+                    DB::module('RAW')->q(function ($qb) {
+                        $qb->raw(
+                            "CREATE TABLE `shop_items` (
+                                `id` INT NOT NULL AUTO_INCREMENT,
+                                `title` VARCHAR(200) NOT NULL,
+                                `sku` VARCHAR(64) NOT NULL DEFAULT '',
+                                `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                                `active` TINYINT(1) NOT NULL DEFAULT 1,
+                                `created_at` DATETIME NOT NULL,
+                                PRIMARY KEY (`id`),
+                                KEY `active_idx` (`active`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+                            []
+                        );
+                    })->execute(
+                        function () use (&$notes) { $notes[] = 'shop_items ok'; },
+                        function ($error) use (&$ok, &$notes) {
+                            $ok = false;
+                            $notes[] = 'shop_items failed: ' . ($error['error'] ?? '');
+                            Logger::use()->error('Shop 1.0.0 table', $error);
+                        }
                     );
-                })->execute(
-                    function () use (&$notes) { $notes[] = 'shop_items ok'; },
-                    function ($error) use (&$ok, &$notes) {
-                        $ok = false;
-                        $notes[] = 'shop_items failed: ' . ($error['error'] ?? '');
-                        Logger::use()->error('Shop 1.0.0 table', $error);
-                    }
-                );
+                }
 
                 // ---- 2. account origin (required because this Shop creates customers) ----
                 $origin = DotApp::call(
@@ -169,8 +177,8 @@ class Installation extends Installer
                     $notes[] = 'installer user group failed';
                 }
 
-                // ---- 5. menu (ASK shared vs module-own — [31]) ----
-                // Shared sample: header + type 2 + leaf. Many items: header + one entry, inner withMenu $menuId.
+                // ---- 5. menu (ASK shared nested vs module-own — [31]) ----
+                // Default / no answer: header + type 2 + leaves, withMenu ''. Module-own only if the user chose it.
                 $menuRights = json_encode(['dotapp.root', 'Shop.administrator', 'Shop.items.view']);
 
                 $menu = [
@@ -331,7 +339,7 @@ class Installation extends Installer
 }
 ```
 
-Deleting `dacore_menu` rows directly is acceptable **only in an uninstaller**, because DACore offers no unregister API. Never do it during normal operation. Delete **only your** `menuid` prefix (`Shop.%`). An extension that added items under another module **MUST NOT** delete that host’s prefix. Own sidebar: register a `type => 0` header. **ASK** shared vs module-own before a new module; group with `type => 2` or use header + one entry ([31](31-DACORE-MENU.md)).
+Deleting `dacore_menu` rows directly is acceptable **only in an uninstaller**, because DACore offers no unregister API. Never do it during normal operation. Delete **only your** `menuid` prefix (`Shop.%`). An extension that added items under another module **MUST NOT** delete that host’s prefix. Own sidebar: register a `type => 0` header. **ASK** shared nested vs module-own before a new module; **no answer → shared nested** `0` → `2` → `1` ([31](31-DACORE-MENU.md)).
 
 ### Installer/uninstaller failure propagation (**MUST**)
 
@@ -556,7 +564,7 @@ DACore’s own plugin installer (ZIP upload, installer logs, `dacore_modules` / 
 
 ## 5. Pack an installable zip (**DACore modules only**, and only when the user asks)
 
-**LAW ([00](00-AGENT-CONTRACT.md) §2e):** `install.php` is for the **framework**. `dainstall.php` is for the **DACore installer**. A zip that still contains `install.php` is **rejected** (DACore will not treat it as a plugin). A zip that has no `dainstall.php` **never runs** `Installation` (tables, rights, menu stay missing). Live `module.init.php` / `module.listeners.php` **MUST** sit in **`init/`** — DACore copies them to the root only **after** `dainstall.php` succeeds.
+**LAW ([00](00-AGENT-CONTRACT.md) §2e):** `install.php` is for the **framework**. `dainstall.php` is for the **DACore installer**. A zip that still contains `install.php` is **rejected** (DACore will not treat it as a plugin). A zip that has no `dainstall.php` **never runs** `Installation` (tables, rights, menu stay missing). Live `module.init.php` / `module.listeners.php` **MUST** sit in **`init/`** — DACore copies them to the root only **after** `dainstall.php` succeeds. **Every `installer()` / `uninstaller()` key MUST be quoted text in the source** (`'1.0.0' =>`). **MUST NOT** `self::…` / `static::…` / constants / variables as the **key** — the zip scanner does not run PHP and rejects the package as version `0.0.0`.
 
 This zip exists **only** so DACore’s plugin installer can install **your** admin module. **MUST NOT** pack if the module is not for DACore. For a bare-framework module the user copies the folder themselves after renaming `installed_*_install.php` → `install.php` ([07](07-SCHEMA-AND-INSTALL.md)).
 
@@ -564,7 +572,18 @@ Do **not** pack, blank root init files, or create `dainstall.php` on your own. O
 
 **Working tree stays a normal module** (`install.php` + live init). Transform a **copy** (or transform → zip → **restore**). **MUST NOT** leave the working module packed.
 
-On the copy / before zip:
+### Canonical packer (MUST)
+
+**MUST NOT** write a new zip script for each module.
+
+1. Copy `AIRULES/examples/EX-D09-dacore-pack-zip.php.txt` to the project root as `dacore-pack-zip.php` (the `.txt` suffix exists so the handbook copy cannot be executed).
+2. Run `php dacore-pack-zip.php {Module} {version}` from the project root (`--module=` / `--version=` / `--out=` are allowed). `{version}` **MUST** match the highest quoted key in `Installation.php`.
+3. Delete `dacore-pack-zip.php`. **MUST NOT** commit or leave that runnable copy in the repo.
+4. How-to + command samples: [EX-D09](examples/EX-D09-dacore-pack-zip.md).
+
+The packer copies the module into temp, writes `dainstall.php` + `init/` + inert root stubs, checks quoted version keys, and writes `{Module}-{version}.zip`. It **MUST NOT** pack `DACore`.
+
+On the copy / before zip (what the packer already does — do not reimplement by hand unless the packer is being updated):
 
 1. Copy live `module.init.php` → `init/module.init.php` and live `module.listeners.php` → `init/module.listeners.php` (create `init/` if needed).
 2. Replace the **root** `module.init.php` and `module.listeners.php` with **inert stubs** (below).
@@ -618,12 +637,35 @@ After DACore’s installer succeeds, it overwrites these stubs from `init/`. Unt
 
 ---
 
+## 5b. Reserved system update ZIPs
+
+The plugin-installer upload review may also recognize two protected system
+packages. They are not ordinary `dainstall.php` plugins:
+
+- **DotApp framework:** bounded root `changelog.txt`, `app/DotApp.php`, and
+  `app/parts/Installer.php` under either the archive root or one top folder.
+  Its updater may copy only `app/DotApp.php`, `app/parts/**`, and
+  `changelog.txt`. It never copies `dotapper.php`, modules, configuration,
+  listeners, runtime data, the front controller, AIRULES, or editor files.
+- **DACore:** `Installation.php`, `Controllers/`, the exact DACore namespace,
+  and no `dainstall.php`, under either the archive root or one top folder. It
+  reuses DACore's backup → overlay → pending schema → rollback/finish lifecycle.
+
+Classification runs before normal plugin validation and rejects ambiguous
+archives. Both pipelines require a root operator and fresh step-up 2FA.
+`DACore` and `DotApp` registry rows are protected and never expose an uninstall
+action.
+
+`dotapper.php` remains independent and unchanged. DACore's framework updater
+does not invoke or overwrite it.
+
 ## 6. Checklist
 
 - [ ] These pack rules were applied to **your** module — **not** to `app/modules/DACore/` itself
 - [ ] **While coding:** live root `module.init.php` / `module.listeners.php`, trigger is **`install.php`**, no `dainstall.php` / no inert stubs
 - [ ] After a new `Installation.php` version: `installed_*_install.php` renamed back to `install.php` (agent did it)
-- [ ] Zip **only** for a DACore-bound module and only when the user asked: `install.php` **renamed** to `dainstall.php`, `init/` copies, inert root, **`about.php` in the zip root**, **`.hooks` in the zip root** when the module fires `module.{this}.*` hooks ([41](41-MODULE-HOOKS.md)), **no** `install.php` in the zip (DACore rejects it / will not run Installation); working tree restored ([00](00-AGENT-CONTRACT.md) §2e)
+- [ ] Zip **only** for a DACore-bound module and only when the user asked: used [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`copy .txt` → `dacore-pack-zip.php` → run → delete); zip **MUST** contain `dainstall.php` + `init/` + inert root + **`about.php`**; **MUST NOT** contain `install.php`; working tree restored; **MUST NOT** leave `dacore-pack-zip.php` in the repo ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §5)
+- [ ] Every `installer()` / `uninstaller()` key is **quoted text** in the file (`'1.0.0' =>` / `"1.0.0" =>`); **no** `self::` / `static::` / constant / variable / expression as a key (DACore zip scan would reject the package)
 - [ ] Every version callback starts with `Installations@exist!` and ends with `Installations@insert!`
 - [ ] `about.php` exists in the module root; changelog keys **match** `Installation.php`; new versions were **asked** if the user did not supply notes ([35](35-DACORE-INSTALL.md) §3b)
 - [ ] Pack/host discovery: extras **asked** when this module is a pack or a host that picks packs; tokens match the host contract ([35](35-DACORE-INSTALL.md) §3c)
@@ -643,5 +685,5 @@ After DACore’s installer succeeds, it overwrites these stubs from `init/`. Unt
 - [ ] Critical installer/uninstaller failures report then throw a generic `RuntimeException`; no silent `return` / `return false`
 - [ ] Public cleanup API returns, DB executes, and final `Installations@insert!` are checked; failure prevents package acceptance/folder deletion
 - [ ] Final release migration verifies required earlier success markers
-- [ ] New module: user was **asked** shared vs module-own; many items are grouped (`type => 2`) or module-own ([31](31-DACORE-MENU.md))
+- [ ] New module: user was **asked** shared nested vs module-own; **no answer → shared nested** `0` → `2` → `1`; module-own only if explicitly chosen ([31](31-DACORE-MENU.md))
 - [ ] Every `execute()` has both callbacks ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md))

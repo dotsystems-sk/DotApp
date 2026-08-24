@@ -14,6 +14,8 @@ Correct + secure is not enough. Code you ship **MUST** also be **cheap** (I/O, m
 
 **PHP 7.4+:** module PHP **MUST** stay on the DotApp floor unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i). Typed properties and `fn` are fine. `match`, `?->`, union/`mixed` types, named arguments, constructor promotion, attributes, `enum`, `readonly`, and `str_contains` / `str_starts_with` / `str_ends_with` are **not**.
 
+**Installer DDL:** raw SQL **MUST** probe then `CREATE`/`ALTER` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0). `$qb->createTableIfNotExist()` is allowed.
+
 ---
 
 ## 1. Algorithms and memory (**MUST**)
@@ -291,6 +293,8 @@ Part of the finish gate ([00](00-AGENT-CONTRACT.md) §2c). Grep **your module + 
 | 9 | new public methods | no PHPDoc **purpose sentence**; tags-only (`@return array<string, mixed>` with no description); missing `@param` / `@return` meaning; a `Controllers/` / `Middleware/` public method whose PHPDoc does **not** start with `CRCchecking —`; that line names a CRC prefix **and** the body still calls `crcCheck(` |
 | 10 | the diff, comment by comment | comments that restate the code or echo the prompt; a logical step with no `// Why:`; a new page action with no `// About:` / `// Section:`; leftover `TODO` / dead code |
 | 11 | `match (`, `?->`, `str_contains(`, `str_starts_with(`, `str_ends_with(`, `#[`, `enum `, `readonly `, `: mixed` | PHP 8+ syntax on a 7.4+ module unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i) |
+| 12 | `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS` | raw installer / `ensureTable` SQL — probe first, then `CREATE`/`ALTER` ([07](07-SCHEMA-AND-INSTALL.md) §0) |
+| 13 | `$html .=`, `'<table`, `'<tr`, `'<div class=`, `Html(` in Controllers/Libraries | a screen/fragment built in PHP instead of a layout; fail unless `// Why:` names a one-piece exception ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
 
 **MUST NOT** skip a **named** useful `module.{mod}.{name}.hook` “for performance” — unused `trigger()` is cheap. **MUST NOT** fire a hook on every save to dodge this row ([41](41-MODULE-HOOKS.md)).
 

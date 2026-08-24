@@ -35,30 +35,33 @@ class Installation extends Installer
                 $notes = [];
 
                 // ---------- 1. tables ----------
+                // Why: probe first — older MySQL errors on CREATE TABLE IF NOT EXISTS (07 §0).
                 // $qb->raw() counts every ? as a placeholder — including COMMENT 'SMS?'. Never put ? in comments.
-                DB::module('RAW')->q(function ($qb) {
-                    $qb->raw(
-                        "CREATE TABLE IF NOT EXISTS `shop_items` (
-                            `id` INT NOT NULL AUTO_INCREMENT,
-                            `title` VARCHAR(200) NOT NULL,
-                            `sku` VARCHAR(64) NOT NULL DEFAULT '',
-                            `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
-                            `active` TINYINT(1) NOT NULL DEFAULT 1,
-                            `created_at` DATETIME NOT NULL,
-                            PRIMARY KEY (`id`),
-                            UNIQUE KEY `sku_unique` (`sku`),
-                            KEY `active_idx` (`active`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-                        []
+                if (self::mysqlTableExists('shop_items') !== true) {
+                    DB::module('RAW')->q(function ($qb) {
+                        $qb->raw(
+                            "CREATE TABLE `shop_items` (
+                                `id` INT NOT NULL AUTO_INCREMENT,
+                                `title` VARCHAR(200) NOT NULL,
+                                `sku` VARCHAR(64) NOT NULL DEFAULT '',
+                                `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                                `active` TINYINT(1) NOT NULL DEFAULT 1,
+                                `created_at` DATETIME NOT NULL,
+                                PRIMARY KEY (`id`),
+                                UNIQUE KEY `sku_unique` (`sku`),
+                                KEY `active_idx` (`active`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+                            []
+                        );
+                    })->execute(
+                        function () use (&$notes) { $notes[] = 'table shop_items ok'; },
+                        function ($error) use (&$ok, &$notes) {
+                            $ok = false;
+                            $notes[] = 'table shop_items failed: ' . ($error['error'] ?? '');
+                            Logger::use()->error('Shop 1.0.0 table', $error);
+                        }
                     );
-                })->execute(
-                    function () use (&$notes) { $notes[] = 'table shop_items ok'; },
-                    function ($error) use (&$ok, &$notes) {
-                        $ok = false;
-                        $notes[] = 'table shop_items failed: ' . ($error['error'] ?? '');
-                        Logger::use()->error('Shop 1.0.0 table', $error);
-                    }
-                );
+                }
 
                 // ---------- 2. rights ----------
                 $groupId = DotApp::call("DACore:Rights@createGroup!", 'Shop', self::MODULE);
@@ -92,9 +95,8 @@ class Installation extends Installer
                     }
                 }
 
-                // ---------- 3. menu (ASK: shared vs module-own — [31]) ----------
-                // This sample is the **shared** tree: header + type 2 group + leaf.
-                // Module-own: header + one entry here; inner pages pass withMenu $menuId.
+                // ---------- 3. menu (ASK: shared nested vs module-own — [31]) ----------
+                // Default / no answer: header + type 2 + leaves, withMenu ''. Module-own only if the user chose it.
                 $sectionRights = json_encode(['dotapp.root', 'Shop.*']);
                 $itemRights = json_encode(['dotapp.root', 'Shop.administrator', 'Shop.items.view']);
 
@@ -269,7 +271,7 @@ class Installation extends Installer
 
 **While coding:** name it **`install.php`**. The framework runs it, then renames it to `installed_*_install.php`. After a new version, rename that file back to `install.php`.
 
-**Packed zip only** (user asked, **and** this module is for DACore) — **LAW** ([00](../00-AGENT-CONTRACT.md) §2e): **MUST** rename `install.php` → **`dainstall.php`**, copy live init files into **`init/`**, inert root stubs. **MUST** include root **`.hooks`** when the module fires `module.{this}.*` hooks ([41](../41-MODULE-HOOKS.md)). **MUST NOT** leave `install.php` in the zip — DACore **rejects** that package and **will not run** `Installation`. **MUST NOT** pack a module that is not for DACore.
+**Packed zip only** (user asked, **and** this module is for DACore) — **LAW** ([00](../00-AGENT-CONTRACT.md) §2e): **MUST** pack with [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → `dacore-pack-zip.php` → run → delete). **MUST NOT** invent a packer. The packer renames `install.php` → **`dainstall.php`**, copies live init files into **`init/`**, writes inert root stubs. **MUST** include root **`.hooks`** when the module fires `module.{this}.*` hooks ([41](../41-MODULE-HOOKS.md)). **MUST NOT** leave `install.php` in the zip — DACore **rejects** that package and **will not run** `Installation`. **MUST NOT** pack a module that is not for DACore.
 
 ```php
 <?php

@@ -4,10 +4,11 @@ You are working on a **DotApp PHP** project (not Laravel/Symfony/CodeIgniter).
 
 ## Before any edit
 
-1. Read `AIRULES/00-AGENT-CONTRACT.md`.
-2. Follow the entire `AIRULES/` knowledge base.
-3. Edit **only** `app/config.php` and `app/modules/<TargetModule>/`.
-4. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, or other modules — **not even if the user asks**. The kernel is frozen. Implement in the module.
+1. **Cursor rules mirror (MUST):** compact `.mdc` files live in `AIRULES/cursor/rules/`. `.cursor/rules/` is a non-portable Cursor copy. If that folder is missing files from AIRULES, or AIRULES cursor rules changed: create `.cursor/rules/`, copy `AIRULES/cursor/rules/*.mdc` there, and copy `AIRULES/cursor/AGENTS.md` to project-root `AGENTS.md`. **MUST NOT** write a new law only under `.cursor/`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2l, `AIRULES/INSTALL.md`.
+2. Read `AIRULES/00-AGENT-CONTRACT.md`.
+3. Follow the entire `AIRULES/` knowledge base.
+4. Edit **only** `app/config.php` and `app/modules/<TargetModule>/`, plus the Cursor **mirror copy** in step 1.
+5. **Never** edit `app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, or other modules — **not even if the user asks**. The kernel is frozen. Implement in the module.
 
 ## Cursor credits (**MUST**)
 
@@ -16,6 +17,10 @@ When **planning** programming, **ASK** whether more expensive models may be used
 ## PHP version (**MUST**)
 
 When **planning** programming, **ASK** whether to stay on **PHP 7.4+** (the DotApp default) or write for a higher version. If they do not name a higher version: **PHP 7.4+**. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, constructor promotion, attributes, `enum`, `readonly`, `str_contains` / `str_starts_with` / `str_ends_with`) unless they said yes. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
+
+## Planning depth (**MUST** — law)
+
+When they asked to **plan** a **new module**, a **first** major surface, or a **rewrite**, the plan **MUST** be extremely detailed: every nav item (or `No menu`), every page, every tab, every control (what it does, default, persist). A long plan is correct. A bullet list of endpoints is a failed plan. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2k, `AIRULES/45-MODULE-PLANNING.md`.
 
 ## Finish gate (**MUST** — law)
 
@@ -33,6 +38,8 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 10. **Hooks** — useful side-effects fire `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`About:`/`Params:`/`Use:` + `.hooks`; not on every save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`. Pre-action stop = `triggerWithVeto()` + `Veto` (not `return false`). Listener map may cover the producer URL. Canonical: `AIRULES/41-MODULE-HOOKS.md`.
 11. **Extender** — judge first, **not** every method. Owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender `extend()` belongs in `Listeners::register()` before Module initialization. Target URLs in listener map; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time, Events, or `$request`/secrets. Canonical: `AIRULES/12-SERVICES.md` §10, `AIRULES/00-AGENT-CONTRACT.md` §2h.
 12. **PHP 7.4+** — unless the plan named a higher version: no `match`, `?->`, union/`mixed`, named args, constructor promotion, attributes, `enum`, `readonly`, `str_contains` / `str_starts_with` / `str_ends_with`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
+13. **MySQL-safe DDL** — `Installation.php` / `ensureTable` has no `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`. Probe then `CREATE`/`ALTER`. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0.
+14. **HTML via Renderer** — when markup can be a template, it **MUST** be a template. Grep Controllers/Libraries for `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factories. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / pager `<li>` / one tiny chip) — never a table, grid, tree, empty state, crumbs, or pager wrapper. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2j, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1c.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 
@@ -44,12 +51,17 @@ Every save / toggle / delete / form **MUST** tell the user what happened. Silent
 - **Success / non-field fail:** **your** module toast / status node + `reply.message`. Notiflix does not exist here. Never `alert()`.
 - Empty `.after()` is forbidden.
 
+## HTML via Renderer (**MUST** — law)
+
+When markup **can** be a template, it **MUST** be a template. PHP prepares data. `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / pager `<li>` / one tiny chip). Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2j, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1c.
+
 ## Non-negotiable syntax
 
 - Routes: `Module:Controller@method!` (`!` = no DI parameters in the method).
 - Controllers: `public static function`.
 - **PHP 7.4+ (ASK in plan):** default language is PHP 7.4+. **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
 - **Module identity (ASK in plan):** for a new module with visible UI, ask once for display name/purpose, optional logo/banner, placement, colours and alt text. Offer text-only/no custom branding; skip for backend-only modules. Never invent or hotlink branding. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8b.
+- **Planning depth (MUST):** new module / first surface / rewrite — inventory every nav item (or `No menu`), page, tab, and control in the plan. Length is OK. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2k, `AIRULES/45-MODULE-PLANNING.md`.
 - Login-required routes: **MUST** prefix `/{ModuleName}/…` (subtree if the module has public pages). Cover HTML with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` (403). **POST API:** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the start of `initialize()`; action **MUST NOT** `crcCheck()` again. Register handlers only inside `if (Auth::isLogged() === true) { … }`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`.
 - **Docs (MUST):** English. Every public method in `Controllers/` and `Middleware/` **MUST** start PHPDoc with **`CRCchecking —`** (exact prefix/middleware, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning — tags-only (`@return array<string, mixed>`) is a bug. **MUST NOT** document prefix CRC and still `crcCheck()` in that method. Inline **`// Why:`** / **`// About:`** / **`// Section:`**. **MUST NOT** restate the code, prompt-echo, omit the labels, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7, `AIRULES/08-FORMS-AND-SECURITY.md`.
 - **Hooks MUST:** useful side-effects `Events::trigger('module.{mod}.{name}.hook')` + comment block + `app/modules/<This>/.hooks`. **MUST NOT** fire on every save. Listen in **your** `module.listeners.php` (`Listeners::initializeRoutes()` may cover the producer URL). Pre-action stop = `triggerWithVeto()` + `Veto`. Canonical: `AIRULES/41-MODULE-HOOKS.md`.
@@ -57,7 +69,8 @@ Every save / toggle / delete / form **MUST** tell the user what happened. Silent
 - **Catch bus MUST:** every `catch` and every `execute()` `$err` reports `dotapp.catch` + `dotapp.catch.error|info` through **one** helper per module (listener exceptions propagate, so the helper wraps its own `trigger()` calls). Payload keys are fixed; secrets, tokens and request bodies **MUST NOT** be in it. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`. **MUST** `execute($ok, $err)` — both callbacks. Persist in `try/catch`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments count (`COMMENT 'SMS?'` throws). Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data.
-- Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`. **VIEW = outer file:** `setView` + `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view (or `renderLayout()` / inject a string). User-visible strings **MUST** be product copy — never prompt-echo / “this user can…”. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b, §8.
+- **Installer DDL MUST be MySQL-safe:** probe first (`SHOW TABLES LIKE` / `information_schema` + `DATABASE()`), then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`. Helpers in **this** module. `$qb->createTableIfNotExist()` is OK. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0, `AIRULES/00-AGENT-CONTRACT.md` §5 item 24.
+- Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`. **VIEW = outer file:** `setView` + `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view (or `renderLayout()` / inject a string). **HTML via Renderer (LAW):** when it can be a template it **MUST** be; **MUST NOT** `$html .= '<table'` factories. PHP markup **only** for a named one-piece exception. User-visible strings **MUST** be product copy — never prompt-echo / “this user can…”. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b, §1c, §8.
 - Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** for real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop, paginate) **MUST** be `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. + **`/assets/dotapp/dotapp.js`** + PHP `crcCheck()` **once** (API prefix **or** action — never both) + `form()` for real forms. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`. Row-action sample: `AIRULES/examples/EX-06-dotapp-js-boot.md`.
 - **Request MUST:** `$request->data(true)` / `$request->query(true)` = original. `$request->data()` is **protected** (`protect()`). **MUST** use original for passwords, HTML, hashes. **MUST** show every login failure. Canonical: `AIRULES/19-VALIDATION-AND-INPUT.md`.
 - **Lists MUST paginate:** users, logs, items, orders, messages — any collection that can grow. Ship `paginate()` + an **interactive AJAX** pager in the first version (even if the table is empty today). **MUST NOT** dump `->all()`. **MUST NOT** change pages by reloading the site (`<a href="?page=">`, `location.reload()`). Overlay the list while the request runs; patch rows **and** pager from JSON. **Search / list UX:** **ASK** when planning (search, filters, sort, bulk, page size, DSM remember, CSV only if it fits). Lookup lists **MUST** AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. No toast-undo after delete. Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3, `AIRULES/examples/EX-06-dotapp-js-boot.md`.
@@ -85,8 +98,9 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | CLI | `AIRULES/02-DOTAPPER-CLI.md` |
 | Routing | `AIRULES/03-MODULES-AND-ROUTING.md` |
 | Controllers | `AIRULES/04-CONTROLLERS-AND-RESPONSES.md` |
-| Views | `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` |
+| Views | `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` (§1c = HTML via Renderer law) |
 | Database | `AIRULES/06-DATABASE.md` |
+| Schema / installer DDL | `AIRULES/07-SCHEMA-AND-INSTALL.md` (§0 = probe-then-CREATE, no `CREATE TABLE IF NOT EXISTS`) |
 | Forms | `AIRULES/08-FORMS-AND-SECURITY.md` |
 | Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays + **AJAX pagination**; §4 = `$dotapp().fn`; §4.C = jQuery ports) |
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
@@ -95,6 +109,7 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | Checklists | `AIRULES/17-CHECKLISTS.md` (**Finish gate** = 00 §2c) |
 | **Finish gate (after every chunk)** | `AIRULES/00-AGENT-CONTRACT.md` §2c |
 | **Visible outcome (save/fail)** | `AIRULES/00-AGENT-CONTRACT.md` §2d |
+| **HTML via Renderer (templates, not PHP factories)** | `AIRULES/00-AGENT-CONTRACT.md` §2j, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1c |
 | **Catch bus (`dotapp.catch` in every catch)** | `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9 |
 | **Event tracer (`dotapp.catchall` — core fires every trigger)** | `AIRULES/01-ARCHITECTURE.md`, `AIRULES/23-DEBUG-PLAYBOOK.md` §1c |
 | **Debug / “it doesn’t work”** | `AIRULES/23-DEBUG-PLAYBOOK.md` (§1b = read the catch trail first) |
@@ -102,5 +117,7 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | **Performance, indexes, PHPDoc purpose + Why/About/Section** | `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` (§3 indexes, §7 comments, §8 perf pass) |
 | **Module hooks (`module.{mod}.{name}.hook` + `.hooks`)** | `AIRULES/41-MODULE-HOOKS.md` (sample: `AIRULES/examples/EX-16-module-hooks.md`) |
 | **Extender (judge — not every method)** | `AIRULES/12-SERVICES.md` §10 (sample: `AIRULES/examples/EX-17-extender.md`) |
+| **Planning depth (new module / first surface / rewrite)** | `AIRULES/00-AGENT-CONTRACT.md` §2k, `AIRULES/45-MODULE-PLANNING.md` |
+| **Cursor rules live in AIRULES (mirror to `.cursor/`)** | `AIRULES/00-AGENT-CONTRACT.md` §2l, `AIRULES/INSTALL.md` |
 
 AIRULES is the single source of truth.

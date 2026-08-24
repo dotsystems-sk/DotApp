@@ -194,6 +194,8 @@ Signature: `join($table, $first, $operator = null, $second = null, $type = 'INNE
 
 `createTable($table, callable)`, `createTableIfNotExist($table, callable)`, `alterTable($table, callable)`, `dropTable($table)` — the callback receives a `SchemaBuilder`.
 
+`$qb->createTableIfNotExist()` is allowed: it already probes `tableExists()` and emits `CREATE TABLE` **without** `IF NOT EXISTS`. Raw installer SQL **MUST** probe first, then `CREATE`/`ALTER` — **MUST NOT** `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0).
+
 ### Raw SQL
 
 ```php

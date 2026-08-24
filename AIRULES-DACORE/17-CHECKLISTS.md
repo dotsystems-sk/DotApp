@@ -3,17 +3,21 @@
 ## Pre-flight (before coding)
 
 - [ ] Identified target module name (or will create via dotapper)
+- [ ] **Cursor rules mirror:** `AIRULES/cursor/rules/*.mdc` copied into `.cursor/rules/` (and `AIRULES/cursor/AGENTS.md` → project-root `AGENTS.md`). No new `.mdc` exists only under `.cursor/` ([00](00-AGENT-CONTRACT.md) §2l)
 - [ ] Read `00-AGENT-CONTRACT.md`
 - [ ] Read task-specific AIRULES doc (views/DB/forms/JS)
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
 - [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, other modules
+- [ ] **Read scope:** will read only `<Target>` + `app/modules/DACore/` (read-only) + core (read-only) + `AIRULES/`. Will **not** browse a sibling under `app/modules/` for a look or example unless the user named that sibling as the extend/listen/Extender target ([00](00-AGENT-CONTRACT.md) §1b)
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
 - [ ] **PHP version:** asked whether to stay on **PHP 7.4+** (default) or write for a higher version; no answer → 7.4+ ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] New visible module: asked once for public name/purpose, installer identity (text-only / compact logo / wide banner), existing local asset + alt text, optional landing/header placement and colours ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b)
+- [ ] **Planning depth:** new module / first major surface / rewrite — plan inventories **every** `DACore:Menu@register` row (or `No menu`), **every** page, **every** tab, **every** control (what it does, default, persist) plus designer-grade UI and senior-grade security. A long plan is correct. Short plans only for small edits to shipped screens ([45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k)
 - [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
 - [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
 - [ ] **DACore-bound module:** read **`app/modules/DACore/.hooks`** (read-only) before scaffolding listeners — use the catalog DACore already fires; do not invent `module.dacore.*` ([41](41-MODULE-HOOKS.md) §6)
 - [ ] **Custom register/login / user list / shop:** read [42](42-DACORE-USER-ORIGIN.md) — **ASK** exact token(s), DACore-form access (default no), and whether this module lists users. Account/session are global; origin is not a sandbox. Plan fail-closed checks on create, login, 2FA, every route gate and every list/write.
+- [ ] **Step-up 2FA:** asked whether any action needs a second code after login. No answer → none. If yes, chrome is [EX-D10](examples/EX-D10-stepup-2fa-modal.md) / [32](32-DACORE-RIGHTS.md) §6 — not a 6-digit field on the settings card, not on every Save.
 
 ## Scaffold checklist
 
@@ -42,6 +46,7 @@
 - [ ] Variables: `{{ var: $x }}` only
 - [ ] Closers: `{{ /if }}` `{{ /foreach }}` (not endif/endforeach)
 - [ ] VIEW is the outer file; `setLayout` + `renderView()` fills `{{ content }}` in that view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b)
+- [ ] **HTML via Renderer:** pages / tables / grids / empty states / pager chrome / trees / crumbs / AJAX fragments are `.layout.php` via `Renderer`. No `$html .= '<table'` / `*Html()` factory in Controllers/Libraries unless `// Why:` names a one-piece exception ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
 - [ ] Layouts via `{{ layout:... }}` / Renderer setLayout
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
@@ -58,9 +63,11 @@
 - [ ] Bindings for all user values (`?` xor `:named`, never mixed)
 - [ ] No `DB::table`, Eloquent, `getConnection`, `selectRaw`, chain `find`, `count()`
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
+- [ ] Installer DDL: probe (`SHOW TABLES LIKE` / `information_schema`) then `CREATE TABLE` / `ALTER TABLE` — **no** `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0)
 - [ ] `$qb->raw()` has no `?` except real bindings (not in comments / `COMMENT '…'`) ([06](06-DATABASE.md))
 - [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
 - [ ] **Installer keys:** new version appended **after** the last `installer()` key; no `ksort` / `uksort` / `krsort` / `usort` on that map ([07](07-SCHEMA-AND-INSTALL.md), [00](00-AGENT-CONTRACT.md) §5 item 26)
+- [ ] **Installer keys are quoted text (DACore zip):** every `installer()` / `uninstaller()` key is `'1.0.0' =>` / `"1.0.0" =>` in the file; **no** `self::` / `static::` / constant / variable as a key ([35](35-DACORE-INSTALL.md) §2, [00](00-AGENT-CONTRACT.md) §5 item 27)
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items`, `dotapp_*`, or `dacore_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 - [ ] Growing lists (users, logs, items, orders) use COUNT + LIMIT + the [40](40-DACORE-LIST-PAGER.md) pager on **first ship** — not `->all()`, not `paginate()['total']` as last_page, not “few rows now”
@@ -102,9 +109,11 @@
 - [ ] Followed `AIRULES/examples/EX-01-secure-form-complete.md` when implementing
 - [ ] New / ported `$dotapp` libraries follow [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 / [EX-15](examples/EX-15-dotapp-js-library.md) (`dotapp-register`, `fn()`, `this.load` — no `$.ajax`)
 - [ ] 2FA code boxes use `$dotapp().twoFactor` — not a custom OTP widget ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md))
+- [ ] Step-up (only if the plan named it): DACore installer modal + six `dacore-otp` boxes + `{ autoSubmit: true }` so paste POSTs immediately — not a 6-digit field on the card ([32](32-DACORE-RIGHTS.md) §6, [EX-D10](examples/EX-D10-stepup-2fa-modal.md))
 - [ ] Deletes use a graphical confirm dialog first — never `alert()` / `window.confirm()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] Accumulating lists follow [40](40-DACORE-LIST-PAGER.md): `dacore-list-pager` (no `--split`), `button.page-link.{module}-page`, encrypted `data-page`, `$dotapp().live(..., function (el, e)`, overlay, patch rows **and** pager — not `<a href="?page=">` / `replaceState` / `e.currentTarget`
 - [ ] Lookup lists (articles, products, catalog, …) have **interactive AJAX search** (debounce, 3+ chars, SQL + `paginate()`) unless the user declined; other lists were **asked** in the plan — not JS-filter of `->all()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] Single-value choices are not mistaken for list search: bounded known choices use `<select>`; longer bounded choices use existing `dotSelect2`; large remote choices use AJAX `dotSelect2` with initial results + server paging/search. No bare text input/empty `datalist` that makes the operator remember an exact name ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] List plan **asked** filters / sort / bulk / page size / DSM remember / CSV-if-it-fits; empty state + sticky header + match highlight shipped when required ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
 - [ ] **Public website:** mobile nav is a L/R overlay drawer; page behind does not scroll while open; the drawer list scrolls; contacts + compact search live in the drawer unless large search is its own mobile section ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
@@ -156,17 +165,21 @@
 - [ ] Simple forms **prefer** `<dot-col any="12" md="6" ldesktop="6">` and `ri ri-*` icons (custom layout OK when porting)
 - [ ] Menu / rights / AI tools registered in `Installation.php` only
 - [ ] Installer-managed user groups use `Roles@createGroup!` after their rights exist, stable `(creator, groupid)`, `editable=0`; assign/remove/delete via `Roles@*`; no saved numeric role id or direct `users_roles*` / `users_rights` write ([32](32-DACORE-RIGHTS.md) §1)
-- [ ] If this module has a sidebar: own `type => 0` header (one is ideal; more only if needed). **Asked** shared vs module-own before a new module. Many items: `type => 2` groups **or** header + one entry + `withMenu` `$menuId`. `menuid` starts with **this** module. Uninstall deletes only that prefix — not a host module’s menu ([31](31-DACORE-MENU.md))
+- [ ] If this module has a sidebar: own `type => 0` header (one is ideal; more only if needed). **Asked** shared nested (`0` → `2` → `1`) vs module-own before a new module. **No answer → shared nested** (`withMenu` `$menuId` `''`). Module-own only if the user explicitly chose it. `menuid` starts with **this** module. Uninstall deletes only that prefix — not a host module’s menu ([31](31-DACORE-MENU.md))
 - [ ] Did **not** register a “Return back” row (DACore appends it on a branch `$menuId`)
 - [ ] Edit/detail admin pages keep the list/section leaf active: `withMenu` 7th `$currentFile` when the URL is not under that leaf — no extra menu row per edit URL ([31](31-DACORE-MENU.md))
 - [ ] Trigger while coding is **`install.php`** + live root init files; `installed_*` renamed back after a new version ([07](07-SCHEMA-AND-INSTALL.md), [35](35-DACORE-INSTALL.md) §4)
-- [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack: zip **MUST** contain `dainstall.php` (renamed from `install.php`) + `init/` live copies + inert root init + **`about.php`**; **MUST NOT** contain `install.php` (DACore rejects it / Installation never runs); working tree restored ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5)
+- [ ] Zip / `dainstall.php` / `init/` **only** for a **DACore-bound** module and only when the user asked to pack: used [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → `dacore-pack-zip.php` → run → delete the `.php`); zip **MUST** contain `dainstall.php` + `init/` + inert root + **`about.php`**; **MUST NOT** contain `install.php`; working tree restored; **MUST NOT** leave the runnable packer in the repo ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §5)
+- [ ] Packed `Installation.php` has every `installer()` / `uninstaller()` key as quoted text (`'1.0.0' =>`); **MUST NOT** `self::` / `static::` / constants as keys — DACore text-scan would reject the zip as version `0.0.0` ([35](35-DACORE-INSTALL.md) §2)
 - [ ] Root init files were **not** blanked unless packing a zip
 - [ ] **`app/modules/DACore/` was not given `dainstall.php` / `init/` / inert stubs**
 - [ ] `Menu@register` checked `!== true`; rights helpers checked `=== null`
 - [ ] Installer/uninstaller critical failure reports then throws generic `RuntimeException`; no `return`/`false` mistaken for lifecycle abort ([35](35-DACORE-INSTALL.md))
 - [ ] Final migration verifies required earlier success markers and checks its `Installations@insert!` return
 - [ ] Uninstall failure leaves the module folder/registry retryable; own menu prefix is deleted only after critical preconditions pass
+- [ ] Backups use `app/runtime/dacore-backups/` with deny-all `.htaccess` + inert `index.php`; posted filenames/paths are ignored; canonical path + DB metadata + SHA-256 + manifest are verified ([44](44-DACORE-BACKUPS.md))
+- [ ] Framework backup/update allowlist is only `app/DotApp.php`, `app/parts/**`, and `changelog.txt`; `dotapper.php`, config, modules, runtime, AIRULES, and index are excluded
+- [ ] Full DB restore is offline only; one-click framework/module restore requires root + fresh StepUp, creates a recovery backup first, and restores only exact allowlisted files/owned tables
 - [ ] Inbox events use `DACore:Notifications@push` on the event (`!== true` checked) — not installer, not every request, not `INSERT` into `dacore_notifications*` ([37](37-DACORE-NOTIFICATIONS.md))
 - [ ] Outgoing mail uses `DACore:Email@send` with an **encrypted** sender id (`!== true` checked) unless the user declined DACore senders — **asked** at plan time ([38](38-DACORE-EMAIL.md))
 - [ ] Outgoing SMS uses `DACore:Sms@send` with a **sender_key** (`ok === true` checked) unless the user declined DACore drivers — **asked** at plan time ([39](39-DACORE-SMS.md))
@@ -176,7 +189,7 @@
 - [ ] `dacore_ai_tools` existence verified before registering tools
 - [ ] Uninstaller removes tools, rights, prefixed menu rows and your tables
 - [ ] Operators keep at least one 2FA method; your module cannot turn it off
-- [ ] Dangerous admin actions re-prompt 2FA (`$dotapp().twoFactor`) and **PHP verifies the code** before persist — not the overlay, not `Auth::confirmTwoFactor` ([08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
+- [ ] Step-up 2FA only if the plan named it (default none). When present: installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` and **PHP verifies the code** before persist — not the overlay, not `Auth::confirmTwoFactor` ([08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6, [EX-D10](examples/EX-D10-stepup-2fa-modal.md))
 - [ ] Deletes use a graphical confirm (`Notiflix.Confirm` or `$dotapp().modal`) — never `alert()` / `window.confirm()`
 - [ ] Menu names, rights name/description, tool `description`, and page copy are product language — not prompt-echo ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
 
@@ -203,7 +216,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - [ ] **Memory:** big sets processed page by page; keyed map instead of `in_array()` in a loop; no `array_merge` per iteration; raw copy `unset` after mapping; files streamed
 - [ ] **Indexes:** every FK and every new `WHERE` / `JOIN` / `ORDER BY` column is indexed; composite order equality → range → sort; no index duplicating a composite prefix; one comment line per index naming its query; **nothing** on `dacore_*` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3)
 - [ ] **Schema:** realistic types (`DECIMAL` money, right `VARCHAR` length, FK matches `id()` = `bigInteger()->unsigned()`), `NOT NULL` + defaults, nothing filterable hidden in a JSON blob ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4)
-- [ ] **Migration:** a new index / column shipped as a **new version** in `Installation.php`, guarded by `indexExists()` / `columnExists()`, then `installed_*_install.php` renamed back to `install.php`
+- [ ] **Migration:** a new index / column shipped as a **new version** in `Installation.php`, guarded by a PHP probe (`SHOW TABLES LIKE` / `information_schema` or `indexExists()` / `columnExists()`), then `CREATE`/`ALTER` **without** `IF NOT EXISTS`; `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md) §0)
 - [ ] **Cache:** used only for expensive cross-request data, with TTL **and** invalidation on write; `Config::db('cache')` untouched
 - [ ] **Frontend:** DACore searched first (no duplicate library), then one CSS + one JS in your module, delegated handlers, one DOM write per batch, debounced search, lazy images ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §6)
 - [ ] **Docs:** file/class docblock; every public method in `Controllers/` / `Middleware/` starts with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`); then a **purpose sentence** then `@param` + `@return` (+ `@throws`) with meaning — not tags-only; logical steps use **`// Why:`**; page actions have **`// About:`** and **`// Section:`** ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
@@ -217,7 +230,7 @@ Tick only the rows for the surface you touched.
 - [ ] **SQL:** bindings only; sort column + direction from a whitelist; insert/update column whitelist (no posted `right` / `user_id` / `price`) ([24](24-ATTACK-VECTORS.md) §1–§2)
 - [ ] **Channels:** no input in `header()` / `Response::redirect` / mail headers; `HttpHelper` URL not from the request ([24](24-ATTACK-VECTORS.md) §2)
 - [ ] **No interpreters on input:** no `eval` / `exec` / `system` / `unserialize` / `include $x` / user-named callable ([24](24-ATTACK-VECTORS.md) §1)
-- [ ] **Identity:** token rotated after login; secrets via `hash_equals`; failure messages do not enumerate users; reset token `random_bytes` + hashed + single use + TTL; operator 2FA on + step-up on dangerous actions ([24](24-ATTACK-VECTORS.md) §3, [32](32-DACORE-RIGHTS.md) §6)
+- [ ] **Identity:** token rotated after login; secrets via `hash_equals`; failure messages do not enumerate users; reset token `random_bytes` + hashed + single use + TTL; operator 2FA on; step-up only if the plan named it ([24](24-ATTACK-VECTORS.md) §3, [32](32-DACORE-RIGHTS.md) §6)
 - [ ] **Access:** `Auth::can` in the action; rights via **your** `Rights@check` (not `AuthTest@check`); owner predicate in the query; no escalation; no secret behind a read-only right ([24](24-ATTACK-VECTORS.md) §4)
 - [ ] **Headers:** `nosniff`, frame protection, `no-store` on admin pages, `rel="noopener"` on `target="_blank"`, no wildcard CORS with credentials ([24](24-ATTACK-VECTORS.md) §5)
 - [ ] **Files:** extension + `finfo` MIME + header check, no path built from input, size/count caps, non-executing directory ([24](24-ATTACK-VECTORS.md) §6)
@@ -236,10 +249,11 @@ Tick only the rows for the surface you touched.
 - [ ] Privilege / records grepped: secrets not in read-only views; SQL has owner (or can on that row); no escalate; public noauth bot **warning** if applicable ([11](11-AUTH-AND-CRYPTO.md) §11); custom user UI filtered by **your** origin (or explicit ASK + warning before listing another origin) ([42](42-DACORE-USER-ORIGIN.md))
 - [ ] **Origin/global Auth:** grepped `createUser|registerOrigin|stampOrigin|UserPolicy@read|Auth::login|loggedStage|Auth::isLogged|findByExtra` plus user SQL. Checked register result, exact-id lookup, stamp+read equality, logout on mismatch, login+2FA+every gate, profile INNER JOIN + bound origin, generic duplicate/foreign replies ([42](42-DACORE-USER-ORIGIN.md))
 - [ ] Queries use bindings; no user input in SQL strings; `$qb->raw()` has no `?` except real bindings ([06](06-DATABASE.md))
-- [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, step-up 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
+- [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation; step-up code only if the plan named it) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate; rights via `#YourModule:Rights@check!` — **not** `#DACore:AuthTest@check!` ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
 - [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. **Admin:** grepped DACore, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
 - [ ] **Layout / UX-UI:** grepped/read the chrome you added — buttons have padding vs parent (esp. bottom); not flush; aligned to siblings; `pt-0` footers still have `pb-*` / CSS padding-bottom ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c)
+- [ ] **HTML via Renderer:** grepped Controllers/Libraries for `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factories — screen/fragment markup is a layout. A PHP HTML string has `// Why:` naming a one-piece exception, never a whole list ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
 - [ ] **Catch reported:** grepped `catch (` and `execute(` in this chunk — each one reports `dotapp.catch` + `dotapp.catch.error|info` with the fixed payload and no secrets ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 - [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, duplicated DACore library, missing docblock, comments that restate the code)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning, no `dacore_*` write)
@@ -249,18 +263,23 @@ Tick only the rows for the surface you touched.
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
 - [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)
+- [ ] **Read scope:** tool paths in this chunk stayed in `<Target>` + DACore (+ a sibling **only** if the user named it as the extend/listen/Extender target). Did **not** copy a sibling’s cards/CSS/chrome. Examples from `AIRULES/examples/`, not a live sibling ([00](00-AGENT-CONTRACT.md) §1b)
 - [ ] No Laravel/Blade/jQuery APIs introduced
 - [ ] `--list-routes` or manual route review if routes changed
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)
 - [ ] Users/logs/items shipped with the [40](40-DACORE-LIST-PAGER.md) pager — not omitted, not `?page=` / `replaceState`, not `e.currentTarget`, not `paginate()['total']` as last_page
-- [ ] Lookup lists shipped with AJAX search (or the user declined); other lists were asked in the plan
+- [ ] Growing result lists shipped with appropriate server-backed search (or the user declined); bounded pickers use select/existing `dotSelect2`, never exact-name text/datalist
+- [ ] If `Installation.php` or a DACore zip is in this chunk: grepped keys as quoted text (`'1.0.0' =>`); no `self::` / `static::` / constant / variable as a key ([00](00-AGENT-CONTRACT.md) §5 item 27, [35](35-DACORE-INSTALL.md) §2)
+- [ ] If `Installation.php` / store `ensureTable` is in this chunk: no `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`; table/column/index added only after a PHP probe ([07](07-SCHEMA-AND-INSTALL.md) §0)
 - [ ] User-facing summary mentions AIRULES docs followed
 
 ## Red flags — stop and fix
 
+- A new `.mdc` exists only under `.cursor/rules/` — write `AIRULES/cursor/rules/` first, then copy the mirror ([00](00-AGENT-CONTRACT.md) §2l)
 - Diff touches `app/parts/**`
 - Diff touches `app/modules/DACore/` without an informed, user-initiated ask ([00](00-AGENT-CONTRACT.md) §1)
 - Agent proposed a DACore patch instead of implementing in the current module
+- Agent opened / grepped `app/modules/<Sibling>/` for a look or example without the user naming that sibling as the extend/listen/Extender target ([00](00-AGENT-CONTRACT.md) §1b)
 - Template contains `{{ $var }}` or `@if`
 - Empty `foreach` / missing switches while the heading shows — sandbox dropped a callable string (`time`, `copy`, `count`, …); **MUST NOT** patch Renderer ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
 - Code contains `DB::table` / Eloquent / `$this->db`
@@ -276,9 +295,12 @@ Tick only the rows for the surface you touched.
 - One `<fo-rm>` per row button (up/down/toggle/delete) or drag-and-drop via forms
 - List/form still clickable during `load()`; overlay not removed on the error path; no preloaders because Notiflix was skipped
 - Custom OTP digit widget instead of `$dotapp().twoFactor`
+- Step-up 2FA added without the user asking in the plan
+- Named step-up uses a 6-digit field on the card / no `$dotapp().twoFactor` / `autoSubmit: false` on unlock
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
 - Save / primary button flush against the card or page edge; `pt-0` footer with no bottom padding; uncentered vs sibling cards ([00](00-AGENT-CONTRACT.md) §2f)
+- `$html .= '<table'` / `'<tr'` / `'<div class='` or a `listHtml()` factory building a screen/fragment in Controllers/Libraries without `// Why:` naming a real one-piece exception ([00](00-AGENT-CONTRACT.md) §2j)
 - Successful SMS/mail/payment/lockout with no `module.{mod}.{name}.hook`, or a trigger missing from `.hooks` / missing `Hook:` comment ([41](41-MODULE-HOOKS.md))
 - Hook on every save “just in case”; old `shop.item.saved` name ([41](41-MODULE-HOOKS.md))
 - Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc that is only `@return array<string, mixed>`; controller/middleware public method with no `CRCchecking —` first line ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
@@ -290,12 +312,15 @@ Tick only the rows for the surface you touched.
 - File/ZIP in `FormData` + `load()` / `<fo-rm>` — use `$dotapp().uploadFile`
 - Upload accepts `.php` or trusts client MIME — reject in PHP (`finfo` + extension)
 - Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
-- Dangerous DACore action without step-up 2FA; UI that turns off an operator’s 2FA
+- UI that turns off an operator’s 2FA
 - New admin library/widget without grepping DACore (read-only) and the current module first
 - DACore zip still contains `install.php`, or is missing `dainstall.php` / `init/` — installer rejects it / Installation never runs ([00](00-AGENT-CONTRACT.md) §2e)
+- Invented a one-off zip packer, or left `dacore-pack-zip.php` in the repo — **MUST** use [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → run → delete)
 - DACore-bound **your-module** uses `dainstall.php` / inert root **while still coding** (that is zip-only)
 - New `Installation.php` version left as `installed_*_install.php` (next load will not run it)
 - `ksort` / `uksort` / `krsort` / `usort` on `installer()` or `uninstaller()` keys (`1.0.10` would run before `1.0.9`)
+- `installer()` / `uninstaller()` keys are `self::…` / `static::…` / constants / variables instead of quoted text `'1.0.0' =>` — DACore zip scan rejects the package (`Installation.php has no version keys`, version `0.0.0`) ([35](35-DACORE-INSTALL.md) §2)
+- `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` in installer SQL ([07](07-SCHEMA-AND-INSTALL.md) §0)
 - `dainstall.php` / `init/` / inert stubs applied to `app/modules/DACore/` itself
 - Root `module.init.php` blanked without the user asking to export
 - `execute()` called with a single callback

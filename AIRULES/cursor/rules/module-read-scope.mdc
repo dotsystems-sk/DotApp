@@ -1,0 +1,16 @@
+---
+description: Read only the current module plus AIRULES — never browse siblings for examples
+alwaysApply: true
+---
+
+# Module read scope (LAW)
+
+When programming module `<Target>`:
+
+- **MAY read:** `app/modules/<Target>/`, framework core read-only (`app/parts/`, `app/DotApp.php`), `AIRULES/` + `AIRULES/examples/`.
+- **MUST NOT** open, grep, glob, or explore `app/modules/<Sibling>/` for a look, Installation, list, or “how they did it.”
+- **Exception:** the user **named** another module as the thing this work extends / supplements / listens to / Extender-targets. Then that named folder + `<Target>` are allowed. Still **MUST NOT** tour the rest.
+- Examples come from **`AIRULES/examples/`** — not a live sibling.
+- Subagents / Composer file-hunt **MUST** stay in this allow-list. **MUST NOT** search `app/modules/*`.
+
+This folder has **no** DACore. Do not invent `DACore:*` APIs or read `app/modules/DACore/` unless the user asked for DACore integration (Part 2).

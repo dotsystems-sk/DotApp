@@ -9,10 +9,12 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | “This is basically Laravel” | DotApp is a separate BE+FE framework |
 | Copy Blade/Eloquent snippets | Use AIRULES syntax only |
 | Edit `app/parts` to “fix” something | Ask user; edit module + `config.php` only |
+| Browse `app/modules/Shop` / `CMS` / another sibling for a look or “example” while programming `<Target>` | Read only `<Target>` + DACore + AIRULES. Sibling only if the user **named** it as the extend/listen/Extender target ([00](00-AGENT-CONTRACT.md) §1b) |
 | Premium Cursor subagent without asking (Opus / GPT-5 / xhigh / cloud / best-of-N) | Inherit the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Composer 2.5 as the programmer | Composer 2.5 only for a pile of files; programming = parent model ([00](00-AGENT-CONTRACT.md) §2b) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
 | PHP 8+ syntax (`match`, `?->`, `str_contains`, union/`mixed`, named args, promotion, `enum`) without asking | Default **PHP 7.4+**; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2i) |
+| Short plan (“Settings + list + edit”) for a new module / first surface / rewrite | Extremely detailed inventory: every `Menu@register` row, page, tab, control ([00](00-AGENT-CONTRACT.md) §2k, [45](45-MODULE-PLANNING.md)) |
 | Silent save / empty `.after()` / invent a second toast instead of grepping DACore | Admin: search DACore then **toast**. Public: mark the wrong field ([00](00-AGENT-CONTRACT.md) §2d) |
 | SMS/mail/payment/lockout with no hook, or a trigger not listed in `.hooks` | Fire **`module.{mod}.{name}.hook`** when a future module would subscribe; document in `.hooks` ([41](41-MODULE-HOOKS.md)) |
 | Hook on every save / unlabeled `// turning SMS off…` | Judge first; comments **MUST** start with `Why:` / `About:` / `Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
@@ -38,12 +40,14 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `{{ endif }}` / `{{ endforeach }}` | `{{ /if }}` / `{{ /foreach }}` |
 | `@if` `@foreach` `@extends` `@section` | DotApp directives / layouts |
 | `{{ include 'x' }}` in PHP views | `{{ layout:x }}` |
+| `$html .= '<table'` / `listHtml()` / `iconsHtml()` / `treeHtml()` factory in a Controller or Library | `Renderer` + `.layout.php`; PHP prepares data. PHP markup **only** when a template cannot do that **one** piece and `// Why:` names the problem ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1c, [00](00-AGENT-CONTRACT.md) §2j) |
 | Assume auto-escape | Escape in PHP; `var:` is raw |
 | `setLayoutVar('featureRows', [['key' => 'time', …]])` / var named `copy` / `count` / `header` | Sandbox **drops** any bag value (or var name) that `is_callable()` — `time()` exists. Prefix keys or pass escaped HTML ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
 | Empty `foreach` → patch `app/parts/Renderer.php` | Work around in the module. Heading with no rows is almost always a dropped var |
 | `date(` / `header(` / `file_get_contents(` inside a `.layout.php` | Sandbox **strips** those calls; logic belongs in the controller ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
 | Prompt-echo labels / help (“this user can…”) | Product copy a vendor would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | Stock `.cursorrules` template examples | Trust AIRULES + Renderer.php |
+| New compact law only under `.cursor/rules/` | Write `AIRULES/cursor/rules/*.mdc` first; agent copies the mirror ([00](00-AGENT-CONTRACT.md) §2l) |
 
 ## Database
 
@@ -72,9 +76,11 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `// turning SMS off is dangerous` without the label | **`// Why:`** turning SMS off is a dangerous flag — … ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | `DB::migrate()` | Unimplemented — use Installation.php |
 | `ksort` / `uksort` / `krsort` / `usort` on `installer()` / `uninstaller()` keys | `foreach` in written order; uninstall = `array_reverse` of that map. `1.0.10` sorts before `1.0.9` ([07](07-SCHEMA-AND-INSTALL.md)) |
+| `self::…` / `static::…` / constant / variable as an `installer()` or `uninstaller()` **key** | Quoted text `'1.0.0' =>` in the source — DACore greps text, does not run PHP; a zip with no quoted keys is rejected as `0.0.0` ([35](35-DACORE-INSTALL.md) §2, [00](00-AGENT-CONTRACT.md) §5 item 27) |
 | `$t->timestamps()` | Declare `created_at` / `updated_at` manually |
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
 | `CREATE TABLE items` / `dotapp_items` / `dacore_*` for a module | `{lowercase_modulename}_items` (Shop → `shop_items`) |
+| `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` | Probe `SHOW TABLES LIKE` / `information_schema` (`DATABASE()` + bindings), then `CREATE`/`ALTER` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0) |
 
 ## Return values / error handling
 
@@ -152,9 +158,11 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | One `<fo-rm>` per row button / drag-and-drop via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
 | List still clickable / second drag during `load()` | Cover the wrapper (Notiflix preferred **or** module preloaders) until success **and** error — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |
+| Step-up as one `<input maxlength="6">` on the settings card | DACore installer modal + six `dacore-otp` boxes + `{ autoSubmit: true }` ([EX-D10](examples/EX-D10-stepup-2fa-modal.md), [32](32-DACORE-RIGHTS.md) §6) |
 | `alert()` / `window.confirm()` on delete | Graphical dialog (`Notiflix.Confirm` on admin), then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Growing list with no pager / `<a href="?page=">` / `e.currentTarget` | [40](40-DACORE-LIST-PAGER.md): `live(el, e)`, encrypted `data-page`, COUNT |
 | Articles/catalog list with no search / JS-filter of `->all()` | **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Known bounded choices hidden behind a text input / empty `datalist` / typeahead | Native `<select>`; longer bounded set = existing `$dotapp(el).dotSelect2()` with choices visible on open; large remote set = AJAX `dotSelect2` with initial results + server paging/search ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Naked empty table / unvalidated `ORDER BY` / JS-only sort / toast-undo after delete | Empty state **MUST**; sort whitelist; confirm is enough ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + `$request->upload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 | Desktop-only public header / hover-only nav / no drawer | Overlay drawer L/R; lock page scroll; drawer list scrolls; contacts+compact search in the drawer ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
@@ -201,8 +209,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Module-owned inbox table / second bell UI | DACore navbar + `{prefix}/dacore/notifications` |
 | `Notifications@push` in `Installation.php` or every request | Call on the event in **your** controller/service — or `Events::on` their `module.{mod}.{name}.hook` from **your** listeners ([41](41-MODULE-HOOKS.md)) |
 | Own sidebar with no header (`type => 0`) | One header per module; more only if you need more sections ([31](31-DACORE-MENU.md)) |
-| Ten `type => 1` leaves under a header in the global sidebar | **ASK** shared vs module-own; group with `type => 2`, or header + one entry ([31](31-DACORE-MENU.md)) |
-| Guess the menu layout on a new DACore module | Ask in chat first — do not scaffold until the user picks |
+| Ten `type => 1` leaves under a header in the global sidebar | Nest under `type => 2` on the shared menu (`0` → `2` → `1`); `withMenu` `$menuId` `''` ([31](31-DACORE-MENU.md)) |
+| Guess the menu layout on a new DACore module | **ASK**; if they do not answer, ship **shared nested** `0` → `2` → `1` — do not wait forever and do not default to module-own ([31](31-DACORE-MENU.md)) |
 | Nest groups under a `withMenu` `$menuId` | Branch is one level; inner items are direct children of that id |
 | Register a “Return back” menu row | DACore appends it when `$menuId !== ''` |
 | Edit/detail admin URL with no active sidebar item | `withMenu` 7th `$currentFile` = registered list URL ([31](31-DACORE-MENU.md)) |
@@ -215,10 +223,12 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `$.ajax` / `$.post` on admin pages (even if jQuery is loaded) | `$dotapp().form` / `$dotapp().load` / `dotbridge` |
 | Keep jQuery plugins on a port without asking, or wrap `$.fn` | **Ask**, then **rewrite** as `$dotapp().fn` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md)). If DACore already ships it, use it. |
 | New select/table/modal/toast/date lib without searching DACore | Grep `app/modules/DACore/` (read-only) + your module first; reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
+| Grep `app/modules/Shop` / another sibling for cards, CSS, or an Installation sample | DACore + current module + `AIRULES/examples/`. Sibling only if named as the extend/listen target ([00](00-AGENT-CONTRACT.md) §1b) |
 | `#DACore:AuthTest@check!` with rights | Your own `#YourModule:Rights@check!` |
 | `Auth::hasRole()` | `Auth::can(['dotapp.root', 'Mod.right'])` |
 | Register menu/rights/tools per request | In `Installation.php` |
-| Shipping a DACore zip that still has `install.php`, or that lacks `dainstall.php` / `init/` / `about.php` | Rename `install.php` → `dainstall.php` on a **copy**; copy live init into `init/`; inert root stubs; include `about.php`. DACore **rejects** `install.php` and a missing/invalid `about.php`, and **never runs** Installation without `dainstall.php` ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5) |
+| Shipping a DACore zip that still has `install.php`, or that lacks `dainstall.php` / `init/` / `about.php` | Pack with [EX-D09](examples/EX-D09-dacore-pack-zip.md). DACore **rejects** `install.php` and a missing/invalid `about.php`, and **never runs** Installation without `dainstall.php` ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5) |
+| Inventing a one-off DACore zip packer, or leaving `dacore-pack-zip.php` in the repo | Copy [EX-D09](examples/EX-D09-dacore-pack-zip.php.txt) to the project root as `dacore-pack-zip.php`, run it, **delete** the `.php`. **MUST NOT** write a new packer ([35](35-DACORE-INSTALL.md) §5) |
 | `dainstall.php` / inert root **while coding** | Live `install.php` + live init files until the user asks to pack a **DACore** module ([35](35-DACORE-INSTALL.md) §4–§5) |
 | `dainstall.php` zip for a module that is not for DACore | Rename `installed_*` → `install.php` and copy the folder ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Leaving `installed_*_install.php` after a new version | Rename back to `install.php` so the next load runs it ([07](07-SCHEMA-AND-INSTALL.md)) |
@@ -230,9 +240,10 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Bootstrap `col-md-6` in admin forms | `<dot-col any="12" md="6" ldesktop="6">` |
 | Re-add `dotapp.js` / dotgrid / core.css | The shell already loads them |
 | Ignoring `Menu@register` / `AITools@register` / `Notifications@push` return | They return `bool`, never throw or log |
-| Dangerous admin action without a second 2FA prompt | Step-up `$dotapp().twoFactor` + **PHP** verifies before persist ([32](32-DACORE-RIGHTS.md) §6) |
+| Step-up 2FA on every settings Save without the user asking | **ASK** in the plan; default **no** ([32](32-DACORE-RIGHTS.md) §6) |
+| Named step-up action with a 6-digit field / custom OTP / no paste auto-submit | DACore installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` ([EX-D10](examples/EX-D10-stepup-2fa-modal.md)) |
 | 2FA overlay/modal as the only gate; save writes anyway | PHP refuses without a valid code ([08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6) |
-| Dangerous flag turned off on the same save as other settings | General save ignores “off”; separate 2FA handler ([32](32-DACORE-RIGHTS.md) §6) |
+| Named dangerous flag turned off on the same save as other settings | General save ignores “off”; separate 2FA handler ([32](32-DACORE-RIGHTS.md) §6) |
 | Let an operator turn 2FA off | Forbidden — at least one method MUST stay on |
 | Write AI tool with no page refresh / `location.reload()` after chat write | `ui_events` + `DACore.AI.UIEvent` listener; filter by tool id ([34](34-DACORE-AI-TOOLS.md) §5) |
 | Secrets in `ui_events` payload | Ids and view hints only |

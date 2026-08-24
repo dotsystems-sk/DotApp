@@ -17,7 +17,104 @@
 
 **MUST:** `installer()` / `uninstaller()` keys run in **written PHP array order**. **MUST NOT** `ksort` / `uksort` / `krsort` / `usort` those maps (`1.0.10` sorts before `1.0.9`). Canonical: [00](00-AGENT-CONTRACT.md) §5 item 26.
 
+**MUST (DACore zip):** every `installer()` / `uninstaller()` key **MUST** be quoted text in the source (`'1.0.0' =>` / `"1.0.0" =>`). **MUST NOT** `self::…`, `static::…`, class constants, variables, or any other expression as the **key** — DACore greps `Installation.php` as text and rejects a zip with no quoted keys (`Installation.php has no version keys`, package version `0.0.0`). Constants belong **inside** the callback. Canonical: [00](00-AGENT-CONTRACT.md) §5 item 27, [35](35-DACORE-INSTALL.md) §2.
+
 **MUST:** callback return values do not stop `Installer::install()` / `uninstall()`. A critical failure reports to the module catch bus and throws a generic `RuntimeException`; `return false` or a bare `return` after failure is a silent partial install/uninstall. DACore modules additionally follow [35](35-DACORE-INSTALL.md) “Installer/uninstaller failure propagation”.
+
+**MUST (older MySQL):** installer DDL is **probe-then-CREATE/ALTER**. **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, or `CREATE INDEX IF NOT EXISTS`. Older MySQL rejects those `IF NOT EXISTS` forms; MariaDB-only column syntax must not ship. Canonical: [this file §0](#0-mysql-safe-installer-ddl-must--law), [00](00-AGENT-CONTRACT.md) §5 item 30.
+
+---
+
+## 0. MySQL-safe installer DDL (MUST — law)
+
+Idempotency is a **PHP probe**, not an `IF NOT EXISTS` clause. DACore’s installer does the same: `SHOW TABLES LIKE` / `information_schema` first, then `CREATE TABLE` / `ALTER TABLE` only when the object is missing (`SetupGuard::mysqlTableExists` / `mysqlColumnExists`, `addColumnIfMissing`, `addIndexIfMissing`). Copy that **shape** into **your** `Installation.php`. **MUST NOT** call DACore `SetupGuard` / `SchemaCompat` from another module.
+
+| Object | Probe (MUST) | Then |
+|--------|----------------|------|
+| Table | `SHOW TABLES LIKE 'shop_items'` after identifier whitelist `[A-Za-z0-9_]+` | `CREATE TABLE \`shop_items\` (...)` — **no** `IF NOT EXISTS` |
+| Column | `information_schema.COLUMNS` scoped to `DATABASE()`, bound `TABLE_NAME` + `COLUMN_NAME` | `ALTER TABLE ... ADD COLUMN ...` — **no** `IF NOT EXISTS` (`ADD COLUMN IF NOT EXISTS` is MariaDB-only) |
+| Index | `information_schema.STATISTICS` scoped to `DATABASE()`, bound names | `ALTER TABLE ... ADD KEY ...` — **no** `IF NOT EXISTS` (`ADD INDEX IF NOT EXISTS` is not portable) |
+
+**MUST NOT** in installer / store `ensureTable` SQL:
+
+- `CREATE TABLE IF NOT EXISTS`
+- `ADD COLUMN IF NOT EXISTS`
+- `ADD INDEX IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`
+
+**Allowed:** `DROP TABLE IF EXISTS` on uninstall (widely supported). SchemaBuilder `$qb->createTableIfNotExist()` is allowed — it already probes `tableExists()` and emits `CREATE TABLE` **without** `IF NOT EXISTS`.
+
+**MUST:** helpers live in **your** module. Table/column/index names are whitelist-only (`/^[A-Za-z0-9_]+$/`); refuse anything else. Catch-bus every probe/`execute` failure.
+
+```php
+private static function mysqlTableExists(string $table): bool
+{
+    // About: SHOW TABLES LIKE — older MySQL has no reliable CREATE TABLE IF NOT EXISTS.
+    // Why: whitelist so a crafted name cannot change the SQL shape.
+    if (preg_match('/^[A-Za-z0-9_]+$/', $table) !== 1) {
+        return false;
+    }
+    $rows = [];
+    $ok = false;
+    DB::module('RAW')->q(function ($qb) use ($table) {
+        $qb->raw('SHOW TABLES LIKE \'' . $table . '\'', []);
+    })->execute(
+        function ($result) use (&$ok, &$rows) {
+            $ok = true;
+            $rows = is_array($result) ? $result : [];
+        },
+        function ($error) use (&$ok) {
+            CatchBus::reportDb($error);
+            $ok = false;
+        }
+    );
+    return $ok === true && $rows !== [];
+}
+
+private static function mysqlColumnExists(string $table, string $column): bool
+{
+    // About: information_schema probe with bindings — TABLE_SCHEMA = this database only.
+    if (preg_match('/^[A-Za-z0-9_]+$/', $table) !== 1 || preg_match('/^[A-Za-z0-9_]+$/', $column) !== 1) {
+        return false;
+    }
+    $rows = DB::module('RAW')->q(function ($qb) use ($table, $column) {
+        $qb->raw(
+            'SELECT 1 AS ok FROM information_schema.COLUMNS'
+            . ' WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$table, $column]
+        );
+    })->all();
+    return $rows !== [];
+}
+```
+
+Create only when missing:
+
+```php
+if (self::mysqlTableExists('shop_items') !== true) {
+    $ok = false;
+    DB::module('RAW')->q(function ($qb) {
+        $qb->raw(
+            'CREATE TABLE `shop_items` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `title` VARCHAR(200) NOT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            []
+        );
+    })->execute(
+        function () use (&$ok) { $ok = true; },
+        function ($error) use (&$ok) {
+            CatchBus::reportDb($error);
+            $ok = false;
+        }
+    );
+    if ($ok !== true) {
+        throw new \RuntimeException('Shop installation failed.');
+    }
+}
+```
+
+Sample: [EX-13](examples/EX-13-schema-migrations.md), [EX-D04](examples/EX-D04-dacore-installer.md).
 
 ---
 
@@ -41,29 +138,35 @@ class Installation extends Installer
             '1.0.0' => function () {
                 if (self::alreadyDone('1.0.0')) { return; }
 
-                $ok = false;
-                DB::module('RAW')->q(function ($qb) {
-                    $qb->raw(
-                        "CREATE TABLE IF NOT EXISTS `shop_items` (
-                            `id` INT NOT NULL AUTO_INCREMENT,
-                            `title` VARCHAR(200) NOT NULL,
-                            `active` TINYINT(1) NOT NULL DEFAULT 1,
-                            `created_at` DATETIME NOT NULL,
-                            PRIMARY KEY (`id`),
-                            KEY `active_idx` (`active`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-                        []
+                // Why: probe first — older MySQL errors on CREATE TABLE IF NOT EXISTS ([§0](#0-mysql-safe-installer-ddl-must--law)).
+                if (self::mysqlTableExists('shop_items') !== true) {
+                    $ok = false;
+                    DB::module('RAW')->q(function ($qb) {
+                        $qb->raw(
+                            "CREATE TABLE `shop_items` (
+                                `id` INT NOT NULL AUTO_INCREMENT,
+                                `title` VARCHAR(200) NOT NULL,
+                                `active` TINYINT(1) NOT NULL DEFAULT 1,
+                                `created_at` DATETIME NOT NULL,
+                                PRIMARY KEY (`id`),
+                                KEY `active_idx` (`active`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+                            []
+                        );
+                    })->execute(
+                        function () use (&$ok) {
+                            $ok = true;
+                        },
+                        function ($error) use (&$ok) {
+                            CatchBus::reportDb($error);
+                            $ok = false;
+                        }
                     );
-                })->execute(
-                    function () use (&$ok) {
-                        $ok = true;
-                    },
-                    function ($error) use (&$ok) {
-                        CatchBus::reportDb($error);
-                        $ok = false;
+                    if ($ok !== true) {
+                        throw new \RuntimeException('Shop installation failed.');
                     }
-                );
-                if ($ok !== true || self::markDone('1.0.0') !== true) {
+                }
+                if (self::markDone('1.0.0') !== true) {
                     throw new \RuntimeException('Shop installation failed.');
                 }
             },
@@ -113,13 +216,18 @@ class Installation extends Installer
     }
 
     // ---- module-owned idempotency (no DACore dependency) ----
+    // Copy mysqlTableExists / mysqlColumnExists from §0 into this class.
 
     private static function ensureTable(): bool
     {
+        // Why: same probe-then-CREATE as product tables — no CREATE TABLE IF NOT EXISTS.
+        if (self::mysqlTableExists('shop_installations') === true) {
+            return true;
+        }
         $ok = false;
         DB::module('RAW')->q(function ($qb) {
             $qb->raw(
-                "CREATE TABLE IF NOT EXISTS `shop_installations` (
+                "CREATE TABLE `shop_installations` (
                     `id` INT NOT NULL AUTO_INCREMENT,
                     `installation_id` VARCHAR(100) NOT NULL,
                     `installed_at` DATETIME NOT NULL,
@@ -188,6 +296,8 @@ Installation::module('Shop')->uninstall();        // reverse of uninstaller() wr
 
 **MUST — installer key order (law):** `install()` is `foreach` on `installer()` **as you wrote the keys**. **MUST NOT** `ksort`, `uksort`, `krsort`, or `usort` that map (or a copy of it). PHP string sort runs `1.0.10` **before** `1.0.9`, so an origin-catalog step can ALTER `AFTER origin` before the origin column exists. Append the next version **after** the last key. `uninstall()` reverses that written order (`array_reverse`, keep keys) — **MUST NOT** `krsort`. An optional `$version` argument may **skip** keys with `version_compare`; it **MUST NOT** `break` as if the map were sorted. Canonical: [00](00-AGENT-CONTRACT.md) §5 item 26.
 
+**MUST — installer keys are quoted text (DACore zip):** every `installer()` / `uninstaller()` key is `'1.0.0' =>` / `"1.0.0" =>` in the file. **MUST NOT** `self::` / `static::` / constants / variables as a key. Canonical: [00](00-AGENT-CONTRACT.md) §5 item 27, [35](35-DACORE-INSTALL.md) §2.
+
 ### One-shot `install.php`
 
 ```php
@@ -202,7 +312,7 @@ The framework runs `install.php` once (event `dotapp.module.Shop.install`) then 
 
 **DACore zip is only for modules built for DACore.** If this module is **not** for DACore: **MUST NOT** create `dainstall.php`, `init/`, or a pack zip. To take it to another project: rename `installed_*_install.php` → `install.php` and copy the module folder. The other project’s next page load runs it.
 
-If the module **is** for DACore: pack `dainstall.php` **only** when the user asks for an installable zip ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5). **MUST** rename `install.php` → `dainstall.php` in that zip and put live init in `init/` — a zip that still has `install.php` is **rejected** and Installation **never runs**. **MUST NOT** apply that pack step to `app/modules/DACore/` itself.
+If the module **is** for DACore: pack **only** when the user asks for an installable zip, using the handbook packer [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → `dacore-pack-zip.php` → run → delete). **MUST NOT** invent a packer. **MUST** rename `install.php` → `dainstall.php` in that zip and put live init in `init/` — a zip that still has `install.php` is **rejected** and Installation **never runs**. **MUST NOT** apply that pack step to `app/modules/DACore/` itself. Canonical: [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5.
 
 **MUST (new version / migration):** after you add or change a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php`. The agent does this — **MUST NOT** leave it for the user. If `install.php` is already in the root, leave it.
 
@@ -217,6 +327,7 @@ Rename-Item -Path .\installed_*_install.php -NewName install.php
 ```php
 DB::module('RAW')->schema(
     function ($qb) {
+        // Why: createTableIfNotExist probes tableExists() then emits CREATE TABLE without IF NOT EXISTS.
         $qb->createTableIfNotExist('shop_tags', function ($t) {
             $t->id();                                  // BIGINT AUTO_INCREMENT PK
             $t->string('name', 100)->nullable(false);
@@ -259,7 +370,9 @@ DB::module('RAW')->schema(
 
 ```php
 $sb = DB::schemaBuilder();
-if (!$sb->tableExists('shop_items')) { /* create */ }
+// Why: raw installer SQL still MUST probe with SHOW TABLES LIKE ([§0](#0-mysql-safe-installer-ddl-must--law)).
+// SchemaBuilder tableExists() is SELECT 1 FROM table (error = missing). DACore uses SHOW TABLES LIKE.
+if (!$sb->tableExists('shop_items')) { /* create — CREATE TABLE, not CREATE TABLE IF NOT EXISTS */ }
 $sb->columnExists('shop_items', 'price');
 $sb->indexExists('shop_items', 'active_idx');
 $sb->foreignKeyExists('shop_items', 'fk_shop_cat');

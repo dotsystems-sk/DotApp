@@ -10,6 +10,8 @@ Your module renders **only its content**. DACore supplies the shell (head, sideb
 
 Two steps: render your content with the framework `Renderer`, then hand the HTML to DACore.
 
+**HTML via Renderer (MUST — law):** the fragment **MUST** be a `.layout.php` via `setLayout` + `setLayoutVar` + `renderLayout()`. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in PHP. A PHP HTML string is **only** for a named one-piece exception. Canonical: [00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
+
 ```php
 use Dotsystems\App\Parts\Renderer;
 use Dotsystems\App\Parts\Translator;
@@ -37,7 +39,7 @@ public static function items($request)
         [],                                             // $header
         ['/assets/modules/Shop/css/admin.css'],         // $css
         ['/assets/modules/Shop/js/admin-items.js'],     // $js
-        '',                                             // $menuId: '' = shared; 'Shop.nav' = module-own — ASK ([31])
+        '',                                             // $menuId: '' = shared nested (default); 'Shop.nav' = module-own only if asked ([31])
         ''                                              // $currentFile: omit / '' on the list URL; registered list URL on edit/detail when the path is not under that leaf ([31])
     );
 }
@@ -72,9 +74,11 @@ DotApp::call(
 | `$menuId` | `''`/`null` = full shared menu; a `menuid` = **direct children of that id** (one level) plus a synthetic **Return back** leaf at the bottom (do not register Return back) |
 | `$currentFile` | Empty / omitted = real `REQUEST_URI`. Non-empty = highlight **as if** this URL were open (`Menu@generate` `current_file`). **MUST** on edit/detail pages whose path is not a longer path under the registered leaf (e.g. `/dacore/users/4` vs `/dacore/users-list`). Canonical: [31](31-DACORE-MENU.md) Active sidebar |
 
-**MUST ASK** when starting a **new** DACore module: shared full sidebar vs module-own menu. Canonical layout, grouping (`type` 0 / 2 / 1), and wiring: [31](31-DACORE-MENU.md).
+**MUST ASK** when starting a **new** DACore module: shared nested sidebar (`0` → `2` → `1`, `$menuId` `''`) vs module-own. **No answer → shared nested.** Module-own only if the user explicitly chose it. Canonical: [31](31-DACORE-MENU.md).
 
 In the same planning round, **MUST ASK one grouped module-identity question**: public name/purpose; installer preview as text-only, compact logo or wide banner; existing local asset + alt text; optional landing/header placement and colours. Do not confuse the sidebar Remix icon with the module logo. The installer mechanism is `about.php` + local `about-assets/`, not a DACore page/core edit ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b).
+
+**MUST plan the UI, not only routes.** A new admin module (or first major workspace / rewrite) **MUST** write desktop and mobile regions, hierarchy, empty/loading/error states, toolbar, padding vs the parent, **and** every page / tab / control **in the plan** before scaffolding. Canonical: [45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k.
 
 Returns the complete page HTML — return it directly from your controller.
 
@@ -118,7 +122,7 @@ Growing lists **MUST** use SQL paging (`COUNT(*)` + `LIMIT`/`OFFSET`) **and** th
 
 `DACore:Page@paginate!` `$callable` as **buttons**, `$href = null`. `$dotapp().live("click", …, function (el, e)` — first arg is the **element**.
 
-**Search:** when **planning** the list, **ASK**. Lookup lists **MUST** ship interactive AJAX search unless declined. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+**Search:** when planning a growing result list, **ASK**. Catalog/result lists use interactive AJAX search unless declined. A bounded one-value picker is not a result list: use native `<select>` or the existing `dotSelect2`; choices must be visible on open without remembering an exact name. Only genuinely large remote choices use AJAX `dotSelect2` with initial results and server paging/search. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
 Do **not** copy the old `js-shop-page` + plain `data-page` + `e.currentTarget` snippet from earlier AIRULES — it is **wrong**.
 
@@ -157,6 +161,8 @@ DACore ships **many admin subpages and libraries** in the base. Agents **MUST NO
 1. Search `app/modules/DACore/` **read-only** — `assets/js`, `assets/css`, `vendor`, views, controllers — for the same job (select, table, modal, toast, **Notiflix.Notify / Confirm / Block**, date range, confirm, overlay, pager, icons, cards, …). **Toasts and alerts:** use the shell’s notify. Do **not** invent a second toast library.
 2. Search **your** module `app/modules/<YourModule>/assets/` — it may already exist from an earlier task.
 3. Check what the shell already loads (this file §4) and named `$dotapp` widgets (including `dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`, `twoFactor`, Notiflix, `Page@paginate!`, dotgrid, Remix). The files on disk are the source of truth — that list is not exhaustive.
+
+**MUST NOT** search `app/modules/<Sibling>/` (Shop, CMS, DAFiles, …) for cards, CSS, or “how they laid out a page.” That is a [00](00-AGENT-CONTRACT.md) §1b read-scope violation. A sibling is readable **only** when the user named it as the module this work extends / listens to. Examples of DotApp admin pages live in `AIRULES/examples/`, not in a live neighbour.
 
 **If it exists: use it.** Call it from **your** page. Do not fork it. Do not copy DACore files into your module. Do not add a second select / DataTable / modal / toast / date / confirm library.
 
@@ -325,7 +331,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 
 **MUST (delete confirm):** never `alert()` / `window.confirm()`. Ask in a graphical dialog first (`Notiflix.Confirm` preferred, or `$dotapp().modal`). Then `load()`. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
-**MUST (operator 2FA / dangerous actions):** DACore operators **MUST** have at least one 2FA method and **MUST NOT** be able to turn it off. Before an action that can seriously damage the system (delete admin, wipe data, grant `dotapp.root`, …), re-prompt with `$dotapp().twoFactor` and **verify the code in PHP** in **your** module **before** persist. The overlay is UX only — removing it **MUST** still fail on the server. Do **not** call `Auth::confirmTwoFactor` (login stage 2 only). See [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6.
+**MUST (operator 2FA):** DACore operators **MUST** have at least one 2FA method and **MUST NOT** be able to turn it off. A **second** 2FA prompt: **ASK** in the plan (default **no**). Ordinary settings Save does **not** get a modal. When the user named an action (install package, wipe, grant `dotapp.root`, …), use the DACore installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` (paste immediately POSTs) and **verify the code in PHP** in **your** module **before** persist. The overlay is UX only. Do **not** call `Auth::confirmTwoFactor` (login stage 2 only). See [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6, [EX-D10](examples/EX-D10-stepup-2fa-modal.md).
 
 **MUST (product copy):** labels, help under buttons, rights descriptions, menu names, toasts. A software company would ship the sentence — never prompt-echo (`This user can hide the AI icon themselves.`). See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8.
 
@@ -345,9 +351,12 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | `location.reload()` after toggle/save on the same page | JSON `html` + patch DOM + Notiflix toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Logs/users/items with no pager, or `<a href="?page=">` | [40](40-DACORE-LIST-PAGER.md) pager |
 | Catalog/articles list with no search | **ASK**; lookup lists **MUST** AJAX search ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
+| Module/language/status/other bounded picker as exact-name text input or empty datalist | Native `<select>` or existing `dotSelect2`; opening shows choices. Large remote set: AJAX `dotSelect2` with initial results + server paging/search |
 | One `<fo-rm>` per row button / D&D via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
 | List still clickable during reorder / toggle | Overlay the wrapper (Notiflix preferred **or** module preloaders); remove on success **and** error; desktop **and** mobile |
-| Dangerous admin action with no second 2FA prompt | Step-up `$dotapp().twoFactor` + **PHP** verifies the code before persist ([32](32-DACORE-RIGHTS.md) §6) |
+| Step-up 2FA on every settings Save without asking | **ASK** in the plan; default **no** ([32](32-DACORE-RIGHTS.md) §6) |
+| Step-up as a 6-digit field on the card / custom OTP / no paste auto-submit | DACore installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` ([EX-D10](examples/EX-D10-stepup-2fa-modal.md)) |
+| Named step-up action with no modal / PHP skip | Step-up `$dotapp().twoFactor` + **PHP** verifies before persist ([32](32-DACORE-RIGHTS.md) §6) |
 | 2FA overlay only; Save still writes without a code | PHP refuses — FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | `alert()` / `window.confirm()` on delete | `Notiflix.Confirm` or `$dotapp().modal`, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo copy on a right / button / help | Product language ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
@@ -356,10 +365,11 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | UI that disables an operator’s 2FA | Forbidden |
 | Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |
 | New select/table/modal/toast/date library without grepping DACore | Search `app/modules/DACore/` (read-only) + your module first (this file §4) |
+| Grep `app/modules/Shop` / another sibling for cards or CSS | Forbidden — DACore + this module + `AIRULES/examples/` ([00](00-AGENT-CONTRACT.md) §1b) |
 | Patching DACore `colors.css` / adding files under `DACore/` | Assets in `app/modules/<YourModule>/assets/` — **MUST NOT propose** a DACore patch ([00](00-AGENT-CONTRACT.md) §1) |
 | `setViewVar` with `renderLayout()` | Use `setLayoutVar` |
 | `setLayoutVar('rows', [['key' => 'time', …]])` then empty `foreach` | Sandbox dropped the array (`is_callable('time')`). Prefix keys or pass escaped HTML ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
-| Guess shared vs module-own menu / ten leaves under a header | **ASK**; grouping and `$menuId`: [31](31-DACORE-MENU.md) |
+| Guess shared vs module-own menu / ten leaves under a header | **ASK**; no answer → shared nested `0` → `2` → `1`; [31](31-DACORE-MENU.md) |
 | Edit/detail URL leaves the sidebar with no active item | `$currentFile` = registered list URL ([31](31-DACORE-MENU.md) Active sidebar) |
 | Register “Return back” | DACore appends it on a non-empty `$menuId` |
 | Bootstrap `col-md-6` alone for simple admin forms | `<dot-col any="12" md="6" ldesktop="6">` (prefer; custom layout OK when porting) |

@@ -19,7 +19,9 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …). The kernel is **finished**. **MUST NOT** edit it even if the user asks — implement in the module. Read `app/parts/` **read-only** when an API is missing from AIRULES.
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** ship **your own** form/list preloaders (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile. User-visible strings **MUST** read as shipped product copy — never prompt-echo.
+5b. **HTML via Renderer (LAW):** when markup **can** be a template, it **MUST** be. PHP prepares data; `.view.php` / `.layout.php` produce HTML. **MUST NOT** `$html .= '<table'` factories. A PHP HTML string is **only** for a named one-piece exception. Canonical: [00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items` or `dotapp_*` for module data.
+6b. **MySQL-safe installer DDL (LAW):** probe first (`SHOW TABLES LIKE` / `information_schema`), then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS` — older MySQL errors; column `IF NOT EXISTS` is MariaDB-only. Helpers in **your** module. Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0, [00](00-AGENT-CONTRACT.md) §5 item 24.
 7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. Lookup lists **MUST** ship **AJAX search** unless declined; **ASK** on other lists. **Cheap I/O (MUST):** `exists()` / `COUNT(*)` / `limit(1)` / only used columns / one `join` — not `all()` then filter, not N+1. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
 9. **MUST** re-check every persist in **PHP**. Frontend modal/overlay is UX only — skipping it **MUST** still fail on the server. Canonical: [08](08-FORMS-AND-SECURITY.md).
@@ -34,6 +36,8 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 18. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote**, sane column types, and code a human can read: controller/middleware PHPDoc **MUST** start with **`CRCchecking —`** (where CRC runs — prefix XOR action), then a **purpose sentence** then tags (not `@return array<string, mixed>` alone), labeled **`// Why:`** / **`// About:`** / **`// Section:`**. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
 19. **Module hooks (LAW):** useful side-effects (SMS/mail sent, payment, lockout) **MUST** `Events::trigger('module.{mod}.{name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module — `Listeners::initializeRoutes()` may cover the producer URL without waking the whole module. Pre-action stop is **`triggerWithVeto()`** + `Veto`, not `return false`. Canonical: [41](41-MODULE-HOOKS.md).
 20. **Extender (judge — not every method):** owner `Extender::exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender registers in `Listeners::register()` before Module initialization. Target URLs belong in the listener map; the Module map stays on its own URLs or `[]`. Prefer a controller string. **MUST NOT** invent `next()`, return the marker, use `.loaded` for initialize-time points, Events, `$request`/secrets, or patch the owner. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h.
+21. **Planning depth (LAW):** a plan for a new module / first major surface / rewrite **MUST** be extremely detailed — every nav item (or `No menu`), every page, every tab, every control. Length is not a defect. Canonical: [00](00-AGENT-CONTRACT.md) §2k, [45](45-MODULE-PLANNING.md).
+22. **Cursor rules live in AIRULES (LAW):** compact `.mdc` files live in `AIRULES/cursor/rules/`. The agent **MUST** copy them into `.cursor/rules/`. Copying only `AIRULES/` must be enough. Canonical: [00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md).
 
 ## What's New (2026-08-22)
 
@@ -90,9 +94,9 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
 | [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()`; English why-comments |
 | [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md) | Controllers, response |
-| [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets |
+| [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets; **§1c** HTML via Renderer (no PHP HTML factories) |
 | [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder — `$qb->raw()`: every `?` is a placeholder, including comments |
-| [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, Installation.php |
+| [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, Installation.php; **§0** probe-then-CREATE (no `CREATE TABLE IF NOT EXISTS`) |
 | [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md) | fo-rm, CRC, CSRF |
 | [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
 | [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md) | Config, keys, fallbacks |
@@ -112,7 +116,8 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
 | **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost, **PHPDoc purpose sentence** + Why/About/Section, §8 perf pass |
 | **[41-MODULE-HOOKS.md](41-MODULE-HOOKS.md)** | **Business hooks as law** — `module.{mod}.{name}.hook` + `.hooks` (not every save); **`triggerWithVeto` / `Veto`** |
-| [cursor/](cursor/) | Cursor IDE: AGENTS.md, `.mdc` rules |
+| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth (LAW)** — new module / first surface / rewrite: every nav item, page, tab, control in writing before code |
+| [cursor/](cursor/) | Cursor IDE: **source** `AGENTS.md` + `.mdc` rules. Agent **MUST** copy them into `.cursor/rules/` ([00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md)) |
 
 ## Critical: return values
 

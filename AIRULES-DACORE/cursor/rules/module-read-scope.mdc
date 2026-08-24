@@ -1,0 +1,16 @@
+---
+description: Read only the current module plus DACore — never browse siblings for examples
+alwaysApply: true
+---
+
+# Module read scope (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §1b.
+
+When programming a **DACore-bound** module `<Target>`:
+
+- **MAY read:** `app/modules/<Target>/`, `app/modules/DACore/` (read-only), framework core read-only, `AIRULES/` + `AIRULES/examples/`.
+- **MUST NOT** open, grep, glob, or explore `app/modules/<Sibling>/` (Shop, CMS, DAFiles, …) for a look, Installation, list, or “how they did it.”
+- **Exception:** the user **named** another module as the thing this work extends / supplements / listens to / Extender-targets. Then that named folder + DACore + `<Target>` are allowed. Still **MUST NOT** tour the rest.
+- Examples come from **`AIRULES/examples/`** and DACore chrome — not a live sibling.
+- Subagents / Composer file-hunt **MUST** stay in this allow-list. **MUST NOT** search `app/modules/*`.

@@ -14,6 +14,8 @@ return \Dotsystems\App\Parts\Renderer::new()
 
 `renderView()` uses **view vars only**. For layout-only render use `setLayoutVar` + `renderLayout()`.
 
+**HTML via Renderer (MUST):** when markup can be a template, it **MUST** be. **MUST NOT** concatenate tables/grids/empty states in the controller. Canonical: [00](../00-AGENT-CONTRACT.md) §2j, [05](../05-VIEWS-TEMPLATES-ASSETS.md) §1c.
+
 This sample is a **full public page your module owns**. **VIEW = outer file:** `setLayout` + `renderView()` inserts the layout at `{{ content }}`. Other Renderer paths: `renderLayout()` alone, or generate HTML and inject with `setViewVar` / `str_replace`. Full: [05](../05-VIEWS-TEMPLATES-ASSETS.md) §1b.
 
 **Mobile (MUST):** public chrome needs an overlay drawer (left or right), locked page scroll while open, a scrollable item list, and contacts + compact search in that drawer unless large search is its own mobile section. [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.

@@ -4,6 +4,8 @@ Rules: [07-SCHEMA-AND-INSTALL.md](../07-SCHEMA-AND-INSTALL.md).
 
 **MUST:** module tables `{lowercase_modulename}_*` (Shop → `shop_items`). Never unprefixed names or `dotapp_*`.
 
+**MUST:** raw installer SQL probes first (`SHOW TABLES LIKE` / `information_schema`), then `CREATE TABLE` / `ALTER TABLE` **without** `IF NOT EXISTS` ([07](../07-SCHEMA-AND-INSTALL.md) §0).
+
 After you add a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave that step for the user. To copy the module to another project (no DACore): keep `install.php` and copy the folder.
 
 ## SchemaBuilder — wrap DDL in try/catch (it throws)
@@ -15,6 +17,7 @@ use Dotsystems\App\Parts\Logger;
 try {
     DB::module('RAW')->schema(
         function ($qb) {
+            // Why: createTableIfNotExist probes tableExists() then emits CREATE TABLE without IF NOT EXISTS.
             $qb->createTableIfNotExist('shop_items', function ($t) {
                 $t->id();                                       // BIGINT AUTO_INCREMENT PK
                 $t->string('title', 200)->nullable(false);
@@ -83,20 +86,22 @@ Invalid identifiers, unsupported types for the engine (`json`, `set`), `unsigned
 **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding. Comments and `COMMENT 'SMS?'` count as placeholders — the CREATE never runs. Write “SMS optional”. Canonical: [06](../06-DATABASE.md).
 
 ```php
-DB::module('RAW')->q(function ($qb) {
-    $qb->raw(
-        "CREATE TABLE IF NOT EXISTS `shop_tags` (
-            `id` INT NOT NULL AUTO_INCREMENT,
-            `name` VARCHAR(100) NOT NULL,
-            PRIMARY KEY (`id`),
-            UNIQUE KEY `name_unique` (`name`)
-         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-        []
+if (self::mysqlTableExists('shop_tags') !== true) {
+    DB::module('RAW')->q(function ($qb) {
+        $qb->raw(
+            "CREATE TABLE `shop_tags` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `name` VARCHAR(100) NOT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `name_unique` (`name`)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            []
+        );
+    })->execute(
+        function () { /* ok */ },
+        function ($error) { Logger::use()->error('create table failed', $error); }
     );
-})->execute(
-    function () { /* ok */ },
-    function ($error) { Logger::use()->error('create table failed', $error); }
-);
+}
 ```
 
 ## Never

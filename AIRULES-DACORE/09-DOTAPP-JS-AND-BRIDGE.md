@@ -335,9 +335,26 @@ $dotapp().live("click", ".shop-page", function (el, e) {
 
 SQL: `COUNT(*)` + `LIMIT`/`OFFSET` — **MUST NOT** trust `QueryObject::paginate()['total']` ([40](40-DACORE-LIST-PAGER.md) §4). Copy-paste: [examples/EX-D08-list-pager.md](examples/EX-D08-list-pager.md), [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
 
+### Choice control vs searchable list (**LAW — do not confuse them**)
+
+A **list page** and a **single-value picker** are different UX problems:
+
+| Need | Required control |
+|------|------------------|
+| Browse a growing collection (users, logs, products, orders, messages) | SQL `COUNT` + `LIMIT`, AJAX pager, and appropriate list search/filter |
+| Choose one value from a known small/bounded set (installed modules, languages, statuses, backup target) | Native `<select>` that exposes the complete choices |
+| Choose one value from a longer but still bounded set | Existing `$dotapp(el).dotSelect2(...)`; opening it **MUST** show choices before typing |
+| Choose from a genuinely large/unbounded remote dataset | AJAX-backed `dotSelect2` with initial results, paging, and server search |
+
+**MUST NOT** replace a known choice set with a bare text/search input, empty `datalist`, or custom typeahead that requires the operator to remember and type an exact name before any choices appear. This is not “interactive list search”; it is a hidden picker and a UX bug.
+
+**DACore:** search first and use the existing `dotSelect2`. Do not create another typeahead or Select2 wrapper. A native select is preferred when all choices fit comfortably. Use `dotSelect2` when search materially helps, not merely because the control selects a record.
+
+If scale is uncertain, **ASK** whether the product expects a bounded picker or a growing catalogue. Do not infer “AJAX search” from the word *select*, *module*, *owner*, or *lookup*.
+
 ### Interactive AJAX search on lists (**MUST ASK** / often **MUST ship**)
 
-A pager without search is incomplete UX on any list the operator **looks up** by name, title, SKU, or number. Agents **MUST NOT** ship a bare table and skip search because it was not in the prompt.
+A pager without search is incomplete UX on a growing list the operator **browses or filters** by name, title, SKU, or number. This section applies to result tables/list pages, **not** to a form control that chooses one known option.
 
 **When planning a list, ASK in chat** (do not guess, do not skip the question):
 
@@ -426,7 +443,7 @@ Notiflix.Confirm.show(
 
 **Public website:** Notiflix is not there — ship a module modal (same contract, classes `{lowercase_modulename}_*`).
 
-If the delete can **seriously damage** the system (admin account, wipe, `dotapp.root`), graphical confirm **and** step-up 2FA ([32](32-DACORE-RIGHTS.md) §6).
+If the plan **named** a second 2FA prompt on that delete (wipe, `dotapp.root`, …), graphical confirm **and** the [EX-D10](examples/EX-D10-stepup-2fa-modal.md) step-up modal ([32](32-DACORE-RIGHTS.md) §6). **MUST NOT** invent step-up on an ordinary delete.
 
 Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
 
@@ -434,7 +451,9 @@ Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md)
 
 `dotapp.js` already implements OTP digit boxes: auto-advance, backspace, arrows, paste, validation, auto-submit. **MUST** use `$dotapp(...).twoFactor(...)`. **MUST NOT** invent a custom 2FA widget, wrap a jQuery OTP plugin, or hand-roll keydown/paste. Do not patch DACore’s login screens to swap this out.
 
-PHP is still `Auth::confirmTwoFactor` ([11](11-AUTH-AND-CRYPTO.md) §5). This API is only the **input UX**. Completing the boxes does **not** authorize anything — the POST handler **MUST** verify the code. Operator step-up: [32](32-DACORE-RIGHTS.md) §6.
+PHP is still `Auth::confirmTwoFactor` ([11](11-AUTH-AND-CRYPTO.md) §5) **on login**. This API is only the **input UX**. Completing the boxes does **not** authorize anything — the POST handler **MUST** verify the code.
+
+**Operator step-up (second code after login):** **ASK** in the plan — default **no**. Ordinary settings Save does **not** get a 2FA modal. When the user named an action, the chrome is **one** look: DACore plugin-installer modal, six `dacore-otp` boxes, `{ autoSubmit: true }` so paste **immediately** POSTs. **MUST NOT** a 6-digit field on the settings card. Law: [32](32-DACORE-RIGHTS.md) §6. Copy-paste: [EX-D10](examples/EX-D10-stepup-2fa-modal.md). Login boxes: [EX-14](examples/EX-14-auth-and-2fa.md).
 
 ```html
 <div class="two-fa-inputs">

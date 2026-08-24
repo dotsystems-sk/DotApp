@@ -66,20 +66,27 @@ Not every module has a sidebar. If **your** module **does** register menu items:
 
 **Ideal:** one section header of your own (`type => 0`, `parent => ''`, `menuid` like `Shop.main`). Extra headers are OK when the product has several top-level sections. Do **not** register only leaves at the root — the sidebar will not group.
 
-**Group when there are many items.** A header with ten `type => 1` leaves wastes the **global** admin sidebar. From about **five** items, either nest them under expandable parents (`type => 2`) on the shared menu, or switch to a **module-own** menu. Shape for shared grouping: header `0` → group `2` → leaf `1`.
+**Default layout (MUST when the user does not pick one):** shared nested tree on the **full** admin sidebar:
 
-**Two layouts — ASK the user in chat before you scaffold a new DACore module** (do not guess, do not default to ten flat leaves):
+1. Section header `type => 0` (area name, e.g. Website, Media)
+2. One expandable product item `type => 2` with **empty** `url` (product name, e.g. CMS, Files)
+3. Page leaves `type => 1` under that item
+4. Every admin page: `Page@withMenu!(…, '')` — **not** a branch `$menuId`
+
+From about **five** items, nest under `type => 2`. Do **not** dump ten `type => 1` leaves under a header. Do **not** treat “many items” or “this is a real app” as a reason to switch to module-own.
+
+Independent products each own a section. Do **not** hang Files under CMS (or the reverse) unless the user asked for an extension `parent`.
+
+**ASK in chat before you scaffold a new DACore module.** Two layouts:
 
 | Layout | When | Main (global) sidebar | Inside the module |
 |--------|------|----------------------|-------------------|
-| **Shared** | Few items, or the user wants everything in one tree | Your header + groups (`2`) + leaves | `Page@withMenu!(…, '')` — full menu |
-| **Module-own** | Many items (typical when the module is a real app) | Your header + **one** leaf that opens the module | `Page@withMenu!(…, 'Shop.nav')` — only that branch |
+| **Shared nested (default)** | User wants it, **or the user does not answer** | Header `0` → product group `2` → leaves `1` | `Page@withMenu!(…, '')` — full menu |
+| **Module-own** | **Only** when the user **explicitly** chooses it | Header + **one** leaf that opens the module | `Page@withMenu!(…, 'Shop.nav')` — that branch + Return back |
 
-Module-own is the better UX for a large module: the global sidebar stays short; after the operator opens the module, the sidebar is **that module’s own list**. DACore always appends a **Return back** leaf at the **bottom** of a branch menu (`getItems($menuId)` when `$menuId !== ''`). **MUST NOT** register that item yourself.
+**MUST NOT** default to module-own. Module-own is opt-in. A non-empty `$menuId` loads **one level only** (`menuid = X OR parent = X`) and DACore appends **Return back**. Nested `type => 2` groups under that branch will **not** show their children. Grouping with `type => 2` belongs on the **shared** menu. **MUST NOT** register Return back yourself. See [36](36-DACORE-KNOWN-ISSUES.md).
 
-A non-empty `$menuId` loads **one level only** (`menuid = X OR parent = X`). Nested `type => 2` groups under that branch will **not** show their children. Grouping with `type => 2` belongs on the **shared** menu (full table). On a module-own sidebar, register inner items as **direct children** of the branch id (`type => 1`). A long inner list is fine — it does not crowd the rest of the admin. See [36](36-DACORE-KNOWN-ISSUES.md).
-
-Module-own wiring:
+Module-own wiring (**only if the user explicitly chose it**):
 
 ```php
 // Global sidebar: header + one entry (does not list the module’s pages)
@@ -279,8 +286,10 @@ A page that belongs to a **different** leaf (e.g. My account, not Users list) **
 | Ignoring the return value | Check `!== true` and log |
 | Expecting an unregister call | None exists — plan your uninstall SQL |
 | Own sidebar with no `type => 0` header | One header per module (`Shop.main`); more only if you need more sections |
-| Ten `type => 1` leaves under a header (global sidebar) | **ASK** shared vs module-own; group with `type => 2`, or header + one entry + `withMenu` `$menuId` |
-| Guess the layout / skip the chat question | Stop and ask: shared full menu or module-own menu |
+| Ten `type => 1` leaves under a header (global sidebar) | Nest under `type => 2` on the **shared** menu (`0` → `2` → `1`); `withMenu` `$menuId` `''` |
+| Guess the layout / skip the chat question | **ASK**; if the user does not answer, ship **shared nested** — **MUST NOT** default to module-own |
+| Plan that says “register a Settings item” without listing every `Menu@register` row | Inventory each `menuid` / `type` / `parent` / `url` / `rights` in the plan ([45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k) |
+| Default to module-own because the module has many pages | Module-own **only** when the user explicitly chose it |
 | Nest `type => 2` groups under a branch `$menuId` | Branch is one level — inner items are direct `type => 1` children of that id |
 | Invent a “Return back” menu row | DACore appends it when `$menuId !== ''` |
 | Edit `/Shop/users/4` with no `$currentFile` (list is `/Shop/users-list`) | `withMenu` 7th `$currentFile` = registered list URL |

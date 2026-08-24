@@ -1,0 +1,17 @@
+---
+description: Choose correct UX for growing result lists versus single-value pickers
+alwaysApply: true
+---
+
+# Lists vs choice controls (UX law)
+
+- Growing result pages (users, logs, products, orders, messages) use SQL paging, an AJAX pager, and server-backed search/filter where appropriate.
+- A form control that chooses one item from a known bounded set is **not** a searchable result list.
+- Small/bounded choices (installed modules, languages, statuses, backup targets) use native `<select>`.
+- Longer bounded choices use DACore's existing `$dotapp(el).dotSelect2()`. Opening it must show choices before typing.
+- Genuinely large/unbounded remote choices use AJAX `dotSelect2` with initial results, server paging, and server search.
+- **Never** hide known choices behind a bare text/search input, empty `datalist`, or custom typeahead that requires an exact remembered name.
+- Search DACore first; do not build another Select2/typeahead when `dotSelect2` exists.
+- If scale is uncertain, ask whether this is a bounded picker or a growing catalogue.
+
+Canonical: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3.

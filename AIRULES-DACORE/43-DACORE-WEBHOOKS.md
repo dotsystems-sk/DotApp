@@ -159,6 +159,8 @@ No `module.init.php` autoload of provider modules.
 
 ## Schema (Installation — main model)
 
+This is the **live DACore column list**, not the installer pattern for your module. Your `Installation.php` **MUST** probe then `CREATE TABLE` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0).
+
 ### `dacore_webhook_drivers`
 
 ```sql

@@ -1,0 +1,26 @@
+---
+description: HTML via Renderer law — templates first; PHP markup only for a named one-piece exception
+alwaysApply: true
+---
+
+# HTML via Renderer (LAW)
+
+When markup **can** be a template, it **MUST** be a template. PHP prepares data. `Renderer` produces HTML.
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2j, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1c.
+
+## MUST
+
+- Pages, tables, grids, cards, empty states, pager chrome, trees, crumbs, AJAX fragments live in `.view.php` / `.layout.php`.
+- `setLayout` + `setLayoutVar` + `renderLayout()` (or `setView` + `renderView()`).
+- Same layout for first paint and AJAX `html`.
+
+## MUST NOT
+
+- `$html .= '<table'` / `'<tr'` / `'<div class='` / `listHtml()` / `iconsHtml()` / `treeHtml()` factories in Controllers or Libraries.
+- “It is shorter in PHP” or “the JSON already has html”.
+
+## Exception — only that one piece
+
+- `// Why:` names a real problem (sandbox callable drop, pager `<li>` / button, one tiny chip).
+- Never a table, grid, tree, empty state, crumbs, or pager wrapper.

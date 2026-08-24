@@ -6,6 +6,8 @@ Rules: [07-SCHEMA-AND-INSTALL.md](../07-SCHEMA-AND-INSTALL.md).
 
 **MUST:** append the next `installer()` key **after** the last one. **MUST NOT** `ksort` / `uksort` / `krsort` / `usort` that map — `1.0.10` sorts before `1.0.9`.
 
+**MUST:** raw installer SQL probes first (`SHOW TABLES LIKE` / `information_schema`), then `CREATE TABLE` / `ALTER TABLE` **without** `IF NOT EXISTS` ([07](../07-SCHEMA-AND-INSTALL.md) §0).
+
 After you add a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave that step for the user. A non-DACore module is copied as a folder with `install.php` — no `dainstall.php` zip.
 
 ## SchemaBuilder — wrap DDL in try/catch (it throws)
@@ -85,9 +87,10 @@ Invalid identifiers, unsupported types for the engine (`json`, `set`), `unsigned
 **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding. Comments and `COMMENT 'SMS?'` count as placeholders — the CREATE never runs. Write “SMS optional”. Canonical: [06](../06-DATABASE.md).
 
 ```php
+if (self::mysqlTableExists('shop_tags') !== true) {
 DB::module('RAW')->q(function ($qb) {
     $qb->raw(
-        "CREATE TABLE IF NOT EXISTS `shop_tags` (
+        "CREATE TABLE `shop_tags` (
             `id` INT NOT NULL AUTO_INCREMENT,
             `name` VARCHAR(100) NOT NULL,
             PRIMARY KEY (`id`),
@@ -99,6 +102,7 @@ DB::module('RAW')->q(function ($qb) {
     function () { /* ok */ },
     function ($error) { Logger::use()->error('create table failed', $error); }
 );
+}
 ```
 
 ## Never

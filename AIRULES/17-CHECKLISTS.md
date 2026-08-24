@@ -4,12 +4,14 @@
 
 - [ ] Identified target module name (or will create via dotapper)
 - [ ] Read `00-AGENT-CONTRACT.md`
+- [ ] **Cursor rules mirror:** `AIRULES/cursor/rules/*.mdc` copied into `.cursor/rules/` (and `AIRULES/cursor/AGENTS.md` → project-root `AGENTS.md`). No new `.mdc` exists only under `.cursor/` ([00](00-AGENT-CONTRACT.md) §2l)
 - [ ] Read task-specific AIRULES doc (views/DB/forms/JS)
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
 - [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, `index.php`, other modules — **not even if asked** (kernel is frozen)
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
 - [ ] **PHP version:** asked whether to stay on **PHP 7.4+** (default) or write for a higher version; no answer → 7.4+ ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] New module has visible UI: asked once for display name/purpose, optional logo/banner, placement, colours and alt text; backend-only module skipped the question; “no custom branding” was offered ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b)
+- [ ] **Planning depth:** new module / first major surface / rewrite — plan inventories **every** nav item (or `No menu`), **every** page, **every** tab, **every** control (what it does, default, persist) plus security. A long plan is correct. Short plans only for small edits to shipped screens ([45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k)
 - [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
 - [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
 
@@ -37,6 +39,7 @@
 - [ ] Variables: `{{ var: $x }}` only
 - [ ] Closers: `{{ /if }}` `{{ /foreach }}` (not endif/endforeach)
 - [ ] VIEW is the outer file; `setLayout` + `renderView()` fills `{{ content }}` in that view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b)
+- [ ] **HTML via Renderer:** pages / tables / grids / empty states / pager chrome / trees / crumbs / AJAX fragments are `.layout.php` via `Renderer`. No `$html .= '<table'` / `*Html()` factory in Controllers/Libraries unless `// Why:` names a one-piece exception ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
 - [ ] Layouts via `{{ layout:... }}` / Renderer setLayout
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
@@ -53,6 +56,7 @@
 - [ ] Schema via `Installation.php` / SchemaBuilder (never `migrate()`)
 - [ ] `$qb->raw()` has no `?` except real bindings (not in comments / `COMMENT '…'`) ([06](06-DATABASE.md))
 - [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
+- [ ] Installer DDL: probe (`SHOW TABLES LIKE` / `information_schema`) then `CREATE TABLE` / `ALTER TABLE` — **no** `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0)
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items` or `dotapp_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 - [ ] Growing lists (users, logs, items, orders) use `paginate()` on **first ship** — not `->all()` into the view; “few rows now” is not a skip ([06](06-DATABASE.md))
@@ -116,7 +120,7 @@
 - [ ] **Memory:** big sets processed page by page; keyed map instead of `in_array()` in a loop; no `array_merge` per iteration; raw copy `unset` after mapping; files streamed
 - [ ] **Indexes:** every FK and every new `WHERE` / `JOIN` / `ORDER BY` column is indexed; composite order equality → range → sort; no index duplicating a composite prefix; one comment line per index naming its query ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §3)
 - [ ] **Schema:** realistic types (`DECIMAL` money, right `VARCHAR` length, FK matches `id()` = `bigInteger()->unsigned()`), `NOT NULL` + defaults, nothing filterable hidden in a JSON blob ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §4)
-- [ ] **Migration:** a new index / column shipped as a **new version** in `Installation.php`, guarded by `indexExists()` / `columnExists()`, then `installed_*_install.php` renamed back to `install.php`
+- [ ] **Migration:** a new index / column shipped as a **new version** in `Installation.php`, guarded by a PHP probe (`SHOW TABLES LIKE` / `information_schema` or `indexExists()` / `columnExists()`), then `CREATE`/`ALTER` **without** `IF NOT EXISTS`; `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md) §0)
 - [ ] **Cache:** used only for expensive cross-request data, with TTL **and** invalidation on write; `Config::db('cache')` untouched
 - [ ] **Frontend:** one CSS + one JS, delegated handlers, one DOM write per batch, debounced search, lazy images ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §6)
 - [ ] **Docs:** file/class docblock; every public method in `Controllers/` / `Middleware/` starts with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`); then a **purpose sentence** then `@param` + `@return` (+ `@throws`) with meaning — not tags-only; logical steps use **`// Why:`**; page actions have **`// About:`** and **`// Section:`** ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
@@ -155,6 +159,9 @@ Tick only the rows for the surface you touched.
 - [ ] **Hooks:** grepped `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/`; pre-action stop uses `triggerWithVeto()` + `Veto`, not `return false` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
 - [ ] **Extender (judge):** not on every method. If opted in: owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; marker is never returned/serialized; no `next()`; `extend()` in `Listeners::register()`; target URLs in explicit `Listeners::initializeRoutes()`; Module map has only own URLs or `[]`; controller string preferred; no listener `['*']` just to attach; no `.loaded` for initialize-time points; no `$request`/secrets; not Events; no duplicate registration ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h)
 - [ ] **PHP 7.4+:** grepped the chunk for PHP 8+ syntax (`match`, `?->`, `str_contains`, `str_starts_with`, `str_ends_with`, `#[`, `enum `, `readonly `, `: mixed`) unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i)
+- [ ] If `Installation.php` / store `ensureTable` is in this chunk: no `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`; table/column/index added only after a PHP probe ([07](07-SCHEMA-AND-INSTALL.md) §0)
+- [ ] **HTML via Renderer:** grepped Controllers/Libraries for `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factories — screen/fragment markup is a layout. A PHP HTML string has `// Why:` naming a one-piece exception, never a whole list ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
+- [ ] **Cursor rules:** no new `.mdc` exists only under `.cursor/rules/`; `AIRULES/cursor/rules/*.mdc` were copied into `.cursor/rules/` this session / after an AIRULES rule change ([00](00-AGENT-CONTRACT.md) §2l)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, …)
 - [ ] No core file modifications in the diff
@@ -213,6 +220,8 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md).
 - `->first()` used without a guard
 - A return value is used without checking its failure form
 - Claiming done / shipping a chunk without running the finish gate ([00](00-AGENT-CONTRACT.md) §2c)
+- `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` in installer SQL ([07](07-SCHEMA-AND-INSTALL.md) §0)
+- `$html .= '<table'` / `'<tr'` / `'<div class='` or a `listHtml()` factory building a screen/fragment in Controllers/Libraries without `// Why:` naming a real one-piece exception ([00](00-AGENT-CONTRACT.md) §2j)
 - Silent save / empty `.after()` / field error without marking the input ([00](00-AGENT-CONTRACT.md) §2d)
 - `Renderer::useCache(true)` or `Config::db('cache', true)` enabled (both broken)
 - `Auth::hasRole()` / `Auth::logged()` used (non-functional)

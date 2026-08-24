@@ -1,0 +1,15 @@
+---
+description: Installer DDL must probe first — never CREATE/ALTER IF NOT EXISTS
+alwaysApply: true
+---
+
+# MySQL-safe installer DDL (LAW)
+
+Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0, `AIRULES/00-AGENT-CONTRACT.md` §5 item 24.
+
+- **MUST** probe, then `CREATE TABLE` / `ALTER TABLE`. Older MySQL errors on `IF NOT EXISTS` create/alter forms.
+- **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`.
+- Table: `SHOW TABLES LIKE 'name'` after `/^[A-Za-z0-9_]+$/`. Column/index: `information_schema` + `DATABASE()` + bindings.
+- Helpers live in **your** module. Do not invent a core/DACore DDL helper.
+- `$qb->createTableIfNotExist()` is OK (probes, then `CREATE TABLE` without `IF NOT EXISTS`).
+- `DROP TABLE IF EXISTS` on uninstall is OK.

@@ -103,7 +103,7 @@ return Renderer::new()
 
 `renderLayout()` uses **layout vars only** (`setLayoutVar`).  
 `renderView()` eval uses **view vars only** (`setViewVar`).  
-Do not assume layout vars bleed into view vars. **VIEW = outer file:** `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b).
+Do not assume layout vars bleed into view vars. **VIEW = outer file:** `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b). **HTML via Renderer (MUST — law):** when markup can be a template, it **MUST** be. **MUST NOT** concatenate tables/grids/empty states in the controller. Canonical: [00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
 
 **Sandbox:** do not pass PHP function names as var names or nested string values (`time`, `copy`, `count`, `header`, …) — the isolator **drops the whole var**. Details: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5.
 

@@ -1,0 +1,514 @@
+<?php
+/**
+ * Canonical DACore plugin zip packer (PHP 7.4+).
+ *
+ * This file is stored as `.php.txt` so it cannot be executed from AIRULES.
+ * Agent workflow (MUST): copy to the project root as dacore-pack-zip.php,
+ * run with arguments, then delete that copy. Do not invent another packer.
+ *
+ * Usage (from project root):
+ *   php dacore-pack-zip.php DAFiles 1.2.0
+ *   php dacore-pack-zip.php --module=DAFiles --version=1.2.0
+ *   php dacore-pack-zip.php --module=DAFiles --version=1.2.0 --out=C:\releases
+ */
+
+if (PHP_SAPI !== 'cli') {
+    fwrite(STDERR, "Run this packer from the CLI.\n");
+    exit(1);
+}
+
+$args = parsePackArgs($argv);
+$root = findProjectRoot();
+$module = $args['module'];
+$version = $args['version'];
+$outDir = $args['out'] !== '' ? $args['out'] : $root;
+
+if (!preg_match('/^[A-Za-z][A-Za-z0-9]*$/', $module)) {
+    fail('Module name is not valid.');
+}
+if (strcasecmp($module, 'DACore') === 0) {
+    fail('MUST NOT pack app/modules/DACore/.');
+}
+if (!preg_match('/^\d+\.\d+(?:\.\d+)?$/', $version)) {
+    fail('Version must be quoted-semver shape (1.2.0).');
+}
+
+$source = $root . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . $module;
+if (!is_dir($source)) {
+    fail('Module folder is missing: app/modules/' . $module);
+}
+
+$liveInit = firstExistingFile($source, array('module.init.php', 'module.init.php'));
+$liveListeners = firstExistingFile($source, array('module.listeners.php', 'module.listeners.php'));
+$install = firstExistingFile($source, array('install.php'));
+if ($install === '') {
+    $install = firstMatchingFile($source, '/^installed_[a-f0-9]+_install\\.php$/');
+}
+foreach (array($liveInit, $liveListeners, $install, $source . DIRECTORY_SEPARATOR . 'Installation.php', $source . DIRECTORY_SEPARATOR . 'about.php') as $need) {
+    if ($need === '' || !is_file($need)) {
+        fail('Required module file is missing (live init, listeners, install.php, Installation.php, about.php).');
+    }
+}
+
+$installation = (string) file_get_contents($source . DIRECTORY_SEPARATOR . 'Installation.php');
+assertQuotedVersionKeys($installation, $version);
+
+$workRoot = rtrim(sys_get_temp_dir(), '\\/') . DIRECTORY_SEPARATOR . 'dacore-pack-' . bin2hex(random_bytes(8));
+$work = $workRoot . DIRECTORY_SEPARATOR . $module;
+try {
+    copyTree($source, $work);
+    transformPackageCopy($work, $module, $liveInit, $liveListeners, $install);
+    $zipPath = rtrim($outDir, '\\/') . DIRECTORY_SEPARATOR . $module . '-' . $version . '.zip';
+    writeZip($work, $zipPath);
+    verifyZip($zipPath, $version);
+    fwrite(STDOUT, $zipPath . PHP_EOL);
+    fwrite(STDOUT, 'bytes=' . filesize($zipPath) . PHP_EOL);
+} finally {
+    removeTree($workRoot);
+}
+
+/**
+ * Parse CLI flags and positional module/version.
+ *
+ * @param array<int, string> $argv
+ * @return array{module: string, version: string, out: string}
+ */
+function parsePackArgs(array $argv)
+{
+    $module = '';
+    $version = '';
+    $out = '';
+    $rest = array_slice($argv, 1);
+    foreach ($rest as $arg) {
+        if (strpos($arg, '--module=') === 0) {
+            $module = substr($arg, 9);
+            continue;
+        }
+        if (strpos($arg, '--version=') === 0) {
+            $version = substr($arg, 10);
+            continue;
+        }
+        if (strpos($arg, '--out=') === 0) {
+            $out = substr($arg, 6);
+            continue;
+        }
+        if ($arg === '--help' || $arg === '-h') {
+            fwrite(STDOUT, "php dacore-pack-zip.php Module 1.2.0\n");
+            exit(0);
+        }
+        if ($module === '') {
+            $module = $arg;
+            continue;
+        }
+        if ($version === '') {
+            $version = $arg;
+            continue;
+        }
+        fail('Unexpected argument: ' . $arg);
+    }
+    if ($module === '' || $version === '') {
+        fail('Usage: php dacore-pack-zip.php Module 1.2.0');
+    }
+    return array('module' => $module, 'version' => $version, 'out' => $out);
+}
+
+/**
+ * Project root that contains app/modules.
+ *
+ * @return string
+ */
+function findProjectRoot()
+{
+    $cwd = getcwd();
+    if (is_string($cwd) && is_dir($cwd . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'modules')) {
+        return $cwd;
+    }
+    if (isset($GLOBALS['argv'][0]) && is_file($GLOBALS['argv'][0])) {
+        $dir = dirname(realpath($GLOBALS['argv'][0]));
+        if (is_dir($dir . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'modules')) {
+            return $dir;
+        }
+    }
+    fail('Run this packer from the DotApp project root.');
+}
+
+/**
+ * First existing filename under a folder.
+ *
+ * @param string $dir
+ * @param array<int, string> $names
+ * @return string Absolute path or empty.
+ */
+function firstExistingFile($dir, array $names)
+{
+    foreach ($names as $name) {
+        $path = $dir . DIRECTORY_SEPARATOR . $name;
+        if (is_file($path)) {
+            return $path;
+        }
+    }
+    return '';
+}
+
+/**
+ * First file in a folder matching a regex on the basename.
+ *
+ * @param string $dir
+ * @param string $regex
+ * @return string
+ */
+function firstMatchingFile($dir, $regex)
+{
+    $list = scandir($dir);
+    if (!is_array($list)) {
+        return '';
+    }
+    foreach ($list as $name) {
+        if ($name === '.' || $name === '..') {
+            continue;
+        }
+        if (preg_match($regex, $name) === 1 && is_file($dir . DIRECTORY_SEPARATOR . $name)) {
+            return $dir . DIRECTORY_SEPARATOR . $name;
+        }
+    }
+    return '';
+}
+
+/**
+ * DACore greps Installation.php as text. Keys MUST be quoted literals.
+ *
+ * @param string $code
+ * @param string $version
+ * @return void
+ */
+function assertQuotedVersionKeys($code, $version)
+{
+    if (preg_match('/(?:self|static)::[A-Za-z_][A-Za-z0-9_]*\s*=>/', $code)) {
+        fail('Installation.php still has self:: or static:: as an array key. Keys MUST be quoted text.');
+    }
+    if (!preg_match_all("/['\"](\\d+\\.\\d+(?:\\.\\d+)?)['\"]\\s*=>/", $code, $m) || $m[1] === array()) {
+        fail('Installation.php has no quoted version keys. DACore would reject the zip as 0.0.0.');
+    }
+    $found = array_values(array_unique($m[1]));
+    usort($found, 'version_compare');
+    $highest = $found[count($found) - 1];
+    if (version_compare($version, $highest, '!=')) {
+        fail('Zip version ' . $version . ' must match the highest quoted installer key (' . $highest . ').');
+    }
+}
+
+/**
+ * Turn a working-tree copy into a DACore plugin payload.
+ *
+ * @param string $work
+ * @param string $module
+ * @param string $sourceInit Absolute live init in the original module.
+ * @param string $sourceListeners
+ * @param string $sourceInstall
+ * @return void
+ */
+function transformPackageCopy($work, $module, $sourceInit, $sourceListeners, $sourceInstall)
+{
+    $initDir = $work . DIRECTORY_SEPARATOR . 'init';
+    if (is_dir($initDir)) {
+        removeTree($initDir);
+    }
+    if (!mkdir($initDir, 0777, true) && !is_dir($initDir)) {
+        fail('init/ could not be created.');
+    }
+    $initBytes = (string) file_get_contents($sourceInit);
+    $listenerBytes = (string) file_get_contents($sourceListeners);
+    // Why: this repo's DACore reads init/module.init.php; older production logs used module.init.php. Zip aliases cover both.
+    file_put_contents($initDir . DIRECTORY_SEPARATOR . 'module.init.php', $initBytes);
+    file_put_contents($initDir . DIRECTORY_SEPARATOR . 'module.listeners.php', $listenerBytes);
+
+    $dainstall = $work . DIRECTORY_SEPARATOR . 'dainstall.php';
+    copy($sourceInstall, $dainstall);
+    $installName = basename($sourceInstall);
+    if (is_file($work . DIRECTORY_SEPARATOR . $installName)) {
+        unlink($work . DIRECTORY_SEPARATOR . $installName);
+    }
+    $staleInstalls = glob($work . DIRECTORY_SEPARATOR . 'installed_*_install.php');
+    if (is_array($staleInstalls)) {
+        foreach ($staleInstalls as $stale) {
+            unlink($stale);
+        }
+    }
+    if (is_file($work . DIRECTORY_SEPARATOR . 'install.php')) {
+        unlink($work . DIRECTORY_SEPARATOR . 'install.php');
+    }
+
+    $initStub = inertInitStub($module, $initBytes);
+    $listenerStub = inertListenerStub($module, $listenerBytes);
+    file_put_contents($work . DIRECTORY_SEPARATOR . 'module.init.php', $initStub);
+    file_put_contents($work . DIRECTORY_SEPARATOR . 'module.listeners.php', $listenerStub);
+
+    if (moduleFiresHooks($work) && !is_file($work . DIRECTORY_SEPARATOR . '.hooks') && !is_file($work . DIRECTORY_SEPARATOR . '.hooks')) {
+        fail('This module fires Events::trigger hooks but has no root .hooks catalog.');
+    }
+}
+
+/**
+ * Inert root Module stub. Method names follow the live file so the class stays valid.
+ *
+ * @param string $module
+ * @param string $live
+ * @return string
+ */
+function inertInitStub($module, $live)
+{
+    $routesFn = pickLiveMethod($live, 'initializeRoutes', 'initializeRoutes');
+    $condFn = pickLiveMethod($live, 'initializeCondition', 'initializeCondition');
+    return "<?php\n"
+        . "namespace Dotsystems\\App\\Modules\\" . $module . ";\n\n"
+        . "class Module extends \\Dotsystems\\App\\Parts\\Module\n"
+        . "{\n"
+        . "    public function initialize(\$dotApp)\n"
+        . "    {\n"
+        . "    }\n\n"
+        . "    public function " . $routesFn . "()\n"
+        . "    {\n"
+        . "        return [];\n"
+        . "    }\n\n"
+        . "    public function " . $condFn . "(\$routeMatch)\n"
+        . "    {\n"
+        . "        return \$routeMatch;\n"
+        . "    }\n"
+        . "}\n\n"
+        . "new Module(\$dotApp);\n";
+}
+
+/**
+ * Inert root Listeners stub.
+ *
+ * @param string $module
+ * @param string $live
+ * @return string
+ */
+function inertListenerStub($module, $live)
+{
+    $routes = '';
+    if (strpos($live, 'function initializeRoutes') !== false || strpos($live, 'function initializeRoutes') !== false) {
+        $fn = pickLiveMethod($live, 'initializeRoutes', 'initializeRoutes');
+        $routes = "\n\n    public function " . $fn . "()\n    {\n        return [];\n    }";
+    }
+    return "<?php\n"
+        . "namespace Dotsystems\\App\\Modules\\" . $module . ";\n\n"
+        . "class Listeners extends \\Dotsystems\\App\\Parts\\Listeners\n"
+        . "{\n"
+        . "    public function register(\$dotApp)\n"
+        . "    {\n"
+        . "    }"
+        . $routes . "\n"
+        . "}\n\n"
+        . "new Listeners(\$dotApp);\n";
+}
+
+/**
+ * @param string $dir
+ * @return bool
+ */
+function moduleFiresHooks($dir)
+{
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $file) {
+        if (!$file->isFile() || strtolower($file->getExtension()) !== 'php') {
+            continue;
+        }
+        $src = (string) file_get_contents($file->getPathname());
+        if (preg_match("/Events::trigger\\s*\\(\\s*['\"]module\\./", $src) === 1) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @param string $work
+ * @param string $zipPath
+ * @return void
+ */
+function writeZip($work, $zipPath)
+{
+    if (!class_exists('ZipArchive')) {
+        fail('ZipArchive is required.');
+    }
+    if (is_file($zipPath)) {
+        unlink($zipPath);
+    }
+    $zip = new ZipArchive();
+    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        fail('Package zip could not be opened.');
+    }
+    $workLen = strlen($work) + 1;
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($work, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+    foreach ($it as $file) {
+        if ($file->isLink() || !$file->isFile()) {
+            continue;
+        }
+        $relative = str_replace('\\', '/', substr($file->getPathname(), $workLen));
+        if ($relative === 'install.php' || preg_match('#(^|/)installed_[a-f0-9]+_install\\.php$#', $relative) === 1) {
+            fail('Forbidden installer file reached the package copy.');
+        }
+        $zip->addFile($file->getPathname(), $relative);
+    }
+    addZipAlias($zip, $work . DIRECTORY_SEPARATOR . 'init' . DIRECTORY_SEPARATOR . 'module.init.php', 'init/module.init.php');
+    addZipAlias($zip, $work . DIRECTORY_SEPARATOR . 'init' . DIRECTORY_SEPARATOR . 'module.listeners.php', 'init/module.listeners.php');
+    addZipAlias($zip, $work . DIRECTORY_SEPARATOR . 'module.init.php', 'module.init.php');
+    addZipAlias($zip, $work . DIRECTORY_SEPARATOR . 'module.listeners.php', 'module.listeners.php');
+    $zip->close();
+}
+
+/**
+ * Add a second zip name for older DACore trees that used module.init.php.
+ *
+ * @param ZipArchive $zip
+ * @param string     $abs
+ * @param string     $entry
+ * @return void
+ */
+function addZipAlias($zip, $abs, $entry)
+{
+    if (!is_file($abs) || $zip->locateName($entry) !== false) {
+        return;
+    }
+    $zip->addFile($abs, $entry);
+}
+
+/**
+ * Prefer the method name that already exists in the live init file.
+ *
+ * @param string $live
+ * @param string $first
+ * @param string $second
+ * @return string
+ */
+function pickLiveMethod($live, $first, $second)
+{
+    if (strpos($live, 'function ' . $first) !== false) {
+        return $first;
+    }
+    if (strpos($live, 'function ' . $second) !== false) {
+        return $second;
+    }
+    return $first;
+}
+
+/**
+ * @param string $zipPath
+ * @param string $version
+ * @return void
+ */
+function verifyZip($zipPath, $version)
+{
+    $zip = new ZipArchive();
+    if ($zip->open($zipPath) !== true) {
+        fail('Built zip could not be reopened.');
+    }
+    $names = array();
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $names[] = (string) $zip->getNameIndex($i);
+    }
+    $code = (string) $zip->getFromName('Installation.php');
+    $zip->close();
+    if (in_array('install.php', $names, true)) {
+        fail('Zip still contains install.php.');
+    }
+    foreach (array('dainstall.php', 'Installation.php', 'about.php') as $entry) {
+        if (!in_array($entry, $names, true)) {
+            fail('Zip is missing ' . $entry);
+        }
+    }
+    if (!zipHas($names, 'init/module.init.php', 'init/module.init.php')) {
+        fail('Zip is missing init/module.init.php.');
+    }
+    if (!zipHas($names, 'init/module.listeners.php', 'init/module.listeners.php')) {
+        fail('Zip is missing init/module.listeners.php.');
+    }
+    if (!zipHas($names, 'module.init.php', 'module.init.php')) {
+        fail('Zip is missing inert root module.init.php.');
+    }
+    if (!zipHas($names, 'module.listeners.php', 'module.listeners.php')) {
+        fail('Zip is missing inert root module.listeners.php.');
+    }
+    assertQuotedVersionKeys($code, $version);
+}
+
+/**
+ * @param string $source
+ * @param string $destination
+ * @return void
+ */
+function copyTree($source, $destination)
+{
+    if (!is_dir($source) || is_link($source)) {
+        fail('Module source is unavailable.');
+    }
+    if (!mkdir($destination, 0777, true) && !is_dir($destination)) {
+        fail('Package copy could not be created.');
+    }
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+    $baseLen = strlen($source) + 1;
+    foreach ($it as $file) {
+        if ($file->isLink()) {
+            fail('Symlinks are not allowed in a DACore zip.');
+        }
+        $rel = substr($file->getPathname(), $baseLen);
+        $target = $destination . DIRECTORY_SEPARATOR . $rel;
+        if ($file->isDir()) {
+            if (!mkdir($target, 0777, true) && !is_dir($target)) {
+                fail('Package directory copy failed.');
+            }
+            continue;
+        }
+        if (!copy($file->getPathname(), $target)) {
+            fail('Package file copy failed.');
+        }
+    }
+}
+
+/**
+ * @param string $path
+ * @return void
+ */
+function removeTree($path)
+{
+    if (!is_dir($path)) {
+        return;
+    }
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($it as $file) {
+        $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+    }
+    rmdir($path);
+}
+
+/**
+ * @param array<int, string> $names
+ * @param string             $a
+ * @param string             $b
+ * @return bool
+ */
+function zipHas(array $names, $a, $b)
+{
+    return in_array($a, $names, true) || in_array($b, $names, true);
+}
+
+/**
+ * @param string $message
+ * @return void
+ */
+function fail($message)
+{
+    fwrite(STDERR, $message . "\n");
+    exit(1);
+}

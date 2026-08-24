@@ -15,6 +15,8 @@ This is **DotApp** — not Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent,
 |------|--------|
 | `app/config.php` | **Only** framework file agents may edit. Secrets, DB, drivers, module overrides. |
 | `app/modules/<YourModule>/` | Everything inside the module you were asked to create or change. |
+| `AIRULES/` | When the user asked to change the handbook. Compact Cursor rules: **`AIRULES/cursor/rules/*.mdc`** — never invent a law only under `.cursor/`. |
+| `.cursor/rules/*.mdc` and project-root `AGENTS.md` | **Mirror only** ([§2l](#2l-cursor-rules-live-in-airules-must--law)). Copy from `AIRULES/cursor/`. **MUST NOT** author a new `.mdc` here. |
 
 ### ASK FIRST (do not touch unless the user explicitly requests)
 
@@ -49,7 +51,7 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
-6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. [07](07-SCHEMA-AND-INSTALL.md).
+6. **Migrations:** after you add a version in `Installation.php`, **MUST** rename `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave this for the user. **MUST** probe then `CREATE`/`ALTER` — **MUST NOT** `CREATE TABLE IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0).
 7. **Lists:** any screen that lists records that **can accumulate** (users, logs, items, orders, messages, files, events) **MUST** ship `paginate()` **and** an **interactive AJAX pager** in the **first** version. Empty table today is not an excuse. A pager that reloads the page is not a pager. **Search / list UX:** when **planning**, **ASK** (search, filters, sort, bulk, page size, remember in DSM, CSV only if it fits). Lookup lists **MUST** ship AJAX search unless declined. Empty state, sticky header, match highlight: **MUST**. See [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 8. **Module identity:** when planning a new module with visible UI, **ASK once** for display name/purpose, optional logo/banner, placement and colours. Offer text-only/no custom branding; do not block a backend-only module. See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b.
 9. **Finish gate (LAW):** after **every** code chunk **and** before claiming done — **MUST** [§2c](#2c-finish-gate-must--law). **MUST NOT** skip. Tick [17-CHECKLISTS.md](17-CHECKLISTS.md) Finish gate.
@@ -59,6 +61,9 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 13. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md).
 14. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes (or `[]` for a listener-only module). `Listeners::initializeRoutes()` may list different producer/target prefixes (or `null` to inherit). **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned that this listener file registers on every request. After either map changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
 15. **Extender (judge):** **MUST NOT** Extender every method. Opt in when another module would reasonably **replace this output** (page/block HTML, cart, export). Owner `exists()` + `call()`; an ordinary result returns immediately, while `isOriginal()` alone continues owner logic. Register `extend()` in **`Listeners::register()`** before module initialization; put target URLs in `Listeners::initializeRoutes()`, not the Module map. Prefer a controller string handler. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
+16. **HTML via Renderer (LAW):** when markup **can** be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named exception ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c).
+17. **Planning depth (LAW):** when they asked to **plan** a **new module**, a **first** major surface, or a **rewrite**, the plan **MUST** be extremely detailed — every nav item (if any), every page, every tab, every control. A long plan is correct. A bullet list of endpoints is not a plan. See [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
+18. **Cursor rules live in AIRULES (LAW):** compact `.mdc` files **MUST** live in `AIRULES/cursor/rules/`. `.cursor/rules/` is a non-portable Cursor mirror. The agent **MUST** copy the mirror itself ([§2l](#2l-cursor-rules-live-in-airules-must--law), [INSTALL.md](INSTALL.md)).
 
 ### Dotapper-first rule
 
@@ -124,7 +129,10 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Hooks** | Grep `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/`; `return false` treated as a veto instead of `triggerWithVeto()` + `Veto` ([41](41-MODULE-HOOKS.md)) |
 | **Extender** | New page/cart/export renderer **or** `Extender::` in the chunk | Spray on every persist/helper; skipped opt-in on a judged swap; `extend()` delayed to Module `initialize()`; target URLs placed in the Module map; listener-only Module `[]` with omitted/`null` listener routes; `.loaded` used although the point may run during target `initialize()`; `call()` without owner `exists()`; ordinary result does not return immediately; `original()` marker returned/serialized instead of checked with `isOriginal()`; fake `NEXT`; `$request` / secrets in args; Events used to replace a method; `['*']` just to attach; patch of another module to insert `call()` ([12](12-SERVICES.md) §10, [§2h](#2h-extender-judge--not-every-method)) |
 | **PHP 7.4+** | Diff of new PHP | PHP 8+ syntax on a 7.4+ module: `match`, `?->`, union/`mixed` types, named args, constructor promotion, `#[…]`, `enum`, `readonly`, `never`, `str_contains` / `str_starts_with` / `str_ends_with` — unless the plan named a higher version ([§2i](#2i-php-version-must)) |
+| **MySQL-safe DDL** | `Installation.php` / store `ensureTable` SQL in the chunk | Raw `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`. Missing `SHOW TABLES LIKE` / `information_schema` probe before CREATE/ALTER ([07](07-SCHEMA-AND-INSTALL.md) §0, [§5](#5-security-non-negotiables) item 24) |
+| **HTML via Renderer** | Diff of Controllers / Libraries vs `views/` | A screen or fragment (table, grid, empty state, pager chrome, tree, crumbs, card) built with `$html .=` / `'<table` / `'<tr` / `'<div class=` / `'<ul class=` / a `*Html()` factory in PHP. Fail unless that **one piece** has `// Why:` naming a real exception (sandbox callable drop, pager `<li>` / button, one tiny chip) — never a whole list ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
+| **Cursor rules mirror** | `.cursor/rules/` vs `AIRULES/cursor/rules/` | A new `.mdc` exists only under `.cursor/`; AIRULES cursor rules were not copied into `.cursor/rules/` this session / after an AIRULES rule change ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
@@ -197,6 +205,56 @@ If they do not name a higher version: **stay on 7.4+**. Typed properties, arrow 
 
 A silent PHP 8+ upgrade “because it is nicer” is a **bug**.
 
+### 2j. HTML via Renderer (MUST — law)
+
+When the markup **can** be a template, it **MUST** be a template. PHP prepares data. The framework `Renderer` produces HTML. This is a **law**, not a style preference.
+
+**MUST:** pages, tables, lists/grids, cards, empty states, pager chrome, trees, crumbs, and AJAX fragments live in `.view.php` / `.layout.php`. Produce them with `setLayout` + `setLayoutVar` + `renderLayout()` (or `setView` + `renderView()`). The same layout is the first paint and the AJAX `html` patch.
+
+**MUST NOT:** concatenate a screen or fragment in Controllers / Libraries (`$html .= '<table'`, `'<tr'`, `'<div class='`, `listHtml()` / `iconsHtml()` / `treeHtml()` / `crumbsHtml()` factories). “It is shorter in PHP” / “the JSON already has html” is a **bug**.
+
+**Exception — only when a template cannot do that one piece, and only that piece:**
+
+1. The chunk has `// Why:` naming the real problem (Renderer sandbox would drop a callable key; a pager item callback returning one `<li>` / button; one tiny escaped chip such as a status badge).
+2. That exception is **not** a table, grid, tree, empty state, crumbs bar, or pager wrapper.
+3. Convenience, an existing `*Html()` helper, or copying an old string factory is **not** an exception.
+
+Canonical: [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
+
+### 2k. Module planning depth (**MUST**)
+
+When the user asks to **plan** a **new module**, a **first version** of a major surface (public site, checkout, editor, dashboard, settings), or a **rewrite** that throws the old product away, the plan **MUST** be **extremely detailed** — something a **product designer** and a **senior application-security engineer** would both accept **and** a builder could implement without inventing a screen.
+
+**Length is not a defect.** Omitting a page, tab, or control to keep the plan short is a **failed plan**.
+
+**MUST write, in the plan, before code:**
+
+1. **Menu / nav inventory.** If the module has any nav (public header, mobile drawer, logged-in links), list **every** item: label, URL, parent, who sees it. This folder has **no** DACore `Menu@register`. No nav → write **`No menu`**.
+2. **Screen inventory.** Every page, then every tab/card/panel on that page, then **every control**: what it does, default, where it persists. Example density: Settings → Tab 1 Interface (Show XYZ / Hide side panel) → Tab 2 Frontend (theme select, drawer search). Same for list columns, row actions, and form fields.
+3. **UI / UX.** Desktop and mobile regions, hierarchy, empty/loading/error states, toolbar, padding vs parent (especially below Save), interaction model.
+4. **Security.** Name CRC-once, encrypted IDs, bound SQL, catch bus, upload/path jail, visible outcomes, HTML via Renderer, and the [24](24-ATTACK-VECTORS.md) §11 threat pass by their real controls — not “we will be careful.” Operator 2FA lock is DACore-only ([§7](#7-dacore-note)).
+
+A short plan is allowed **only** for a small change to an already shipped screen. “It posts” / “Settings + list + edit” is a **failed plan**.
+
+Canonical: [45](45-MODULE-PLANNING.md). UI: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c–§8d.
+
+### 2l. Cursor rules live in AIRULES (**MUST** — law)
+
+`.cursor/rules/*.mdc` is a **Cursor runtime mirror**. It is **not** portable. The user copies **`AIRULES/`** into another project. A law that exists only under `.cursor/` is **lost**. That is a **bug**.
+
+**Source of truth:** `AIRULES/cursor/rules/*.mdc` and `AIRULES/cursor/AGENTS.md`. How-to: [INSTALL.md](INSTALL.md).
+
+**MUST NOT** create, edit, or leave a new compact law only under `.cursor/rules/` or a project-root `AGENTS.md` that is not a copy.
+
+**MUST (agent, this session before coding — and after any AIRULES cursor-rule change):**
+
+1. Ensure `.cursor/rules/` exists.
+2. Copy `AIRULES/cursor/rules/*.mdc` → `.cursor/rules/`.
+3. Copy `AIRULES/cursor/AGENTS.md` → project-root `AGENTS.md`.
+4. A new compact rule: write it in `AIRULES/cursor/rules/` **first**, then copy.
+
+This mirror copy is the **only** allowed write to `.cursor/rules/` and root `AGENTS.md`. It does **not** authorize inventing project code there.
+
 ---
 
 ## 3. No-invention rule
@@ -232,6 +290,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 |-----------------|----------------|
 | `DB::table('x')`, Eloquent models | `DB::module("RAW")->q(fn($qb)=>...)->all()` |
 | Blade `{{ $x }}`, `@if`, `@extends` | `{{ var: $x }}`, `{{ if }}` … `{{ /if }}` |
+| `$html .= '<table'` / `listHtml()` factory in a Library | `Renderer` + `.layout.php`; PHP prepares data. PHP markup **only** for a named exception ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
 | `Route::prefix()->group()`, named routes | Imperative `Router::get(...)` in `module.init.php` |
 | Register all login-required URLs then login-middleware only | Prefix + `Router::before([$area, $area.'/*'], login 403)` **and** `if (Auth::isLogged())` — page **MUST NEVER** show ([03](03-MODULES-AND-ROUTING.md)) |
 | Instance controllers + `$this->` | `public static function` controllers |
@@ -261,6 +320,9 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Controller action with no `CRCchecking —` first line, or that line names a CRC prefix **and** the body still `crcCheck()` | First PHPDoc line names the **real** layer; prefix **XOR** action ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md)) |
 | Patch another module / fire `shop.item.saved` | Read **their** `.hooks`, `Events::on` in **yours**; name is `module.{mod}.{name}.hook` ([41](41-MODULE-HOOKS.md)) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
+| Short plan (“Settings + list + edit”) for a new module / first surface / rewrite | Extremely detailed inventory: every nav item, page, tab, control ([§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md)) |
+| New compact law only under `.cursor/rules/` | Write `AIRULES/cursor/rules/*.mdc` first, then copy the mirror ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
+| `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` in installer SQL | Probe first (`SHOW TABLES LIKE` / `information_schema`), then `CREATE TABLE` / `ALTER TABLE` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 
@@ -298,6 +360,10 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 21. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md).
 22. **Extender (judge — not every method):** opt in when another module would reasonably replace this **output** (page/block, cart, export). Owner: `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender: `extend()` in `Listeners::register()`, target URLs in `Listeners::initializeRoutes()`, own Module routes only (or `[]`), controller string preferred. **MUST NOT** use `.loaded` for an initialize-time point, spray on every method, invent `next()`, return the marker, use Events to replace a method, pass `$request`/secrets, or patch the owner. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 23. **PHP version (MUST):** default **PHP 7.4+**. When **planning**, **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, promotion, attributes, `enum`, `readonly`, `str_contains`, …) unless they named a higher version. Canonical: [§2i](#2i-php-version-must).
+24. **MySQL-safe installer DDL (MUST):** probe first, then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, or `CREATE INDEX IF NOT EXISTS` — older MySQL errors; `ADD COLUMN IF NOT EXISTS` is MariaDB-only. Table probe = `SHOW TABLES LIKE` after `[A-Za-z0-9_]+` whitelist. Column/index probe = `information_schema` scoped to `DATABASE()` with bindings. Helpers live in **your** module. `DROP TABLE IF EXISTS` on uninstall is allowed. `$qb->createTableIfNotExist()` is allowed (it already probes and emits `CREATE TABLE` without `IF NOT EXISTS`). Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
+25. **HTML via Renderer (MUST):** when markup can be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / pager `<li>` or button / one tiny chip). Canonical: [§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
+26. **Planning depth (MUST):** a plan for a new module / first major surface / rewrite **MUST** list every nav item (or `No menu`), every page, every tab, and every control (what it does, default, persist). Length is not a defect. Canonical: [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
+27. **Cursor rules live in AIRULES (MUST):** compact `.mdc` files live in `AIRULES/cursor/rules/`. The agent **MUST** copy them into `.cursor/rules/` and `AGENTS.md` to the project root. **MUST NOT** invent a law only under `.cursor/`. Canonical: [§2l](#2l-cursor-rules-live-in-airules-must--law), [INSTALL.md](INSTALL.md).
 
 ---
 
@@ -310,7 +376,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Controllers: Module:Controller@method!  (! = no DI params)
  * - Database: DB::module("RAW")->q(...)->all()|first()|execute() — execute MUST both callbacks; persist try/catch; raw() every ? is a placeholder (not in comments)
  * - Tables: {lowercase_modulename}_*  (Shop → shop_items) — NEVER items or dotapp_*
- * - Templates: {{ var: $x }}  — NOT {{ $x }}. VIEW = outer file; setLayout+renderView fills {{ content }} in that view (or renderLayout / str_replace)
+ * - Templates: {{ var: $x }}  — NOT {{ $x }}. VIEW = outer file; setLayout+renderView fills {{ content }} in that view (or renderLayout / str_replace). HTML via Renderer (LAW, 00 §2j / 05 §1c): pages/tables/grids/empty/pager/tree/crumbs MUST be layouts. PHP markup ONLY for a named one-piece exception — NOT $html .= '<table' factories
  * - Forms: <fo-rm> only for real multi-field submit; row actions = load() + data-*; crcCheck() once (API prefix XOR action)
  * - FE ids: {{ enc(Shop.item.id): $id }} unique $key2 per field; Auth::can still required
  * - Privilege: no secret in read-only views; no escalate; SQL owner scope; own password needs current; warn user if public noauth is bot-bait (11 §11)
@@ -326,6 +392,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Hooks (41): useful side-effects (SMS/mail/paid/lockout) MUST Events::trigger('module.{mod}.{name}.hook') + Hook/Why/About/Params/Use block + .hooks — NOT every save; NOT secrets; NOT patch the other module; NOT old shop.item.saved shape. Pre-action stop = triggerWithVeto + Veto only.
  * - Extender (12 §10): judge first — opt in on replaceable output (page/block HTML, cart, export), NOT every method; owner exists()/call(); ordinary result returns, only isOriginal() continues; Extender::extend in Listeners::register(); target URLs in listener map; own Module map or []; prefer 'Module:Controller@method!'; NOT next(), marker response, .loaded for initialize-time, Events, $request/secrets, duplicate registration
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
+ * - Installer DDL (LAW, 07 §0): probe SHOW TABLES LIKE / information_schema then CREATE/ALTER. MUST NOT CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS / ADD INDEX IF NOT EXISTS. Helpers in this module
  * - Search: ASK in the plan; lookup lists (articles/products) MUST AJAX search unless declined — debounce, 3+ chars, SQL+paginate, NOT JS filter
  * - 2FA boxes: $dotapp().twoFactor — do not invent OTP widgets
  * - Deletes: graphical confirm first — never alert()/confirm()
@@ -340,6 +407,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
  * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action, Events::trigger vs .hooks — 00 §2c / 41
  * - Visible outcome (LAW): user always sees save/fail; public = mark the wrong field; build your own toast — 00 §2d
+ * - HTML via Renderer (LAW): when it can be a template it MUST be; PHP HTML string only for a named one-piece exception — 00 §2j / 05 §1c
+ * - Planning depth (LAW): new module / first surface / rewrite plan MUST inventory every nav item (or No menu), page, tab, control — length is OK — 00 §2k / 45
+ * - Cursor rules (LAW, 00 §2l): compact .mdc live in AIRULES/cursor/rules/. Agent MUST copy them to .cursor/rules/ + AGENTS.md to project root. MUST NOT invent a law only under .cursor/
  * - Edit only this module + app/config.php. Never edit app/parts/, app/DotApp.php, dotapper.php, index.php — not even if the user asks. The kernel is frozen.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
@@ -362,6 +432,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | Conflict | Winner |
 |----------|--------|
 | Leftover `.cursorrules` / `*_AI_guide.md` vs AIRULES | **AIRULES** |
+| `.cursor/rules/*.mdc` vs `AIRULES/cursor/rules/*.mdc` | **`AIRULES/cursor/`** — `.cursor/` is a mirror ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
 | Leftover `database_guide.md` invented APIs | **Ignore** — follow [06-DATABASE.md](06-DATABASE.md) |
 | User asks to edit `app/parts/` / `app/DotApp.php` / `dotapper.php` / `index.php` | **MUST NOT.** The kernel is frozen. Say so in chat; implement in `app/modules/<YourModule>/` (+ `app/config.php` only). |
 
@@ -374,11 +445,14 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | **Anything (always)** | **18** error handling / return values — incl. **§9 catch bus** (`dotapp.catch`) | — |
 | Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
 | Plan / PHP version | **00 §2i** — ASK 7.4+ (default) vs a higher PHP; no answer → 7.4+ | — |
+| Plan / new module, first major surface, or rewrite | **00 §2k** / **[45](45-MODULE-PLANNING.md)** — extremely detailed inventory (nav, pages, tabs, controls) + security before code | — |
+| Cursor `.mdc` / copied AIRULES folder | **00 §2l** — source is `AIRULES/cursor/rules/`; agent **MUST** copy into `.cursor/rules/` | [INSTALL.md](INSTALL.md) |
 | **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware conflicts | [17](17-CHECKLISTS.md) Finish gate |
 | Stay-on-page save / errors | **00 §2d** visible outcome — mark the wrong field; your own toast/status | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |
+| Page / list / AJAX HTML fragment | **00 §2j** / **05 §1c** — Renderer + layout; PHP markup only for a named one-piece exception | [EX-05](examples/EX-05-renderer-page.md) |
 | Route / middleware | 03, 04 | EX-03 — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
-| Template / CSS / JS page | 05 (incl. §8 product copy), **09 §3** public mobile nav | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
+| Template / CSS / JS page | 05 (incl. **§1c HTML via Renderer law**, §8 product copy), **09 §3** public mobile nav | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Public website header / nav | **09 §3** “Public website mobile navigation” — drawer overlay, lock page scroll | [EX-05](examples/EX-05-renderer-page.md) |
 | Stay-on-page save / toggle (live DOM) | **09 §3** (block-while-in-flight, desktop+mobile), **08** | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Paginated list (users, logs, items) | **06**, **09 §3** “Paginate accumulating lists” — **MUST** ship, **MUST** be AJAX | [EX-04](examples/EX-04-database-crud.md), **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
@@ -387,7 +461,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | Delete (confirm dialog) | **09 §3** “Confirm before delete” | **[EX-06](examples/EX-06-dotapp-js-boot.md)** |
 | Custom `$dotapp` library / jQuery port | **09 §4** (esp. §4.C) | **[EX-15](examples/EX-15-dotapp-js-library.md)** |
 | Database query | 06, 18 | [EX-04](examples/EX-04-database-crud.md) — `raw()`: every `?` is a placeholder, including comments |
-| Tables / migrations | 07 (rename `installed_*` → `install.php` after a new version) | [EX-13](examples/EX-13-schema-migrations.md) |
+| Tables / migrations | 07 (rename `installed_*` → `install.php` after a new version); **07 §0** probe-then-CREATE, **no** `CREATE TABLE IF NOT EXISTS` | [EX-13](examples/EX-13-schema-migrations.md) |
 | **Secure form (HTML fields + submit)** | **08, 09** | **[EX-01](examples/EX-01-secure-form-complete.md)**, [EX-02](examples/EX-02-secure-form-edit-api.md) |
 | AJAX without a form (`load` only) | **08, 09** | [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 |
 | Encrypt IDs / unique `$key2` | **11 §8, 05, 08** | [EX-02](examples/EX-02-secure-form-edit-api.md), [EX-14](examples/EX-14-auth-and-2fa.md) |

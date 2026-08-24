@@ -14,6 +14,101 @@
 
 **MUST:** `$qb->raw()` treats **every** `?` as a placeholder, including SQL comments and `COMMENT 'SMS?'`. **MUST NOT** put `?` in CREATE/ALTER strings unless it is a real binding. Canonical: [06-DATABASE.md](06-DATABASE.md) “Raw SQL”.
 
+**MUST (older MySQL):** installer DDL is **probe-then-CREATE/ALTER**. **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, or `CREATE INDEX IF NOT EXISTS`. Older MySQL rejects those `IF NOT EXISTS` forms; MariaDB-only column syntax must not ship. Canonical: [this file §0](#0-mysql-safe-installer-ddl-must--law), [00](00-AGENT-CONTRACT.md) §5 item 24.
+
+---
+
+## 0. MySQL-safe installer DDL (MUST — law)
+
+Idempotency is a **PHP probe**, not an `IF NOT EXISTS` clause. `SHOW TABLES LIKE` / `information_schema` first, then `CREATE TABLE` / `ALTER TABLE` only when the object is missing. Copy that **shape** into **your** `Installation.php`.
+
+| Object | Probe (MUST) | Then |
+|--------|----------------|------|
+| Table | `SHOW TABLES LIKE 'shop_items'` after identifier whitelist `[A-Za-z0-9_]+` | `CREATE TABLE \`shop_items\` (...)` — **no** `IF NOT EXISTS` |
+| Column | `information_schema.COLUMNS` scoped to `DATABASE()`, bound `TABLE_NAME` + `COLUMN_NAME` | `ALTER TABLE ... ADD COLUMN ...` — **no** `IF NOT EXISTS` (`ADD COLUMN IF NOT EXISTS` is MariaDB-only) |
+| Index | `information_schema.STATISTICS` scoped to `DATABASE()`, bound names | `ALTER TABLE ... ADD KEY ...` — **no** `IF NOT EXISTS` (`ADD INDEX IF NOT EXISTS` is not portable) |
+
+**MUST NOT** in installer / store `ensureTable` SQL:
+
+- `CREATE TABLE IF NOT EXISTS`
+- `ADD COLUMN IF NOT EXISTS`
+- `ADD INDEX IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`
+
+**Allowed:** `DROP TABLE IF EXISTS` on uninstall (widely supported). SchemaBuilder `$qb->createTableIfNotExist()` is allowed — it already probes `tableExists()` and emits `CREATE TABLE` **without** `IF NOT EXISTS`.
+
+**MUST:** helpers live in **your** module. Table/column/index names are whitelist-only (`/^[A-Za-z0-9_]+$/`); refuse anything else. Catch-bus every probe/`execute` failure ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9).
+
+```php
+private static function mysqlTableExists(string $table): bool
+{
+    // About: SHOW TABLES LIKE — older MySQL has no reliable CREATE TABLE IF NOT EXISTS.
+    // Why: whitelist so a crafted name cannot change the SQL shape.
+    if (preg_match('/^[A-Za-z0-9_]+$/', $table) !== 1) {
+        return false;
+    }
+    $rows = [];
+    $ok = false;
+    DB::module('RAW')->q(function ($qb) use ($table) {
+        $qb->raw('SHOW TABLES LIKE \'' . $table . '\'', []);
+    })->execute(
+        function ($result) use (&$ok, &$rows) {
+            $ok = true;
+            $rows = is_array($result) ? $result : [];
+        },
+        function ($error) use (&$ok) {
+            Logger::use()->error('SHOW TABLES', $error);
+            $ok = false;
+        }
+    );
+    return $ok === true && $rows !== [];
+}
+
+private static function mysqlColumnExists(string $table, string $column): bool
+{
+    // About: information_schema probe with bindings — TABLE_SCHEMA = this database only.
+    if (preg_match('/^[A-Za-z0-9_]+$/', $table) !== 1 || preg_match('/^[A-Za-z0-9_]+$/', $column) !== 1) {
+        return false;
+    }
+    $rows = DB::module('RAW')->q(function ($qb) use ($table, $column) {
+        $qb->raw(
+            'SELECT 1 AS ok FROM information_schema.COLUMNS'
+            . ' WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$table, $column]
+        );
+    })->all();
+    return $rows !== [];
+}
+```
+
+Create only when missing:
+
+```php
+if (self::mysqlTableExists('shop_items') !== true) {
+    $ok = false;
+    DB::module('RAW')->q(function ($qb) {
+        $qb->raw(
+            'CREATE TABLE `shop_items` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `title` VARCHAR(200) NOT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+            []
+        );
+    })->execute(
+        function () use (&$ok) { $ok = true; },
+        function ($error) use (&$ok) {
+            Logger::use()->error('CREATE shop_items', $error);
+            $ok = false;
+        }
+    );
+    if ($ok !== true) {
+        throw new \RuntimeException('Shop installation failed.');
+    }
+}
+```
+
+Sample: [EX-13](examples/EX-13-schema-migrations.md).
+
 ---
 
 ## 1. Versioned `Installation.php` (DACore-free)
@@ -34,34 +129,54 @@ class Installation extends Installer
             '1.0.0' => function () {
                 if (self::alreadyDone('1.0.0')) { return; }
 
-                DB::module('RAW')->q(function ($qb) {
-                    $qb->raw(
-                        "CREATE TABLE IF NOT EXISTS `shop_items` (
-                            `id` INT NOT NULL AUTO_INCREMENT,
-                            `title` VARCHAR(200) NOT NULL,
-                            `active` TINYINT(1) NOT NULL DEFAULT 1,
-                            `created_at` DATETIME NOT NULL,
-                            PRIMARY KEY (`id`),
-                            KEY `active_idx` (`active`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-                        []
+                // Why: probe first — older MySQL errors on CREATE TABLE IF NOT EXISTS ([§0](#0-mysql-safe-installer-ddl-must--law)).
+                if (self::mysqlTableExists('shop_items') !== true) {
+                    $ok = false;
+                    DB::module('RAW')->q(function ($qb) {
+                        $qb->raw(
+                            "CREATE TABLE `shop_items` (
+                                `id` INT NOT NULL AUTO_INCREMENT,
+                                `title` VARCHAR(200) NOT NULL,
+                                `active` TINYINT(1) NOT NULL DEFAULT 1,
+                                `created_at` DATETIME NOT NULL,
+                                PRIMARY KEY (`id`),
+                                KEY `active_idx` (`active`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+                            []
+                        );
+                    })->execute(
+                        function () use (&$ok) { $ok = true; },
+                        function ($error) use (&$ok) {
+                            Logger::use()->error('Shop 1.0.0 failed', $error);
+                            $ok = false;
+                        }
                     );
-                })->execute(
-                    function () { self::markDone('1.0.0'); },
-                    function ($error) {
-                        Logger::use()->error('Shop 1.0.0 failed', $error);
+                    if ($ok !== true) {
+                        return;
                     }
-                );
+                }
+                self::markDone('1.0.0');
             },
 
             '1.0.1' => function () {
                 if (self::alreadyDone('1.0.1')) { return; }
-                DB::module('RAW')->q(function ($qb) {
-                    $qb->raw("ALTER TABLE `shop_items` ADD `price` DECIMAL(10,2) NOT NULL DEFAULT 0", []);
-                })->execute(
-                    function () { self::markDone('1.0.1'); },
-                    function ($error) { Logger::use()->error('Shop 1.0.1 failed', $error); }
-                );
+                // Why: ADD COLUMN IF NOT EXISTS is MariaDB-only — probe information_schema first.
+                if (self::mysqlColumnExists('shop_items', 'price') !== true) {
+                    $ok = false;
+                    DB::module('RAW')->q(function ($qb) {
+                        $qb->raw("ALTER TABLE `shop_items` ADD `price` DECIMAL(10,2) NOT NULL DEFAULT 0", []);
+                    })->execute(
+                        function () use (&$ok) { $ok = true; },
+                        function ($error) use (&$ok) {
+                            Logger::use()->error('Shop 1.0.1 failed', $error);
+                            $ok = false;
+                        }
+                    );
+                    if ($ok !== true) {
+                        return;
+                    }
+                }
+                self::markDone('1.0.1');
             },
         ];
     }
@@ -77,12 +192,17 @@ class Installation extends Installer
     }
 
     // ---- module-owned idempotency (no DACore dependency) ----
+    // Copy mysqlTableExists / mysqlColumnExists from §0 into this class.
 
     private static function ensureTable(): void
     {
+        // Why: same probe-then-CREATE as product tables — no CREATE TABLE IF NOT EXISTS.
+        if (self::mysqlTableExists('shop_installations') === true) {
+            return;
+        }
         DB::module('RAW')->q(function ($qb) {
             $qb->raw(
-                "CREATE TABLE IF NOT EXISTS `shop_installations` (
+                "CREATE TABLE `shop_installations` (
                     `id` INT NOT NULL AUTO_INCREMENT,
                     `installation_id` VARCHAR(100) NOT NULL,
                     `installed_at` DATETIME NOT NULL,
@@ -156,6 +276,7 @@ Rename-Item -Path .\installed_*_install.php -NewName install.php
 ```php
 DB::module('RAW')->schema(
     function ($qb) {
+        // Why: createTableIfNotExist probes tableExists() then emits CREATE TABLE without IF NOT EXISTS.
         $qb->createTableIfNotExist('shop_tags', function ($t) {
             $t->id();                                  // BIGINT AUTO_INCREMENT PK
             $t->string('name', 100)->nullable(false);
@@ -198,7 +319,8 @@ DB::module('RAW')->schema(
 
 ```php
 $sb = DB::schemaBuilder();
-if (!$sb->tableExists('shop_items')) { /* create */ }
+// Why: raw installer SQL still MUST probe with SHOW TABLES LIKE ([§0](#0-mysql-safe-installer-ddl-must--law)).
+if (!$sb->tableExists('shop_items')) { /* create — CREATE TABLE, not CREATE TABLE IF NOT EXISTS */ }
 $sb->columnExists('shop_items', 'price');
 $sb->indexExists('shop_items', 'active_idx');
 $sb->foreignKeyExists('shop_items', 'fk_shop_cat');

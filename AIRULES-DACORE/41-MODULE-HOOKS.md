@@ -202,7 +202,7 @@ That file is the catalog of events DACore already fires (`Fired` = `module.dacor
 
 **MUST NOT** invent `module.dacore.*` names from your module. **MUST NOT** skip a listed event because you did not open the file. **MUST NOT** edit `app/modules/DACore/` to “add a call”.
 
-1. **Read** `app/modules/<Other>/.hooks` (and grep `Events::trigger` there if the file is thin). For a DACore-bound module, **Other** is **DACore first** (`app/modules/DACore/.hooks`), then any other owner you actually subscribe to.
+1. **Read** `app/modules/<Other>/.hooks` (and grep `Events::trigger` there if the file is thin). For a DACore-bound module, **Other** is **DACore first** (`app/modules/DACore/.hooks`), then any other owner the user **named** as the subscribe/extend target — not a tour of `app/modules/*/.hooks`. Reading that owner’s `.hooks` is **not** a license to copy their views or CSS ([00](00-AGENT-CONTRACT.md) §1b).
 2. Register in **your** `module.listeners.php` — register **only**, no query/HTTP on include ([03](03-MODULES-AND-ROUTING.md)).
 3. Keep `initializeRoutes()` on **your** prefixes — **MUST NOT** `['*']` just to hear events ([03](03-MODULES-AND-ROUTING.md) sleep law). Loaded modules still receive global events.
 4. Listener body: cheap; own `try/catch` + your catch-bus helper; **MUST NOT** push a DACore inbox notification on every fire ([37](37-DACORE-NOTIFICATIONS.md)).

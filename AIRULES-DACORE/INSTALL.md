@@ -53,6 +53,10 @@ Alternative: keep AIRULES outside the project and tell the agent the absolute pa
 
 ## Step 2 — Wire Cursor rules
 
+**Source of truth is `AIRULES/cursor/`.** `.cursor/rules/` is a Cursor runtime **mirror**. Copying only `AIRULES/` into another project is the supported move. Compact laws **MUST** live under `AIRULES/cursor/rules/`. A `.mdc` that exists only under `.cursor/` is **lost** on the next copy — that is a bug ([00](00-AGENT-CONTRACT.md) §2l).
+
+**Agent (MUST):** if `.cursor/rules/` is missing files from `AIRULES/cursor/rules/`, or after any AIRULES cursor-rule change, the agent **MUST** create the folder and copy the mirror itself. Do not wait for the user to run this by hand.
+
 ### Option A — Recommended (`.cursor/rules/*.mdc`)
 
 From the project root:
@@ -63,30 +67,7 @@ Copy-Item -Force "AIRULES\cursor\rules\*.mdc" ".cursor\rules\"
 Copy-Item -Force "AIRULES\cursor\AGENTS.md" "AGENTS.md"
 ```
 
-Result:
-
-```
-your-project/
-  AGENTS.md
-  .cursor/rules/
-    00-dotapp-core-laws.mdc      (alwaysApply: true)
-    01-dotapp-modules-php.mdc
-    02-dotapp-views.mdc
-    03-dotapp-database.mdc
-    04-dotapp-frontend.mdc
-    05-dotapp-config.mdc
-    06-dotapp-dotapper.mdc
-    07-dotapp-error-handling.mdc
-    08-dacore.mdc
-    09-dotapp-debug.mdc          (alwaysApply: true)
-    10-dotapp-finish-gate.mdc    (alwaysApply: true — LAW after every chunk)
-    11-dacore-email.mdc          (on demand — sending mail)
-    12-dacore-sms.mdc            (on demand — sending SMS)
-    13-dacore-list-pager.mdc     (alwaysApply: true — pager HTML / live(el, e) / COUNT)
-    14-module-hooks.mdc          (alwaysApply: true — Events::trigger + .hooks)
-  AIRULES/
-    ...
-```
+Result: project-root `AGENTS.md` plus `.cursor/rules/` containing **every** `AIRULES/cursor/rules/*.mdc` (numbered `00`–`15` and the named law files: layout, choice controls, pack zip, read scope, MySQL DDL, Renderer, step-up 2FA). **MUST NOT** invent extra `.mdc` files only in `.cursor/`.
 
 ### Option B — Older tooling that only reads `.cursorrules`
 
@@ -136,17 +117,19 @@ Expected answers:
 
 | Tool | How to load AIRULES |
 |------|---------------------|
-| Cursor | `.cursor/rules/*.mdc` + `AGENTS.md` (this guide) |
+| Cursor | Mirror of `AIRULES/cursor/rules/*.mdc` + `AGENTS.md` (agent **MUST** copy — [00](00-AGENT-CONTRACT.md) §2l) |
 | Continue / Copilot Chat | Point system prompt at `AIRULES/00-AGENT-CONTRACT.md` and `@`-mention relevant docs |
 | Claude Projects / Custom GPT | Upload or paste `00`–`17` markdown files |
 | CI review bots | Include `AIRULES/17-CHECKLISTS.md` in the review prompt |
 
 ## Updating AIRULES
 
-Replace the folder contents from the upstream AIRULES distribution. Prefer `.cursor/rules/*.mdc` over any leftover `.cursorrules`.
+Replace the **`AIRULES/`** folder from the upstream distribution. Then the agent (or you) **MUST** re-copy `AIRULES/cursor/rules/*.mdc` → `.cursor/rules/` and `AIRULES/cursor/AGENTS.md` → `AGENTS.md`. Prefer that mirror over any leftover `.cursorrules`. **MUST NOT** keep a newer law only under `.cursor/`.
 
 ## What NOT to do
 
 - Do not copy AIRULES into `app/parts/` or `app/modules/`.
 - Do not edit files under `Cisty framework` / example modules when authoring rules in a docs workspace.
 - Do not delete `AIRULES/` after wiring `.mdc` files — the compact rules **point** at the deep docs.
+- Do not author a new `.mdc` only under `.cursor/rules/` — write `AIRULES/cursor/rules/` first, then copy.
+- Do not leave a leftover `.mdc` in `.cursor/rules/` that has no twin in `AIRULES/cursor/rules/`.

@@ -55,7 +55,11 @@ Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
 
 ## Schema
 
-Use versioned `Installation.php` + module-owned installations table. Do **not** call `DB::migrate()`. Do **not** require DACore unless asked. `$qb->raw()`: **every** `?` is a placeholder, including comments — **MUST NOT** write `SMS?` in `COMMENT`. See `AIRULES/06-DATABASE.md`.
+Use versioned `Installation.php` + module-owned installations table. Do **not** call `DB::migrate()`. Do **not** require DACore unless asked. **MUST** probe then `CREATE TABLE` / `ALTER TABLE` — **MUST NOT** `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` (`AIRULES/07` §0). `$qb->raw()`: **every** `?` is a placeholder, including comments — **MUST NOT** write `SMS?` in `COMMENT`. See `AIRULES/06-DATABASE.md`.
+
+## HTML via Renderer (LAW)
+
+When markup **can** be a template, it **MUST** be. **MUST NOT** `$html .= '<table'` / `listHtml()` factories in Controllers/Libraries. PHP markup **only** for a named one-piece exception (`// Why:`). `AIRULES/00` §2j, `AIRULES/05` §1c.
 
 ## Generate via CLI
 

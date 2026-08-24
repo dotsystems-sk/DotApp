@@ -316,6 +316,8 @@ $dotapp().live("click", ".js-shop-page", function (e) {
 
 SQL: `DB::module("RAW")->q(...)->paginate($perPage, $page)`. UI helper: [12](12-SERVICES.md) §7 (`Pagination::paginate` + your `render` callback as **buttons**, not `href`).
 
+**HTML (MUST — law):** row markup and pager **chrome** (summary + nav wrap) are layouts via `Renderer` ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1c, [00](00-AGENT-CONTRACT.md) §2j). PHP prepares pager vars. The only PHP markup in this contract is a pager item callback returning one button / `<li>`.
+
 Copy-paste: [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md), [examples/EX-04-database-crud.md](examples/EX-04-database-crud.md).
 
 ### Interactive AJAX search on lists (**MUST ASK** / often **MUST ship**)

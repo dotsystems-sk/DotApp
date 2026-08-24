@@ -179,7 +179,7 @@ $dotapp().live("click", ".shop-page", function (el, e) {
 });
 ```
 
-If the action can **seriously damage** the system (delete an admin, wipe data, grant `dotapp.root`), **MUST** step-up 2FA first (`$dotapp().twoFactor` + verify in your module). Operators cannot turn 2FA off. See [32](../32-DACORE-RIGHTS.md) §6.
+Operators cannot turn 2FA off. A **second** 2FA prompt: **ASK** in the plan (default **no**). If the user named an action (wipe, grant `dotapp.root`, install a package), use the [EX-D10](EX-D10-stepup-2fa-modal.md) modal + `$dotapp().twoFactor` `{ autoSubmit: true }` and verify in your module. See [32](../32-DACORE-RIGHTS.md) §6.
 
 Every **delete** **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin — never `alert()` / `window.confirm()`). Then `load()`. See [09](../09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
@@ -215,4 +215,4 @@ return static::call(
 );
 ```
 
-`$menuId` chooses the tree. `$currentFile` chooses the **active** leaf when this URL is not that leaf and not a longer path under it. Do not register a menu row per edit URL. Pass a `menuid` as `$menuId` to show only that branch’s **direct children** plus a generated **Return back** leaf. Do not register Return back. **ASK** shared vs module-own before a new module.
+`$menuId` chooses the tree. `$currentFile` chooses the **active** leaf when this URL is not that leaf and not a longer path under it. Do not register a menu row per edit URL. Pass a `menuid` as `$menuId` to show only that branch’s **direct children** plus a generated **Return back** leaf. Do not register Return back. **ASK** shared nested vs module-own before a new module; **no answer → shared nested**.

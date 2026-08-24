@@ -7,6 +7,10 @@ You are working with the DOTAPP PHP FRAMEWORK — NOT Laravel, Symfony, CodeIgni
 
 Before any work: read AIRULES/00-AGENT-CONTRACT.md and the task-specific AIRULES doc.
 
+CURSOR RULES (LAW, 00 §2l): compact .mdc files live in AIRULES/cursor/rules/.
+.cursor/rules/ is a non-portable mirror. Agent MUST copy AIRULES/cursor/rules/*.mdc → .cursor/rules/
+and AIRULES/cursor/AGENTS.md → project-root AGENTS.md. MUST NOT invent a law only under .cursor/.
+
 ## EDIT BOUNDARIES
 ALLOWED:
 - app/config.php
@@ -40,6 +44,9 @@ Offer text-only/no custom branding; skip backend-only modules. Never invent or h
 Default PHP 7.4+. When planning programming, ASK: stay on 7.4+ (DotApp default) or write for a higher version.
 No answer → 7.4+. MUST NOT ship match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they named a higher version. AIRULES/00 §2i.
 
+## PLANNING DEPTH (LAW)
+New module / first surface / rewrite: plan MUST inventory every nav item (or No menu), every page, every tab, every control (what it does, default, persist). A long plan is correct. AIRULES/00 §2k, AIRULES/45.
+
 ## CONTROLLERS / ROUTES
 - public static methods extending \Dotsystems\App\Parts\Controller
 - Route strings: Module:Controller@method!
@@ -51,7 +58,7 @@ No answer → 7.4+. MUST NOT ship match / ?-> / union mixed / named args / promo
 DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute($ok,$err)
 $err branch and every catch MUST report dotapp.catch + dotapp.catch.error|info (AIRULES/18 §9)
 Bindings: ? OR :named — never mix. No DB::table, Eloquent, getConnection, selectRaw, chain find().
-Schema: Installation.php — not DB::migrate().
+Schema: Installation.php — not DB::migrate(). Probe SHOW TABLES LIKE / information_schema then CREATE/ALTER. MUST NOT CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS / ADD INDEX IF NOT EXISTS (AIRULES/07 §0). $qb->createTableIfNotExist() is OK.
 
 ## TEMPLATES (NOT BLADE)
 CORRECT:
@@ -69,6 +76,7 @@ WRONG:
   {{ include }} in PHP templates (JS-only)
 
 renderView → setViewVar; renderLayout → setLayoutVar.
+HTML via Renderer (LAW, AIRULES/00 §2j / 05 §1c): pages/tables/grids/empty/pager/tree/crumbs MUST be .view.php / .layout.php. MUST NOT $html .= '<table' factories. PHP markup ONLY for a named one-piece exception (// Why:).
 
 ## FORMS / SECURITY (PREFERRED PATH — USE BY DEFAULT)
 - Tag is <fo-rm> (NOT f-form). Prefer over plain <form> + CSRF alone.
@@ -118,6 +126,13 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
 - PHP 7.4+ (AIRULES/00 §2i): unless the plan named a higher version, fail on match / ?-> /
   str_contains / str_starts_with / str_ends_with / union mixed / named args / promotion /
   attributes / enum / readonly / never / first-class callables
+- MySQL-safe DDL (AIRULES/07 §0, AIRULES/00 §5 item 24): probe SHOW TABLES LIKE /
+  information_schema then CREATE/ALTER. MUST NOT CREATE TABLE IF NOT EXISTS /
+  ADD COLUMN IF NOT EXISTS / ADD INDEX IF NOT EXISTS. createTableIfNotExist() is OK
+- HTML via Renderer (AIRULES/00 §2j, AIRULES/05 §1c): grep Controllers/Libraries for
+  $html .= / '<table' / '<tr' / '<div class=' / *Html( factories. PHP markup only
+  for a named one-piece exception — never a table, grid, tree, empty state, crumbs,
+  or pager wrapper
 - Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
   (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
   then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);

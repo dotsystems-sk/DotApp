@@ -7,6 +7,10 @@ You are working with the DOTAPP PHP FRAMEWORK — NOT Laravel, Symfony, CodeIgni
 
 Before any work: read AIRULES/00-AGENT-CONTRACT.md and the task-specific AIRULES doc.
 
+CURSOR RULES (LAW, 00 §2l): compact .mdc files live in AIRULES/cursor/rules/.
+.cursor/rules/ is a non-portable mirror. Agent MUST copy AIRULES/cursor/rules/*.mdc → .cursor/rules/
+and AIRULES/cursor/AGENTS.md → project-root AGENTS.md. MUST NOT invent a law only under .cursor/.
+
 ## EDIT BOUNDARIES
 ALLOWED:
 - app/config.php
@@ -42,6 +46,9 @@ Sidebar Remix icon is separate. No external URL/SVG/tracker and NEVER patch app/
 ## PHP VERSION (ASK IN PLAN)
 Default PHP 7.4+. When planning programming, ASK: stay on 7.4+ (DotApp default) or write for a higher version.
 No answer → 7.4+. MUST NOT ship match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they named a higher version. AIRULES/00 §2i.
+
+## PLANNING DEPTH (LAW)
+New module / first surface / rewrite: plan MUST inventory every DACore Menu@register row (or No menu), every page, every tab, every control (what it does, default, persist). A long plan is correct. AIRULES/00 §2k, AIRULES/45.
 
 ## CONTROLLERS / ROUTES
 - public static methods extending \Dotsystems\App\Parts\Controller

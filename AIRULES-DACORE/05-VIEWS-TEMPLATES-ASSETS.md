@@ -76,6 +76,52 @@ $page = str_replace('<!--NAV-->', $nav, $page);
 
 `{{ layout:partials/header }}` is a **plain include** (no closer). It is not wrapping and it is not `{{ content }}`.
 
+**MUST:** the string you inject in C is itself `renderLayout()` / `renderView()` output. **MUST NOT** build that string by concatenating tags in PHP ([§1c](#1c-html-via-renderer-must--law)).
+
+---
+
+## 1c. HTML via Renderer (MUST — law)
+
+When the markup **can** be a template, it **MUST** be a template. PHP prepares data (escaped scalars, `0`/`1` flags, lists). `Renderer` produces HTML. This is a **law** ([00](00-AGENT-CONTRACT.md) §2j), not a preference.
+
+**MUST live in** `views/*.view.php` / `views/layouts/*.layout.php`:
+
+- pages and admin fragments (`$body` for `Page@withMenu!`)
+- tables, icon grids, trees, crumbs
+- empty states
+- pager **chrome** (summary + nav wrap)
+- AJAX row / list patches (`html` / `live`)
+
+**MUST produce them with** `Renderer::new()->module('Shop')->setLayout('…', '…fallback')->setLayoutVar(…)->renderLayout()` (or `setView` + `renderView()`). The same layout is the first paint and the AJAX patch (DACore `fragment('_users_rows')` pattern).
+
+**MUST NOT** concatenate a screen or fragment in Controllers / Libraries:
+
+```php
+// WRONG — HTML factory. Fail the finish gate.
+$html = '<table class="table">';
+foreach ($items as $item) {
+    $html .= '<tr><td>' . Html::e($item['name']) . '</td></tr>';
+}
+return $html;
+```
+
+```php
+// RIGHT — data in PHP, markup in the layout
+$chunk = Renderer::new()->module('Shop')
+    ->setLayout('admin/_items_rows', 'admin/empty')
+    ->setLayoutVar('items', $items)
+    ->setLayoutVar('hasItems', $items !== [] ? 1 : 0)
+    ->renderLayout();
+```
+
+**Exception — only when a template cannot do that one piece, and only that piece:**
+
+1. `// Why:` names the real problem (Renderer sandbox would drop a callable key — [§5](#5-render-pipeline-order-matters); `DACore:Page@paginate!` item callback returning `<li>`; one tiny escaped chip such as a status badge printed via `{{ var: $statusHtml }}`).
+2. That exception is **not** a table, grid, tree, empty state, crumbs bar, or pager wrapper.
+3. Convenience, “it is shorter”, an existing `listHtml()` helper, or “the JSON already has html” is **not** an exception.
+
+A missing layout returns `""` silently — always pass the fallback argument and check ([§2](#2-missing-files-fail-silently--this-is-critical)).
+
 ---
 
 ## 2. Missing files fail SILENTLY — this is critical
@@ -300,8 +346,8 @@ $row->set('sort', 'name')          // PrivateBlock::set — same drop
 
 **MUST** instead:
 
-1. Prefix keys the template never sees as a bare PHP name: `elapsed`, `feat_time`, `show_date`.
-2. Or build the markup in PHP, escape text with `htmlspecialchars(..., ENT_QUOTES, 'UTF-8')`, and pass **one HTML string** (`featuresHtml`, DACore’s `nameHtml` pattern). A long HTML string is not callable; `{{ var: $featuresHtml }}` is raw echo.
+1. Prefix keys the template never sees as a bare PHP name: `elapsed`, `feat_time`, `show_date`. **This is the default.**
+2. **Exception only** ([§1c](#1c-html-via-renderer-must--law)): if prefixing still cannot ship the bag, pass **one short** escaped chip (`nameHtml`), not a table/list factory. `{{ var: $nameHtml }}` is raw echo. **MUST** `// Why:` the sandbox drop. A long `$html .= '<table'` string is still a **bug**.
 3. Keep flags as `0`/`1` integers in their own vars (`hasFeatures`), not inside an array that also holds `'time'`.
 
 ```php
@@ -432,6 +478,10 @@ General UX/UI principles **MUST** be followed **at all costs**. A screen that po
 
 **MUST NOT:** ship a primary Save flush against the bottom of a card; zero the footer padding on one side and forget the other; invent a one-off margin that fights the parent’s flex/`h-100` layout.
 
+## 8d. Plan the UI before code (**MUST** — first surfaces)
+
+A **new module**, a **first** major operator workspace, or a **rewrite** **MUST** specify desktop and mobile layout, hierarchy, empty/error states, toolbar, and spacing in the **plan** — **and** inventory every page, tab, and control (what it does, default, persist). Not “we will polish in the diff.” Canonical: [45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k, [33](33-DACORE-PAGES-AND-UI.md).
+
 ---
 
 ## 9. Translations
@@ -468,6 +518,7 @@ Files: `app/modules/{Module}/translations/{locale}.json`. Keys are the source te
 | `{{ endif }}` / `{{ endforeach }}` | `{{ /if }}` / `{{ /foreach }}` |
 | `@include('x')` | `{{ layout:x }}` |
 | `@extends` / `@section` / `@yield` / layout-as-outer-shell | VIEW = outer file; LAYOUT fills `{{ content }}` — or `renderLayout()` / inject a string (§1b) |
+| `$html .= '<table'` / `listHtml()` in a Library | `Renderer` + layout; PHP markup **only** for a named one-piece exception (§1c) |
 | `{{ $x ?? 'd' }}` | prepare in the controller |
 | `@csrf` | `{{ CSRF }}` / `{{ formName(...) }}` |
 | `{{ __('k') }}` | `{{_ "Source text" }}` |

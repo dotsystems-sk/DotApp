@@ -55,7 +55,7 @@ Counting: `select('COUNT(*) as total')` + `all()`, or `paginate()['total']`, or 
 
 ## Schema
 
-`Installation.php` + SchemaBuilder (`createTableIfNotExist`). **No `timestamps()`** helper. DDL throws — wrap in `try/catch`. `$qb->raw()` counts **every** `?` (including comments / `COMMENT 'SMS?'`) — **MUST NOT** put `?` unless it is a real binding. Keep `Config::db('cache')` **off** (breaks `Entity::save()`).
+`Installation.php` + SchemaBuilder (`createTableIfNotExist`). **No `timestamps()`** helper. Raw installer SQL **MUST** probe (`SHOW TABLES LIKE` / `information_schema`) then `CREATE`/`ALTER` — **MUST NOT** `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` (`AIRULES/07` §0). DDL throws — wrap in `try/catch`. `$qb->raw()` counts **every** `?` (including comments / `COMMENT 'SMS?'`) — **MUST NOT** put `?` unless it is a real binding. Keep `Config::db('cache')` **off** (breaks `Entity::save()`).
 
 ## Models / ORM
 

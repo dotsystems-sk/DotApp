@@ -133,13 +133,13 @@ Note the capitalisation: the cache context is `DAcore`, while the config namespa
 
 ## 12. `Installations@exist!` cannot distinguish "missing" from "DB error"
 
-It returns `false` in both cases, so a transient DB failure makes your migration run again. Keep migrations idempotent (`CREATE TABLE IF NOT EXISTS`, `IF NOT EXISTS` guards, upsert APIs).
+It returns `false` in both cases, so a transient DB failure makes your migration run again. Keep migrations idempotent: **probe** (`SHOW TABLES LIKE` / `information_schema`) then `CREATE`/`ALTER` without `IF NOT EXISTS`, plus upsert APIs. **MUST NOT** `CREATE TABLE IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0).
 
 ---
 
 ## 13. `Menu@getItems($menuId)` is one level when `$menuId !== ''`
 
-Full menu (`''`) loads every `dacore_menu` row and builds the tree. A branch id selects only `menuid = X OR parent = X`, then appends **Return back**. Grandchildren of those rows are **not** loaded, so `type => 2` groups under a module-own `$menuId` will not show their leaves. Inner items **MUST** be direct children of the branch id. See [31](31-DACORE-MENU.md).
+Full menu (`''`) loads every `dacore_menu` row and builds the tree. **Default for new modules is this full tree** with nested `0` → `2` → `1`. A branch id selects only `menuid = X OR parent = X`, then appends **Return back**. Grandchildren of those rows are **not** loaded, so `type => 2` groups under a module-own `$menuId` will not show their leaves. Inner items **MUST** be direct children of the branch id. Use a branch `$menuId` **only** when the user explicitly chose module-own. See [31](31-DACORE-MENU.md).
 
 ---
 
@@ -152,6 +152,16 @@ Full menu (`''`) loads every `dacore_menu` row and builds the tree. A branch id 
 `QueryObject::paginate()['total']` is often 0 (COUNT through `execute()`). Then the UI shows “1–10 of 10” and `last_page = 1`. **MUST** `COUNT(*)` via `all()`.
 
 Law: [40](40-DACORE-LIST-PAGER.md).
+
+---
+
+## 15. Plugin zip: “Installation.php has no version keys” / package version `0.0.0`
+
+DACore does **not** include or execute `Installation.php` when it validates a plugin zip. It **greps the file as text** for quoted semver keys (`'1.0.0' =>` / `"1.0.0" =>`). `self::VERSION =>`, `static::…`, class constants, and other expressions are valid PHP and run on the server, but the scanner sees **zero** keys → reject, package version `0.0.0`.
+
+**Fix:** write every `installer()` / `uninstaller()` key as quoted text in the source (`'1.0.0' =>`). Keep `self::VERSION` **only inside** `Installations@exist!` / `@insert!`. **MUST NOT** use `self` or any similar expression as the **array key**. Rebuild the zip with the handbook packer ([EX-D09](examples/EX-D09-dacore-pack-zip.md)) — copy the `.txt` to `dacore-pack-zip.php`, run it, delete the `.php`. **MUST NOT** invent a new packer.
+
+Law: [35](35-DACORE-INSTALL.md) §2, [00](00-AGENT-CONTRACT.md) §5 item 27.
 
 ---
 

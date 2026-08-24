@@ -1,6 +1,6 @@
 # EX-14 — Auth, permissions, 2FA
 
-Rules: [11](../11-AUTH-AND-CRYPTO.md), [19](../19-VALIDATION-AND-INPUT.md) (`data(true)` = original). Origin-scoped module identity: [42](../42-DACORE-USER-ORIGIN.md). Operator step-up: [32](../32-DACORE-RIGHTS.md) §6.
+Rules: [11](../11-AUTH-AND-CRYPTO.md), [19](../19-VALIDATION-AND-INPUT.md) (`data(true)` = original). Origin-scoped module identity: [42](../42-DACORE-USER-ORIGIN.md). Operator step-up (**ASK**, default no): [32](../32-DACORE-RIGHTS.md) §6, [EX-D10](EX-D10-stepup-2fa-modal.md).
 
 **MUST** take the password from `$request->data(true)['data']`. `$request->data()` is `protect()`-escaped — `)`, `=`, `%` become a **different** password. **MUST** show `reply.message` on every failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`, error codes). Silent 400 is incomplete.
 
@@ -227,7 +227,7 @@ return ['status' => 1, 'redirectTo' => '/shop/'];
 
 ### 2FA input UX (**MUST** — `$dotapp().twoFactor`)
 
-Do **not** invent digit boxes. `dotapp.js` already has them ([09](../09-DOTAPP-JS-AND-BRIDGE.md) §3).
+Do **not** invent digit boxes. `dotapp.js` already has them ([09](../09-DOTAPP-JS-AND-BRIDGE.md) §3). This block is **login**. A second prompt after login is a different chrome — only if the plan named it: [EX-D10](EX-D10-stepup-2fa-modal.md).
 
 ```html
 <div class="two-fa-inputs">

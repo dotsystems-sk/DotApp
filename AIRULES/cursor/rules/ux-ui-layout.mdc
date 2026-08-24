@@ -1,0 +1,23 @@
+---
+description: UX/UI layout law — padding and placement of buttons vs the parent
+alwaysApply: true
+---
+
+# Layout and UX/UI (law)
+
+General UX/UI principles **MUST** be followed **at all costs**. A control that works but looks unfinished is a **bug**.
+
+Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8c.
+
+## When adding a button
+
+1. Check **padding on all sides**, especially **below**. It **MUST NOT** sit flush against the parent (card, footer, modal, page).
+2. Place it **deliberately vs the parent**: centered or the same rhythm as sibling cards — not shoved left.
+3. If you zero one side (`pt-0`, `border-0`), **compensate** the other (`pb-4` or CSS `padding-bottom`).
+4. Desktop **and** mobile: touch target, wrap, no overflow.
+
+## Fail now
+
+- Save/primary glued to the card or page edge
+- Uncentered or cramped vs sibling footers
+- Claiming done from the PHP handler without reading the HTML/CSS chrome

@@ -84,7 +84,7 @@ Skip a pager **only** when the set is **closed by product design** and will neve
 
 The pager in the browser is **interactive AJAX** — [40](40-DACORE-LIST-PAGER.md). **MUST NOT** reload with `<a href="?page=2">` / `location.reload()` / `history.replaceState` of query params. A reload pager counts as missing.
 
-**MUST (search):** lookup lists (articles, products, catalog, …) **MUST** ship **interactive AJAX search** (SQL `LIKE` + `paginate()`, debounce, from 3 characters) unless the user declined. Other lists: **ASK** in the plan. **MUST NOT** `->all()` and filter in JS. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Interactive AJAX search”.
+**MUST (growing result-list search):** article/product/catalog/customer/order result lists use interactive AJAX search (SQL `LIKE` + `paginate()`, debounce, from 3 characters) unless declined. Other result lists: **ASK**. **MUST NOT** `->all()` and filter in JS. This does **not** require a custom typeahead for a bounded form choice: use `<select>` / existing `dotSelect2`; large remote pickers use AJAX `dotSelect2` with initial results + server paging/search. [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 
 ### Cheap queries / I/O (**MUST**)
 

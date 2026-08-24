@@ -70,7 +70,53 @@ $page = Renderer::new()->module('Shop')
 $page = str_replace('<!--NAV-->', $nav, $page);
 ```
 
+**MUST:** the string you inject in C is itself `renderLayout()` / `renderView()` output. **MUST NOT** build that string by concatenating tags in PHP ([§1c](#1c-html-via-renderer-must--law)).
+
 `{{ layout:partials/header }}` is a **plain include** (no closer). It is not wrapping and it is not `{{ content }}`.
+
+---
+
+## 1c. HTML via Renderer (MUST — law)
+
+When the markup **can** be a template, it **MUST** be a template. PHP prepares data (escaped scalars, `0`/`1` flags, lists). `Renderer` produces HTML. This is a **law** ([00](00-AGENT-CONTRACT.md) §2j), not a preference.
+
+**MUST live in** `views/*.view.php` / `views/layouts/*.layout.php`:
+
+- pages
+- tables, icon grids, trees, crumbs
+- empty states
+- pager **chrome** (summary + nav wrap)
+- AJAX row / list patches (`html`)
+
+**MUST produce them with** `Renderer::new()->module('Shop')->setLayout('…', '…fallback')->setLayoutVar(…)->renderLayout()` (or `setView` + `renderView()`). The same layout is the first paint and the AJAX patch.
+
+**MUST NOT** concatenate a screen or fragment in Controllers / Libraries:
+
+```php
+// WRONG — HTML factory. Fail the finish gate.
+$html = '<table class="table">';
+foreach ($items as $item) {
+    $html .= '<tr><td>' . htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8') . '</td></tr>';
+}
+return $html;
+```
+
+```php
+// RIGHT — data in PHP, markup in the layout
+$chunk = Renderer::new()->module('Shop')
+    ->setLayout('partials/_items_rows', 'partials/empty')
+    ->setLayoutVar('items', $items)
+    ->setLayoutVar('hasItems', $items !== [] ? 1 : 0)
+    ->renderLayout();
+```
+
+**Exception — only when a template cannot do that one piece, and only that piece:**
+
+1. `// Why:` names the real problem (Renderer sandbox would drop a callable key; a pager item callback returning one `<li>` / button; one tiny escaped chip such as a status badge printed via `{{ var: $statusHtml }}`).
+2. That exception is **not** a table, grid, tree, empty state, crumbs bar, or pager wrapper.
+3. Convenience, “it is shorter”, an existing `listHtml()` helper, or “the JSON already has html” is **not** an exception.
+
+A missing layout returns `""` silently — always pass the fallback argument and check ([§2](#2-missing-files-fail-silently--this-is-critical)).
 
 ---
 
@@ -363,6 +409,27 @@ Offer a sensible **no-custom-branding** option. A backend-only/library/migration
 
 For DACore-bound packages, the installer has a specific identity mechanism and planning question: [AIRULES-DACORE/35](../AIRULES-DACORE/35-DACORE-INSTALL.md) §3b. Do not invent that API in a framework-only module.
 
+## 8c. Layout, padding, and UX/UI (**MUST** — law)
+
+General UX/UI principles **MUST** be followed **at all costs**. A screen that posts correctly but looks cheap (flush buttons, cramped footers, leftover left-stack) is **not done**.
+
+**Every new or moved button / action cluster:**
+
+| Check | Fail if |
+|-------|---------|
+| Padding vs the **parent** (card, footer, modal, drawer) | Control glued to the edge — especially **no space below** a Save |
+| Alignment vs siblings | One card’s Save left-stacked, the next centered |
+| Rhythm | `pt-0` (or `border-0`) with **no** compensating `pb-*` / CSS `padding-bottom` |
+| Touch / wrap | Hover-only placement; overflow on a phone; hit target too small |
+
+**MUST:** look at the **parent padding box**; after adding a button, re-read the HTML/CSS. Do not claim done from the PHP handler alone.
+
+**MUST NOT:** ship a primary Save flush against the bottom of a card; zero footer padding on one side and forget the other.
+
+## 8d. Plan the UI before code (**MUST** — first surfaces)
+
+A **new module**, a **first** major workspace, or a **rewrite** **MUST** specify desktop and mobile layout, hierarchy, empty/error states, toolbar, and spacing in the **plan** — **and** inventory every nav item (or `No menu`), every page, every tab, and every control (what it does, default, persist). Not “we will polish in the diff.” A long plan is correct. Canonical: [45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k.
+
 ---
 
 ## 9. Translations
@@ -405,3 +472,4 @@ Files: `app/modules/{Module}/translations/{locale}.json`. Keys are the source te
 | `{{ include 'x' }}` | JS templates only |
 | assuming escaping | escape in PHP before passing |
 | assuming an exception on a missing view | you get `""` |
+| `$html .= '<table'` / `listHtml()` in a Library | `Renderer` + layout; PHP markup **only** for a named one-piece exception (§1c) |

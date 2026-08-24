@@ -238,7 +238,7 @@ Frontend checks (modal, overlay covering Save, disabled toggle, `$dotapp().twoFa
 
 **MUST NOT:** treat a JS overlay, hidden button, or skipped modal as authorization. Removing the overlay or posting the form from DevTools **MUST** still fail on the server. Values the client sent (price, quantity limit, owner, right, workflow step) are re-read from **your** DB — never trusted from the post, even encrypted ([24](24-ATTACK-VECTORS.md) §4).
 
-Applies to every save, toggle, delete, and settings write — not only 2FA. DACore operator 2FA / step-up: [32](32-DACORE-RIGHTS.md) §6.
+Applies to every save, toggle, delete, and settings write — not only 2FA. A second 2FA prompt is **ASK** in the plan (default **no**). When the user named it, chrome is [EX-D10](examples/EX-D10-stepup-2fa-modal.md). Law: [32](32-DACORE-RIGHTS.md) §6.
 
 ---
 
@@ -251,7 +251,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA. DACo
 5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. **MUST** show every outcome ([00](00-AGENT-CONTRACT.md) §2d). **DACore admin:** search DACore first, then Notiflix toast. **Public:** mark the wrong field. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; cover the list/form until `load()` ends (success **and** error). **DACore admin:** Notiflix (preferred) **or** your module overlay. **Public website:** **your module preloaders** — Notiflix is not there. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **MUST** confirm deletes in a graphical dialog — never `alert()` / `window.confirm()`. **DACore admin:** `Notiflix.Confirm` or `$dotapp().modal`. **Public website:** your module modal.
-8. **MUST** paginate accumulating lists on **first ship** ([40](40-DACORE-LIST-PAGER.md)). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()` / `replaceState`. Lookup lists **MUST** ship AJAX search unless declined; **ASK** on other lists. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+8. **MUST** paginate accumulating result lists on first ship ([40](40-DACORE-LIST-PAGER.md)); add server-backed list search as required. A bounded form choice is not a result list: use `<select>` or existing `dotSelect2`, never a bare text input/empty datalist that hides known options. Large remote choices use AJAX `dotSelect2` with initial results + server paging/search. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 9. **MUST** re-check in PHP on every persist. FE overlay/modal is UX only.
 10. **MUST** upload files with `$dotapp().uploadFile` — never `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers).
 

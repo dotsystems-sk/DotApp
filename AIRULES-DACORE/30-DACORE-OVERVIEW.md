@@ -26,12 +26,12 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | Push inbox notifications **on the event** | `DACore:Notifications@push` — not installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)) |
 | Sending mail from a module | Open [38](38-DACORE-EMAIL.md) — do not invent SMTP |
 | Sending SMS from a module | Open [39](39-DACORE-SMS.md) — do not invent a gateway |
-| **ASK menu layout** on a new DACore module | Shared full sidebar vs module-own (`withMenu` `$menuId`). Many items: group `type => 2` or header + one entry ([31](31-DACORE-MENU.md)) |
+| **ASK menu layout** on a new DACore module | Shared nested (`0` → `2` → `1`, `withMenu` `$menuId` `''`) vs module-own. **No answer → shared nested.** Module-own only if the user explicitly chose it ([31](31-DACORE-MENU.md)) |
 | **Active sidebar on subpages** | Edit/detail **MUST** pass `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). [31](31-DACORE-MENU.md) |
-| Pack `dainstall.php` + `init/` + **`about.php`** **only** for a **DACore-bound** module and only when asked | While coding: **`install.php`**. Zip **MUST** rename it to `dainstall.php` (DACore **rejects** `install.php` / never runs Installation without `dainstall.php`) + **`init/`** + **`about.php`**. Non-DACore: copy the folder. [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5. **MUST NOT** pack `app/modules/DACore/`. |
+| Pack `dainstall.php` + `init/` + **`about.php`** **only** for a **DACore-bound** module and only when asked | While coding: **`install.php`**. **MUST** pack with [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → run → delete). Zip **MUST** rename it to `dainstall.php` (DACore **rejects** `install.php` / never runs Installation without `dainstall.php`) + **`init/`** + **`about.php`**. Non-DACore: copy the folder. [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5. **MUST NOT** pack `app/modules/DACore/` or invent a packer. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
 | **Read `app/modules/DACore/.hooks` first** | Catalog of `module.dacore.*.hook` and `.veto` DACore already fires — subscribe in **your** module; do not invent names or patch DACore ([41](41-MODULE-HOOKS.md) §6) |
-| **Operator 2FA stays on**; dangerous actions re-prompt 2FA in **your** module | [32](32-DACORE-RIGHTS.md) §6 — **PHP** verifies the code before persist (overlay is UX only); never `Auth::confirmTwoFactor` while already logged in |
+| **Operator 2FA stays on**; a second prompt only when the plan named it | [32](32-DACORE-RIGHTS.md) §6 — **ASK** (default no). If yes: installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` ([EX-D10](examples/EX-D10-stepup-2fa-modal.md)); **PHP** verifies; never `Auth::confirmTwoFactor` while already logged in |
 
 Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` only (that module’s assets included). DACore: [00](00-AGENT-CONTRACT.md) §1.
 
@@ -89,8 +89,9 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_ai_tools` | AI tool registry: `toolid`, `creator`, `description`, `howtouse`, `controller`, `rights`, `helper`, `workflow`, `tool_type`, `risk_level`, `requires_confirmation`, `intent_tags`, `allowed_tools`, `forbidden_tools` |
 | `dacore_chat` | AI chat sessions |
 | `dacore_chat_messages` | AI chat messages |
-| `dacore_modules` | ZIP-installed modules: about/license/changelog HTML **and** `extra1`…`extra5` discovery flags from `about.php` (DACore-owned — **never INSERT/UPDATE/DELETE** from your module; **READ** / `Plugins@listByExtra!` is how a CMS finds templates) |
+| `dacore_modules` | Installed package registry: normal plugins plus protected `DACore` / `DotApp` system rows, about/license/changelog HTML, and `extra1`…`extra5` discovery flags from `about.php` (DACore-owned — **never INSERT/UPDATE/DELETE** from your module; **READ** / `Plugins@listByExtra!` is how a CMS finds templates) |
 | `dacore_plugin_logs` | Plugin installer audit (DACore-owned — **never write**) |
+| `dacore_backups` | Root-only metadata for server-generated framework, database, and module archives. Files remain under protected runtime storage; posted paths are never trusted. |
 | `dacore_settings` | DACore-wide settings (DACore-owned — **never write**) |
 | `dacore_notifications` | Inbox events (DACore-owned — **never write**; `Notifications@push` only) |
 | `dacore_notifications_inbox` | Per-user read state (DACore-owned — **never write**) |
@@ -128,6 +129,19 @@ The stable sections are `feature_switches`, `email_drivers`, `sms_drivers`, `not
 **IP geolocation drivers (contract v1).** `IpGeo::lookup()` keeps the `present()` view shape (`ip`, `private`, `hasMap`, `hasIsp`, `hasLocation`, `lat`, `lon`, `isp`, `location`, `hint`). When the `ip_geo` feature switch is off, lookup returns that shape with a disabled hint and must not read `dacore_ip_geo`, `dacore_ip_geo_drivers`, autoload a provider, or call the network. Invalid and private IPs also skip the network. When enabled, lookup uses the local `dacore_ip_geo` cache, then dispatches the default enabled contract-v1 driver via `DotApp::call` (`controller_lookup`). The built-in callable is `DACore:IpGeoDriver@lookupDefault!` (ipwho.is, then ipapi.co over verified HTTPS with redirects and proxies disabled). Driver results are whitelisted to `ok`, `lat`, `lon`, `city`, `region`, `country`, `isp`. External controllers receive only the IP and `{driver_key, creator}`. The built-in `dacore.default` / creator `DACore` row cannot be unregistered. Disabling an enabled provider first fires `module.dacore.driver_deactivate.veto` without an IP or provider response.
 
 The root-only `{prefixUrl}/dacore/ip-geolocation` leaf paginates metadata without invoking providers. Feature-off GET/POST skip the registry. Disabling or changing the global default requires graphical confirmation and PHP `StepUp::verify()`; actions patch rows + pager and toast without reloading.
+
+### 3b. Protected system packages and backups
+
+`DACore` and `DotApp` are protected package identities. They may be listed with
+normal installed modules, but no request or database flag may make either one
+uninstallable. Uploaded system ZIPs are classified before normal plugin
+validation and use dedicated, fail-closed update pipelines.
+
+DACore backups live in `app/runtime/dacore-backups/`, not in the package-managed
+DACore folder. Framework and module archives may be restored only after root
+authorization and fresh step-up 2FA. Full-database archives are created for
+download and offline native-client recovery; they are never restored from an
+HTTP request. Canonical contract: [44](44-DACORE-BACKUPS.md).
 
 ---
 

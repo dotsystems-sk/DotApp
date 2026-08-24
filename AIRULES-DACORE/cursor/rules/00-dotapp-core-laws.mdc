@@ -10,24 +10,26 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 ## Edit boundaries
 
 - **ALLOWED:** `app/config.php`, `app/modules/<TargetModule>/` only (the module you are programming, including **its** assets)
+- **Cursor rules:** source is `AIRULES/cursor/rules/*.mdc`. `.cursor/rules/` is a **mirror** — agent **MUST** copy (`AIRULES/00` §2l). **MUST NOT** invent a law only under `.cursor/`
 - **ASK FIRST:** `app/listeners.php`, `.htaccess` (prefer `dotapper --create-htaccess`)
 - **FORBIDDEN:** `app/parts/**`, `app/DotApp.php`, `app/vendor/**`, `dotapper.php`, `index.php`, `initializedb.php`, `app/runtime/**`, any other module
 - **DACore:** default **FORBIDDEN** (`app/modules/DACore/**` — files and assets). **MUST NOT propose** a DACore edit. **Exception:** user themselves asks to edit DACore **and** confirms the next update wipes it (`AIRULES/00` §1). Otherwise implement in the current module.
 
 ## Before coding
 
-1. Read `AIRULES/00-AGENT-CONTRACT.md`
+1. Mirror `AIRULES/cursor/rules/*.mdc` → `.cursor/rules/` if missing, then read `AIRULES/00-AGENT-CONTRACT.md` (`AIRULES/00` §2l)
 2. Use `php dotapper.php` to create modules/controllers/models/middleware
 3. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
 4. **Cursor credits:** when planning programming, **ASK** before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only, not the coder. (`AIRULES/00` §2b)
 5. **PHP version:** when planning programming, **ASK** 7.4+ (default) vs a higher PHP. No answer → 7.4+. (`AIRULES/00` §2i)
-6. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core/DACore bug.
-7. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware / AuthTest / `Events::trigger` vs `.hooks` (`AIRULES/00` §2c, `AIRULES/41`). Do not claim done without it.
-8. **Visible outcome (LAW):** user always sees save/fail. DACore admin: search DACore then **toast**. Public: mark the wrong field. (`AIRULES/00` §2d)
-9. **Mail / inbox / SMS:** if the task sends email, operator notifications, or SMS, **read** `AIRULES/38` (mail), `AIRULES/37` (inbox), and `AIRULES/39` (SMS). Do not invent SMTP or a gateway.
-10. **DACore module identity:** in the plan, **ASK once** for public name/purpose; installer as text-only / compact logo / wide banner; local asset + alt; optional landing/header placement. Pack/host: **ASK** `extra1`…`extra5` (`AIRULES/35` §3c). `about.php` + your `about-assets/`; sidebar Remix icon is separate; never patch DACore. (`AIRULES/05` §8b, `AIRULES/35` §3b–§3c)
-11. **Module hooks (LAW):** fire `Events::trigger('module.{mod}.{hook_name}.hook')` only when another module could log/history/sync — **not** every save. Comment block + `app/modules/<YourModule>/.hooks`. (`AIRULES/41`)
-12. **Extender:** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues. Extender `extend()` in `Listeners::register()` before Module initialization. Target listener routes; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time, Events, or DACore patch. (`AIRULES/12` §10)
+6. **Planning depth:** new module / first surface / rewrite — extremely detailed inventory (every `Menu@register` row or `No menu`, every page, tab, control). A long plan is correct. (`AIRULES/00` §2k, `AIRULES/45`)
+7. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core/DACore bug.
+8. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware / AuthTest / `Events::trigger` vs `.hooks` (`AIRULES/00` §2c, `AIRULES/41`). Do not claim done without it.
+9. **Visible outcome (LAW):** user always sees save/fail. DACore admin: search DACore then **toast**. Public: mark the wrong field. (`AIRULES/00` §2d)
+10. **Mail / inbox / SMS:** if the task sends email, operator notifications, or SMS, **read** `AIRULES/38` (mail), `AIRULES/37` (inbox), and `AIRULES/39` (SMS). Do not invent SMTP or a gateway.
+11. **DACore module identity:** in the plan, **ASK once** for public name/purpose; installer as text-only / compact logo / wide banner; local asset + alt; optional landing/header placement. Pack/host: **ASK** `extra1`…`extra5` (`AIRULES/35` §3c). `about.php` + your `about-assets/`; sidebar Remix icon is separate; never patch DACore. (`AIRULES/05` §8b, `AIRULES/35` §3b–§3c)
+12. **Module hooks (LAW):** fire `Events::trigger('module.{mod}.{hook_name}.hook')` only when another module could log/history/sync — **not** every save. Comment block + `app/modules/<YourModule>/.hooks`. (`AIRULES/41`)
+13. **Extender:** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues. Extender `extend()` in `Listeners::register()` before Module initialization. Target listener routes; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time, Events, or DACore patch. (`AIRULES/12` §10)
 
 ## Syntax locks
 
@@ -49,10 +51,10 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Attacks (LAW, `AIRULES/24`): `{{ var: }}` does **NOT** escape → `htmlspecialchars` in PHP, `.text()` in JS; whitelist sort + writable columns (no `$request->data()` spread); no input in `header()` / `redirect` / `HttpHelper` URL; no `eval` / `exec` / `unserialize` / `include $x`; `random_bytes` tokens + `hash_equals` secrets; `throttle()` public POST; no `getMessage()` / `var_dump` in the reply; upload = ext + `finfo` + headers; never write `dacore_*` / `users_rights*`
 - Files: `$dotapp().uploadFile` — NOT `FormData` + `load()` / `<fo-rm>`. PHP rejects `.php` (ext + `finfo` MIME + headers) (`AIRULES/09`)
 - DACore AI writes: `ui_events` (name = tool id) + `DACore.AI.UIEvent` on the matching page only (`AIRULES/34` §5)
-- DACore operators MUST keep 2FA; dangerous admin actions MUST step-up 2FA (`AIRULES/32` §6)
+- DACore operators MUST keep 2FA. A second 2FA prompt: **ASK** in the plan (default no). If yes: DACore installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` (`AIRULES/32` §6, EX-D10) — NOT a 6-digit field on the settings card, NOT on every Save
 - After `fo-rm` / `load` success while staying on the page: patch `reply.html` + toast — NOT `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** module preloaders; desktop **and** mobile). (`AIRULES/09` §3, EX-06)
 - Public website: overlay nav drawer L/R; lock page scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own section (`AIRULES/09` §3)
-- Accumulating lists (users, logs, items, …): **MUST** follow `AIRULES/40-DACORE-LIST-PAGER.md` on first ship — NOT `->all()`, NOT `<a href="?page=">` / `replaceState` / `e.currentTarget`, NOT “few rows now so skip”. Lookup lists: **MUST** AJAX search unless declined. (`AIRULES/40`, EX-D08)
+- Growing result lists (users, logs, items, …): **MUST** follow `AIRULES/40-DACORE-LIST-PAGER.md` and use server search where appropriate. Bounded one-value choices use `<select>` or existing `dotSelect2`; known options **MUST NOT** be hidden behind a bare text input/empty datalist/custom typeahead. Large remote choices use AJAX `dotSelect2` with initial results + server paging/search. (`AIRULES/09` §3, `AIRULES/40`)
 - Cheap I/O: `exists()` / `COUNT(*)` / needed columns / one `join` — NOT `all()` then filter, NOT N+1. `AIRULES/06`
 - Memory (`AIRULES/25` §1): page big sets; keyed map + `isset()` instead of `in_array()` in a loop; `$out[] =` not `array_merge` per iteration; `unset` the raw copy; stream files — NOT load-all-then-filter
 - Indexes (`AIRULES/25` §3): every FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite = **equality → range → sort**; leftmost prefix counts; no index duplicating a composite prefix; one comment line per index naming its query; later index = new `Installation.php` version + `indexExists()`; never touch `dacore_*`
@@ -99,3 +101,5 @@ See `AIRULES/30-DACORE-OVERVIEW.md` and rule `08-dacore`.
 
 Deep reference: `AIRULES/` (`00`–`25` framework, `30`–`40` DACore, **`41` module hooks**). Examples: `AIRULES/examples/` (open one EX file per task). Antipatterns: `AIRULES/14-ANTIPATTERNS.md`.  
 AIRULES supersedes stock `.cursorrules` and old `*_AI_guide.md` files.
+
+Cursor compact rules live in `AIRULES/cursor/rules/`. `.cursor/rules/` is a mirror — the agent **MUST** copy `*.mdc` there (and `AGENTS.md` to the project root). **MUST NOT** invent a law only under `.cursor/` (`AIRULES/00` §2l).

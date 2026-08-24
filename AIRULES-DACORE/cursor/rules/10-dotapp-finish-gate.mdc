@@ -14,7 +14,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **CRC once** | `crcCheck()` in middleware/`before`/`#DACore:AuthTest@CRC!` **and** in the action; CRC on GET; CRC on `$request->upload()`; PHPDoc `CRCchecking —` names a prefix **and** the method still `crcCheck()`; a new public controller/middleware method with no `CRCchecking —` first line |
 | **IDs** | Plain `value="7"` / `data-id="7"` / `{{ var: $id }}` sent to the browser — need `{{ enc(Shop.item.id): $id }}` unique `$key2`. Pager `data-page` must be ciphertext (`AIRULES/40`) |
 | **Queries** | User input in SQL; `$qb->raw()` `?` that is not a binding (comments count) |
-| **Inputs** | Password/HTML/hash from `$request->data()` not `data(true)`; persist only gated in JS (incl. missing step-up 2FA) |
+| **Inputs** | Password/HTML/hash from `$request->data()` not `data(true)`; persist only gated in JS (if the plan named step-up, PHP still refuses without a code; invented step-up on ordinary Save is also a fail) |
 | **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers; `#DACore:AuthTest@check!` as a rights guard |
 | **DACore files** | Diff touches `app/modules/DACore/` without the informed exception (`AIRULES/00` §1) |
 | **Visible outcome** | Silent `.after()`; admin save without a DACore toast; public field errors without marking the input (`AIRULES/00` §2d) |
@@ -26,5 +26,6 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Extender** | `extend()` delayed to Module initialize; target URLs in Module map; missing explicit listener routes with Module `[]`; `.loaded` for initialize-time; `call()` without owner `exists()`; ordinary result not returned; `original()` marker returned/serialized instead of `isOriginal()`; fake `NEXT`; `$request`/secrets; Events; `['*']` just to attach; duplicate; DACore patch (`AIRULES/12` §10) |
 | **PHP 7.4+** | PHP 8+ syntax (`match`, `?->`, `str_contains`, union/`mixed`, named args, promotion, `#[`, `enum`, `readonly`) unless the plan named a higher version (`AIRULES/00` §2i) |
 | **Comments** | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; controller/middleware public method whose PHPDoc does not start with `CRCchecking —` (`AIRULES/25` §7) |
+| **Cursor rules** | A new `.mdc` exists only under `.cursor/rules/`; AIRULES cursor rules were not copied into `.cursor/rules/` (`AIRULES/00` §2l) |
 
 Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.
