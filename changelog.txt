@@ -1,4 +1,4 @@
 {
   "2.0.0": "Initial release DotApp PHP Framework 2.0.0",
-  "2.0.1": "Minor fix - Update testing",
+  "2.0.1": "Minor fix - Update testing"
 }
