@@ -763,7 +763,7 @@ class Installer {
     }
 
     /**
-     * Uninstalls migrations in reverse installer() array order.
+     * Uninstalls migrations in reverse uninstaller() array order.
      *
      * @param string|null $version Optional version floor (inclusive). Null runs every key.
      */
