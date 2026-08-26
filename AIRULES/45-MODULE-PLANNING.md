@@ -6,9 +6,34 @@ A bullet list of endpoints is **not** a plan. A plan that is **very long** is co
 
 This folder is **framework-only**. There is no DACore sidebar registration. If the module has **any** menu or nav, the plan still **MUST** list every item — just as **your** routes and markup, not `DACore:Menu@register`.
 
-**Pack for a named host:** the plan **MUST** read `app/modules/<Host>/AIRULES/` first and list only routes that host listens to ([00](00-AGENT-CONTRACT.md) §2n). A new **host** plan **MUST** include creating that folder.
+**Pack for a named host:** the plan **MUST** read `app/modules/<Host>/AIRULES/` first and list only routes that host listens to ([00](00-AGENT-CONTRACT.md) §2n). **MUST NOT** open `app/modules/<Host>/PLAN/` — that is the host’s own roadmap ([00](00-AGENT-CONTRACT.md) §2p). A new **host** plan **MUST** include creating **both** `AIRULES/` (for future packs) and `PLAN/` (for host development).
 
-Canonical pointers: [00](00-AGENT-CONTRACT.md) [§2k](00-AGENT-CONTRACT.md#2k-module-planning-depth-must), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8d, [17](17-CHECKLISTS.md) Pre-flight.
+**PLAN folder (MUST — law):** the inventory below **MUST** live in **`app/modules/<ThisModule>/PLAN/`**, not only in chat. Split **laws** and **rules**, include **positions**, optional images in `PLAN/assets/`. Then implement from that folder. Canonical: [00](00-AGENT-CONTRACT.md) [§2o](00-AGENT-CONTRACT.md#2o-module-plan-folder-must--law).
+
+Canonical pointers: [00](00-AGENT-CONTRACT.md) [§2k](00-AGENT-CONTRACT.md#2k-module-planning-depth-must), [§2o](00-AGENT-CONTRACT.md#2o-module-plan-folder-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8d, [17](17-CHECKLISTS.md) Pre-flight.
+
+---
+
+## 0. PLAN folder (**MUST**)
+
+After `dotapper --create-module`, **MUST** create:
+
+```
+app/modules/<ThisModule>/PLAN/
+  README.md          — index: how to continue this module
+  00-laws.md         — module-local MUST / MUST NOT (cannot weaken project AIRULES)
+  01-rules.md        — conventions, naming, file map
+  02-menu.md         — every nav item or No menu
+  03-screens.md      — every page / tab / control (what it does, default, persist)
+  04-positions.md    — desktop + mobile regions, padding, where each control sits
+  assets/            — optional rasters / mockups
+```
+
+Filenames may vary; the **split** (index + laws + rules + inventories + positions) **MUST** exist. English.
+
+**MUST** read **this** module’s `PLAN/` before further coding when it exists. Stack: project AIRULES (wins) → host `AIRULES/` if this is a pack → **this** `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p).
+
+**MUST NOT** skip `PLAN/` because a chat plan exists. **MUST NOT** dump the plan into one file. **MUST NOT** invent a screen that is not in PLAN. **MUST NOT** read a host’s `PLAN/` when writing a pack.
 
 ---
 
@@ -134,9 +159,11 @@ State, in writing:
 - A short endpoint list, or “Settings + list + edit”
 - Omitting a tab or control to keep the plan short
 - “We will decide the fields while coding”
+- Chat-only plan / one mega-file / no `app/modules/<This>/PLAN/` on a new module or rewrite ([00](00-AGENT-CONTRACT.md) §2o)
+- Opening the host’s `PLAN/` while planning a pack for that host ([00](00-AGENT-CONTRACT.md) §2p)
 
 ---
 
 ## 9. Finish
 
-A plan that omits the **menu/nav inventory** (when there is nav), the **screen inventory** (when there are pages), the UI section, or the security section **MUST NOT** be treated as approved. Implement only after the user accepts that plan.
+A plan that omits the **PLAN folder**, the **menu/nav inventory** (when there is nav), the **screen inventory** (when there are pages), the UI section, or the security section **MUST NOT** be treated as approved. Implement only after the user accepts that plan **in `PLAN/`**.

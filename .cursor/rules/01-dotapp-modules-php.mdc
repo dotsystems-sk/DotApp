@@ -1,0 +1,77 @@
+---
+description: DotApp module PHP — routing, controllers, middleware, Installation
+globs: app/modules/**/*.php
+alwaysApply: false
+---
+
+# DotApp Module PHP
+
+See `AIRULES/03-MODULES-AND-ROUTING.md`, `04-CONTROLLERS-AND-RESPONSES.md`, `07-SCHEMA-AND-INSTALL.md`.
+
+## Routes (in module.init.php)
+
+```php
+Router::get('/Shop/', 'Shop:Home@index!', Router::STATIC_ROUTE);
+Router::before(['/Shop/account', '/Shop/account/*'], '#Shop:Gate@login!');
+Router::before(['POST'], ['/api/v1/auth/Shop', '/api/v1/auth/Shop/*'], '#DACore:AuthTest@LoginAndCRC!');
+Router::before(['POST'], ['/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'], '#DACore:AuthTest@CRC!');
+```
+
+- Prefixes: `#` Middleware, `*` Models, trailing `!` skips DI
+- Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`. `{not:/admin*|/api/v1*}` excludes those prefixes **before** the positive match (`strpos` / `substr`; `/admin*` not `/admin/*` for exact `/admin`)
+- No named routes, no Laravel `Route::prefix()->group()` — cover an area with `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`)
+- **MUST:** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login` (no CRC). **POST API** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — action **MUST NOT** `crcCheck()` again. Wrap login-only handlers in `if (Auth::isLogged() === true)`. `AIRULES/03`, `AIRULES/32`
+- **MUST:** `initializeRoutes()` = this module’s prefixes only. **MUST NOT** `['*']` unless the user asked for a global hook. **MUST NOT** `include` another module to list or show its about/changelog (`AIRULES/03`)
+- **Comments:** English. Public Controllers/Middleware PHPDoc **MUST** start with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`) then a **purpose sentence** then `@param`/`@return` (not tags-only). Labeled **`// Why:`** (logical step), **`// About:`** (what this chunk is), **`// Section:`** (menu/route) — not every line, not unlabeled
+
+## Controllers
+
+```php
+namespace Dotsystems\App\Modules\Shop\Controllers;
+class Home extends \Dotsystems\App\Parts\Controller {
+    public static function index($request) {
+        return \Dotsystems\App\Parts\Renderer::new()->module('Shop')
+            ->setView('home')->setViewVar('title', 'Hi')->renderView();
+    }
+}
+```
+
+With `!` in the route: **no** `Renderer $renderer` type-hints.
+
+## Request input
+
+`$request->data()` is **protected**. `$request->data(true)` is **original**. **MUST** use `true` for passwords, HTML, hashes (`Auth::login` / `createUser`). See `AIRULES/19`.
+
+## Session
+
+`DSM::use('Shop')->set/get/delete`. **MUST NOT** `$_SESSION` / `session_start()`. See `AIRULES/20`.
+
+## Config fallbacks (in initialize)
+
+```php
+Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
+```
+
+## Schema
+
+Use versioned `Installation.php`. Do **not** call `DB::migrate()`. `$qb->raw()`: **every** `?` is a placeholder, including comments — **MUST NOT** write `SMS?` in `COMMENT`. See `AIRULES/06-DATABASE.md`.
+
+**Your** modules: while coding **`install.php`** + live root init files + **`PLAN/`**. After a new version, rename `installed_*_install.php` → `install.php`. User asks to zip a **DACore-bound** module: **MUST** rename `install.php` → **`dainstall.php` in the zip**, copy live init into **`init/`**, inert root, include **`about.php`**; **MUST NOT** ship `install.php` or **`PLAN/`** in the zip (DACore rejects `install.php`; `PLAN/` is author-only). **ASK** for about/license/changelog HTML if missing. Non-DACore: copy the folder with `install.php`. See `AIRULES/00` §2e and `AIRULES/35-DACORE-INSTALL.md` §3b, §4–§5. **Never** pack `app/modules/DACore/`.
+
+## Generate via CLI
+
+`php dotapper.php --module=Shop --create-controller=Home` (module flag first).
+
+After editing PHP in this module: **MUST** `AIRULES/00` §2c finish gate (CRC once vs middleware/AuthTest, enc IDs, bindings, `data(true)`, `Events::trigger` vs `.hooks`).
+
+## Hooks (MUST)
+
+After a **useful** side-effect (SMS/mail sent, payment, lockout — **not** every save) **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', $payload)` with the `Hook:`/`Why:`/`About:`/`Params:`/`Use:` block and **MUST** document that name in **`app/modules/<ThisModule>/.hooks`**. Payload = ids/counts/flags — never secrets. Listen to another module in **your** `module.listeners.php` after reading **their** `.hooks` — do not patch them. `AIRULES/41-MODULE-HOOKS.md`, EX-16.
+
+## Extender (judge — not every method)
+
+Owner: `Extender::exists()` then `Extender::call(...)`; ordinary result returns, only `isOriginal()` continues owner logic. Extender: register in **`Listeners::register()`** before Module initialization; explicit target listener routes; own Module routes or `[]`; prefer `'Module:Controller@method!'`. **MUST NOT** invent `next()`, return the marker, use `['*']` just to attach, `.loaded` for initialize-time, Events, `$request`/secrets, duplicate registration, or patch DACore. `AIRULES/12-SERVICES.md` §10, EX-17.
+
+## PHP 7.4+ (ASK in the plan)
+
+Default language is **PHP 7.4+**. **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** `match`, `?->`, union/`mixed`, named args, constructor promotion, attributes, `enum`, `readonly`, `str_contains` / `str_starts_with` / `str_ends_with` unless they named a higher version. `AIRULES/00` §2i.

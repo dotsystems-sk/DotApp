@@ -1,0 +1,23 @@
+---
+description: Cursor .mdc files live in AIRULES — agent MUST mirror them into .cursor/rules
+alwaysApply: true
+---
+
+# Cursor rules live in AIRULES (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2l, `AIRULES/INSTALL.md`.
+
+`.cursor/rules/*.mdc` is a **Cursor runtime mirror**. It is **not** portable. Copying only `AIRULES/` must be enough.
+
+**Source of truth:** `AIRULES/cursor/rules/*.mdc` and `AIRULES/cursor/AGENTS.md`.
+
+**MUST NOT** create, edit, or leave a new law only under `.cursor/rules/` or a project-root `AGENTS.md` that is not a copy.
+
+**MUST (agent, this session, before coding — and after any AIRULES cursor-rule change):**
+
+1. Ensure `.cursor/rules/` exists.
+2. Copy `AIRULES/cursor/rules/*.mdc` → `.cursor/rules/`.
+3. Copy `AIRULES/cursor/AGENTS.md` → project-root `AGENTS.md`.
+4. A new compact rule: write it in `AIRULES/cursor/rules/` **first**, then copy.
+
+This mirror copy is the **only** allowed write to `.cursor/rules/` and root `AGENTS.md`.

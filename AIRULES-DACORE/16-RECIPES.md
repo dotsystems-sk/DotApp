@@ -193,7 +193,7 @@ Theory: [40](40-DACORE-LIST-PAGER.md), [06](06-DATABASE.md).
 | Login, permissions, 2FA | [examples/EX-14](examples/EX-14-auth-and-2fa.md) (`$dotapp().twoFactor` for login boxes) |
 | Second 2FA prompt after login (step-up) | **ASK** in the plan (default no). If yes: [32](32-DACORE-RIGHTS.md) §6 + [EX-D10](examples/EX-D10-stepup-2fa-modal.md) |
 | Cursor credits / subagents | [00](00-AGENT-CONTRACT.md) §2b — **ASK** in the plan; inherit parent; Composer 2.5 = file hunt only |
-| Planning depth | [00](00-AGENT-CONTRACT.md) §2k / [45](45-MODULE-PLANNING.md) — every `Menu@register` row, page, tab, control |
+| Planning depth | [00](00-AGENT-CONTRACT.md) §2k + §2o + §2p / [45](45-MODULE-PLANNING.md) — write **this** module’s `PLAN/` (split files); packs read host `AIRULES/`, not host `PLAN/` |
 | Finish gate after every chunk | [00](00-AGENT-CONTRACT.md) §2c — grep CRC, IDs, SQL, inputs, middleware; [17](17-CHECKLISTS.md) |
 | Visible outcome (save/fail) | [00](00-AGENT-CONTRACT.md) §2d — DACore toast (search first); public mark the field; [EX-09](examples/EX-09-validation-and-errors.md) |
 | Connect modules / fire a useful hook | [41](41-MODULE-HOOKS.md) — `module.{mod}.{name}.hook` + `.hooks` (not every save); [EX-16](examples/EX-16-module-hooks.md) |

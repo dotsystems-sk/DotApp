@@ -54,7 +54,7 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
    - `app/config.php`
    - files inside **the module you are programming** at `app/modules/<YourModule>/` (including **its** assets)
 3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …). **DACore:** default same ban (`app/modules/DACore/` — files and assets). **MUST NOT propose** a DACore edit. **Exception:** user themselves asks and confirms the update wipe ([00](00-AGENT-CONTRACT.md) §1).
-3b. **Read scope (LAW):** when programming a DACore-bound `<Target>`, **MAY read** only `<Target>` + `app/modules/DACore/` (read-only) + framework core (read-only) + `AIRULES/`. **MUST NOT** browse `app/modules/<Sibling>/` for a look or an example. A sibling joins the allow-list **only** when the user **named** it as the module this work extends / listens to / Extender-targets. Examples come from `AIRULES/examples/`, not a live sibling ([00](00-AGENT-CONTRACT.md) §1b).
+3b. **Read scope (LAW):** when programming a DACore-bound `<Target>`, **MAY read** only `<Target>` + `app/modules/DACore/` (read-only) + framework core (read-only) + `AIRULES/`. **MUST NOT** browse `app/modules/<Sibling>/` for a look or an example. A sibling joins the allow-list **only** when the user **named** it as the module this work extends / listens to / Extender-targets. Then read that host’s `AIRULES/` — **MUST NOT** open the host’s `PLAN/` unless the user asked to continue developing the host. Examples come from `AIRULES/examples/`, not a live sibling ([00](00-AGENT-CONTRACT.md) §1b, §2p).
 4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
 5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** cover the form/list until the request ends. **DACore admin:** Notiflix (preferred) **or** your module preloaders. **Public website:** you **MUST** build preloaders yourself (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin) — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile. User-visible strings **MUST** read as shipped product copy — never prompt-echo.
 6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items`, `dotapp_*`, or `dacore_*` for your module data.
@@ -74,6 +74,27 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 19. **Layout / UX-UI (LAW):** every new button **MUST** be checked for padding vs the parent (especially **bottom**) and placed deliberately (center / same rhythm as siblings). A Save glued to the card edge is a **bug**. General UX/UI principles **MUST** be followed **at all costs**. Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
 20. **Module hooks (LAW):** fire **`module.{lowercase_modulename}.{hook_name}.hook`** only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Document in **`.hooks`**. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:`. Connect by listening, never by patching the owner. A DACore-bound module **MUST** read **`app/modules/DACore/.hooks` first**. Canonical: [41](41-MODULE-HOOKS.md) §6, [00](00-AGENT-CONTRACT.md) §2g.
 21. **Extender (judge — not every method):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender registers in `Listeners::register()` before Module initialization. Target URLs in listener map; own Module routes or `[]`; controller string preferred. **MUST NOT** invent `next()`, return the marker, use `.loaded` for initialize-time, Events, `$request`/secrets, or patch owner/DACore. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h.
+22. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. Packs read that handbook first. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2p.
+23. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** and implement **from that folder**. Chat-only / one-file plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2o, §2p, [45](45-MODULE-PLANNING.md).
+24. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. Canonical: [00](00-AGENT-CONTRACT.md) §2p.
+
+## What's New (2026-08-26)
+
+### Rule stack — where to look
+
+Agents look in **folders**, not in one Cursor chat file. Priority (1 wins):
+
+1. Project `AIRULES/` — always. Hard laws. A host handbook cannot skip CRC / PHP 7.4+ / DACore ban / finish gate.
+2. `app/modules/<Host>/AIRULES/` — only when this work **extends** that host (CMS templates, payment packs). How to write a pack. **MUST NOT** weaken 1.
+3. `app/modules/<This>/PLAN/` — portable plan of **the module you are building**. Split files. **MUST NOT** weaken 1 or 2.
+
+A pack for a finished CMS writes **`PLAN/html/`** as a standalone site first (no CMS PHP). After the user **approves** that HTML, it reads `CMS/AIRULES/` 01 and implements the pack. **MUST NOT** open `CMS/PLAN/`. Building CMS itself writes **both** `CMS/AIRULES/` (for future packs) and `CMS/PLAN/` (for CMS development).
+
+### CMS templates — HTML-first
+
+A new or rewritten public theme **MUST** be a clean static HTML template (`PLAN/html/`: subpages, hard-filled texts, vanilla CSS/JS) **before** it becomes a CMS pack. The user reviews that site in a browser and **approves** it. Only then map it onto CMS stems/views. Canonical: `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`, compact `AIRULES/cursor/rules/20-cms-template-plan.mdc`.
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2o, §2p, [45](45-MODULE-PLANNING.md).
 
 ## What's New (2026-08-22)
 
@@ -142,7 +163,7 @@ Theory lives in `00`–`25` (framework), `30`–`40` (DACore), and **[41](41-MOD
 | **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost (reuse DACore assets), **PHPDoc purpose sentence** + Why/About/Section, §8 perf pass |
 | **[41-MODULE-HOOKS.md](41-MODULE-HOOKS.md)** | **Module hooks (LAW)** — `module.{mod}.{name}.hook` when useful (not every save); `.hooks` file; listen, do not patch; DACore-bound modules **MUST** read `app/modules/DACore/.hooks` first |
 | **[42-DACORE-USER-ORIGIN.md](42-DACORE-USER-ORIGIN.md)** | **User origin (LAW)** — global identity/session trust model; checked register/create/stamp/read; exact-origin login+2FA+every gate/list/write; generic failures; ASK before DACore-replacement admin; no RCE/IDOR/escalation |
-| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth (LAW)** — new module / first major surface / rewrite: every `Menu@register` row, page, tab, and control in writing before code |
+| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth + PLAN folder (LAW)** — write `app/modules/<This>/PLAN/` (split files) then implement from it. Packs read host `AIRULES/`, not host `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p) |
 | **[46-DACORE-EXTRA-CONTRACTS.md](46-DACORE-EXTRA-CONTRACTS.md)** | **Reserved `extra1`…`extra5` index (LAW)** — slot grammar, `listByContract!`; deep I/O in **[46-contracts/](46-contracts/README.md)** (template: [filemanager.md](46-contracts/filemanager.md)); hosts MUST NOT invent tokens |
 | [cursor/](cursor/) | Cursor IDE: **source** `AGENTS.md` + `.mdc` rules. Agent **MUST** copy them into `.cursor/rules/` ([00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md)) |
 

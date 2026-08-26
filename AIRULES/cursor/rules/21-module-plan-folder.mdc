@@ -1,0 +1,31 @@
+---
+description: LAW — write app/modules/<This>/PLAN/ as a split folder (not one chat file); MUST NOT read a host PLAN when writing a pack
+alwaysApply: true
+---
+
+# Module PLAN folder (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o, §2p, `AIRULES/45-MODULE-PLANNING.md`.
+
+The required path: scaffold the module → write **`app/modules/<ThisModule>/PLAN/`** (split files) → implement from that folder. A chat-only plan or one mega-file is not portable.
+
+`PLAN/` is **this** module’s development plan. It is **not** the host contract (`app/modules/<Host>/AIRULES/`).
+
+## MUST
+
+- New module / first major surface / rewrite: create `PLAN/` in the same work as `dotapper --create-module`.
+- Split **laws**, **rules**, inventories, **positions**. Optional `PLAN/assets/`. **MUST NOT** dump everything into one file.
+- Read **this** module’s `PLAN/` before coding when it exists.
+- Implement only what PLAN names. Missing screen → add to PLAN first.
+- A host that others will extend **MUST** also write `AIRULES/` in the same work.
+
+## MUST NOT
+
+- Skip PLAN because chat already has a plan.
+- Treat PLAN as a replacement for project AIRULES or for host `AIRULES/`.
+- Open `app/modules/<Host>/PLAN/` when writing a pack / theme / listener for that host.
+- Weaken project law or host AIRULES from a PLAN file.
+
+Stack (`AIRULES/00` §2p): 1 project AIRULES (always) → 2 host AIRULES (if extending a named host) → 3 this PLAN. Priority 1 wins.
+
+Finish gate: new module / rewrite with no `PLAN/` = fail. Host `PLAN/` opened while writing a pack = fail.

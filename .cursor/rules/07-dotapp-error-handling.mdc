@@ -1,0 +1,73 @@
+---
+description: DotApp return values and error handling — four failure styles, never ignore results
+alwaysApply: true
+---
+
+# DotApp Error Handling
+
+Full contract: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
+
+## Four failure styles
+
+| Style | Where | Handling |
+|-------|-------|----------|
+| Callback pair | `execute()`, `Entity::save()/delete()`, `DB::schema()` | pass **both** callbacks |
+| `false` / `null` | `Crypto::decrypt`→`false`, `Cache::load`→`null`, `Auth::login`→`false`, `Config` getters→`null` | compare explicitly |
+| Envelope array | `HttpHelper::request`, `FastSearch::*` | check `['success']` |
+| Exceptions | AI (`AIException`), QueryBuilder build, SchemaBuilder, `Auth::createUser`, `DI::resolve` | `try/catch` — `raw()` `?` in comments counts as a placeholder |
+
+## Hard rules
+
+1. `execute()` **without** an error callback **throws** — always pass both. Persist handlers **MUST** also sit in `try/catch` (`\Throwable`).
+2. Never bare `->first()`: RAW warns on empty, ORM is fatal. Use `all()` + `[0] ?? null` or `exists()`.
+3. `$execution_data` is **empty on a cache hit** → `$exec['insert_id'] ?? $db->inserted_id()`.
+4. `Crypto::decrypt()` → `=== false` check.
+5. `Cache::load()` → `!== null` check.
+6. `Email::send()` returns **`string[]`** on failure → `!== true` check.
+7. `Validator::validate()` → `=== true` check (failure array is truthy).
+8. `$request->form()` may return your value, `false`, `null`, or **throw** → give it an error callback and guard.
+9. Passwords/HTML: `$request->data(true)` — never `$request->data()`. Show login `reply.message` on every failure.
+10. Missing view/layout renders **`""`** with only a log warning → use the fallback argument and check for `''`.
+11. `Entity::save()` returns **void** — never test it.
+12. `trigger()` ignores listener return values; listener exceptions propagate.
+13. Never write an empty `catch {}`. Log with `Logger::use()->error(...)` and return a structured error.
+14. **Catch bus (MUST):** every `catch` **and** every `execute()` `$err` reports `dotapp.catch` then `dotapp.catch.error|info`. Reporting is **extra** — the user still gets the toast. Helper + listener live in **your** module, never under `app/modules/DACore/`.
+
+## Catch bus (`AIRULES/18` §9)
+
+| Event | When |
+|-------|------|
+| `dotapp.catch` | **failures** — the funnel a debugger subscribes to for `operation`/`source`/`message` |
+| `dotapp.catch.error` | the operation aborted |
+| `dotapp.catch.info` | expected / recovered (fallback, retry, ignored duplicate) |
+| `dotapp.catchall` | **core**, every `trigger()` except itself — event tracer in **your** module. Listener: `($result, $eventname, ...$data)`. Do not fire it yourself. Never under `app/modules/DACore/`. (`AIRULES/01`, `AIRULES/23` §1c) |
+| `module.{mod}.{name}.hook` | **owner** after a useful side-effect — names + payload in that module’s `.hooks`. Distinct from catch/catchall. (`AIRULES/41`) |
+
+Fixed payload keys: `severity`, `module`, `source` (`Shop:Items@save`), `operation` (`shop.item.update`), `message`, `exception`, `code`, `file`, `line`, `time` + `context` (ids/counts), `user_id`. **No** passwords, tokens, 2FA codes, decrypted secrets, rights blobs, request bodies or personal data. `trace` only for `error`, only if wanted.
+
+Write **one** report helper per module and call it from every `catch` / `$err` — listener exceptions propagate, so wrap the two `trigger()` calls in the helper’s own `try/catch` and log a broken listener instead of losing the real error. A `dotapp.catch` listener **MUST NOT** push a DACore inbox notification per failure (flood) — use a rate-limited threshold.
+
+## Template
+
+```php
+try {
+    if (!$request->crcCheck()) {
+        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 400);
+    }
+    $answer = $request->form(['POST'], 'handler', $success, $errorCallback);
+    if (!is_array($answer) || !isset($answer['body'])) {
+        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Rejected'], 400);
+    }
+    return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+} catch (\Throwable $e) {
+    // Report first (debugger trail), then answer the user — never leak $e.
+    self::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error', ['item_id' => $id]);
+    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Could not save the item.'], 500);
+}
+```
+
+`reportCatch()` = your module helper: builds the payload, `Events::trigger('dotapp.catch', $p)`, `Events::trigger('dotapp.catch.' . $severity, $p)`, then `Logger::use()->error(...)` (`info` → `warning`, because `info` is dropped by default).
+
+## Broken — do not enable
+
+`Renderer::useCache(true)`, `Config::db('cache', true)` with ORM, `DB::migrate()`, `Auth::hasRole()`, `Auth::logged()`, `Injector::bind/singleton`, `Router::hasRoute()` (inverted).

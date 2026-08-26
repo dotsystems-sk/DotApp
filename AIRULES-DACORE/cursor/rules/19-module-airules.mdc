@@ -1,26 +1,31 @@
 ---
-description: LAW — follow project AIRULES plus a named host’s app/modules/<Host>/AIRULES/; hosts MUST write that folder
+description: LAW — project AIRULES always; then named host AIRULES; MUST NOT open the host PLAN when writing a pack
 alwaysApply: true
 ---
 
 # Module AIRULES (LAW)
 
-Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n, §1b.
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n, §2p, §1b.
 
-Project `AIRULES/` is framework + DACore. A host that packs extend (CMS + templates) **MUST** ship its own handbook so a pack does not invent routes the host never listens to.
+Project `AIRULES/` always applies and **wins**. A host that packs extend (CMS + templates) **MUST** ship `app/modules/<ThisModule>/AIRULES/` so a pack does not invent routes the host never listens to.
+
+`AIRULES/` in the host is the **contract for other modules**. `PLAN/` in the host is the **host’s own roadmap** — pack authors **MUST NOT** open it.
 
 ## MUST
 
-- Hosts / extendable modules keep **`app/modules/<ThisModule>/AIRULES/`** (English; index + topic files).
-- When the user names a host (“template for CMS”) **and** that folder exists: read it **first**, then follow **project AIRULES + those files together**.
+- Hosts / extendable modules keep **`app/modules/<ThisModule>/AIRULES/`** (English; index + topic files). That handbook **MUST** tell packs to write `PLAN/` **in the pack**.
+- When the user names a host (“template for CMS”) **and** that folder exists: follow **project AIRULES + those files together**. **CMS new/rewrite pack:** read `CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md` first (standalone `PLAN/html/`). **MUST NOT** open CMS 01 / 03 / CMS PHP until the user **approves** that HTML. Then read 01 for the pack implementation.
 - The host folder is on the named-dependency allow-list. It is **not** a license to copy a sibling pack’s CSS.
-- A new host that others will extend **MUST** create this folder in the same work.
+- A new host that others will extend **MUST** create this folder in the same work (and its own `PLAN/` for host development).
 
 ## MUST NOT
 
 - Skip a present host `AIRULES/` and register public routes the host does not wake.
+- Open `app/modules/<Host>/PLAN/` while programming a pack for that host.
 - Treat module rules as a replacement for project AIRULES (DACore ban, CRC, PHP 7.4+, finish gate still apply). Conflict → project wins.
 - Put host-only law only under project `AIRULES/` (the host zip must carry its handbook).
 - Invent a law only under `.cursor/rules/`.
 
-Example: `app/modules/CMS/AIRULES/` (template packs). Finish gate: named host + unread `AIRULES/` = fail.
+Example: template for a finished CMS → project `AIRULES/` + `CMS/AIRULES/` + **your pack’s** `PLAN/`. Do **not** open `CMS/PLAN/`.
+
+Finish gate: named host + unread `AIRULES/` = fail (CMS HTML phase: 02 counts; CMS build phase: 01 + 02). Host `PLAN/` opened while writing a pack = fail.

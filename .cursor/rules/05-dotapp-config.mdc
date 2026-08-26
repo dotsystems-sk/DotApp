@@ -1,0 +1,45 @@
+---
+description: DotApp app/config.php — secrets, drivers, module overrides, fallbacks
+globs: app/config.php
+alwaysApply: false
+---
+
+# DotApp Config
+
+Full reference: `AIRULES/10-CONFIG-AND-SECRETS.md`.
+
+## This file is editable
+
+`app/config.php` is the **only** core file agents may edit. Do not touch `app/parts/`.
+
+## New install secrets (when user asks)
+
+Generate with `bin2hex(random_bytes(32))` and set:
+
+- `Config::set("app","name", 'UniqueName')`
+- `Config::set("app","c_enc_key", ...)`
+- `Config::set("app","rm_key", ...)`
+- `Config::set("app","rmrcm_key", ...)`
+
+Replace placeholders `YourSuperSecretKey`, `RememberMe :)`.  
+`/* @AUTOCONFIG */` does **not** auto-generate keys.
+
+## Database
+
+```php
+Config::addDatabase("main", $host, $user, $pass, $db, "UTF8", "MYSQL", "pdo");
+```
+
+## Module overrides
+
+```php
+Config::module("Shop", "apikey", "production-value");
+```
+
+Modules must still define fallbacks in `module.init.php` if unset.
+
+## Session hardening
+
+`Config::session("secure", true)` on HTTPS; keep httponly + SameSite Strict.
+
+App session **values** still go through `DSM::use('Shop')` — never `$_SESSION` / `session_start()` (`AIRULES/20`).

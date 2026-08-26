@@ -139,6 +139,8 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   /admin* not /admin/* for exact /admin. MUST NOT wake on /{path*} and skip /admin only in initializeCondition
 - Host AIRULES (AIRULES/00 §2n): extendable hosts MUST ship app/modules/<This>/AIRULES/;
   read it first when the user names that host
+- PLAN folder (AIRULES/00 §2o): new module/rewrite MUST write app/modules/<This>/PLAN/
+  (laws, rules, positions) then implement from it. Chat-only plans fail
 - Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
   (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
   then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);

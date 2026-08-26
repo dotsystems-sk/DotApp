@@ -1,0 +1,93 @@
+---
+description: DACore admin module integration — menu, rights, pages, AI tools
+alwaysApply: true
+---
+
+# DACore Integration
+
+DACore is an admin-UI **module**, not framework core — by default its files are **as forbidden as `app/parts/`**. Full docs: `AIRULES/30-DACORE-OVERVIEW.md` … `39`.
+
+**Why:** DACore is installed and updated as a package. Any edit, patch, or extra file under `app/modules/DACore/` **disappears on the next DACore update**. You may only *use* what DACore already provides. New features belong in **the current module** (including **its** assets). **MUST NOT propose** a DACore edit. Touch DACore **only** after an informed, user-initiated ask (`AIRULES/00` §1).
+
+## Never
+
+- Edit, patch, delete, or **add** any file under `app/modules/DACore/` (including DACore assets) — **default.** **MUST NOT propose** this. Implement in the **current** module. **Exception:** the user **themselves** asks to edit DACore **and** confirms they accept the update wipe (`AIRULES/00` §1). Otherwise **strict ban**.
+- `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders`, `{prefix}users_rights*`
+- Build your own admin HTML shell
+- Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
+- Register admin routes when `Auth::isLogged()` is false — those pages **MUST NEVER** render for anonymous users. **MUST** prefix `{prefixUrl}/{ModuleName}` + `Gate@login` 403 (`AIRULES/03`, `AIRULES/32`)
+- Register menu / rights / AI tools on every request (do it in **your** `Installation.php`)
+- Push inbox notifications from the installer or every request — `DACore:Notifications@push` on the event only (`AIRULES/37`)
+- Invent SMTP in a DACore-bound module — **read** `AIRULES/38` first
+- Invent an SMS gateway in a DACore-bound module — **read** `AIRULES/39` first
+- Steal another module’s `menuid` prefix or uninstall with `DELETE … LIKE 'Host.%'` — your `menuid` starts with **your** module; own sidebar gets a `type => 0` header. **ASK** shared vs module-own menu before scaffolding (`AIRULES/31`). Do not dump 10 leaves under a header. Do not register “Return back”.
+- Ship a short “Settings + list” plan for a new module — **MUST** inventory every `Menu@register` row, page, tab, and control (`AIRULES/00` §2k, `AIRULES/45`)
+- Use `$_SESSION` / `session_start()` — **MUST** `DSM::use('Shop')` (`AIRULES/20`)
+- Use `dainstall.php` / blank root init / `init/` **while coding**, or pack a zip for a module that is **not** for DACore — develop with **`install.php`**. When the user asks to zip a DACore-bound module (including create+zip): **MUST** put **`dainstall.php`** (renamed from `install.php`) + **`init/`** live copies + inert root + **`about.php`** in the zip; **MUST NOT** leave `install.php` or **`PLAN/`** in the zip (DACore rejects `install.php` / Installation never runs; `PLAN/` is author-only). After a new version, rename `installed_*` → `install.php` **and** add a matching `about.php` changelog entry (**ASK** for the notes). **Never** pack `app/modules/DACore/`. (`AIRULES/00` §2e, `AIRULES/35` §3b, §4–§5).
+- `include` / `require` another module’s PHP (`about.php`, `module.init.php`, `Installation.php`) to list or describe it — DACore stores sanitised HTML **and** `extra1`…`extra5` in `dacore_modules`. Discover packs with `DACore:Plugins@listByContract!` / `@listByExtra!` (`AIRULES/35` §3c, `AIRULES/46`). Peer I/O: `AIRULES/46-contracts/{extra1}.md`. **MUST NOT** return `initializeRoutes() => ['*']` unless the user asked for a hook on every URL (`AIRULES/03`).
+
+## Call map
+
+```php
+DotApp::call("DACore:Menu@register", $menuid, $data);            // bool
+DotApp::call("DACore:Rights@createGroup!", $name, $creator);      // int|null
+DotApp::call("DACore:Rights@createRight!", $groupId, $name, $desc, $module, $rightname, $creator); // int|null
+DotApp::call("DACore:AITools@register", $toolid, $data);          // bool
+DotApp::call("DACore:Notifications@push", $data);                 // bool
+DotApp::call("DACore:Email@…!");                                  // mail API — read AIRULES/38 when sending mail
+DotApp::call("DACore:Sms@…!");                                    // SMS API — read AIRULES/39 when sending SMS
+DotApp::call("DACore:Page@withMenu!", $title, $body, $header, $css, $js, $menuId, $currentFile); // string HTML; 7th = active leaf on edit/detail
+DotApp::call("DACore:Installations@exist!", $module, $version);    // bool
+DotApp::call("DACore:Installations@insert!", $module, $version, $status, $statusTxt);
+DotApp::call("DACore:Plugins@listByExtra!", $slot, $value);       // packs with extraN = token — AIRULES/35 §3c
+DotApp::call("DACore:Plugins@listByContract!", $role, $contract); // reserved role + v1 — AIRULES/46 + 46-contracts/
+```
+
+Check every return value: `bool` helpers never throw and never log.
+
+## Admin route pattern
+
+**MUST:** `{prefixUrl}/{ModuleName}/…` for HTML (e.g. `/dacore/Shop/items`) + `Gate@login`. **POST:** `/api/v1/auth|noauth/Shop/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — then **MUST NOT** `crcCheck()` in the action. Register handlers only when `Auth::isLogged() === true`. Still `#Shop:Rights@check!`. `AIRULES/03`, `AIRULES/32`.
+
+```php
+$admin = rtrim((string) Config::module("DACore", "prefixUrl"), "/") . "/Shop";
+$authApi = "/api/v1/auth/Shop";
+Router::before([$admin, $admin . "/*"], "#Shop:Gate@login!");
+Router::before(["POST"], [$authApi, $authApi . "/*"], "#DACore:AuthTest@LoginAndCRC!");
+if (Auth::isLogged() === true) {
+    Router::get($admin . "/items", "Shop:Admin@items!")
+        ->before(function ($request) {
+            return DotApp::call("#Shop:Rights@check!", $request, ['dotapp.root', 'Shop.items.view']);
+        });
+}
+```
+
+Permissions are `"{module}.{rightname}"`. Always include `dotapp.root`.
+
+## Page rendering
+
+Render your content with `Renderer` (`renderLayout()` + `setLayoutVar`), then pass the HTML to `Page@withMenu!`. The shell already loads `dotapp.js`, dotgrid, colors.css, core.css, modals and Notiflix — do not re-add them.
+
+Prefer DACore widgets (cards, `btn`, dotgrid, Remix, Notiflix). **MUST search first:** grep `app/modules/DACore/` (read-only) and your module assets before writing a new library — the base already has many subpages and widgets. If it exists, use it; do not fork. **MUST** add CSS/JS in **your** module only when the search finds no equivalent (charts, ported controls). Pass them as `$css` / `$js` on `withMenu`. Classes `{lowercase_modulename}_*` (e.g. `.shop_chart`). Match admin colors from the loaded palette — never patch `app/modules/DACore/`.
+
+Admin runtime is **`$dotapp`** (already in the shell). jQuery may coexist for **UI widgets only**. **All HTTP to the app** uses `$dotapp().form` / `$dotapp().load` / `dotbridge` — never `$.ajax` / `$.post` / raw `fetch` to DotApp endpoints. When porting jQuery plugins, **ask**, then **rewrite** as `$dotapp().fn(...)` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C and `AIRULES/examples/EX-15-dotapp-js-library.md`. If DACore already ships the widget, use it — never copy DACore JS into your module.
+
+Growing result lists (logs, users, items) **MUST** follow `AIRULES/40-DACORE-LIST-PAGER.md` and use server search where appropriate. A bounded one-value choice uses native `<select>` or DACore's existing `dotSelect2`; opening it shows choices without exact-name memory. **MUST NOT** build a bare text input/empty datalist/custom typeahead for known choices. Only large remote sets use AJAX `dotSelect2` with initial results + server paging/search (`AIRULES/09` §3).
+
+**Persist:** PHP **MUST** re-check (2FA, rights, validation, [11](11-AUTH-AND-CRYPTO.md) §11). A 2FA overlay covering Save is UX only — removing it **MUST** still fail on the server (`AIRULES/08`, `AIRULES/32` §6).
+
+**Files:** `$dotapp().uploadFile` + `$request->upload()`. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers); FE `accept=` is UX only.
+
+## UI
+
+`<dot-grid>` / `<dot-col any="12" md="6" ldesktop="6">` (`md` does not cascade). Icons: `ri ri-*`. Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Row actions / drag-and-drop = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch `reply.html` + toast — no `location.reload()`. **MUST** overlay the form/list until the request ends (Notiflix preferred **or** your module preloaders; desktop **and** mobile). Growing lists **MUST** AJAX-paginate. Operators **MUST** keep 2FA on. A second 2FA prompt: **ASK** in the plan (default no). When named: DACore installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` (`AIRULES/32-DACORE-RIGHTS.md` §6, `AIRULES/examples/EX-D10-stepup-2fa-modal.md`) and **PHP must verify the code before persist** (overlay is not the gate). Deletes **MUST** use a graphical confirm (`Notiflix.Confirm` or `$dotapp().modal`) — never `alert()` / `window.confirm()`. User-visible strings **MUST** be product copy — never prompt-echo (`AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8).
+
+## AI tools
+
+`rights` must be non-empty and **wildcard-free** (empty = hidden from everyone). Handler signature `($data, $aiobj)`, returns JSON with `result` + `message`. `controller` string ends with `!`. Write tools that change a live admin view **MUST** return `ui_events` (`name` = tool id). Page JS listens for `DACore.AI.UIEvent`, filters by name, AJAX-refreshes — **MUST NOT** `location.reload()`. Other screens ignore. No secrets in `payload`. See `AIRULES/34-DACORE-AI-TOOLS.md` §5.
+
+Examples: `AIRULES/examples/EX-D01` … `EX-D07`. Mail API: `AIRULES/38` (open only when sending mail). SMS API: `AIRULES/39` (open only when sending SMS). Inbox: `AIRULES/37`.
+
+## Debug (user: it doesn’t work)
+
+Read `AIRULES/23-DEBUG-PLAYBOOK.md` §7. Grep `crcCheck` in **this module** (middleware + `->before` + controller). Two calls burn the token. Grep `AuthTest` — it ignores passed rights. **MUST NOT** patch `app/modules/DACore/` to fix a module POST.

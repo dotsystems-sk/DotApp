@@ -1,0 +1,25 @@
+---
+description: LAW — new CMS template pack MUST write app/modules/{Pack}/PLAN/ (copy + rasters) before building views/assets
+alwaysApply: true
+---
+
+# CMS template PLAN kit (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o (every module), `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`, `01-TEMPLATE-PACKS.md`.
+
+When creating or rewriting a **CMS template pack** (`extra1=template`):
+
+## MUST
+
+1. Scaffold the pack, then fix `initializeRoutes()` — **MUST NOT** leave `['*']`.
+2. Write **`app/modules/{Pack}/PLAN/`** first: laws, brand, design, pages, **full texts**, image manifest, admin, seed, file map.
+3. Put rasters in **`PLAN/assets/`**. Build copies them into `assets/` / `about-assets/`. A DACore zip ships the live `assets/` copy — **MUST NOT** include `PLAN/`.
+4. Start production views/CSS only after the user says **build** (or PLAN is complete and they asked to implement).
+
+## MUST NOT
+
+- Skip PLAN because a chat plan exists.
+- Open `app/modules/CMS/PLAN/` — that is CMS’s own roadmap, not the template contract. Read `CMS/AIRULES/` instead (`AIRULES/00` §2p).
+- Hotlink the source site from public views.
+- Copy a sibling pack’s CSS.
+- Invent this law only under `.cursor/rules/` (source is `AIRULES/cursor/rules/`).

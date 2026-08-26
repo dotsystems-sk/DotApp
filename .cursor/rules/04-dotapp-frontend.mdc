@@ -1,0 +1,69 @@
+---
+description: DotApp frontend — $dotapp is not jQuery; secure forms and bridge
+globs: app/modules/**/assets/**/*.js
+alwaysApply: false
+---
+
+# DotApp Frontend JS
+
+Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SECURITY.md`.
+
+## Load order
+
+1. `/assets/dotapp/dotapp.js` (router-generated keys)
+2. Optional template/reactive
+3. Module scripts
+
+Bootstrap on `dotapp` event; register plugins on `dotapp-register` via `$dotapp().fn(...)`.
+
+Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/`. Never edit `app/modules/DACore/` by default (informed exception: `AIRULES/00` §1). **MUST grep DACore (read-only) and this module first** — reuse an existing widget; do not write a second copy. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`. If DACore already ships the widget, use it.
+
+## Never
+
+- `$.ajax` / `$.post` / `$.get` / raw `fetch` to DotApp endpoints (CRC/keys/signatures live in `$dotapp`)
+- Assume getters always chain
+- Skip CRC/CSRF by using raw `fetch` to secure endpoints
+- `location.reload()` after `fo-rm` / `load` while staying on the page — patch `reply.html` + Notiflix toast (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- One `<fo-rm>` per row action — use `$dotapp().load()` + encrypted `data-*` (`AIRULES/08-FORMS-AND-SECURITY.md`)
+- Leave a list/form clickable during `load()` — overlay until success **and** error (Notiflix preferred **or** module preloaders; desktop **and** mobile) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Dump users/logs/items with `->all()`, skip the pager because “few rows now”, or change pages by reloading `<a href="?page=">` / `location.reload()` / `replaceState` — `AIRULES/40-DACORE-LIST-PAGER.md`
+- `$dotapp().live("click", …, function (e) { e.currentTarget })` — `live` calls `handler(el, e)`; pager clicks silently no-op (`AIRULES/40`)
+- Ship a catalog/articles list with no search, or filter `->all()` in JS — **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars)
+- Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Invent step-up 2FA on every settings Save — **ASK** in the plan (default no). When named: installer modal + `{ autoSubmit: true }`, not a 6-digit field on the card (`AIRULES/32-DACORE-RIGHTS.md` §6, EX-D10)
+- Delete with `alert()` / `window.confirm()` — graphical dialog first (`Notiflix.Confirm` on admin) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Public site: desktop-only header / hover menu / hide nav on mobile with no overlay drawer — L/R drawer, lock page scroll, scrollable drawer list, contacts+compact search in the drawer (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Silent save / empty `.after()` / invent a second toast instead of grepping DACore — admin **toast**; public mark the field (`AIRULES/00` §2d)
+
+jQuery `$` may coexist **for UI widgets** (ported datepickers, etc.). It must **not** send app requests. Prefer `$dotapp` for new DOM code. Register plugins with `$dotapp().fn(...)` on `dotapp-register`. When porting jQuery libraries, **ask**, then rewrite as `$dotapp().fn` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C.
+
+## Forms (preferred security — always for user POSTs)
+
+HTML: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`). **MUST** put `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.  
+Must load `/assets/dotapp/dotapp.js` first (injects random keys).  
+Full sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
+
+```javascript
+$dotapp().form('#saveForm')
+  .before(function (data, form) {
+    if ($dotapp(form).attr('blocked') == 1) return $dotapp().halt();
+    $dotapp(form).attr('blocked', '1');
+    $dotapp('#btn').attr('loading', 'true').attr('loader', 'dots');
+    if (window.Notiflix && Notiflix.Block) Notiflix.Block.standard('#saveForm', 'Loading…');
+  })
+  .after(function (data, response, form) {
+    var reply = $dotapp().parseReply(response);
+    if (reply && reply.status == 1 && reply.html) $dotapp('#listInner').html(reply.html);
+    $dotapp(form).attr('blocked', '0');
+    $dotapp('#btn').removeAttr('loading').removeAttr('loader');
+    if (window.Notiflix && Notiflix.Block) Notiflix.Block.remove('#saveForm');
+  });
+```
+
+## AJAX
+
+`$dotapp().load(url, method, data, ok, err)` — not raw fetch for DotApp secure APIs.
+
+## Bridge
+
+Template `{{ dotbridge:on(click)="fn(args)" }}` + `$dotApp->bridge->fn('fn', ...)`.

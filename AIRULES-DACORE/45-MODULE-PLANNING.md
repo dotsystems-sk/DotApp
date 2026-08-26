@@ -6,7 +6,32 @@ A bullet list of endpoints is **not** a plan. A plan that is **very long** is co
 
 Canonical pointers: [00](00-AGENT-CONTRACT.md) §2 item 1, [§2k](00-AGENT-CONTRACT.md#2k-module-planning-depth-must), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8d, [17](17-CHECKLISTS.md) Pre-flight, [31](31-DACORE-MENU.md), [33](33-DACORE-PAGES-AND-UI.md).
 
-**Pack for a named host:** the plan **MUST** read `app/modules/<Host>/AIRULES/` first (CMS: `app/modules/CMS/AIRULES/`) and list only routes that host listens to ([00](00-AGENT-CONTRACT.md) §2n). A new **host** plan **MUST** include creating that folder.
+**Pack for a named host:** the plan **MUST** follow that host’s `AIRULES/` ([00](00-AGENT-CONTRACT.md) §2n). **MUST NOT** open `app/modules/<Host>/PLAN/` — that is the host’s own roadmap ([00](00-AGENT-CONTRACT.md) §2p). **CMS template packs:** **HTML-first** — write `PLAN/html/` as a standalone site **before** reading CMS routes/stems (`CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`). After the user **approves** the HTML, read `01-TEMPLATE-PACKS.md` and list only routes CMS listens to. A new **host** plan **MUST** include creating **both** `AIRULES/` (for future packs) and `PLAN/` (for host development).
+
+**PLAN folder (MUST — law):** the inventory below **MUST** live in **`app/modules/<ThisModule>/PLAN/`**, not only in chat. Split **laws** and **rules**, include **positions**, optional images in `PLAN/assets/`. Then implement from that folder. Canonical: [00](00-AGENT-CONTRACT.md) [§2o](00-AGENT-CONTRACT.md#2o-module-plan-folder-must--law).
+
+---
+
+## 0. PLAN folder (**MUST**)
+
+After `dotapper --create-module`, **MUST** create:
+
+```
+app/modules/<ThisModule>/PLAN/
+  README.md          — index: how to continue this module
+  00-laws.md         — module-local MUST / MUST NOT (cannot weaken project AIRULES)
+  01-rules.md        — conventions, naming, file map
+  02-menu.md         — every Menu@register row or No menu
+  03-screens.md      — every page / tab / control (what it does, default, persist)
+  04-positions.md    — desktop + mobile regions, padding, where each control sits
+  assets/            — optional rasters / mockups (CMS packs: copy into live assets/)
+```
+
+Filenames may vary; the **split** (index + laws + rules + inventories + positions) **MUST** exist. English.
+
+**MUST** read **this** module’s `PLAN/` before further coding when it exists. Stack: project AIRULES (wins) → host `AIRULES/` if this is a pack → **this** `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p).
+
+**MUST NOT** skip `PLAN/` because a chat plan exists. **MUST NOT** dump the plan into one file. **MUST NOT** invent a screen that is not in PLAN. **MUST NOT** read a host’s `PLAN/` when writing a pack.
 
 ---
 
@@ -139,9 +164,11 @@ State, in writing:
 - Omitting a tab or control to keep the plan short
 - “We will decide the fields while coding”
 - Inventing a second 2FA prompt on every settings Save without asking. **ASK** once; no answer → none. When the user says yes, the chrome is [EX-D10](examples/EX-D10-stepup-2fa-modal.md) — not a 6-digit field on the card
+- Chat-only plan / one mega-file / no `app/modules/<This>/PLAN/` on a new module or rewrite ([00](00-AGENT-CONTRACT.md) §2o)
+- Opening the host’s `PLAN/` while planning a pack for that host ([00](00-AGENT-CONTRACT.md) §2p)
 
 ---
 
 ## 9. Finish
 
-A plan that omits the **menu inventory** (when there is nav), the **screen inventory** (when there are pages), the UI section, or the security section **MUST NOT** be treated as approved. Implement only after the user accepts that plan.
+A plan that omits the **PLAN folder**, the **menu inventory** (when there is nav), the **screen inventory** (when there are pages), the UI section, or the security section **MUST NOT** be treated as approved. Implement only after the user accepts that plan **in `PLAN/`**.

@@ -40,7 +40,23 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 22. **Cursor rules live in AIRULES (LAW):** compact `.mdc` files live in `AIRULES/cursor/rules/`. The agent **MUST** copy them into `.cursor/rules/`. Copying only `AIRULES/` must be enough. Canonical: [00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md).
 23. **defaultSettings before routes (LAW):** **MUST** `defaultSettings()` at the start of `initializeRoutes()` and `initialize()`. **MUST NOT** compose wake/`Router` paths from Config another module fills later. Canonical: [00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md).
 24. **URL `{not:}` (LAW):** exclude **before** the positive match. A public catch-all **MUST** put `{not:/admin*|/api/v1*|…}` **on the wake string**. `/admin/*` does not match exact `/admin` — use `{not:/admin*}`. Canonical: [03](03-MODULES-AND-ROUTING.md).
-25. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. When the user names that host, **MUST** read it first. Canonical: [00](00-AGENT-CONTRACT.md) §2n.
+25. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. When the user names that host, **MUST** read it first. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2p.
+26. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** and implement **from that folder**. Chat-only / one-file plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2o, §2p, [45](45-MODULE-PLANNING.md).
+27. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. Canonical: [00](00-AGENT-CONTRACT.md) §2p.
+
+## What's New (2026-08-26)
+
+### Rule stack — where to look
+
+Agents look in **folders**, not in one Cursor chat file. Priority (1 wins):
+
+1. Project `AIRULES/` — always. Hard laws. A host handbook cannot skip CRC / PHP 7.4+ / finish gate.
+2. `app/modules/<Host>/AIRULES/` — only when this work **extends** that host (theme packs, payment packs). How to write a pack. **MUST NOT** weaken 1.
+3. `app/modules/<This>/PLAN/` — portable plan of **the module you are building**. Split files. **MUST NOT** weaken 1 or 2.
+
+A pack for a finished host reads project `AIRULES/` + host `AIRULES/` + writes `PLAN/` in the pack. **MUST NOT** open the host’s `PLAN/`. Building the host itself writes **both** `<Host>/AIRULES/` (for future packs) and `<Host>/PLAN/` (for host development).
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2o, §2p, [45](45-MODULE-PLANNING.md).
 
 ## What's New (2026-08-22)
 
@@ -119,7 +135,7 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
 | **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost, **PHPDoc purpose sentence** + Why/About/Section, §8 perf pass |
 | **[41-MODULE-HOOKS.md](41-MODULE-HOOKS.md)** | **Business hooks as law** — `module.{mod}.{name}.hook` + `.hooks` (not every save); **`triggerWithVeto` / `Veto`** |
-| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth (LAW)** — new module / first surface / rewrite: every nav item, page, tab, control in writing before code |
+| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth + PLAN folder (LAW)** — write `app/modules/<This>/PLAN/` (split files) then implement from it. Packs read host `AIRULES/`, not host `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p) |
 | [cursor/](cursor/) | Cursor IDE: **source** `AGENTS.md` + `.mdc` rules. Agent **MUST** copy them into `.cursor/rules/` ([00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md)) |
 
 ## Critical: return values

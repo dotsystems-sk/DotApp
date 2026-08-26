@@ -160,7 +160,7 @@ Example: “write `Module2` that adds X to `Module1`” → read `Module2` + `Mo
 
 Then you may read that **named** folder (API, `.hooks`, tables, the screens you are extending). **MUST NOT** also open `Shop`, `CMS`, `DAFiles`, or any other **unnamed** sibling “for inspiration.”
 
-**Host / named-dependency AIRULES (MUST):** if `app/modules/<Named>/AIRULES/` exists, **MUST** read that folder **first** (index, then the files for this task) **before** opening that module’s PHP, views, or CSS. Follow **project `AIRULES/` + that folder together**. This is not a tour of a sibling product — it is the host’s contract for how to extend it. Canonical: [§2n](#2n-module-airules-must--law).
+**Host / named-dependency AIRULES (MUST):** if `app/modules/<Named>/AIRULES/` exists, **MUST** read that folder **first** (index, then the files for this task) **before** opening that module’s PHP, views, or CSS. Follow **project `AIRULES/` + that folder together**. This is not a tour of a sibling product — it is the host’s contract for how to extend it. **MUST NOT** open that host’s `PLAN/` unless the user asked to continue **developing the host** (a pack for CMS does not need CMS’s development plan). Canonical: [§2n](#2n-module-airules-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
 
 #### Forbidden
 
@@ -187,7 +187,7 @@ Explore / Composer / any subagent **MUST** inherit this allow-list. **MUST NOT**
 ## 2. Mandatory workflow
 
 1. **Identify the target module** (or create one). If it is a **new DACore-bound module**, **ASK in chat first**: shared nested sidebar (section `type => 0` → one expandable product item `type => 2` → leaves `type => 1`, `Page@withMenu` `$menuId` `''`) vs **module-own** (`$menuId` = branch id). No answer → **shared nested**. **MUST NOT** pick module-own just because the module has many pages. From about five items, nest under `type => 2` — do not dump leaves under a header. [31](31-DACORE-MENU.md). **Also ASK one grouped identity question:** public display name + one-sentence purpose; installer preview as text-only, compact logo near the heading, or wide banner above the summary; existing local asset + alt text; and whether the identity also appears on the module landing/header. The menu Remix icon is separate from the logo. No preference → clean text-only preview, do not block work. [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b. **Sending mail, inbox notifications, or SMS?** Open [38](38-DACORE-EMAIL.md) / [37](37-DACORE-NOTIFICATIONS.md) / [39](39-DACORE-SMS.md) — do not invent SMTP or a gateway. **DACore hooks (MUST):** before scaffolding a DACore-bound module, **MUST** read **`app/modules/DACore/.hooks`** (read-only catalog of `module.dacore.*.hook` and `.veto`) so the module can subscribe instead of reinventing login/lockout/mail/SMS/template-delete events. **Also ASK** for `about.php` copy: module description HTML, license HTML, and changelog HTML for **1.0.0**. If the user has not given that text, **ASK** — do not invent legal terms or a fake changelog. **Pack vs host:** if this module is a **pack** (template, filemanager, payment, …), or a **host** that will pick among packs (CMS “choose template / file manager”), **ASK** which **reserved** `extra1` from [46](46-DACORE-EXTRA-CONTRACTS.md) (then `extra2`=`v1` and the role’s extra3). A normal app module omits extras. Hosts list packs with `DACore:Plugins@listByContract!`. **Planning depth (MUST):** if they asked to **plan** a **new module**, a **first** major operator surface, or a **rewrite**, the plan **MUST** meet [45](45-MODULE-PLANNING.md) / [§2k](#2k-module-planning-depth-must): **extremely detailed** — every DACore menu row to register, every page, every tab, every control (what it does, default, persist). A long plan is correct. A bullet list of endpoints is not a plan. Small edits to an already shipped screen may stay short.
-2. **Read** the relevant project AIRULES docs for the task (routing / views / DB / forms / JS). **Then** if the user named a host / extend / listen / Extender target (example: “template for CMS”), **MUST** open `app/modules/<Named>/AIRULES/` when that folder exists and follow **project AIRULES + those module rules together** ([§2n](#2n-module-airules-must--law)).
+2. **Read** the relevant project AIRULES docs for the task (routing / views / DB / forms / JS). Rule stack ([§2p](#2p-rule-stack-where-to-look-must--law)): project `AIRULES/` **always**; then `app/modules/<Host>/AIRULES/` if this work extends a named host; then **this** module’s `PLAN/` if it exists. **MUST NOT** open the host’s `PLAN/` when writing a pack (template for CMS → CMS `AIRULES/` only).
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths. **Read** only the [§1b](#1b-read-scope-must--law) allow-list (`<Target>` + DACore + core + project `AIRULES/` + named-host `AIRULES/`). **MUST NOT** browse a sibling module for an example or a look unless the user named that module as the extend/listen/Extender target.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
@@ -202,6 +202,8 @@ Explore / Composer / any subagent **MUST** inherit this allow-list. **MUST NOT**
 14. **Extender (judge):** **MUST NOT** Extender every method. Owner `exists()` + `call()`; an ordinary result returns immediately, while `isOriginal()` alone continues owner logic. Extender registers in **`Listeners::register()`** before Module initialization. Target URLs belong in the listener map; Module keeps its own URLs or `[]`; controller string preferred. **MUST NOT** patch DACore to insert `Extender::call`. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 15. **User origin (LAW):** a shop, custom register/login, member area, user import/lookup, or any user list **MUST** follow [42](42-DACORE-USER-ORIGIN.md). Origin is provenance on one globally unique account—not a sandbox, right, tenant store, or module-local Auth session. **ASK** the exact allowed token(s), DACore-form access (default no), and whether this module lists users. Register → create → bound id lookup → stamp → re-read exact token/id; check origin after login, before/on/after 2FA, and in every authenticated module gate. Listing another origin (a DACore-replacement admin) requires explicit confirmation after a whole-app/DB risk warning. **MUST NOT** ship RCE, cross-origin IDOR, or privilege escalation.
 16. **HTML via Renderer (LAW):** when markup **can** be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named exception ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c).
+17. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** (not one chat file) and implement **from that folder**. Chat-only plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. See [§2o](#2o-module-plan-folder-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
+18. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. See [§2p](#2p-rule-stack-where-to-look-must--law).
 
 ### Dotapper-first rule
 
@@ -278,7 +280,9 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **DACore zip packer** | User asked to zip / pack a DACore-bound module | Invented a one-off packer; did not copy [EX-D09](examples/EX-D09-dacore-pack-zip.php.txt) → `dacore-pack-zip.php` → run → delete; left the `.php` copy in the repo ([35](35-DACORE-INSTALL.md) §5) |
 | **Cursor rules mirror** | `.cursor/rules/` vs `AIRULES/cursor/rules/` | A new `.mdc` exists only under `.cursor/`; AIRULES cursor rules were not copied into `.cursor/rules/` this session / after an AIRULES rule change ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
 | **defaultSettings / routes** | `initializeRoutes()` + `initialize()` + RouteMap wake lists | Config used to build a wake prefix or `Router` path without `defaultSettings()` first; URL composed from another module’s Config that is filled only later; hardcoded foreign fallback that skips their `defaultSettings()` ([§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md)) |
-| **Module AIRULES** | Named host / pack / Extender target + `app/modules/<Named>/AIRULES/` | User named a host and that folder exists but was not read; a pack registered routes the host does not listen to; a **new host** that others extend shipped with no `AIRULES/` folder; module rules treated as a replacement for project AIRULES ([§2n](#2n-module-airules-must--law)) |
+| **Module AIRULES** | Named host / pack / Extender target + `app/modules/<Named>/AIRULES/` | User named a host and that folder exists but was not read (CMS HTML phase: unread `02` is a fail; unread `01` is OK until HTML approval); a pack registered routes the host does not listen to; a **new host** that others extend shipped with no `AIRULES/` folder; module rules treated as a replacement for project AIRULES ([§2n](#2n-module-airules-must--law)) |
+| **PLAN folder** | New module / first surface / rewrite + `app/modules/<This>/PLAN/` | No `PLAN/`; chat-only plan; one mega-file instead of a split folder; implement a screen/position not in PLAN; PLAN used to skip project law; **CMS pack:** production views before user-approved `PLAN/html/` ([§2o](#2o-module-plan-folder-must--law), [45](45-MODULE-PLANNING.md), `CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`) |
+| **Rule stack** | Paths opened this session | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` ([§2p](#2p-rule-stack-where-to-look-must--law)) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without the [40](40-DACORE-LIST-PAGER.md) pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
@@ -433,7 +437,7 @@ When the user asks to **plan** a **new module**, a **first version** of a major 
 
 A short plan is allowed **only** for a small change to an already shipped screen. “It posts” / “Settings + list + edit” / “good enough for an admin” is a **failed plan**.
 
-Canonical: [45](45-MODULE-PLANNING.md). UI chrome: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c–§8d, [33](33-DACORE-PAGES-AND-UI.md). Menu rows: [31](31-DACORE-MENU.md).
+Write that inventory in **`app/modules/<This>/PLAN/`** ([§2o](#2o-module-plan-folder-must--law)). Canonical: [45](45-MODULE-PLANNING.md). UI chrome: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c–§8d, [33](33-DACORE-PAGES-AND-UI.md). Menu rows: [31](31-DACORE-MENU.md).
 
 ### 2l. Cursor rules live in AIRULES (**MUST** — law)
 
@@ -469,22 +473,28 @@ Pattern: `app/modules/DACore/module.init.php` (`defaultSettings()` + `initialize
 
 ### 2n. Module AIRULES (MUST — law)
 
-Project `AIRULES/` is the **framework + DACore** contract. A host that other modules extend (CMS + template packs, Shop + payment packs, a file-manager host) **stretches** that stack: pack → host → DACore. Project rules alone cannot list every route that **this** host listens to. Inventing a public `Router::get` in a pack that the host never wakes is a **bug**.
+**`app/modules/<ThisModule>/AIRULES/` is the host contract** — how *other* modules extend *this* one (CMS → how to write a template pack; Shop → how to write a payment pack). It is **not** the development plan of this module. That is `PLAN/` ([§2o](#2o-module-plan-folder-must--law)). Lookup order: [§2p](#2p-rule-stack-where-to-look-must--law).
+
+Project `AIRULES/` is the **framework + DACore** contract and **always applies**. A host that others will extend **MUST** also write module AIRULES, because project rules cannot list every route **this** host listens to. Inventing a public `Router::get` in a pack that the host never wakes is a **bug**.
 
 **MUST write** `app/modules/<ThisModule>/AIRULES/` when **this** module is a **host** or an **extendable surface** (picks packs, publishes stems, owns public catch-alls, or expects Extender/listener modules). English. Index first (`00-README.md` or `README.md`), then topic files (`01-TEMPLATE-PACKS.md`, …). A short `app/modules/<ThisModule>/AIRULES.md` pointer to that folder is allowed.
 
-**MUST follow both** when the folder exists: **project `AIRULES/` + `app/modules/<Named>/AIRULES/`**. Module rules **add** host-specific MUST/MUST NOT (routes, stems, vars, extras). They **MUST NOT** weaken project law (DACore ban, CRC once, PHP 7.4+, read scope, finish gate). Conflict → project AIRULES wins; say so in chat.
+**A host handbook MUST also say:** packs write **`PLAN/` in the pack**, not in the host; do **not** send pack authors to this host’s `PLAN/`.
+
+**MUST follow** when the folder exists: **project `AIRULES/` + `app/modules/<Host>/AIRULES/`**. Module rules **add** host-specific MUST/MUST NOT (routes, stems, extras). They **MAY** name a host-only exception (a stem, a wake list, an extra). They **MUST NOT** weaken project law (DACore ban, CRC once, PHP 7.4+, read scope, finish gate). Conflict → project AIRULES wins; say so in chat.
 
 **When the user names a host** (“create a template for CMS”, “listen to Shop”, “Extender for CMS cart”):
 
-1. Target = the pack / extender you are programming.
+1. Target = the pack / extender you are programming — write **that** module’s `PLAN/`.
 2. Named folder = that host (already on the [§1b](#1b-read-scope-must--law) allow-list).
-3. **MUST** read `app/modules/<Host>/AIRULES/` **before** coding if it exists.
-4. The host’s rules will say it is DACore-bound — then DACore laws apply as well (stack, not a rewrite of DACore).
+3. **MUST** read `app/modules/<Host>/AIRULES/` **before** coding if it exists. **CMS new/rewrite template:** “before coding” means **before phase B**. Phase A (standalone `PLAN/html/`) reads only `02-TEMPLATE-PLAN-FOLDER.md` — see **CMS template packs** below.
+4. **MUST NOT** read `app/modules/<Host>/PLAN/` (CMS’s own roadmap has nothing to do with the template).
+5. The host’s rules will say it is DACore-bound — then DACore laws in project AIRULES apply as well (stack, not a rewrite of DACore).
 
 **MUST NOT**
 
 - Skip a present host `AIRULES/` and invent routes, stems, or chrome from a live sibling pack.
+- Open the host’s `PLAN/` while programming a pack for that host.
 - Put host-only law only under project `AIRULES/` (a CMS zip must ship **its** handbook).
 - Invent a law only under `.cursor/` ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
 - Copy a sibling pack’s cards/CSS because the host folder is now readable — examples stay in `AIRULES/examples/` plus the **host AIRULES** and the host APIs those files name.
@@ -496,8 +506,57 @@ Project `AIRULES/` is the **framework + DACore** contract. A host that other mod
 - View stems / vars the host passes; what a pack **MUST NOT** register.
 - How to build URLs the host will resolve (helpers, default-language unprefixed slugs, `{not:}` if used).
 - Reserved `extra1`…`extra5` this host lists ([46](46-DACORE-EXTRA-CONTRACTS.md)).
+- That a pack **MUST** create `app/modules/<Pack>/PLAN/` ([§2o](#2o-module-plan-folder-must--law)).
+- **CMS:** HTML-first in `PLAN/html/` (standalone site, user approval) **before** mapping onto this host’s stems. That law lives in the CMS zip: `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`.
 
 Example: `app/modules/CMS/AIRULES/`. Compact Cursor rule: `AIRULES/cursor/rules/19-module-airules.mdc`.
+
+**CMS template packs (MUST):** a new or rewritten public theme **MUST** first ship a **standalone HTML site** in `app/modules/{Pack}/PLAN/html/` (real subpages, hard-filled texts, vanilla CSS/JS) **without** reading the CMS system. The user **reviews and approves** that HTML. **Only then** read CMS `AIRULES/` 01 (+ 03 if Extender) and implement the approved look as pack views. Copy `PLAN/assets/` → pack `assets/`. Read **CMS `AIRULES/`**, not CMS `PLAN/`. Host law: `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`. Compact rule: `AIRULES/cursor/rules/20-cms-template-plan.mdc`.
+
+### 2o. Module PLAN folder (MUST — law)
+
+**`PLAN/` is this module’s portable development plan** — how *we* keep building *this* module. It is **not** the contract for other modules. That is `AIRULES/` in the host ([§2n](#2n-module-airules-must--law)). A chat-only plan or a single file in Cursor history is **not portable**. Split files in a folder so another agent / machine can continue.
+
+**Applies** when [§2k](#2k-module-planning-depth-must) applies (new module, first major surface, rewrite). A tiny edit to a shipped screen may skip a new PLAN file.
+
+**MUST:**
+
+1. Create `app/modules/<ThisModule>/PLAN/` in the same work as the scaffold (after `dotapper --create-module`).
+2. Write the [§2k](#2k-module-planning-depth-must) / [45](45-MODULE-PLANNING.md) inventory **into that folder** (English): index (`README.md`); **laws** (module MUST/MUST NOT that cannot weaken project AIRULES); **rules** (conventions, naming); **menu/nav**; **screens**; **positions**. Optional `PLAN/assets/` rasters / mockups. **MUST NOT** dump everything into one file.
+3. Implement **from this module’s PLAN**. A screen, tab, control, or position that is not in PLAN is a **bug** — add it to PLAN first.
+4. When **this** module’s `PLAN/` exists, **MUST** read it **before** coding this module.
+5. A host that others will extend **MUST** also write `AIRULES/` in the same work ([§2n](#2n-module-airules-must--law)) so future packs know the contract. The host’s `PLAN/` stays private to host development.
+
+**MUST NOT:**
+
+- Skip `PLAN/` because the chat already has a long plan.
+- Treat `PLAN/` as project AIRULES or as the host handbook.
+- Read another module’s `PLAN/` (CMS `PLAN/` when writing a template).
+- Weaken project law or host AIRULES from a PLAN file.
+- Keep the only copy of the plan outside the module.
+
+Compact: `AIRULES/cursor/rules/21-module-plan-folder.mdc`. Deep: [45](45-MODULE-PLANNING.md). Stack: [§2p](#2p-rule-stack-where-to-look-must--law).
+
+### 2p. Rule stack — where to look (MUST — law)
+
+Agents **MUST** know where laws live and what wins. Folders travel with the project; a Cursor chat does not.
+
+| Priority (1 wins) | Path | Who writes it | Who reads it | What it is |
+|-------------------|------|---------------|--------------|------------|
+| **1 — always** | project `AIRULES/` | framework / this rulebook | **everyone, every task** | Hard laws. CRC, PHP 7.4+, DACore ban, finish gate. |
+| **2 — if this work extends a named host** | `app/modules/<Host>/AIRULES/` | the **host** (CMS, Shop, …) | packs / listeners / Extenders **for that host** | How to extend the host. May add host-only MUST/MUST NOT. **MUST NOT** weaken priority 1. |
+| **3 — the module you are building** | `app/modules/<This>/PLAN/` | **this** module’s authors | only agents **continuing this module** | Portable plan (screens, positions, next steps). Not a contract for others. **MUST NOT** weaken 1 or 2. |
+
+**Example — template pack for a finished CMS that runs under DACore:**
+
+1. Project `AIRULES/` (includes DACore laws) — still applies.
+2. `app/modules/CMS/AIRULES/` — how templates must register, which routes CMS wakes.
+3. `app/modules/<YourTemplate>/PLAN/` — **your** theme plan.
+4. **Do not** open `app/modules/CMS/PLAN/`. **Do not** skip step 1 because CMS has its own rules.
+
+**Example — you are building CMS itself:** write `CMS/AIRULES/` (for future template authors) **and** `CMS/PLAN/` (for CMS development). Same two folders, two jobs.
+
+**MUST NOT** invent a third place for law (only `.cursor/`, a gist, one mega-file in chat). Compact laws still live in `AIRULES/cursor/rules/` and are **mirrored** ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
 
 ---
 
@@ -575,6 +634,8 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Patch another module (or DACore) to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Short plan (“Settings + list + edit”) for a new module / first surface / rewrite | Extremely detailed inventory: every `Menu@register` row, page, tab, control ([§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md)) |
+| Chat-only plan / one mega-file / no `app/modules/<This>/PLAN/` | Write a **split** `PLAN/` folder then code from it ([§2o](#2o-module-plan-folder-must--law)) |
+| Open host `PLAN/` while writing a pack | Read host `AIRULES/` only; write `PLAN/` in **this** pack ([§2p](#2p-rule-stack-where-to-look-must--law)) |
 | DACore zip still containing `install.php`, or missing `dainstall.php` / `init/` | **MUST** [§2e](#2e-dacore-installable-zip-must--law) — pack with [EX-D09](examples/EX-D09-dacore-pack-zip.md); installer **rejects** `install.php` and **never runs** Installation without `dainstall.php` |
 | Invented a one-off DACore zip packer, or left `dacore-pack-zip.php` in the repo | **MUST** copy [EX-D09](examples/EX-D09-dacore-pack-zip.php.txt) → run → delete the `.php` ([35](35-DACORE-INSTALL.md) §5) |
 | New compact law only under `.cursor/rules/` | Write `AIRULES/cursor/rules/*.mdc` first, then copy the mirror ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
@@ -628,7 +689,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 31. **HTML via Renderer (MUST):** when markup can be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / `Page@paginate!` `<li>` / one tiny chip). Canonical: [§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
 32. **Planning depth (MUST):** a plan for a new module / first major surface / rewrite **MUST** list every DACore `Menu@register` row (or `No menu`), every page, every tab, and every control (what it does, default, persist). Length is not a defect. Canonical: [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
 33. **defaultSettings before routes (MUST):** **MUST NOT** compose wake lists or `Router` paths from Config that is only set later (another module’s `initialize()` / `defaultSettings()`, or your own defaults you never called yet). **MUST** `defaultSettings()` in `initializeRoutes()` before `return` **and** at the start of `initialize()`. Foreign prefix (DACore `prefixUrl`): literal own path (`/admin/CMS`) plus Config **after** it exists — **MUST NOT** hardcode their fallback. Canonical: [§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md).
-34. **Module AIRULES (MUST):** a host / extendable module **MUST** keep `app/modules/<ThisModule>/AIRULES/` that tells packs and extenders which routes, stems, and extras **this** module actually uses. When that folder exists on a **named** host, follow **project AIRULES + those files together**. Module rules **MUST NOT** weaken project law. Canonical: [§2n](#2n-module-airules-must--law).
+34. **Module AIRULES (MUST):** a host / extendable module **MUST** keep `app/modules/<ThisModule>/AIRULES/` that tells packs and extenders which routes, stems, and extras **this** module actually uses. When that folder exists on a **named** host, follow **project AIRULES + those files together**. Module rules **MUST NOT** weaken project law. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [§2n](#2n-module-airules-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
+35. **PLAN folder (MUST):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` (split files: laws, rules, positions) and implement from it. Chat-only / one-file plans fail. **MUST NOT** read a host’s `PLAN/` when writing a pack. Canonical: [§2o](#2o-module-plan-folder-must--law), [§2p](#2p-rule-stack-where-to-look-must--law), [45](45-MODULE-PLANNING.md).
+36. **Rule stack (MUST):** project `AIRULES/` always; then named-host `AIRULES/`; then **this** module’s `PLAN/`. Priority 1 wins. Canonical: [§2p](#2p-rule-stack-where-to-look-must--law).
 
 ---
 
@@ -675,6 +738,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Layout / UX-UI (LAW): buttons MUST have padding vs parent (esp. bottom); center/align to siblings; never flush to the card edge — 00 §2f
  * - HTML via Renderer (LAW): when it can be a template it MUST be; PHP HTML string only for a named one-piece exception — 00 §2j / 05 §1c
  * - Planning depth (LAW): new module / first surface / rewrite plan MUST inventory every Menu@register row (or No menu), page, tab, control — length is OK — 00 §2k / 45
+ * - PLAN folder (LAW, 00 §2o): write app/modules/<This>/PLAN/ as a split folder (not one chat file). Implement from it. MUST NOT read a host PLAN when writing a pack
+ * - Rule stack (LAW, 00 §2p): 1 project AIRULES (always) 2 host AIRULES (if extending a named host) 3 this module PLAN. Priority 1 wins
  * - Cursor rules (LAW, 00 §2l): compact .mdc live in AIRULES/cursor/rules/. Agent MUST copy them to .cursor/rules/ + AGENTS.md to project root. MUST NOT invent a law only under .cursor/
  * - defaultSettings (LAW, 00 §2m): call defaultSettings() in initializeRoutes() before return and at the start of initialize(). MUST NOT build Router/wake paths from Config filled later (DACore prefixUrl). MUST NOT hardcode their fallback. Literal own path if the other module has not run yet.
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
@@ -757,14 +822,14 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | **Anything (always)** | **18** error handling / return values — incl. **§9 catch bus** (`dotapp.catch`) | — |
 | Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
 | Plan / PHP version | **00 §2i** — ASK 7.4+ (default) vs a higher PHP; no answer → 7.4+ | — |
-| Plan / new module, first major surface, or rewrite | **00 §2k** / **[45](45-MODULE-PLANNING.md)** — extremely detailed inventory (every `Menu@register` row, page, tab, control) + security before code | — |
+| Plan / new module, first major surface, or rewrite | **00 §2k** + **§2o** + **§2p** / **[45](45-MODULE-PLANNING.md)** — `PLAN/` in **this** module (split files); packs read host `AIRULES/`, not host `PLAN/` | — |
 | Cursor `.mdc` / copied AIRULES folder | **00 §2l** — source is `AIRULES/cursor/rules/`; agent **MUST** copy into `.cursor/rules/` | [INSTALL.md](INSTALL.md) |
 | **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest conflicts | [17](17-CHECKLISTS.md) Finish gate |
 | Stay-on-page save / errors | **00 §2d** visible outcome — DACore toast (search first); public = mark the wrong field | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Buttons / card footers / chrome spacing | **00 §2f** layout + UX/UI — padding vs parent (esp. bottom), alignment | [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) |
 | Page / list / AJAX HTML fragment | **00 §2j** / **05 §1c** — Renderer + layout; PHP markup only for a named one-piece exception | [EX-05](examples/EX-05-renderer-page.md), [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | New module | 00, 02, 03, **00 §1b** (read only this module + DACore — not siblings) | [EX-03](examples/EX-03-module-scaffold.md) |
-| Pack / host / named extend | **00 §2n** — project AIRULES **plus** `app/modules/<Host>/AIRULES/` when it exists; hosts **MUST** write that folder | CMS: `app/modules/CMS/AIRULES/` |
+| Pack / host / named extend | **00 §2n** + **§2p** — project AIRULES **plus** `app/modules/<Host>/AIRULES/` when it exists; **MUST NOT** open host `PLAN/` when writing a pack | CMS: `app/modules/CMS/AIRULES/` |
 | Route / middleware | 03, 04, 32 | EX-03 / EX-D01 — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | Template / CSS / JS page | 05 (incl. **§1c HTML via Renderer law**, §8 product copy), **09 §3** public mobile nav | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Public website header / nav | **09 §3** “Public website mobile navigation” — drawer overlay, lock page scroll | [EX-05](examples/EX-05-renderer-page.md) |

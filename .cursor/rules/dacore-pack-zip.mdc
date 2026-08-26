@@ -1,0 +1,28 @@
+---
+description: Canonical DACore install zip packer — copy EX-D09 .txt, run, delete. Never invent a packer.
+alwaysApply: true
+---
+
+# DACore install zip packer (LAW)
+
+Canonical: `AIRULES/35-DACORE-INSTALL.md` §5, `AIRULES/00-AGENT-CONTRACT.md` §2e. How-to: `AIRULES/examples/EX-D09-dacore-pack-zip.md`.
+
+The PHP packer is stored as **text** so it cannot run from the handbook:
+
+`AIRULES/examples/EX-D09-dacore-pack-zip.php.txt`
+
+**MUST NOT** write a one-off zip script. That burns tokens and ships inconsistent zips.
+
+When the user asks to zip / pack a **DACore-bound** module:
+
+1. Copy the `.txt` to the project root as `dacore-pack-zip.php`.
+2. Run `php dacore-pack-zip.php {Module} {version}` (`{version}` = highest quoted `'1.2.0' =>` key in `Installation.php`).
+3. **Delete** `dacore-pack-zip.php`. Leave the `.txt` in AIRULES untouched.
+
+```powershell
+Copy-Item AIRULES\examples\EX-D09-dacore-pack-zip.php.txt .\dacore-pack-zip.php
+php dacore-pack-zip.php DAFiles 1.2.0
+Remove-Item .\dacore-pack-zip.php
+```
+
+**MUST NOT** pack `app/modules/DACore/`. **MUST NOT** leave `dacore-pack-zip.php` in the repo. **MUST NOT** put `PLAN/` in the zip (development plan stays in the working tree; the packer skips it).

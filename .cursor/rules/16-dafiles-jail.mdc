@@ -1,0 +1,14 @@
+---
+description: DAFiles jail picker, optional 2FA, follow AIRULES every request
+alwaysApply: true
+---
+
+# DAFiles + AIRULES every request (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md`.
+
+- **MUST** follow AIRULES on every request (finish gate, Renderer HTML, CRC once, UX padding).
+- **DAFiles settings:** unlocked by default. Step-up only after the operator enables the lock. Chrome = DACore installer modal (`dacore-otp` + `twoFactor` `{ autoSubmit: true }`). **MUST NOT** a 6-digit field on the card. Turning the lock off = separate 2FA handler.
+- **Jail:** This module (whole DAFiles tree), another installed module’s `assets/` only, or `app/runtime`. One area `<select>` (This module, Runtime, then other modules) + browse/create. **MUST NOT** a typed absolute path. Picker rows **MUST** contrast against the card (not transparent-on-transparent).
+- **Public URLs:** only files under a module’s `assets/` (served as `/assets/modules/{Module}/…`). Runtime is never public. Copy path **MUST** stay hidden unless the current folder is under `assets/` and the operator enabled the setting.
+- Bind settings Save with `$dotapp().form("#id").before().after().onError()` — not `$dotapp(form).form(callback)`. Overlay **MUST** come off on success **and** fail, with a toast.

@@ -1,0 +1,21 @@
+---
+description: Module Events::trigger hooks plus a root .hooks file — law AIRULES/41
+alwaysApply: true
+---
+
+# Module hooks (LAW)
+
+Canonical: `AIRULES/41-MODULE-HOOKS.md`. Sample: `AIRULES/examples/EX-16-module-hooks.md`.
+
+- Name: **`module.{lowercase_modulename}.{hook_name}.hook`** (four lowercase segments; `hook_name` is `snake_case`).
+- Fire **only** when another module could log, show history, or sync (SMS/mail sent, payment, lockout, finished workflow). **MUST NOT** fire on every save.
+- Above `Events::trigger`: **MUST** `Hook:` / `Why:` / `About:` / `Params:` / `Use:` (if you cannot write `Use:`, do not fire).
+- **MUST** document every fired name in `app/modules/<YourModule>/.hooks` (Markdown **content**, filename **`.hooks`**, module **root** — not `assets/`, not `hooks.md`).
+- Same chunk: new trigger ↔ new `.hooks` heading. Stale rows **MUST** go.
+- Payload: ids/counts/flags. **MUST NOT** passwords, OTP, tokens, rights, SMS/email bodies, request bodies.
+- `trigger()` **ignores** listener returns — not a veto. Listeners: cheap + own `try/catch`.
+- React to another module: **read its `.hooks`**, `Events::on` in **your** `module.listeners.php`. **MUST NOT** patch them or DACore.
+- **DACore-bound module:** **MUST** open **`app/modules/DACore/.hooks`** (read-only) before scaffolding listeners — that is the catalog of `module.dacore.*.hook` and `.veto` DACore already fires. Use those names; do not invent `module.dacore.*`.
+- **MUST NOT** fire `dotapp.catchall` yourself. **MUST NOT** `trigger()` inside `foreach` of a growing list — one batch event.
+- Finish gate: grep `Events::trigger(` vs `.hooks`; reject old `shop.item.saved` shape.
+- **Not Extender.** Replacing how a page/cart/export renders is `AIRULES/12` §10 / EX-17 — do not fire a hook for that. **MUST NOT** Extender every method (`AIRULES/00` §2h). **MUST NOT** patch DACore to insert `Extender::call`.

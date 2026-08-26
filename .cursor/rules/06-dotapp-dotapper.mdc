@@ -1,0 +1,37 @@
+---
+description: DotApp dotapper.php CLI — generate modules/controllers; run from project root
+alwaysApply: false
+---
+
+# DotApper CLI
+
+Full reference: `AIRULES/02-DOTAPPER-CLI.md`.
+
+## Rules
+
+1. `Set-Location` to project root (`index.php` + `dotapper.php`)
+2. Prefer generators over hand-written skeletons
+3. `--module=` **before** `--create-controller|middleware|model`
+
+## Common commands
+
+```powershell
+php .\dotapper.php --create-module=Shop
+php .\dotapper.php --module=Shop --create-controller=Home
+php .\dotapper.php --module=Shop --create-middleware=Gate
+php .\dotapper.php --module=Shop --create-model=Item
+php .\dotapper.php --list-routes
+php .\dotapper.php --module=Shop --test
+php .\dotapper.php --optimize-modules
+```
+
+## Interactive
+
+`--install`, `--update`, `--prepare-database`, `--install-module` ask `[Y/n]`.  
+Pipe `"y" | php ...` when automating. No `--yes` flag.
+
+## Cannot generate
+
+Libraries, view files (beyond scaffold), translation JSON, test PHP classes, cache clear, users/permissions CLI.
+
+Judge success by printed messages and files created (exit code may be quirky — see AIRULES/15).

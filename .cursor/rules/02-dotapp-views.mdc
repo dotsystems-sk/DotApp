@@ -1,0 +1,59 @@
+---
+description: DotApp views — Renderer syntax is not Blade/Twig
+globs: app/modules/**/views/**
+alwaysApply: false
+---
+
+# DotApp Views
+
+Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
+
+## Correct syntax
+
+```html
+{{ var: $title }}
+{{_ "Login" }}
+{{ if isset($user) }} ... {{ elseif $x }} ... {{ else }} ... {{ /if }}
+{{ foreach $items as $item }} ... {{ /foreach }}
+{{ layout:partials/header }}
+{{ content }}
+<fo-rm method="POST">
+  {{ formName(saveItem) }}
+</fo-rm>
+{{ CSRF }}
+```
+
+## Wrong (never)
+
+- `{{ $title }}`, `@if`, `@foreach`, `@extends`, `@section`, `@yield`
+- `{{ endif }}`, `{{ endforeach }}`
+- `{{ include 'x' }}` in PHP templates (JS-only)
+- Assuming auto-escaping on `var:`
+- Prompt-echo UI copy (“this user can hide the icon…”) — product language only (`AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8)
+
+## Files
+
+- Views: `*.view.php` via `setView('name')` — **this is the outer file**
+- Layouts: `views/layouts/*.layout.php` via `setLayout('path')` — **inner piece**
+- Cross-module: `Shop:path`
+
+## How they compose (MUST)
+
+**Public / owned document:** `setView` + `setLayout` + `renderView()` → layout HTML replaces `{{ content }}` **inside the view**. The layout does not wrap the view. The view **MUST** contain `{{ content }}` or the layout is discarded. Other paths: `renderLayout()` (fragment); or generate HTML and inject with `setViewVar` / `str_replace`. Full: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b.
+
+**DACore admin:** do **not** use `{{ content }}` as the page shell. Render a layout fragment and pass `$title`, `$body`, `$css`, `$js` to `DACore:Page@withMenu!`. Canonical: `AIRULES/33-DACORE-PAGES-AND-UI.md`.
+
+## Renderer vars
+
+- `renderView()` → `setViewVar` only
+- `renderLayout()` → `setLayoutVar` only
+
+## Sandbox (MUST)
+
+`RenderingIsolator` **silently skips** a whole var if the name **or any nested value** is `is_callable()` — `time`, `copy`, `count`, `key`, `header`, `date`, `sort`, `file`, `['Class','method']`, closures. Symptom: heading/`if` shows, `foreach` is empty. Prefix keys (`feat_time`) or pass one escaped HTML string. Dangerous calls in template PHP are stripped. **MUST NOT** patch `app/parts/Renderer.php`. Full: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §5.
+
+## Assets
+
+`/assets/modules/{Module}/...` and `/assets/dotapp/dotapp.js`.
+
+**Public website chrome:** overlay mobile drawer (L/R), lock page scroll while open, scrollable nav list, contacts + compact search in the drawer unless large search is its own section. `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3. DACore admin uses `Page@withMenu!` — do not rebuild that shell.

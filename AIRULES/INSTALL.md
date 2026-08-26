@@ -22,6 +22,8 @@ After `git clone` or `php dotapper.php --install`, the project root already cont
 
 **Module AIRULES:** a host that packs extend **MUST** also keep `app/modules/<Host>/AIRULES/`. When that folder exists, agents follow **project AIRULES + those files together** ([00](00-AGENT-CONTRACT.md) §2n). Copying only project `AIRULES/` into a new app is not enough if the host module is missing.
 
+**Module PLAN:** a new module **MUST** keep `app/modules/<This>/PLAN/` as a **split folder** (laws, rules, positions). That folder travels with the module. Packs read the host’s `AIRULES/`, not the host’s `PLAN/` ([00](00-AGENT-CONTRACT.md) §2o, §2p).
+
 Wire Cursor from that folder:
 
 ```powershell
@@ -83,6 +85,7 @@ your-project/
     15-cursor-rules-sync.mdc     (alwaysApply: true — LAW: source is AIRULES/cursor)
     18-module-default-settings.mdc
     19-module-airules.mdc
+    21-module-plan-folder.mdc
     html-via-renderer.mdc
     mysql-safe-ddl.mdc
     ux-ui-layout.mdc

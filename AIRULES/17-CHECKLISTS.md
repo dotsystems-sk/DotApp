@@ -13,6 +13,8 @@
 - [ ] **PHP version:** asked whether to stay on **PHP 7.4+** (default) or write for a higher version; no answer → 7.4+ ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] New module has visible UI: asked once for display name/purpose, optional logo/banner, placement, colours and alt text; backend-only module skipped the question; “no custom branding” was offered ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b)
 - [ ] **Planning depth:** new module / first major surface / rewrite — plan inventories **every** nav item (or `No menu`), **every** page, **every** tab, **every** control (what it does, default, persist) plus security. A long plan is correct. Short plans only for small edits to shipped screens ([45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k)
+- [ ] **PLAN folder:** new module / first surface / rewrite writes `app/modules/<This>/PLAN/` as a **split folder** (laws, rules, inventories, **positions**, optional images) and implements from it. Existing **this-module** `PLAN/` was read first. Chat-only / one-file plan is not enough ([00](00-AGENT-CONTRACT.md) §2o)
+- [ ] **Rule stack:** project `AIRULES/` applies; named-host `AIRULES/` was read if this is a pack; host `PLAN/` was **not** opened for a pack ([00](00-AGENT-CONTRACT.md) §2p)
 - [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
 - [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
 
@@ -167,6 +169,8 @@ Tick only the rows for the surface you touched.
 - [ ] **defaultSettings / routes:** `defaultSettings()` exists; called at the start of `initializeRoutes()` (before `return`) and at the start of `initialize()`. Wake/`Router` paths are not built from Config another module fills later. No hardcoded foreign fallback. Foreign path needed before they run uses a literal URL this module owns ([00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md))
 - [ ] **Wake `{not:}`:** a public catch-all puts `{not:/admin*|/api/v1*|…}` on the wake string — not a `/{path*}` wake plus `initializeCondition` skip ([03](03-MODULES-AND-ROUTING.md))
 - [ ] **Module AIRULES:** if this chunk is a pack / listener / Extender for a named host, that host’s `AIRULES/` was read and public routes match what the host listens to. A new host that others extend has `app/modules/<ThisModule>/AIRULES/`. Module rules were not used to skip project law ([00](00-AGENT-CONTRACT.md) §2n)
+- [ ] **PLAN folder:** if this chunk is a new module / first surface / rewrite, `app/modules/<This>/PLAN/` exists (split files) and the chunk matches it. If **this** `PLAN/` already existed, it was read first ([00](00-AGENT-CONTRACT.md) §2o)
+- [ ] **Rule stack:** host `PLAN/` was not opened while writing a pack ([00](00-AGENT-CONTRACT.md) §2p)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, …)
 - [ ] No core file modifications in the diff

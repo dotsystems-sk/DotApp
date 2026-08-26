@@ -31,5 +31,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **defaultSettings** | Wake list or `Router` path built from Config without `defaultSettings()` first; foreign Config composed before that module’s defaults; hardcoded foreign fallback (`AIRULES/00` §2m) |
 | **Wake `{not:}`** | Public catch-all wakes on `/{path*}` and excludes `/admin` only in `initializeCondition` (`AIRULES/03`) |
 | **Module AIRULES** | Named host `AIRULES/` exists but was not read; pack registered routes the host does not listen to; new host with no `app/modules/<This>/AIRULES/`; module rules used to skip project law (`AIRULES/00` §2n) |
+| **PLAN folder** | New module / rewrite with no `app/modules/<This>/PLAN/`; chat-only plan; one mega-file instead of a split folder; screen/position not in PLAN; PLAN used to skip project law (`AIRULES/00` §2o) |
+| **Rule stack** | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` (`AIRULES/00` §2p) |
 
 Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.

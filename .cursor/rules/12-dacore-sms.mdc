@@ -1,0 +1,10 @@
+---
+description: Sending SMS, SMS gateway or provider in a module
+alwaysApply: false
+---
+
+# DACore SMS (on demand)
+
+If this task sends SMS, implements a gateway, or picks an SMS sender: **read** `AIRULES/39-DACORE-SMS.md` and `AIRULES/examples/EX-D07-dacore-sms.md` before writing code.
+
+Do not invent a second SMS stack. Call `DotApp::call("DACore:Sms@…!")` (class `Sms`, not `SMS`). `Parts\Sms` / `SmsProvider` only if they declined DACore drivers.

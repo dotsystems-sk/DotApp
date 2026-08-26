@@ -47,7 +47,7 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 ## 2. Mandatory workflow
 
 1. **Identify the target module** (or create one).
-2. **Read** the relevant AIRULES docs for the task (routing / views / DB / forms / JS). **Then** if the user named a host / extend / listen / Extender target, **MUST** open `app/modules/<Named>/AIRULES/` when that folder exists and follow **project AIRULES + those module rules together** ([§2n](#2n-module-airules-must--law)).
+2. **Read** the relevant AIRULES docs for the task (routing / views / DB / forms / JS). Rule stack ([§2p](#2p-rule-stack-where-to-look-must--law)): project `AIRULES/` **always**; then `app/modules/<Host>/AIRULES/` if this work extends a named host; then **this** module’s `PLAN/` if it exists. **MUST NOT** open the host’s `PLAN/` when writing a pack.
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
@@ -66,6 +66,8 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 18. **Cursor rules live in AIRULES (LAW):** compact `.mdc` files **MUST** live in `AIRULES/cursor/rules/`. `.cursor/rules/` is a non-portable Cursor mirror. The agent **MUST** copy the mirror itself ([§2l](#2l-cursor-rules-live-in-airules-must--law), [INSTALL.md](INSTALL.md)).
 19. **defaultSettings (LAW):** **MUST** `defaultSettings()` at the start of `initializeRoutes()` (before `return`) **and** at the start of `initialize()`. **MUST NOT** compose wake/`Router` paths from Config another module fills later. See [§2m](#2m-module-defaultsettings-before-routes-must--law).
 20. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. When the user names that host, **MUST** read it first. See [§2n](#2n-module-airules-must--law).
+21. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** (not one chat file) and implement **from that folder**. Chat-only plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. See [§2o](#2o-module-plan-folder-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
+22. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. See [§2p](#2p-rule-stack-where-to-look-must--law).
 
 ### Dotapper-first rule
 
@@ -138,6 +140,8 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **defaultSettings / routes** | `initializeRoutes()` + `initialize()` + RouteMap wake lists | Config used to build a wake prefix or `Router` path without `defaultSettings()` first; URL composed from another module’s Config that is filled only later; hardcoded foreign fallback that skips their `defaultSettings()` ([§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md)) |
 | **Wake `{not:}`** | Public catch-all in `initializeRoutes()` | Wakes on `/{path*}` and excludes `/admin` only in `initializeCondition` — exclusion **MUST** be on the wake string (`{not:/admin*\|/api/v1*\|…}`) ([03](03-MODULES-AND-ROUTING.md)) |
 | **Module AIRULES** | Named host / pack / Extender target + `app/modules/<Named>/AIRULES/` | User named a host and that folder exists but was not read; a pack registered routes the host does not listen to; a **new host** that others extend shipped with no `AIRULES/` folder; module rules treated as a replacement for project AIRULES ([§2n](#2n-module-airules-must--law)) |
+| **PLAN folder** | New module / first surface / rewrite + `app/modules/<This>/PLAN/` | No `PLAN/`; chat-only plan; one mega-file instead of a split folder; implement a screen/position not in PLAN; PLAN used to skip project law ([§2o](#2o-module-plan-folder-must--law), [45](45-MODULE-PLANNING.md)) |
+| **Rule stack** | Paths opened this session | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` ([§2p](#2p-rule-stack-where-to-look-must--law)) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
@@ -241,7 +245,7 @@ When the user asks to **plan** a **new module**, a **first version** of a major 
 
 A short plan is allowed **only** for a small change to an already shipped screen. “It posts” / “Settings + list + edit” is a **failed plan**.
 
-Canonical: [45](45-MODULE-PLANNING.md). UI: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c–§8d.
+Write that inventory in **`app/modules/<This>/PLAN/`** ([§2o](#2o-module-plan-folder-must--law)). Canonical: [45](45-MODULE-PLANNING.md). UI: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c–§8d.
 
 ### 2l. Cursor rules live in AIRULES (**MUST** — law)
 
@@ -277,23 +281,73 @@ Deep: [03](03-MODULES-AND-ROUTING.md). Compact: `AIRULES/cursor/rules/18-module-
 
 ### 2n. Module AIRULES (MUST — law)
 
-Project `AIRULES/` is the **framework** contract. A host that other modules extend (Shop + payment packs, a public-site host + templates) **stretches** that stack. Project rules alone cannot list every route that **this** host listens to. Inventing a public `Router::get` in a pack that the host never wakes is a **bug**.
+**`app/modules/<ThisModule>/AIRULES/` is the host contract** — how *other* modules extend *this* one (a public-site host → how to write a theme pack; Shop → how to write a payment pack). It is **not** the development plan of this module. That is `PLAN/` ([§2o](#2o-module-plan-folder-must--law)). Lookup order: [§2p](#2p-rule-stack-where-to-look-must--law).
+
+Project `AIRULES/` is the **framework** contract and **always applies**. A host that others will extend **MUST** also write module AIRULES, because project rules cannot list every route **this** host listens to. Inventing a public `Router::get` in a pack that the host never wakes is a **bug**.
 
 **MUST write** `app/modules/<ThisModule>/AIRULES/` when **this** module is a **host** or an **extendable surface** (picks packs, publishes stems, owns public catch-alls, or expects Extender/listener modules). English. Index first (`README.md`), then topic files. A short `app/modules/<ThisModule>/AIRULES.md` pointer to that folder is allowed.
 
-**MUST follow both** when the folder exists: **project `AIRULES/` + `app/modules/<Named>/AIRULES/`**. Module rules **add** host-specific MUST/MUST NOT. They **MUST NOT** weaken project law (CRC once, PHP 7.4+, finish gate). Conflict → project AIRULES wins; say so in chat.
+**A host handbook MUST also say:** packs write **`PLAN/` in the pack**, not in the host; do **not** send pack authors to this host’s `PLAN/`.
 
-**When the user names a host** (“create a template for Shop”, “listen to Shop”, “Extender for Shop cart”):
+**MUST follow** when the folder exists: **project `AIRULES/` + `app/modules/<Host>/AIRULES/`**. Module rules **add** host-specific MUST/MUST NOT. They **MAY** name a host-only exception. They **MUST NOT** weaken project law (CRC once, PHP 7.4+, finish gate). Conflict → project AIRULES wins; say so in chat.
 
-1. Target = the pack / extender you are programming.
+**When the user names a host** (“create a theme for Site”, “listen to Shop”, “Extender for Shop cart”):
+
+1. Target = the pack / extender you are programming — write **that** module’s `PLAN/`.
 2. Named folder = that host.
 3. **MUST** read `app/modules/<Host>/AIRULES/` **before** coding if it exists.
+4. **MUST NOT** read `app/modules/<Host>/PLAN/`.
 
-**MUST NOT** skip a present host `AIRULES/` and invent routes; put host-only law only under project `AIRULES/`; invent a law only under `.cursor/` ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
+**MUST NOT** skip a present host `AIRULES/` and invent routes; open the host’s `PLAN/` while programming a pack; put host-only law only under project `AIRULES/`; invent a law only under `.cursor/` ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
 
-**What a host handbook MUST cover** (when the surface exists): routes this module registers (wake + `Router`); view stems / vars; what a pack **MUST NOT** register; how to build URLs the host will resolve (including `{not:}` if used).
+**What a host handbook MUST cover** (when the surface exists): routes this module registers (wake + `Router`); view stems / vars; what a pack **MUST NOT** register; how to build URLs the host will resolve (including `{not:}` if used); that a pack **MUST** create `app/modules/<Pack>/PLAN/`.
 
 Compact: `AIRULES/cursor/rules/19-module-airules.mdc`.
+
+### 2o. Module PLAN folder (MUST — law)
+
+**`PLAN/` is this module’s portable development plan** — how *we* keep building *this* module. It is **not** the contract for other modules. That is `AIRULES/` in the host ([§2n](#2n-module-airules-must--law)). A chat-only plan or a single file in Cursor history is **not portable**. Split files in a folder so another agent / machine can continue.
+
+**Applies** when [§2k](#2k-module-planning-depth-must) applies (new module, first major surface, rewrite). A tiny edit to a shipped screen may skip a new PLAN file.
+
+**MUST:**
+
+1. Create `app/modules/<ThisModule>/PLAN/` in the same work as the scaffold (after `dotapper --create-module`).
+2. Write the [§2k](#2k-module-planning-depth-must) / [45](45-MODULE-PLANNING.md) inventory **into that folder** (English): index (`README.md`); **laws**; **rules**; **menu/nav**; **screens**; **positions**. Optional `PLAN/assets/`. **MUST NOT** dump everything into one file.
+3. Implement **from this module’s PLAN**. A screen, tab, control, or position that is not in PLAN is a **bug** — add it to PLAN first.
+4. When **this** module’s `PLAN/` exists, **MUST** read it **before** coding this module.
+5. A host that others will extend **MUST** also write `AIRULES/` in the same work ([§2n](#2n-module-airules-must--law)). The host’s `PLAN/` stays private to host development.
+
+**MUST NOT:**
+
+- Skip `PLAN/` because the chat already has a long plan.
+- Treat `PLAN/` as project AIRULES or as the host handbook.
+- Read another module’s `PLAN/` when writing a pack for that host.
+- Weaken project law or host AIRULES from a PLAN file.
+- Keep the only copy of the plan outside the module.
+
+Compact: `AIRULES/cursor/rules/21-module-plan-folder.mdc`. Deep: [45](45-MODULE-PLANNING.md). Stack: [§2p](#2p-rule-stack-where-to-look-must--law).
+
+### 2p. Rule stack — where to look (MUST — law)
+
+Agents **MUST** know where laws live and what wins. Folders travel with the project; a Cursor chat does not.
+
+| Priority (1 wins) | Path | Who writes it | Who reads it | What it is |
+|-------------------|------|---------------|--------------|------------|
+| **1 — always** | project `AIRULES/` | this rulebook | **everyone, every task** | Hard laws. CRC, PHP 7.4+, finish gate. |
+| **2 — if this work extends a named host** | `app/modules/<Host>/AIRULES/` | the **host** | packs / listeners / Extenders **for that host** | How to extend the host. May add host-only MUST/MUST NOT. **MUST NOT** weaken priority 1. |
+| **3 — the module you are building** | `app/modules/<This>/PLAN/` | **this** module’s authors | only agents **continuing this module** | Portable plan. Not a contract for others. **MUST NOT** weaken 1 or 2. |
+
+**Example — theme pack for a finished public-site host:**
+
+1. Project `AIRULES/` — still applies.
+2. `app/modules/<Host>/AIRULES/` — how packs must register.
+3. `app/modules/<YourPack>/PLAN/` — **your** pack plan.
+4. **Do not** open `app/modules/<Host>/PLAN/`. **Do not** skip step 1 because the host has its own rules.
+
+**Example — you are building the host itself:** write `<Host>/AIRULES/` (for future pack authors) **and** `<Host>/PLAN/` (for host development). Same two folders, two jobs.
+
+**MUST NOT** invent a third place for law (only `.cursor/`, a gist, one mega-file in chat). Compact laws still live in `AIRULES/cursor/rules/` and are **mirrored** ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
 
 ---
 
@@ -361,6 +415,8 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Patch another module / fire `shop.item.saved` | Read **their** `.hooks`, `Events::on` in **yours**; name is `module.{mod}.{name}.hook` ([41](41-MODULE-HOOKS.md)) |
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Short plan (“Settings + list + edit”) for a new module / first surface / rewrite | Extremely detailed inventory: every nav item, page, tab, control ([§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md)) |
+| Chat-only plan / one mega-file / no `app/modules/<This>/PLAN/` | Write a **split** `PLAN/` folder then code from it ([§2o](#2o-module-plan-folder-must--law)) |
+| Open host `PLAN/` while writing a pack | Read host `AIRULES/` only; write `PLAN/` in **this** pack ([§2p](#2p-rule-stack-where-to-look-must--law)) |
 | New compact law only under `.cursor/rules/` | Write `AIRULES/cursor/rules/*.mdc` first, then copy the mirror ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
 | Wake `/{path*}` then skip `/admin` only in `initializeCondition` | `{not:/admin*\|/api/v1*}` **on the wake string** ([03](03-MODULES-AND-ROUTING.md)) |
 | `Router` / wake from Config before `defaultSettings()` | Call `defaultSettings()` first ([§2m](#2m-module-defaultsettings-before-routes-must--law)) |
@@ -408,7 +464,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 26. **Planning depth (MUST):** a plan for a new module / first major surface / rewrite **MUST** list every nav item (or `No menu`), every page, every tab, and every control (what it does, default, persist). Length is not a defect. Canonical: [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
 27. **Cursor rules live in AIRULES (MUST):** compact `.mdc` files live in `AIRULES/cursor/rules/`. The agent **MUST** copy them into `.cursor/rules/` and `AGENTS.md` to the project root. **MUST NOT** invent a law only under `.cursor/`. Canonical: [§2l](#2l-cursor-rules-live-in-airules-must--law), [INSTALL.md](INSTALL.md).
 28. **defaultSettings before routes (MUST):** **MUST** `defaultSettings()` in `initializeRoutes()` before `return` **and** at the start of `initialize()`. **MUST NOT** compose wake/`Router` paths from Config filled later. Canonical: [§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md).
-29. **Module AIRULES (MUST):** a host **MUST** ship `app/modules/<This>/AIRULES/`. Named host + unread folder = fail. Canonical: [§2n](#2n-module-airules-must--law).
+29. **Module AIRULES (MUST):** a host **MUST** ship `app/modules/<This>/AIRULES/`. Named host + unread folder = fail. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [§2n](#2n-module-airules-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
+30. **PLAN folder (MUST):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` (split files: laws, rules, positions) and implement from it. Chat-only / one-file plans fail. **MUST NOT** read a host’s `PLAN/` when writing a pack. Canonical: [§2o](#2o-module-plan-folder-must--law), [§2p](#2p-rule-stack-where-to-look-must--law), [45](45-MODULE-PLANNING.md).
+31. **Rule stack (MUST):** project `AIRULES/` always; then named-host `AIRULES/`; then **this** module’s `PLAN/`. Priority 1 wins. Canonical: [§2p](#2p-rule-stack-where-to-look-must--law).
 
 ---
 
@@ -458,6 +516,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - defaultSettings (LAW, 00 §2m): call defaultSettings() in initializeRoutes() before return and at the start of initialize(). MUST NOT build Router/wake paths from Config filled later. Literal own path if the other module has not run yet
  * - URL {not:} (03): exclude before the positive match — /{path*}{not:/admin*|/api/v1*}. /admin* not /admin/* for exact /admin. Public catch-all MUST put {not:} on the wake string
  * - Host AIRULES (00 §2n): extendable hosts MUST ship app/modules/<This>/AIRULES/; read it first when the user names that host
+ * - PLAN folder (LAW, 00 §2o): write app/modules/<This>/PLAN/ as a split folder (not one chat file). Implement from it. MUST NOT read a host PLAN when writing a pack
+ * - Rule stack (LAW, 00 §2p): 1 project AIRULES (always) 2 host AIRULES (if extending a named host) 3 this module PLAN. Priority 1 wins
  * - Edit only this module + app/config.php. Never edit app/parts/, app/DotApp.php, dotapper.php, index.php — not even if the user asks. The kernel is frozen.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
@@ -493,11 +553,11 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | **Anything (always)** | **18** error handling / return values — incl. **§9 catch bus** (`dotapp.catch`) | — |
 | Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
 | Plan / PHP version | **00 §2i** — ASK 7.4+ (default) vs a higher PHP; no answer → 7.4+ | — |
-| Plan / new module, first major surface, or rewrite | **00 §2k** / **[45](45-MODULE-PLANNING.md)** — extremely detailed inventory (nav, pages, tabs, controls) + security before code | — |
+| Plan / new module, first major surface, or rewrite | **00 §2k** + **§2o** + **§2p** / **[45](45-MODULE-PLANNING.md)** — `PLAN/` in **this** module (split files); packs read host `AIRULES/`, not host `PLAN/` | — |
 | Cursor `.mdc` / copied AIRULES folder | **00 §2l** — source is `AIRULES/cursor/rules/`; agent **MUST** copy into `.cursor/rules/` | [INSTALL.md](INSTALL.md) |
 | `defaultSettings` / Config-built routes | **00 §2m** / **03** — call defaults before wake `return` and before `Router` | [EX-03](examples/EX-03-module-scaffold.md) |
 | URL `{not:}` / public catch-all | **03** path parameters — exclude **before** the positive match; on the wake string | — |
-| Host / pack handbook | **00 §2n** — `app/modules/<Host>/AIRULES/` | — |
+| Host / pack handbook | **00 §2n** + **§2p** — `app/modules/<Host>/AIRULES/`; **MUST NOT** open host `PLAN/` when writing a pack | — |
 | **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware conflicts | [17](17-CHECKLISTS.md) Finish gate |
 | Stay-on-page save / errors | **00 §2d** visible outcome — mark the wrong field; your own toast/status | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |

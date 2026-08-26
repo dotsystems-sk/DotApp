@@ -1,0 +1,29 @@
+---
+description: LAW — CMS template: standalone PLAN/html/ first (no CMS), user approves, then implement as pack
+alwaysApply: true
+---
+
+# CMS template PLAN kit (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o (every module), `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`, `01-TEMPLATE-PACKS.md`.
+
+When creating or rewriting a **CMS template pack** (`extra1=template`):
+
+## MUST — HTML-first
+
+1. Scaffold the pack, then fix `initializeRoutes()` — **MUST NOT** leave `['*']`.
+2. Design a **standalone HTML site** in **`app/modules/{Pack}/PLAN/html/`**: real subpages, **hard-filled** texts, **vanilla CSS + vanilla JS**. The user opens `index.html` in a browser.
+3. **MUST NOT** look at the CMS system while designing that HTML (no CMS PHP, no stems, no chrome vars, no `01-TEMPLATE-PACKS.md`, no Extender catalog, no `$dotapp` / jQuery in `PLAN/html/`).
+4. **STOP** until the user **approves** the HTML. Then read CMS `AIRULES/` 01 (+ 03 if needed) and implement the approved look as the pack.
+5. Put rasters in **`PLAN/assets/`**. Build copies them into `assets/` / `about-assets/`.
+
+## MUST NOT
+
+- Start from CMS stems / `$menu_items` / `views/public/` “because it will be a pack.”
+- Skip `PLAN/html/` and ship markdown or chat mocks as the review.
+- Start production views/CSS before explicit HTML approval.
+- Skip PLAN because a chat plan exists.
+- Open `app/modules/CMS/PLAN/` — that is CMS’s own roadmap, not the template contract. Read `CMS/AIRULES/` (02 in the HTML phase; 01 after approval) (`AIRULES/00` §2p).
+- Hotlink the source site from public views.
+- Copy a sibling pack’s CSS.
+- Invent this law only under `.cursor/rules/` (source is `AIRULES/cursor/rules/`).

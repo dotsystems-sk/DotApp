@@ -74,11 +74,15 @@ When **planning** programming, **ASK** whether to stay on **PHP 7.4+** (the DotA
 
 ## Module AIRULES (**MUST** — law)
 
-A host that other modules extend (CMS + template packs) **MUST** keep `app/modules/<ThisModule>/AIRULES/`. When that folder exists on a **named** host, follow **project `AIRULES/` + those files together**. Module rules add host routes/stems; they **MUST NOT** weaken project law. Example: `app/modules/CMS/AIRULES/`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n.
+A host that other modules extend (CMS + template packs) **MUST** keep `app/modules/<ThisModule>/AIRULES/`. When that folder exists on a **named** host, follow **project `AIRULES/` + those files together**. Module rules add host routes/stems; they **MUST NOT** weaken project law. **MUST NOT** open the host’s `PLAN/` when writing a pack. Example: `app/modules/CMS/AIRULES/`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n, §2p.
 
 ## Planning depth (**MUST** — law)
 
 When they asked to **plan** a **new module**, a **first** major surface, or a **rewrite**, the plan **MUST** be extremely detailed: every `DACore:Menu@register` row (or `No menu`), every page, every tab, every control (what it does, default, persist). A long plan is correct. A bullet list of endpoints is a failed plan. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2k, `AIRULES/45-MODULE-PLANNING.md`.
+
+## Module PLAN folder (**MUST** — law)
+
+A new module / first major surface / rewrite **MUST** write **`app/modules/<This>/PLAN/`** as a **split folder** (not one chat file) and implement **from that folder**. Chat-only plans fail. Read **this** module’s `PLAN/` first. **MUST NOT** open a host’s `PLAN/` when writing a pack. **CMS template pack:** standalone `PLAN/html/` (filled texts, vanilla CSS/JS) first — do **not** look at the CMS system until the user **approves** that HTML, then implement as the pack. Stack: project AIRULES (always) → host `AIRULES/` → this PLAN. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o, §2p, `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`.
 
 ## Finish gate (**MUST** — law)
 
@@ -102,6 +106,8 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 16. **MySQL-safe DDL** — `Installation.php` / `ensureTable` has no `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`. Probe then `CREATE`/`ALTER`. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0.
 17. **defaultSettings / routes** — `defaultSettings()` exists; called at the start of `initializeRoutes()` (before `return`) and at the start of `initialize()`. Wake/`Router` paths are not built from Config another module fills later. No hardcoded foreign fallback. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2m.
 18. **Module AIRULES** — named host `app/modules/<Host>/AIRULES/` was read when present; pack routes match what the host listens to; a new host that others extend has that folder. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n.
+19. **PLAN folder** — new module / rewrite has `app/modules/<This>/PLAN/` (split files); code matches PLAN; unread PLAN = fail. **CMS template:** `PLAN/html/` approved before production views. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o.
+20. **Rule stack** — host `PLAN/` was **not** opened while writing a pack; project AIRULES was not skipped. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2p.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 
@@ -128,6 +134,9 @@ When markup **can** be a template, it **MUST** be a template. PHP prepares data.
 - **PHP 7.4+ (ASK in plan):** default language is PHP 7.4+. **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
 - **Module identity (ASK in plan):** for every new DACore-bound module, ask once for public name/purpose; installer preview as text-only, compact logo near heading, or wide banner; existing local asset + alt text; and optional landing/header placement. No preference → text-only, do not block. Installer image = optimised raster in **your** `about-assets/`, referenced from `about.php`; sidebar Remix `icon` is separate. No external image/SVG/tracker and no DACore patch. If this is a **pack** or a **host that picks packs** (CMS templates / file manager): **ASK** which **reserved** `extra1` from `AIRULES/46-DACORE-EXTRA-CONTRACTS.md` (`filemanager`, `template`, …) plus `extra2`=`v1`. Hosts list with `DACore:Plugins@listByContract!`. Implement/call from `AIRULES/46-contracts/{extra1}.md`. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8b, `AIRULES/35-DACORE-INSTALL.md` §3b–§3c, `AIRULES/46-DACORE-EXTRA-CONTRACTS.md`.
 - **Planning depth (MUST):** new module / first surface / rewrite — inventory every `Menu@register` row (or `No menu`), page, tab, and control in the plan. Length is OK. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2k, `AIRULES/45-MODULE-PLANNING.md`.
+- **Module AIRULES (MUST):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. Named host + unread folder = fail. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n, §2p.
+- **PLAN folder (MUST):** write `app/modules/<This>/PLAN/` as a split folder then implement from it. Chat-only / one-file plans fail. **MUST NOT** read a host PLAN when writing a pack. **CMS template:** `PLAN/html/` first, user approves, then pack views. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o, §2p.
+- **Rule stack (MUST):** 1 project AIRULES (always) → 2 host AIRULES → 3 this PLAN. Priority 1 wins. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2p.
 - Login-required / admin routes: **MUST** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login`. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()`; action **MUST NOT** `crcCheck()` again. Register handlers only inside `if (Auth::isLogged() === true) { … }`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`, `AIRULES/32-DACORE-RIGHTS.md`.
 - **Docs (MUST):** English for normal modules and DACore. For the explicitly authorized listener-route core task, comments in `app/DotApp.php`, `app/parts/Module.php`, `app/parts/Listeners.php`, and related `dotapper.php` changes may use natural Slovak without diacritics. Every public method in `Controllers/` and `Middleware/` **MUST** start PHPDoc with **`CRCchecking —`** (exact prefix/middleware such as `#DACore:AuthTest@LoginAndCRC!`, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence**, then `@param` / `@return` / `@throws` with meaning — tags-only (`@return array<string, mixed>`) is a bug. **MUST NOT** document prefix CRC and still `crcCheck()` in that method. Inline comments **MUST** use labels **`// Why:`** (every logical step), **`// About:`** (what this chunk is / what the record represents), **`// Section:`** (admin menu or route). **MUST NOT** restate the code, prompt-echo, omit the labels, or leave dead code / bare `TODO`. Canonical: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §7, `AIRULES/08-FORMS-AND-SECURITY.md`.
 - **Catch bus MUST:** every `catch` and every `execute()` `$err` reports `dotapp.catch` + `dotapp.catch.error|info` through **one** helper per module (listener exceptions propagate, so the helper wraps its own `trigger()` calls). Payload keys are fixed; secrets, tokens, rights blobs and request bodies **MUST NOT** be in it; nothing for this goes under `app/modules/DACore/`; a listener **MUST NOT** push a DACore notification per failure. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
@@ -203,9 +212,10 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | **Outbound HTTPS/HMAC webhooks** | `AIRULES/43-DACORE-WEBHOOKS.md` |
 | **User origin / custom login / shop accounts** | `AIRULES/42-DACORE-USER-ORIGIN.md` |
 | **Extender (judge — not every method)** | `AIRULES/12-SERVICES.md` §10 (sample: `AIRULES/examples/EX-17-extender.md`) |
-| **Planning depth (new module / first surface / rewrite)** | `AIRULES/00-AGENT-CONTRACT.md` §2k, `AIRULES/45-MODULE-PLANNING.md` |
+| **Planning depth (new module / first surface / rewrite)** | `AIRULES/00-AGENT-CONTRACT.md` §2k + §2o, `AIRULES/45-MODULE-PLANNING.md` (`PLAN/` in **this** module) |
+| **Rule stack (where to look)** | `AIRULES/00-AGENT-CONTRACT.md` §2p — 1 project AIRULES → 2 host AIRULES → 3 this PLAN. Do **not** open host PLAN when writing a pack |
 | **Reserved extra1–extra5 / peer contracts** | `AIRULES/46-DACORE-EXTRA-CONTRACTS.md` (index) + `AIRULES/46-contracts/{extra1}.md` (deep I/O; template `filemanager.md`) |
-| **Module AIRULES (host + pack)** | `AIRULES/00-AGENT-CONTRACT.md` §2n — then `app/modules/<Host>/AIRULES/` (CMS: `app/modules/CMS/AIRULES/`) |
+| **Module AIRULES (host + pack)** | `AIRULES/00-AGENT-CONTRACT.md` §2n — then `app/modules/<Host>/AIRULES/` (CMS: `app/modules/CMS/AIRULES/`). **Not** host `PLAN/` |
 
 ## DACore rules (hard)
 
