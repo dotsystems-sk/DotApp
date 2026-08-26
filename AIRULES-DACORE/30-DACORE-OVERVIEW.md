@@ -17,7 +17,7 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | **Never edit any file in `app/modules/DACore/`** (default) | DACore updates overwrite the whole module — local patches disappear |
 | **Never add files, controllers, views, JS, CSS, or SQL into DACore** (default) | Same reason: the next update wipes them. Extend via your own module only |
 | **Never propose a DACore patch** | The user must ask; the agent must not offer it |
-| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders` directly** | Use the registration / push / `Email@send` / `Sms@send` APIs. **Exception (read):** listing packs by `extra1`…`extra5` is `DACore:Plugins@listByExtra!` or a bound `SELECT` ([35](35-DACORE-INSTALL.md) §3c). Never `UPDATE` extras from your module. |
+| **Never INSERT/UPDATE/DELETE `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders` directly** | Use the registration / push / `Email@send` / `Sms@send` APIs. **Exception (read):** listing packs by `extra1`…`extra5` is `DACore:Plugins@listByContract!` / `@listByExtra!` or a bound `SELECT` ([35](35-DACORE-INSTALL.md) §3c, [46](46-DACORE-EXTRA-CONTRACTS.md)). Never `UPDATE` extras from your module. |
 | **Never write into `{prefix}users_rights*` directly** | Use `DACore:Rights@*` |
 | **Never duplicate the admin HTML shell** | Use `DACore:Page@withMenu!` |
 | **Never use `$_SESSION` / `session_start()`** | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
@@ -67,6 +67,7 @@ Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` 
 | Add AI system context | `DACore:AI@addSystemContext` | `bool` |
 | Migration guard | `DACore:Installations@exist!` | `bool` |
 | List installed packs by `extra1`…`extra5` | `DACore:Plugins@listByExtra!` (1.0.26; not HTTP; empty token → `[]`) | `array` of `{module, version, extra1…extra5}` |
+| List installed packs by reserved role + contract | `DACore:Plugins@listByContract!` (1.0.45; not HTTP; empty token → `[]`). Vocabulary: [46](46-DACORE-EXTRA-CONTRACTS.md) | `array` of `{module, version, extra1…extra5}` |
 | Read user origin / 2FA·IP flags / extra1…extra5 | `DACore:UserPolicy@read` (1.0.9; not HTTP) | `array` policy row |
 | Apply a whitelist policy patch | `DACore:UserPolicy@apply` | `{ok, message, changed, policy}` |
 | Find users by one extra slot (**global discovery; not origin authorization**) | `DACore:UserPolicy@findByExtra` | `{ok, user_ids, page, last_page, total}` |
@@ -89,7 +90,7 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_ai_tools` | AI tool registry: `toolid`, `creator`, `description`, `howtouse`, `controller`, `rights`, `helper`, `workflow`, `tool_type`, `risk_level`, `requires_confirmation`, `intent_tags`, `allowed_tools`, `forbidden_tools` |
 | `dacore_chat` | AI chat sessions |
 | `dacore_chat_messages` | AI chat messages |
-| `dacore_modules` | Installed package registry: normal plugins plus protected `DACore` / `DotApp` system rows, about/license/changelog HTML, and `extra1`…`extra5` discovery flags from `about.php` (DACore-owned — **never INSERT/UPDATE/DELETE** from your module; **READ** / `Plugins@listByExtra!` is how a CMS finds templates) |
+| `dacore_modules` | Installed package registry: normal plugins plus protected `DACore` / `DotApp` system rows, about/license/changelog HTML, and `extra1`…`extra5` discovery flags from `about.php` (DACore-owned — **never INSERT/UPDATE/DELETE** from your module; **READ** / `Plugins@listByContract!` / `@listByExtra!` is how a CMS finds `template` / `filemanager` packs — [46](46-DACORE-EXTRA-CONTRACTS.md)) |
 | `dacore_plugin_logs` | Plugin installer audit (DACore-owned — **never write**) |
 | `dacore_backups` | Root-only metadata for server-generated framework, database, and module archives. Files remain under protected runtime storage; posted paths are never trusted. |
 | `dacore_settings` | DACore-wide settings (DACore-owned — **never write**) |

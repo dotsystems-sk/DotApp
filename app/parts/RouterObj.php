@@ -1336,16 +1336,32 @@ class RouterObj {
     }
 
 	public function match_url($route, $url = false, $static = false) {
-        // Last update 2025-03-18
+        // Last update 2026-08-26 — {not:mask|mask} exclude before the positive match
         if (!$url) $url = $this->request->getPath();
-        
-        // Nemusime porovnavat ak je routa staticka
-        if ($static || strpbrk($route, '{:*?}') === false) {
-            $this->match_cache[$route][$url] = true;
-            return $route === $url;
+
+        $cacheKey = $route;
+        $positiveRoute = $route;
+        if (strpos($route, '{not:') !== false) {
+            $parsed = $this->splitNotClauses($route);
+            $positiveRoute = $parsed['route'];
+            // Why: /admin/login against /{path*}{not:/admin*} must die on substr, not on {path*} regex.
+            if ($this->urlHitsAnyNotMask($url, $parsed['not']) === true) {
+                $this->match_cache[$cacheKey][$url] = false;
+                return false;
+            }
+            if ($positiveRoute === '') {
+                $this->match_cache[$cacheKey][$url] = false;
+                return false;
+            }
         }
 
-        if (isset($this->match_cache[$route][$url])) return $this->match_cache[$route][$url];
+        // Nemusime porovnavat ak je routa staticka
+        if ($static || strpbrk($positiveRoute, '{:*?}') === false) {
+            $this->match_cache[$cacheKey][$url] = true;
+            return $positiveRoute === $url;
+        }
+
+        if (isset($this->match_cache[$cacheKey][$url])) return $this->match_cache[$cacheKey][$url];
 
         /* Pre php <8 doplnime funkciu. Takze na php 7.4 to bude o nieco pomalsie, ale php 8.0+ vyuzije rychlsot na plno */
         if (!function_exists('str_ends_with')) {
@@ -1379,14 +1395,14 @@ class RouterObj {
         }
 
         // Rychla detekcia pre /nieco/*
-        if ($str_ends_with($route, '*') && strpbrk($route, '{?}') === false) {
-            $prefix = substr($route, 0, -1); // Odstráni * efektívnejšie než str_replace
+        if ($str_ends_with($positiveRoute, '*') && strpbrk($positiveRoute, '{?}') === false) {
+            $prefix = substr($positiveRoute, 0, -1); // Odstráni * efektívnejšie než str_replace
             $result = $str_starts_with($url, $prefix);
-            $this->match_cache[$route][$url] = $result ? ['wildcard' => substr($url, strlen($prefix))] : false;
+            $this->match_cache[$cacheKey][$url] = $result ? ['wildcard' => substr($url, strlen($prefix))] : false;
             return $result ? ['wildcard' => substr($url, strlen($prefix))] : false;
         }
         
-        $pattern = str_replace('/', '\/', $route);
+        $pattern = str_replace('/', '\/', $positiveRoute);
         
         // Handle optional parameter with optional trailing slash
         $pattern = preg_replace(
@@ -1395,11 +1411,11 @@ class RouterObj {
             $pattern
         );
         
-        if (isset($this->patternCache[$route])) {
-            $pattern = $this->patternCache[$route];
+        if (isset($this->patternCache[$positiveRoute])) {
+            $pattern = $this->patternCache[$positiveRoute];
         } else {
             // Existing replacements from older dotapp versions
-            $pattern = str_replace('/', '\/', $route);
+            $pattern = str_replace('/', '\/', $positiveRoute);
             $pattern = preg_replace(
                 [
                     '/\{([a-zA-Z0-9_]+)\?\}/',
@@ -1430,7 +1446,7 @@ class RouterObj {
                 $pattern
             );
             $pattern = '#^' . $pattern . '$#';
-            $this->patternCache[$route] = $pattern;
+            $this->patternCache[$positiveRoute] = $pattern;
         }
         
         if (preg_match($pattern, $url, $matches)) {
@@ -1440,13 +1456,87 @@ class RouterObj {
             }, ARRAY_FILTER_USE_KEY);
             
             if ($this->match_cache_use) {
-                $this->match_cache[$route][$url] = $filtered_matches;
+                $this->match_cache[$cacheKey][$url] = $filtered_matches;
             }
             return $filtered_matches;
         }
 
         if ($this->match_cache_use) {
-            $this->match_cache[$route][$url] = false;
+            $this->match_cache[$cacheKey][$url] = false;
+        }
+        return false;
+    }
+
+    /**
+     * Splits {not:mask|mask} tokens off a route. Nested {not:} inside a mask is ignored.
+     *
+     * @param string $route Full route string
+     * @return array{route:string,not:array}
+     */
+    private function splitNotClauses($route)
+    {
+        $not = [];
+        $bare = preg_replace_callback(
+            '/\{not:([^}]*)\}/',
+            function ($m) use (&$not) {
+                $parts = explode('|', $m[1]);
+                foreach ($parts as $part) {
+                    $part = trim($part);
+                    if ($part !== '') {
+                        $not[] = $part;
+                    }
+                }
+                return '';
+            },
+            (string) $route
+        );
+        return [
+            'route' => is_string($bare) ? $bare : '',
+            'not' => $not,
+        ];
+    }
+
+    /**
+     * True when $url hits any exclude mask. Simple /prefix* uses substr first.
+     *
+     * @param string $url   Request path
+     * @param array  $masks Exclude masks
+     * @return bool
+     */
+    private function urlHitsAnyNotMask($url, $masks)
+    {
+        if (!is_array($masks) || $masks === []) {
+            return false;
+        }
+        foreach ($masks as $mask) {
+            $mask = trim((string) $mask);
+            if ($mask === '') {
+                continue;
+            }
+            if (strpos($mask, '{not:') !== false) {
+                $inner = $this->splitNotClauses($mask);
+                $mask = $inner['route'];
+            }
+            if ($mask === '') {
+                continue;
+            }
+            // Why: /admin* and /api/v1* are prefix tests — no second match_url.
+            if (substr($mask, -1) === '*' && strpbrk($mask, '{:?}') === false) {
+                $prefix = substr($mask, 0, -1);
+                if ($prefix === '' || substr($url, 0, strlen($prefix)) === $prefix) {
+                    return true;
+                }
+                continue;
+            }
+            if (strpbrk($mask, '{:*?}') === false) {
+                if ($url === $mask) {
+                    return true;
+                }
+                continue;
+            }
+            if ($this->match_url($mask, $url) !== false) {
+                return true;
+            }
         }
         return false;
     }

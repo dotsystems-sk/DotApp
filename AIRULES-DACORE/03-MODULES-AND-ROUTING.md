@@ -45,7 +45,42 @@ class Module extends \Dotsystems\App\Parts\Module
 new Module($dotApp);
 ```
 
-Register **routes and config defaults** in `initialize()`.
+Register **routes** in `initialize()` only **after** `defaultSettings()` (see below).
+
+### `defaultSettings()` before any Config-built route (**MUST** — law)
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2m. DACore reference: `app/modules/DACore/module.init.php`.
+
+`Config::module` fallbacks exist only after **`defaultSettings()`**. `initializeRoutes()` (wake list) and `autoInitializeCondition()` run **before** `initialize()`. Another module’s defaults (DACore `prefixUrl` → `/admin`) may not have run yet when `modulesAutoLoader.php` loads you first.
+
+**MUST:**
+
+1. Implement **`defaultSettings()`**: every default this module owns; `Config::module($mod, $key) ?? Config::module($mod, $key, $default)`.
+2. Call it as the **first** statement of **`initializeRoutes()`**, then `return` the wake prefixes.
+3. Call it as the **first** statement of **`initialize()`**, then read Config and register `Router` paths.
+4. If a path must work when a **foreign** Config key is still empty, also list a **literal** URL this module owns (CMS admin: `/admin/CMS` and `/admin/CMS/*`). **MUST NOT** invent the other module’s default so their `defaultSettings()` never runs when `config.php` omitted the key. **MUST NOT** explode every leaf, lowercase, or `//` variant into the wake list.
+
+**MUST NOT** compose `/` + `Config::module('DACore', 'prefixUrl')` + `/CMS` for wake or `Router::get` until that key is set (config.php or DACore `defaultSettings()`). **MUST NOT** `include` `app/modules/DACore/module.init.php` to force it.
+
+```php
+public static function defaultSettings()
+{
+    Config::module('Shop', 'publicPrefix') ?? Config::module('Shop', 'publicPrefix', '/shop');
+}
+
+public function initializeRoutes()
+{
+    self::defaultSettings();
+    return ['/shop', '/shop/*'];
+}
+
+public function initialize($dotApp)
+{
+    self::defaultSettings();
+    $prefix = rtrim((string) Config::module('Shop', 'publicPrefix'), '/');
+    Router::get($prefix, 'Shop:Public@home!', Router::STATIC_ROUTE);
+}
+```
 
 ### Keep other modules asleep (**MUST**)
 
@@ -58,11 +93,12 @@ All matching listeners register before any matching module performs full initial
 
 **MUST:**
 
-1. Module `initializeRoutes()` lists **only this module’s** HTML prefixes **and** `/api/v1/auth|noauth/{Module}` (or `[]` for listener-only). Listener `initializeRoutes()` lists only requests where callbacks or extenders must exist. After either map changes, run `--optimize-modules`.
+1. Module `initializeRoutes()` lists **only this module’s** HTML prefixes **and** `/api/v1/auth|noauth/{Module}` (or `[]` for listener-only). Listener `initializeRoutes()` lists only requests where callbacks or extenders must exist. After either map changes, run `--optimize-modules`. A public catch-all **MUST** carry `{not:/admin*|…}` **on the wake string** (same text the optimizer table shows). **MUST NOT** wake on `/{path*}` and then cut `/admin` only in `initializeCondition`.
 2. `module.listeners.php` **MUST** only register cheap registry entries (`Events::on`, `Extender::extend`, middleware). **MUST NOT** query, log, HTTP, write files, load another module, or invoke the target.
-3. Another module’s description / license / changelog / **discovery flags** (`extra1`…`extra5`) is in DACore `dacore_modules` (filled at install from `about.php`). **MUST NOT** `include` / `require` / `eval` that module’s `about.php`, `module.init.php`, `Installation.php`, or `settings.php` just to render a list, drawer, or “pick a template” dropdown. Filter with `DACore:Plugins@listByExtra!` or `SELECT … WHERE extra1 = :flag` ([35](35-DACORE-INSTALL.md) §3c).
+3. Another module’s description / license / changelog / **discovery flags** (`extra1`…`extra5`) is in DACore `dacore_modules` (filled at install from `about.php`). **MUST NOT** `include` / `require` / `eval` that module’s `about.php`, `module.init.php`, `Installation.php`, or `settings.php` just to render a list, drawer, or “pick a template” dropdown. Filter with `DACore:Plugins@listByContract!` / `@listByExtra!` or a bound `SELECT` ([35](35-DACORE-INSTALL.md) §3c, [46](46-DACORE-EXTRA-CONTRACTS.md)).
 4. **MUST NOT** `glob('app/modules/*')` or loop other module folders on a request to catalog them. **MUST NOT** `DotApp::call('OtherModule:…')` for that.
 5. **Extender:** judge first. Register `Extender::extend()` in `Listeners::register()` before Module initialization. Keep own URLs (or `[]`) in the Module map; target URLs in the listener map. Prefer a controller string. Owner handles `original()` with `isOriginal()`. **MUST NOT** patch DACore. Canonical: [12](12-SERVICES.md) §10.
+6. **Pack vs host routes:** a template / payment / file-manager **pack** **MUST NOT** register the host’s public catch-alls (`/`, `/{path*}`, `/search`). Read `app/modules/<Host>/AIRULES/` when it exists ([00](00-AGENT-CONTRACT.md) §2n). CMS: `app/modules/CMS/AIRULES/`.
 
 **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned which part wakes everywhere. DACore uses it for the app firewall — not a pattern to copy.
 
@@ -266,6 +302,7 @@ Router::get('/x', "#Shop:Gate@check!");         // rarely as main handler
 | `{param*}` | greedy |
 | `{*}` | anonymous greedy |
 | `/prefix/*` | prefix wildcard |
+| `{not:mask\|mask}` | exclude **before** the positive match (`strpos` `{not:` then `substr` on `/prefix*`). Example: `/{path*}{not:/admin*\|/api/v1*\|/assets*\|/dacore*}`. `/admin/*` does not match exact `/admin` — use `{not:/admin*}`. |
 
 Read matched params: `$request->matchData()['id']`.
 

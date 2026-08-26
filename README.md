@@ -75,6 +75,20 @@ Route: `'Shop:Home@index!'`. Omit the `!` only when the method should receive DI
 
 ## What's New ✨
 
+### URL `{not:}` — exclude prefixes before the match (NEW – 2026-08-26)
+
+The router now has a **`{not:mask|mask}`** operator. Exclusions run **before** the positive pattern (`strpos` / `substr` on a trailing-`*` prefix). A public catch-all can stay one string and still stay out of `/admin`, `/api/v1`, and `/assets`.
+
+```php
+Router::get('/{path*}{not:/admin*|/api/v1*|/assets*}', 'Shop:Public@page!');
+```
+
+- **Order matters:** `/admin/login` against `/{path*}{not:/admin*}` dies on the exclude, not on `{path*}`.
+- **`/admin*` vs `/admin/*`:** `/admin/*` does **not** match exact `/admin`. Use `{not:/admin*}` when the admin index must stay out too.
+- Same syntax on `Module::initializeRoutes()` / `Listeners::initializeRoutes()` wake lists. A public `/{path*}` that only skips `/admin` in `initializeCondition` still **wakes** the module — put `{not:}` on the wake string.
+
+Docs: `AIRULES/03-MODULES-AND-ROUTING.md` (path parameters).
+
 ### Extender — opt-in method replacement (NEW – 2026-08-22)
 
 New core class: **`Dotsystems\App\Parts\Extender`**. A module can **replace** another module’s method for the current request — one handler either owns the result or explicitly defers to the owner’s original logic. This is **not** Events, `module.{mod}.{name}.hook`, or `triggerWithVeto()`.

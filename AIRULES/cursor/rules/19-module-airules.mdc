@@ -1,0 +1,25 @@
+---
+description: LAW — follow project AIRULES plus a named host’s app/modules/<Host>/AIRULES/; hosts MUST write that folder
+alwaysApply: true
+---
+
+# Module AIRULES (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n.
+
+Project `AIRULES/` is the framework contract. A host that packs extend (Shop + payments, public site + templates) **MUST** ship its own handbook so a pack does not invent routes the host never listens to.
+
+## MUST
+
+- Hosts / extendable modules keep **`app/modules/<ThisModule>/AIRULES/`** (English; index + topic files).
+- When the user names a host **and** that folder exists: read it **first**, then follow **project AIRULES + those files together**.
+- A new host that others will extend **MUST** create this folder in the same work.
+
+## MUST NOT
+
+- Skip a present host `AIRULES/` and register public routes the host does not wake.
+- Treat module rules as a replacement for project AIRULES (CRC, PHP 7.4+, finish gate still apply). Conflict → project wins.
+- Put host-only law only under project `AIRULES/` (the host zip/folder must carry its handbook).
+- Invent a law only under `.cursor/rules/`.
+
+Finish gate: named host + unread `AIRULES/` = fail.

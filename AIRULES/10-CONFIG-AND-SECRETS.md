@@ -103,23 +103,26 @@ User may override in `app/config.php`:
 Config::module("Shop", "apikey", "production-secret");
 ```
 
-Module `initialize()` **must** still define defaults if missing:
+Put every default in **`defaultSettings()`** and call it at the start of `initializeRoutes()` (before `return`) **and** at the start of `initialize()`. Then `initialize()` may read Config to register routes. Canonical: [00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md).
 
 ```php
-// Pattern A — null coalesce setter (common in example modules)
-Config::module("Shop", "public") ?? Config::module("Shop", "public", false);
-Config::module("Shop", "enckey") ?? Config::module("Shop", "enckey", bin2hex(random_bytes(16)));
-Config::module("Shop", "timeout") ?? Config::module("Shop", "timeout", 8);
+public static function defaultSettings()
+{
+    // Pattern A — null coalesce setter (common in example modules)
+    Config::module("Shop", "public") ?? Config::module("Shop", "public", false);
+    Config::module("Shop", "enckey") ?? Config::module("Shop", "enckey", bin2hex(random_bytes(16)));
+    Config::module("Shop", "timeout") ?? Config::module("Shop", "timeout", 8);
 
-// Pattern B — nested array merge
-$defaults = ["enabled" => false, "model" => "gpt-4o"];
-Config::module("Shop", "AI", array_replace($defaults, Config::module("Shop", "AI") ?? []));
+    // Pattern B — nested array merge
+    $defaults = ["enabled" => false, "model" => "gpt-4o"];
+    Config::module("Shop", "AI", array_replace($defaults, Config::module("Shop", "AI") ?? []));
 
-// Pattern C — read-site fallback
-$timeout = (int)(Config::module("Shop", "timeout") ?? 8);
+    // Pattern C — read-site fallback
+    $timeout = (int)(Config::module("Shop", "timeout") ?? 8);
 
-// Pattern D — set only if absent
-Config::module("Shop", "maxAttempts", 5, Config::IF_NOT_EXIST);
+    // Pattern D — set only if absent
+    Config::module("Shop", "maxAttempts", 5, Config::IF_NOT_EXIST);
+}
 ```
 
 **Never** hard-code production secrets only in the module without documenting that `app/config.php` overrides them. Prefer weak-looking defaults only for local bootstrap, and instruct the user to override.

@@ -7,7 +7,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 `AIRULES-DACORE/` is the DACore overlay. Use it in a project where **the DACore admin module is installed**.
 
 - **Language:** English
-- **Contents:** docs `00`–`25` = framework · `30`–`40` = DACore layer · **`41` = module hooks** · **`42` = user origin** · **`45` = module planning depth** (every menu row, page, tab, control)
+- **Contents:** docs `00`–`25` = framework · `30`–`40` = DACore layer · **`41` = module hooks** · **`42` = user origin** · **`45` = module planning depth** · **`46` = reserved extra1–extra5 / peer contracts**
 
 ### Which variant to use
 
@@ -27,19 +27,19 @@ Never copy both into the same project — the agent would have two conflicting s
 | [32-DACORE-RIGHTS.md](32-DACORE-RIGHTS.md) | Permissions + `{prefixUrl}/{Module}/…` + `Gate@login` 403 |
 | [33-DACORE-PAGES-AND-UI.md](33-DACORE-PAGES-AND-UI.md) | `Page@withMenu`, dotgrid, UI contract |
 | [34-DACORE-AI-TOOLS.md](34-DACORE-AI-TOOLS.md) | AI tools for the DACore chat |
-| [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | Develop with `install.php`; zip **MUST** use [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`dainstall.php` + `init/`); `installer()` keys **MUST** be quoted `'1.0.0' =>` text |
+| [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | Develop with `install.php`; zip **MUST** use [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`dainstall.php` + `init/`); `installer()` keys **MUST** be quoted `'1.0.0' =>` text; **§3c** extras → [46](46-DACORE-EXTRA-CONTRACTS.md) |
 | [36-DACORE-KNOWN-ISSUES.md](36-DACORE-KNOWN-ISSUES.md) | DACore bugs and traps |
 | [37-DACORE-NOTIFICATIONS.md](37-DACORE-NOTIFICATIONS.md) | Inbox `Notifications@push` |
 | [38-DACORE-EMAIL.md](38-DACORE-EMAIL.md) | Outgoing mail API — **open only when the module sends email** |
 | [39-DACORE-SMS.md](39-DACORE-SMS.md) | SMS driver registry — **open only when the module sends SMS** |
 | [40-DACORE-LIST-PAGER.md](40-DACORE-LIST-PAGER.md) | **List pager law** — HTML classes, `live(el, e)`, encrypted `data-page`, COUNT |
 
-Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D08](examples/EX-D08-list-pager.md), plus **[EX-D09](examples/EX-D09-dacore-pack-zip.md)** (canonical install zip packer). Module-to-module hooks (every module, not DACore-only): [41](41-MODULE-HOOKS.md), [EX-16](examples/EX-16-module-hooks.md). User origin / custom login / shop accounts: [42](42-DACORE-USER-ORIGIN.md).
+Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D08](examples/EX-D08-list-pager.md), plus **[EX-D09](examples/EX-D09-dacore-pack-zip.md)** (canonical install zip packer). Module-to-module hooks (every module, not DACore-only): [41](41-MODULE-HOOKS.md), [EX-16](examples/EX-16-module-hooks.md). User origin / custom login / shop accounts: [42](42-DACORE-USER-ORIGIN.md). Reserved pack extras / peer APIs: [46](46-DACORE-EXTRA-CONTRACTS.md).
 
 ### Most important DACore rules
 
 1. **Never edit, patch, or add files in `app/modules/DACore/` by default** (including DACore assets). **MUST NOT propose** a DACore edit. Put all new work in **the current module**. Touch DACore **only** if the user **themselves** asks **and** confirms the next update wipes it ([00](00-AGENT-CONTRACT.md) §1). Otherwise **strict ban**. Use `DotApp::call("DACore:…")`.
-2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders`, or `users_rights*`. **Read** `extra1`…`extra5` via `DACore:Plugins@listByExtra!` when a host picks packs ([35](35-DACORE-INSTALL.md) §3c).
+2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders`, or `users_rights*`. **Read** `extra1`…`extra5` via `DACore:Plugins@listByContract!` / `@listByExtra!` when a host picks packs ([35](35-DACORE-INSTALL.md) §3c, [46](46-DACORE-EXTRA-CONTRACTS.md)).
 3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
 4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. Push inbox notifications with **`DACore:Notifications@push` on the event** — not from the installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)). **Outgoing mail:** open [38](38-DACORE-EMAIL.md) (do not invent SMTP). **Outgoing SMS:** open [39](39-DACORE-SMS.md) (do not invent a gateway). **While coding:** **`install.php`** + live root init files; after a new version rename `installed_*` → `install.php`. A **DACore** install zip **MUST** be built with [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`copy .txt` → `dacore-pack-zip.php` → run → delete), **MUST** contain **`dainstall.php`** + **`init/`**, and every `installer()` / `uninstaller()` key **MUST** be quoted text (`'1.0.0' =>` — **not** `self::` / `static::` / constants; the scanner greps text and does not run PHP) — a zip that still has `install.php` **or** no quoted version keys is **rejected** ([00](00-AGENT-CONTRACT.md) §2e / §5 item 27, [35](35-DACORE-INSTALL.md) §2 / §4–§5). A non-DACore module: no zip — `install.php` and copy.
 5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell. **ASK** shared nested (`0` → `2` → `1`, `$menuId` `''`) vs module-own before a new DACore module. **No answer → shared nested.** Module-own only if the user explicitly chose it. Edit/detail: 7th `$currentFile` = registered list URL when the path is not under that leaf ([31](31-DACORE-MENU.md)).
@@ -143,6 +143,7 @@ Theory lives in `00`–`25` (framework), `30`–`40` (DACore), and **[41](41-MOD
 | **[41-MODULE-HOOKS.md](41-MODULE-HOOKS.md)** | **Module hooks (LAW)** — `module.{mod}.{name}.hook` when useful (not every save); `.hooks` file; listen, do not patch; DACore-bound modules **MUST** read `app/modules/DACore/.hooks` first |
 | **[42-DACORE-USER-ORIGIN.md](42-DACORE-USER-ORIGIN.md)** | **User origin (LAW)** — global identity/session trust model; checked register/create/stamp/read; exact-origin login+2FA+every gate/list/write; generic failures; ASK before DACore-replacement admin; no RCE/IDOR/escalation |
 | **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth (LAW)** — new module / first major surface / rewrite: every `Menu@register` row, page, tab, and control in writing before code |
+| **[46-DACORE-EXTRA-CONTRACTS.md](46-DACORE-EXTRA-CONTRACTS.md)** | **Reserved `extra1`…`extra5` index (LAW)** — slot grammar, `listByContract!`; deep I/O in **[46-contracts/](46-contracts/README.md)** (template: [filemanager.md](46-contracts/filemanager.md)); hosts MUST NOT invent tokens |
 | [cursor/](cursor/) | Cursor IDE: **source** `AGENTS.md` + `.mdc` rules. Agent **MUST** copy them into `.cursor/rules/` ([00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md)) |
 
 ## Critical: return values

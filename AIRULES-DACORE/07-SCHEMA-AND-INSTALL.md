@@ -454,6 +454,6 @@ Full pattern including rights, menu and AI tools: [35-DACORE-INSTALL.md](35-DACO
 
 The module-owned `*_installations` table shown earlier stays valid for modules that must also run on a bare framework.
 
-DACore-bound admin modules **MUST** also ship root `about.php` (installer preview). After install, DACore stores sanitised HTML **and** optional `extra1`…`extra5` flags in `dacore_modules` — do not `include` the live module to show it or to pick a template. Canonical: [35](35-DACORE-INSTALL.md) §3b–§3c.
+DACore-bound admin modules **MUST** also ship root `about.php` (installer preview). After install, DACore stores sanitised HTML **and** optional `extra1`…`extra5` flags in `dacore_modules` — do not `include` the live module to show it or to pick a template. Reserved tokens: [46](46-DACORE-EXTRA-CONTRACTS.md). Canonical: [35](35-DACORE-INSTALL.md) §3b–§3c.
 
 Every module that fires `module.{thismodule}.*.hook` events **MUST** keep **`.hooks`** in the module root (Markdown body, not a public page). Canonical: [41](41-MODULE-HOOKS.md).

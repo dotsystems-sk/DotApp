@@ -36,7 +36,7 @@ Config::addDatabase("main", $host, $user, $pass, $db, "UTF8", "MYSQL", "pdo");
 Config::module("Shop", "apikey", "production-value");
 ```
 
-Modules must still define fallbacks in `module.init.php` if unset.
+Modules **MUST** define fallbacks in **`defaultSettings()`** and call it from `initializeRoutes()` + `initialize()` (`AIRULES/00` §2m).
 
 ## Session hardening
 

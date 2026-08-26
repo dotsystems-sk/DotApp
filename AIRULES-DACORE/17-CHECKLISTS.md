@@ -6,9 +6,10 @@
 - [ ] **Cursor rules mirror:** `AIRULES/cursor/rules/*.mdc` copied into `.cursor/rules/` (and `AIRULES/cursor/AGENTS.md` → project-root `AGENTS.md`). No new `.mdc` exists only under `.cursor/` ([00](00-AGENT-CONTRACT.md) §2l)
 - [ ] Read `00-AGENT-CONTRACT.md`
 - [ ] Read task-specific AIRULES doc (views/DB/forms/JS)
+- [ ] **Module AIRULES:** if the user named a host / extend / listen / Extender target and `app/modules/<Named>/AIRULES/` exists, read that folder and follow **project AIRULES + those files together**. A new host that others will extend will get `app/modules/<ThisModule>/AIRULES/` in this work ([00](00-AGENT-CONTRACT.md) §2n)
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
 - [ ] Will not edit `app/parts/`, `DotApp.php`, `dotapper.php`, other modules
-- [ ] **Read scope:** will read only `<Target>` + `app/modules/DACore/` (read-only) + core (read-only) + `AIRULES/`. Will **not** browse a sibling under `app/modules/` for a look or example unless the user named that sibling as the extend/listen/Extender target ([00](00-AGENT-CONTRACT.md) §1b)
+- [ ] **Read scope:** will read only `<Target>` + `app/modules/DACore/` (read-only) + core (read-only) + `AIRULES/`. Will **not** browse a sibling under `app/modules/` for a look or example unless the user named that sibling as the extend/listen/Extender target. Named host: read `app/modules/<Named>/AIRULES/` first ([00](00-AGENT-CONTRACT.md) §1b, §2n)
 - [ ] **Cursor credits:** asked whether more expensive models may be used; otherwise parent/`inherit` only. Composer 2.5 = file hunt, not the coder ([00](00-AGENT-CONTRACT.md) §2b)
 - [ ] **PHP version:** asked whether to stay on **PHP 7.4+** (default) or write for a higher version; no answer → 7.4+ ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] New visible module: asked once for public name/purpose, installer identity (text-only / compact logo / wide banner), existing local asset + alt text, optional landing/header placement and colours ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b)
@@ -25,7 +26,7 @@
 - [ ] Controllers/models/middleware created via `--module=... --create-*`
 - [ ] `--module=` appeared **before** create flag
 - [ ] Namespaces match `Dotsystems\App\Modules\{Name}\...`
-- [ ] DACore-bound module: `about.php` in the module root (about + license + changelog HTML); user was **asked** for that copy if they did not supply it ([35](35-DACORE-INSTALL.md) §3b). Pack or host-that-picks-packs: `extra1`…`extra5` **asked** and match the host contract ([35](35-DACORE-INSTALL.md) §3c)
+- [ ] DACore-bound module: `about.php` in the module root (about + license + changelog HTML); user was **asked** for that copy if they did not supply it ([35](35-DACORE-INSTALL.md) §3b). Pack or host-that-picks-packs: `extra1`…`extra5` **asked** and match a **reserved** role from [46](46-DACORE-EXTRA-CONTRACTS.md) (or `{module}.{private}`); host lists with `listByContract!` ([35](35-DACORE-INSTALL.md) §3c)
 - [ ] Installer image (if chosen) is one optimised local raster under `about-assets/`, referenced from `about` with real `width`/`height` + correct `alt`; no external URL/SVG/script/tracker; desktop + narrow preview checked
 - [ ] Sidebar Remix `icon` was selected separately — it was not treated as the installer/module logo
 
@@ -260,10 +261,12 @@ Tick only the rows for the surface you touched.
 - [ ] **Hooks:** grepped `Events::trigger(` and `Events::triggerWithVeto(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; `.veto` names sit under **Veto contracts**; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
 - [ ] **Extender (judge):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; marker is never returned/serialized; no `next()`; `extend()` in `Listeners::register()`; target listener routes explicit; own Module routes or `[]`; controller string preferred; no `['*']` just to attach; no `.loaded` for initialize-time; no `$request`/secrets, Events, duplicate, owner/DACore patch ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h)
 - [ ] **PHP 7.4+:** grepped the chunk for PHP 8+ syntax (`match`, `?->`, `str_contains`, `str_starts_with`, `str_ends_with`, `#[`, `enum `, `readonly `, `: mixed`) unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i)
+- [ ] **defaultSettings / routes:** `defaultSettings()` exists; called at the start of `initializeRoutes()` (before `return`) and at the start of `initialize()`. Wake/`Router` paths are not built from Config another module fills later. No hardcoded foreign fallback (`/admin` as DACore `prefixUrl`). Foreign path needed before they run uses a literal URL this module owns ([00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md))
+- [ ] **Module AIRULES:** if this chunk is a pack / listener / Extender for a named host, that host’s `AIRULES/` was read and public routes match what the host listens to. A new host that others extend has `app/modules/<ThisModule>/AIRULES/`. Module rules were not used to skip project law ([00](00-AGENT-CONTRACT.md) §2n)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
 - [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)
-- [ ] **Read scope:** tool paths in this chunk stayed in `<Target>` + DACore (+ a sibling **only** if the user named it as the extend/listen/Extender target). Did **not** copy a sibling’s cards/CSS/chrome. Examples from `AIRULES/examples/`, not a live sibling ([00](00-AGENT-CONTRACT.md) §1b)
+- [ ] **Read scope:** tool paths in this chunk stayed in `<Target>` + DACore (+ a sibling **only** if the user named it as the extend/listen/Extender target). Named host `AIRULES/` was read first when present. Did **not** copy a sibling’s cards/CSS/chrome. Examples from `AIRULES/examples/`, not a live sibling ([00](00-AGENT-CONTRACT.md) §1b, §2n)
 - [ ] No Laravel/Blade/jQuery APIs introduced
 - [ ] `--list-routes` or manual route review if routes changed
 - [ ] Tests added/updated when logic is non-trivial (`--module=X --test`)

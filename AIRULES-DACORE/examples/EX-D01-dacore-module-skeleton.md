@@ -327,7 +327,7 @@ class Admin extends \Dotsystems\App\Parts\Controller
 
 Copy [EX-D04-dacore-installer.md](EX-D04-dacore-installer.md) / [35](../35-DACORE-INSTALL.md). **While coding:** `install.php` + live `module.init.php` / `module.listeners.php`. After a new version, rename `installed_*_install.php` → `install.php`. **`dainstall.php` + `init/`** only when packing a zip the user asked for. **Do not do this inside `app/modules/DACore/`**.
 
-**MUST** add `about.php` in the module root ([35](../35-DACORE-INSTALL.md) §3b). **ASK** the user for description, license, and 1.0.0 changelog HTML if they did not provide it. If this module is a **pack** or a **host that picks packs**, **ASK** `extra1`…`extra5` ([35](../35-DACORE-INSTALL.md) §3c). In the same grouped question, ask for module identity: text-only / compact logo / wide banner in the installer, existing local asset + alt text, and optional landing/header placement. The sidebar Remix icon is separate. No preference → text-only; do not block the scaffold.
+**MUST** add `about.php` in the module root ([35](../35-DACORE-INSTALL.md) §3b). **ASK** the user for description, license, and 1.0.0 changelog HTML if they did not provide it. If this module is a **pack** or a **host that picks packs**, **ASK** which **reserved** `extra1` from [46](../46-DACORE-EXTRA-CONTRACTS.md) (`filemanager`, `template`, …) plus `extra2`=`v1` and that role’s extra3 ([35](../35-DACORE-INSTALL.md) §3c). In the same grouped question, ask for module identity: text-only / compact logo / wide banner in the installer, existing local asset + alt text, and optional landing/header placement. The sidebar Remix icon is separate. No preference → text-only; do not block the scaffold.
 
 ## 7. Resulting file layout
 

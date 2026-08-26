@@ -24,7 +24,7 @@ DACore is an admin-UI **module**, not framework core — by default its files ar
 - Ship a short “Settings + list” plan for a new module — **MUST** inventory every `Menu@register` row, page, tab, and control (`AIRULES/00` §2k, `AIRULES/45`)
 - Use `$_SESSION` / `session_start()` — **MUST** `DSM::use('Shop')` (`AIRULES/20`)
 - Use `dainstall.php` / blank root init / `init/` **while coding**, or pack a zip for a module that is **not** for DACore — develop with **`install.php`**. When the user asks to zip a DACore-bound module (including create+zip): **MUST** put **`dainstall.php`** (renamed from `install.php`) + **`init/`** live copies + inert root + **`about.php`** in the zip; **MUST NOT** leave `install.php` in the zip (DACore rejects it / Installation never runs). After a new version, rename `installed_*` → `install.php` **and** add a matching `about.php` changelog entry (**ASK** for the notes). **Never** pack `app/modules/DACore/`. (`AIRULES/00` §2e, `AIRULES/35` §3b, §4–§5).
-- `include` / `require` another module’s PHP (`about.php`, `module.init.php`, `Installation.php`) to list or describe it — DACore stores sanitised HTML **and** `extra1`…`extra5` in `dacore_modules`. Discover packs with `DACore:Plugins@listByExtra!` (`AIRULES/35` §3c). **MUST NOT** return `initializeRoutes() => ['*']` unless the user asked for a hook on every URL (`AIRULES/03`).
+- `include` / `require` another module’s PHP (`about.php`, `module.init.php`, `Installation.php`) to list or describe it — DACore stores sanitised HTML **and** `extra1`…`extra5` in `dacore_modules`. Discover packs with `DACore:Plugins@listByContract!` / `@listByExtra!` (`AIRULES/35` §3c, `AIRULES/46`). Peer I/O: `AIRULES/46-contracts/{extra1}.md`. **MUST NOT** return `initializeRoutes() => ['*']` unless the user asked for a hook on every URL (`AIRULES/03`).
 
 ## Call map
 
@@ -40,6 +40,7 @@ DotApp::call("DACore:Page@withMenu!", $title, $body, $header, $css, $js, $menuId
 DotApp::call("DACore:Installations@exist!", $module, $version);    // bool
 DotApp::call("DACore:Installations@insert!", $module, $version, $status, $statusTxt);
 DotApp::call("DACore:Plugins@listByExtra!", $slot, $value);       // packs with extraN = token — AIRULES/35 §3c
+DotApp::call("DACore:Plugins@listByContract!", $role, $contract); // reserved role + v1 — AIRULES/46 + 46-contracts/
 ```
 
 Check every return value: `bool` helpers never throw and never log.

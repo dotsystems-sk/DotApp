@@ -12,5 +12,6 @@ When programming a **DACore-bound** module `<Target>`:
 - **MAY read:** `app/modules/<Target>/`, `app/modules/DACore/` (read-only), framework core read-only, `AIRULES/` + `AIRULES/examples/`.
 - **MUST NOT** open, grep, glob, or explore `app/modules/<Sibling>/` (Shop, CMS, DAFiles, …) for a look, Installation, list, or “how they did it.”
 - **Exception:** the user **named** another module as the thing this work extends / supplements / listens to / Extender-targets. Then that named folder + DACore + `<Target>` are allowed. Still **MUST NOT** tour the rest.
+- **Host AIRULES:** if `app/modules/<Named>/AIRULES/` exists, **MUST** read it first and follow **project AIRULES + those files together** (`AIRULES/00` §2n). That is not a license to copy a sibling pack’s CSS.
 - Examples come from **`AIRULES/examples/`** and DACore chrome — not a live sibling.
 - Subagents / Composer file-hunt **MUST** stay in this allow-list. **MUST NOT** search `app/modules/*`.

@@ -103,6 +103,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Treat listener `return false` as a veto | `trigger()` **ignores** returns. Pre-action stop = `triggerWithVeto()` + `new Veto($code, …)` ([41](41-MODULE-HOOKS.md)) |
 | Skip `Events::trigger` because `hasListener` is false / “nobody listens yet” | **MUST** fire a **decided** useful hook ([41](41-MODULE-HOOKS.md)) |
 | `initializeRoutes() => ['*']` without a global job | Own prefixes + `--optimize-modules`. Listener map may be narrower ([03](03-MODULES-AND-ROUTING.md)) |
+| Wake `/{path*}` then skip `/admin` only in `initializeCondition` | `{not:/admin*\|/api/v1*}` **on the wake string** ([03](03-MODULES-AND-ROUTING.md)) |
+| `Router` / wake from Config before `defaultSettings()` | Call `defaultSettings()` first ([00](00-AGENT-CONTRACT.md) §2m) |
+| Pack registers the host’s public catch-alls | Read `app/modules/<Host>/AIRULES/` first ([00](00-AGENT-CONTRACT.md) §2n) |
 | `Events::trigger('dotapp.catchall', …)` | **Core** already fires it on every other `trigger()` — subscribe with `Events::on('dotapp.catchall', …)` ([01](01-ARCHITECTURE.md)) |
 | Heavy / throwing `dotapp.catchall` listener | cheap + own `try/catch` — a throw **aborts the original event** ([23](23-DEBUG-PLAYBOOK.md) §1c) |
 | Patch another module to “add a call” | Read **their** `.hooks`, `Events::on` in **yours** ([41](41-MODULE-HOOKS.md)) |
@@ -151,7 +154,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 |-------|-------|
 | Leave `YourSuperSecretKey` | Generate `bin2hex(random_bytes(32))` |
 | Rely on `@AUTOCONFIG` | Empty — set keys yourself |
-| Module settings with no fallback | Always `Config::module ?? Config::module(..., default)` |
+| Module settings with no fallback / defaults only in `initialize()` | `defaultSettings()` + call it from `initializeRoutes()` and `initialize()` ([00](00-AGENT-CONTRACT.md) §2m) |
 | `$_SESSION` / `session_start()` | `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md)) |
 | JS overlay / modal as the only save or 2FA gate | PHP re-checks; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | TOTP secret / QR in a read-only page; edit a more privileged user; `WHERE id` only | Mutate right + SQL owner scope; [11](11-AUTH-AND-CRYPTO.md) §11 |

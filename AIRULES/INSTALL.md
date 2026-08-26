@@ -20,6 +20,8 @@ After `git clone` or `php dotapper.php --install`, the project root already cont
 
 **Agent (MUST):** if `.cursor/rules/` is missing files from `AIRULES/cursor/rules/`, or after any AIRULES cursor-rule change, the agent **MUST** create the folder and copy the mirror itself. Do not wait for the user to run this by hand.
 
+**Module AIRULES:** a host that packs extend **MUST** also keep `app/modules/<Host>/AIRULES/`. When that folder exists, agents follow **project AIRULES + those files together** ([00](00-AGENT-CONTRACT.md) §2n). Copying only project `AIRULES/` into a new app is not enough if the host module is missing.
+
 Wire Cursor from that folder:
 
 ```powershell
@@ -79,6 +81,8 @@ your-project/
     10-dotapp-finish-gate.mdc    (alwaysApply: true — LAW after every chunk)
     14-module-hooks.mdc
     15-cursor-rules-sync.mdc     (alwaysApply: true — LAW: source is AIRULES/cursor)
+    18-module-default-settings.mdc
+    19-module-airules.mdc
     html-via-renderer.mdc
     mysql-safe-ddl.mdc
     ux-ui-layout.mdc

@@ -4,6 +4,7 @@
 
 - [ ] Identified target module name (or will create via dotapper)
 - [ ] Read `00-AGENT-CONTRACT.md`
+- [ ] **Module AIRULES:** if the user named a host / extend / listen / Extender target and `app/modules/<Named>/AIRULES/` exists, read that folder and follow **project AIRULES + those files together**. A new host that others will extend will get `app/modules/<ThisModule>/AIRULES/` in this work ([00](00-AGENT-CONTRACT.md) §2n)
 - [ ] **Cursor rules mirror:** `AIRULES/cursor/rules/*.mdc` copied into `.cursor/rules/` (and `AIRULES/cursor/AGENTS.md` → project-root `AGENTS.md`). No new `.mdc` exists only under `.cursor/` ([00](00-AGENT-CONTRACT.md) §2l)
 - [ ] Read task-specific AIRULES doc (views/DB/forms/JS)
 - [ ] Confirmed edits stay in `app/config.php` and/or `app/modules/<Target>/`
@@ -30,7 +31,8 @@
 - [ ] Methods are `public static`
 - [ ] Params via `$request->matchData()`
 - [ ] Login-required / admin routes: prefix `/{ModuleName}/…` + `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` (403 `Response`); handlers **only** inside `if (Auth::isLogged() === true)` — those pages **MUST NEVER** show to anonymous users ([03](03-MODULES-AND-ROUTING.md))
-- [ ] `Module::initializeRoutes()` lists **only this module’s** prefixes. `Listeners::initializeRoutes()` is own prefixes or `null` (inherit). Did **not** return `['*']` unless the user asked for a global hook. After either list changed: `--optimize-modules` ([03](03-MODULES-AND-ROUTING.md))
+- [ ] `defaultSettings()` exists; called at the start of `initializeRoutes()` (before `return`) and at the start of `initialize()`. Wake/`Router` paths are not built from Config another module fills later ([00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md))
+- [ ] `Module::initializeRoutes()` lists **only this module’s** prefixes. A public catch-all carries `{not:/admin*|/api/v1*|…}` **on the wake string**. `Listeners::initializeRoutes()` is own prefixes or `null` (inherit). Did **not** return `['*']` unless the user asked for a global hook. After either list changed: `--optimize-modules` ([03](03-MODULES-AND-ROUTING.md))
 - [ ] Trap-prone spots have a short **English why** comment — not every line
 - [ ] No named routes / Laravel group APIs invented
 
@@ -162,6 +164,9 @@ Tick only the rows for the surface you touched.
 - [ ] If `Installation.php` / store `ensureTable` is in this chunk: no `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`; table/column/index added only after a PHP probe ([07](07-SCHEMA-AND-INSTALL.md) §0)
 - [ ] **HTML via Renderer:** grepped Controllers/Libraries for `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factories — screen/fragment markup is a layout. A PHP HTML string has `// Why:` naming a one-piece exception, never a whole list ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
 - [ ] **Cursor rules:** no new `.mdc` exists only under `.cursor/rules/`; `AIRULES/cursor/rules/*.mdc` were copied into `.cursor/rules/` this session / after an AIRULES rule change ([00](00-AGENT-CONTRACT.md) §2l)
+- [ ] **defaultSettings / routes:** `defaultSettings()` exists; called at the start of `initializeRoutes()` (before `return`) and at the start of `initialize()`. Wake/`Router` paths are not built from Config another module fills later. No hardcoded foreign fallback. Foreign path needed before they run uses a literal URL this module owns ([00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md))
+- [ ] **Wake `{not:}`:** a public catch-all puts `{not:/admin*|/api/v1*|…}` on the wake string — not a `/{path*}` wake plus `initializeCondition` skip ([03](03-MODULES-AND-ROUTING.md))
+- [ ] **Module AIRULES:** if this chunk is a pack / listener / Extender for a named host, that host’s `AIRULES/` was read and public routes match what the host listens to. A new host that others extend has `app/modules/<ThisModule>/AIRULES/`. Module rules were not used to skip project law ([00](00-AGENT-CONTRACT.md) §2n)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, …)
 - [ ] No core file modifications in the diff

@@ -18,10 +18,10 @@ Router::before(['POST'], ['/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'], '#Sho
 ```
 
 - Prefixes: `#` Middleware, `*` Models, trailing `!` skips DI
-- Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`
+- Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`. `{not:/admin*|/api/v1*}` excludes those prefixes **before** the positive match (`strpos` / `substr`; `/admin*` not `/admin/*` for exact `/admin`)
 - No named routes, no Laravel `Route::prefix()->group()` — cover an area with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` (403 `Response`)
 - **MUST:** HTML `/{ModuleName}/…` + `Gate@login` (no CRC). **POST API** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the start of `initialize()` — action **MUST NOT** `crcCheck()` again. Wrap login-only handlers in `if (Auth::isLogged() === true)`. `AIRULES/03`
-- **MUST:** `initializeRoutes()` = this module’s prefixes only. **MUST NOT** `['*']` unless the user asked for a global hook. `AIRULES/03`
+- **MUST:** `initializeRoutes()` = this module’s prefixes only. A public catch-all **MUST** put `{not:/admin*|/api/v1*|…}` **on the wake string**. **MUST NOT** `['*']` unless the user asked for a global hook. `AIRULES/03`
 - **Listeners:** `Listeners::initializeRoutes()` may be a **narrower** list (or omit/`null` to inherit). After either list changes: `php dotapper.php --optimize-modules`.
 - **Comments:** English. Public Controllers/Middleware PHPDoc **MUST** start with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`) then a **purpose sentence** then `@param`/`@return` (not tags-only). Labeled **`// Why:`** (logical step), **`// About:`** (what this chunk is), **`// Section:`** (menu/route) — not every line, not unlabeled (`AIRULES/25` §7, `AIRULES/08`)
 
@@ -47,10 +47,15 @@ With `!` in the route: **no** `Renderer $renderer` type-hints.
 
 `DSM::use('Shop')->set/get/delete`. **MUST NOT** `$_SESSION` / `session_start()`. See `AIRULES/20`.
 
-## Config fallbacks (in initialize)
+## Config fallbacks (`defaultSettings`)
+
+Put every default in **`defaultSettings()`**. Call it at the start of `initializeRoutes()` (before `return`) **and** at the start of `initialize()`. Then you may read Config for `Router` paths. `AIRULES/00` §2m.
 
 ```php
-Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
+public static function defaultSettings()
+{
+    Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
+}
 ```
 
 ## Schema

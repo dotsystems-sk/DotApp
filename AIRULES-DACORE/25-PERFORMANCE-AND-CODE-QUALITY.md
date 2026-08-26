@@ -58,7 +58,7 @@ Correct + secure is not enough. Code you ship **MUST** also be **cheap** (I/O, m
 | Counters / “last activity” | one `UPDATE … SET x = x + 1` | read, add in PHP, write back (also a race — [24](24-ATTACK-VECTORS.md) §4) |
 | Logging in a loop | aggregate, log **once** after the loop | `Logger` per row |
 | Notify other modules | **one** `module.{mod}.{name}.hook` after a **useful** side-effect (or one **batch** after the loop) | `Events::trigger` **inside** `foreach` of a growing list; a hook on every save; skip a named SMS/mail hook “for perf” ([41](41-MODULE-HOOKS.md)) |
-| Another module’s files / boot | DACore `dacore_modules` / `Plugins@listByExtra!` / that module’s own matching route | `include` another module; `glob(app/modules)` on a request; `initializeRoutes() => ['*']` without a global job ([03](03-MODULES-AND-ROUTING.md), [35](35-DACORE-INSTALL.md) §3c) |
+| Another module’s files / boot | DACore `dacore_modules` / `Plugins@listByContract!` / `@listByExtra!` / that module’s own matching route | `include` another module; `glob(app/modules)` on a request; `initializeRoutes() => ['*']` without a global job ([03](03-MODULES-AND-ROUTING.md), [35](35-DACORE-INSTALL.md) §3c, [46](46-DACORE-EXTRA-CONTRACTS.md)) |
 | External API | one `HttpHelper::request` with a timeout; retry only transient ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md)) | a call per row |
 
 ### The N+1 pattern you MUST use

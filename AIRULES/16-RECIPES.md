@@ -12,7 +12,7 @@ php .\dotapper.php --create-module=Shop
 php .\dotapper.php --module=Shop --create-controller=Home
 ```
 
-Edit `app/modules/Shop/module.init.php` — remove example noise, add real routes and config fallbacks.
+Edit `app/modules/Shop/module.init.php` — remove example noise, put Config defaults in `defaultSettings()`, call it from `initializeRoutes()` and `initialize()`, then add real routes ([00](00-AGENT-CONTRACT.md) §2m, [EX-03](examples/EX-03-module-scaffold.md)).
 
 ---
 

@@ -27,13 +27,16 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 8. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware / AuthTest / `Events::trigger` vs `.hooks` (`AIRULES/00` §2c, `AIRULES/41`). Do not claim done without it.
 9. **Visible outcome (LAW):** user always sees save/fail. DACore admin: search DACore then **toast**. Public: mark the wrong field. (`AIRULES/00` §2d)
 10. **Mail / inbox / SMS:** if the task sends email, operator notifications, or SMS, **read** `AIRULES/38` (mail), `AIRULES/37` (inbox), and `AIRULES/39` (SMS). Do not invent SMTP or a gateway.
-11. **DACore module identity:** in the plan, **ASK once** for public name/purpose; installer as text-only / compact logo / wide banner; local asset + alt; optional landing/header placement. Pack/host: **ASK** `extra1`…`extra5` (`AIRULES/35` §3c). `about.php` + your `about-assets/`; sidebar Remix icon is separate; never patch DACore. (`AIRULES/05` §8b, `AIRULES/35` §3b–§3c)
+11. **DACore module identity:** in the plan, **ASK once** for public name/purpose; installer as text-only / compact logo / wide banner; local asset + alt; optional landing/header placement. Pack/host: **ASK** the reserved `extra1` from `AIRULES/46` (`filemanager`, `template`, …). Deep I/O: `AIRULES/46-contracts/{extra1}.md`. `about.php` + your `about-assets/`; sidebar Remix icon is separate; never patch DACore. (`AIRULES/05` §8b, `AIRULES/35` §3b–§3c, `AIRULES/46`)
 12. **Module hooks (LAW):** fire `Events::trigger('module.{mod}.{hook_name}.hook')` only when another module could log/history/sync — **not** every save. Comment block + `app/modules/<YourModule>/.hooks`. (`AIRULES/41`)
 13. **Extender:** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues. Extender `extend()` in `Listeners::register()` before Module initialization. Target listener routes; own Module routes or `[]`; controller string preferred. Not `next()`, marker response, `.loaded` for initialize-time, Events, or DACore patch. (`AIRULES/12` §10)
+14. **defaultSettings (LAW):** `defaultSettings()` then wake list / `Router` paths. Call it in `initializeRoutes()` before `return` and at the start of `initialize()`. **MUST NOT** compose routes from Config another module fills later (DACore `prefixUrl`). **MUST NOT** hardcode their fallback. Literal own path if they have not run yet. (`AIRULES/00` §2m, `AIRULES/03`)
+15. **Module AIRULES (LAW):** hosts that packs extend **MUST** keep `app/modules/<ThisModule>/AIRULES/`. Named host + that folder exists → follow **project AIRULES + those files together**. Do not invent public routes the host does not listen to. (`AIRULES/00` §2n)
 
 ## Syntax locks
 
 - Controllers: `public static`; route `"Mod:Ctrl@method!"` (`!` ⇒ no DI params)
+- `{not:/admin*|/api/v1*}` excludes those prefixes **before** the positive match (`strpos` / `substr`). Use `/admin*` not `/admin/*` for exact `/admin`. `AIRULES/03`
 - Login-required / admin routes: **MUST** `{prefixUrl}/{ModuleName}/…` + `Gate@login` 403 `Response` + wrap handlers in `Auth::isLogged()` in `initialize()`. Admin pages **MUST NEVER** render for anonymous users. `AIRULES/03`, `AIRULES/32`
 - Comments: English. Public Controllers/Middleware PHPDoc **MUST** start with `CRCchecking —` (exact prefix/middleware XOR this action XOR none) then a purpose sentence; labeled **`// Why:`** / **`// About:`** / **`// Section:`** — never tags-only, never prefix CRC + `crcCheck()` in the same method, never narration of the code (`AIRULES/25` §7, `AIRULES/08`)
 - DB: `DB::module("RAW")->q(fn($qb)=>...)->all()` + `[0] ?? null` (never bare `first()`). **MUST** `execute($ok,$err)` both callbacks. Persist `try/catch`. `AIRULES/18`
@@ -99,7 +102,7 @@ See `AIRULES/30-DACORE-OVERVIEW.md` and rule `08-dacore`.
 
 ## Docs
 
-Deep reference: `AIRULES/` (`00`–`25` framework, `30`–`40` DACore, **`41` module hooks**). Examples: `AIRULES/examples/` (open one EX file per task). Antipatterns: `AIRULES/14-ANTIPATTERNS.md`.  
+Deep reference: `AIRULES/` (`00`–`25` framework, `30`–`40` DACore, **`41` module hooks**, **`46` extra contracts**). Examples: `AIRULES/examples/` (open one EX file per task). Antipatterns: `AIRULES/14-ANTIPATTERNS.md`.  
 AIRULES supersedes stock `.cursorrules` and old `*_AI_guide.md` files.
 
 Cursor compact rules live in `AIRULES/cursor/rules/`. `.cursor/rules/` is a mirror — the agent **MUST** copy `*.mdc` there (and `AGENTS.md` to the project root). **MUST NOT** invent a law only under `.cursor/` (`AIRULES/00` §2l).

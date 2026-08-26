@@ -27,5 +27,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **PHP 7.4+** | PHP 8+ syntax (`match`, `?->`, `str_contains`, union/`mixed`, named args, promotion, `#[`, `enum`, `readonly`) unless the plan named a higher version (`AIRULES/00` §2i) |
 | **Comments** | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; controller/middleware public method whose PHPDoc does not start with `CRCchecking —` (`AIRULES/25` §7) |
 | **Cursor rules** | A new `.mdc` exists only under `.cursor/rules/`; AIRULES cursor rules were not copied into `.cursor/rules/` (`AIRULES/00` §2l) |
+| **defaultSettings** | Wake list or `Router` path built from Config without `defaultSettings()` first; foreign `prefixUrl` composed before that module’s defaults; hardcoded foreign fallback (`AIRULES/00` §2m) |
+| **Module AIRULES** | Named host `AIRULES/` exists but was not read; pack registered routes the host does not listen to; new host with no `app/modules/<This>/AIRULES/`; module rules used to skip project law (`AIRULES/00` §2n) |
 
 Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.

@@ -12,10 +12,14 @@ use Dotsystems\App\Parts\Config;
 
 class Module extends \Dotsystems\App\Parts\Module
 {
+    public static function defaultSettings()
+    {
+        Config::module("Shop", "prefix") ?? Config::module("Shop", "prefix", "/Shop");
+    }
+
     public function initialize($dotApp)
     {
-        // Config fallbacks (see 10-CONFIG-AND-SECRETS.md)
-        Config::module("Shop", "prefix") ?? Config::module("Shop", "prefix", "/Shop");
+        self::defaultSettings();
 
         $prefix = Config::module("Shop", "prefix");
         $member = $prefix . "/account";
@@ -32,6 +36,7 @@ class Module extends \Dotsystems\App\Parts\Module
 
     public function initializeRoutes()
     {
+        self::defaultSettings();
         // Own prefixes only. ['*'] boots this module on every request.
         return ['/Shop', '/Shop/*', '/api/v1/auth/Shop', '/api/v1/auth/Shop/*', '/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'];
     }
@@ -45,7 +50,22 @@ class Module extends \Dotsystems\App\Parts\Module
 new Module($dotApp);
 ```
 
-Register **routes and config defaults** in `initialize()`.
+Register **routes** in `initialize()` only **after** `defaultSettings()` (see below).
+
+### `defaultSettings()` before any Config-built route (**MUST** — law)
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2m.
+
+`Config::module` fallbacks exist only after **`defaultSettings()`**. `initializeRoutes()` (wake list) and `autoInitializeCondition()` run **before** `initialize()`. Another module’s defaults may not have run yet when `modulesAutoLoader.php` loads you first.
+
+**MUST:**
+
+1. Implement **`defaultSettings()`**: every default this module owns; `Config::module($mod, $key) ?? Config::module($mod, $key, $default)`. Idempotent. `app/config.php` wins.
+2. Call it as the **first** statement of **`initializeRoutes()`**, then `return` the wake prefixes.
+3. Call it at the start of **`initialize()`**, then register `Router` paths.
+4. If a path must work when a **foreign** Config key is still empty, also list a **literal** URL this module owns. **MUST NOT** invent the other module’s default so their `defaultSettings()` never runs.
+
+**MUST NOT** compose wake maps or `Router::get` from Config that is only set in someone else’s `initialize()` / `defaultSettings()`. **MUST NOT** `include` another module’s `module.init.php` to steal defaults.
 
 ### Keep other modules asleep (**MUST**)
 
@@ -58,10 +78,11 @@ All matching listeners register **before** any matching module performs full ini
 
 **MUST:**
 
-1. Module `initializeRoutes()` lists **only this module’s** HTML prefixes **and** `/api/v1/auth|noauth/{Module}` (or `[]` for a listener-only module). Listener `initializeRoutes()` lists only the requests where its callbacks or extenders must exist. After either list changes, run `--optimize-modules`.
+1. Module `initializeRoutes()` lists **only this module’s** HTML prefixes **and** `/api/v1/auth|noauth/{Module}` (or `[]` for a listener-only module). Listener `initializeRoutes()` lists only the requests where its callbacks or extenders must exist. After either list changes, run `--optimize-modules`. A public catch-all **MUST** carry `{not:/admin*|/api/v1*|/assets*|…}` **on the wake string** (same text the optimizer table shows). **MUST NOT** wake on `/{path*}` and then cut `/admin` only in `initializeCondition`.
 2. `module.listeners.php` **MUST** only *register*: `Events::on(...)`, `Extender::extend(...)`, middleware registrations, and similarly cheap registry writes. **MUST NOT** query, log, call HTTP, write files, load another module, or invoke the target when the file is included.
 3. **MUST NOT** `include` / `require` / `glob('app/modules/*')` another module just to list or describe it. **MUST NOT** `DotApp::call('OtherModule:…')` for that.
 4. **Extender:** judge first ([00](00-AGENT-CONTRACT.md) §2h) — not every method. Register `Extender::extend()` in `Listeners::register()` so it exists before Module initialization. Keep the extending module’s own URLs (or `[]`) in its Module map; put the **target** URLs in its listener map. Prefer a controller string handler. Owner handles `original()` with `isOriginal()`. Canonical: [12](12-SERVICES.md) §10.
+5. **Pack vs host routes:** a payment / template / listener **pack** **MUST NOT** register the host’s public catch-alls (`/`, `/{path*}`, `/search`). Read `app/modules/<Host>/AIRULES/` when it exists ([00](00-AGENT-CONTRACT.md) §2n).
 
 **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned which part wakes everywhere: listener `['*']` runs that file’s `register()` on every URL; Module `['*']` runs full initialization.
 
@@ -254,6 +275,7 @@ Router::get('/x', "#Shop:Gate@check!");         // rarely as main handler
 | `{param*}` | greedy |
 | `{*}` | anonymous greedy |
 | `/prefix/*` | prefix wildcard |
+| `{not:mask\|mask}` | exclude **before** the positive match (`strpos` `{not:` then `substr` on `/prefix*`). Example: `/{path*}{not:/admin*\|/api/v1*\|/assets*}`. `/admin/*` does not match exact `/admin` — use `{not:/admin*}`. |
 
 Read matched params: `$request->matchData()['id']`.
 

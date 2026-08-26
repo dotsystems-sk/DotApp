@@ -6,7 +6,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 |------|-----------|
 | [EX-01-secure-form-complete.md](EX-01-secure-form-complete.md) | Any user POST form — **preferred security path** (`fo-rm` + `formName` + `dotapp.js`) |
 | [EX-02-secure-form-edit-api.md](EX-02-secure-form-edit-api.md) | CRUD/edit form posting to an API route |
-| [EX-03-module-scaffold.md](EX-03-module-scaffold.md) | New module, routes, config fallbacks; prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
+| [EX-03-module-scaffold.md](EX-03-module-scaffold.md) | New module, `defaultSettings()` + routes, config fallbacks; prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | [EX-04-database-crud.md](EX-04-database-crud.md) | Select/insert/update/delete, transactions, pagination, **return shapes**; `raw()` every `?` is a placeholder |
 | [EX-05-renderer-page.md](EX-05-renderer-page.md) | Page render: view + layout + assets; **HTML via Renderer** (no PHP HTML factories); **public mobile overlay drawer** |
 | [EX-06-dotapp-js-boot.md](EX-06-dotapp-js-boot.md) | Page JS boot, **module preloaders**, **live DOM** (no reload), **AJAX pager**, **delete confirm** |

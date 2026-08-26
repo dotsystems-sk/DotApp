@@ -76,7 +76,7 @@ app/modules/MyModule/
   module.init.php           # Module class + routes + config defaults (live while coding)
   module.listeners.php      # early hooks (live while coding)
   Installation.php          # versioned migrations (semver source of truth)
-  about.php                 # installer preview: about + license + changelog HTML; optional extra1…extra5 tokens (never executed)
+  about.php                 # installer preview: about + license + changelog HTML; optional extra1…extra5 reserved tokens (AIRULES/46; never executed)
   about-assets/             # optional raster images referenced from about.php
   .hooks                    # Markdown docs of Events::trigger names (not a public page; see 41)
   install.php               # development trigger; rename installed_* back after a new version

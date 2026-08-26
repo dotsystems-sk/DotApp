@@ -133,6 +133,12 @@ After EVERY code chunk and before claiming done, grep this module (do not imagin
   $html .= / '<table' / '<tr' / '<div class=' / *Html( factories. PHP markup only
   for a named one-piece exception — never a table, grid, tree, empty state, crumbs,
   or pager wrapper
+- defaultSettings (AIRULES/00 §2m): call defaultSettings() in initializeRoutes() before return
+  and at the start of initialize(). MUST NOT compose Router/wake paths from Config filled later
+- Wake {not:} (AIRULES/03): public catch-all MUST put {not:/admin*|/api/v1*} on the wake string.
+  /admin* not /admin/* for exact /admin. MUST NOT wake on /{path*} and skip /admin only in initializeCondition
+- Host AIRULES (AIRULES/00 §2n): extendable hosts MUST ship app/modules/<This>/AIRULES/;
+  read it first when the user names that host
 - Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
   (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
   then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);
@@ -150,8 +156,9 @@ Canonical: AIRULES/00-AGENT-CONTRACT.md §2d
 ## CONFIG / SECRETS
 On new apps, generate c_enc_key, rm_key, rmrcm_key with bin2hex(random_bytes(32)).
 /* @AUTOCONFIG */ does NOT auto-fill secrets.
-Module settings MUST have fallbacks:
+Module settings MUST have fallbacks in defaultSettings() (AIRULES/00 §2m):
   Config::module("Mod","key") ?? Config::module("Mod","key", $default);
+  Call defaultSettings() from initializeRoutes() and initialize() before reading Config for routes.
 
 ## DACORE
 Optional admin module — NOT required for Part 1. Do not call DACore:* unless user asked.

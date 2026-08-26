@@ -47,7 +47,7 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 ## 2. Mandatory workflow
 
 1. **Identify the target module** (or create one).
-2. **Read** the relevant AIRULES docs for the task (routing / views / DB / forms / JS).
+2. **Read** the relevant AIRULES docs for the task (routing / views / DB / forms / JS). **Then** if the user named a host / extend / listen / Extender target, **MUST** open `app/modules/<Named>/AIRULES/` when that folder exists and follow **project AIRULES + those module rules together** ([§2n](#2n-module-airules-must--law)).
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
@@ -59,11 +59,13 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 11. **PHP version:** when **planning** programming, **ASK** whether to stay on **PHP 7.4+** (DotApp default) or write for a higher version. No answer → **7.4+**. See [§2i](#2i-php-version-must).
 12. **Debug / “why doesn’t this work”:** **MUST** follow [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) — grep middleware + count `crcCheck()` **before** guessing a core bug.
 13. **Module hooks (LAW):** when a side-effect is worth another module (SMS/mail sent, payment, lockout), **MUST** `Events::trigger('module.{lowercase_modulename}.{hook_name}.hook', …)` with the `Hook:` / `Why:` / `About:` / `Params:` / `Use:` block, and **MUST** document that name in **`app/modules/<YourModule>/.hooks`**. **MUST NOT** fire on every save. Connect by reading **their** `.hooks` and listening in **yours**. Canonical: [§2g](#2g-module-hooks-must--law), [41](41-MODULE-HOOKS.md).
-14. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes (or `[]` for a listener-only module). `Listeners::initializeRoutes()` may list different producer/target prefixes (or `null` to inherit). **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned that this listener file registers on every request. After either map changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
+14. **Do not wake other modules:** `Module::initializeRoutes()` lists **only this module’s** URL prefixes (or `[]` for a listener-only module). `Listeners::initializeRoutes()` may list different producer/target prefixes (or `null` to inherit). **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned that this listener file registers on every request. A public catch-all **MUST** put `{not:/admin*|/api/v1*|…}` **on the wake string**. After either map changes: `php dotapper.php --optimize-modules`. Canonical: [03](03-MODULES-AND-ROUTING.md) “Keep other modules asleep”.
 15. **Extender (judge):** **MUST NOT** Extender every method. Opt in when another module would reasonably **replace this output** (page/block HTML, cart, export). Owner `exists()` + `call()`; an ordinary result returns immediately, while `isOriginal()` alone continues owner logic. Register `extend()` in **`Listeners::register()`** before module initialization; put target URLs in `Listeners::initializeRoutes()`, not the Module map. Prefer a controller string handler. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 16. **HTML via Renderer (LAW):** when markup **can** be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named exception ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c).
 17. **Planning depth (LAW):** when they asked to **plan** a **new module**, a **first** major surface, or a **rewrite**, the plan **MUST** be extremely detailed — every nav item (if any), every page, every tab, every control. A long plan is correct. A bullet list of endpoints is not a plan. See [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
 18. **Cursor rules live in AIRULES (LAW):** compact `.mdc` files **MUST** live in `AIRULES/cursor/rules/`. `.cursor/rules/` is a non-portable Cursor mirror. The agent **MUST** copy the mirror itself ([§2l](#2l-cursor-rules-live-in-airules-must--law), [INSTALL.md](INSTALL.md)).
+19. **defaultSettings (LAW):** **MUST** `defaultSettings()` at the start of `initializeRoutes()` (before `return`) **and** at the start of `initialize()`. **MUST NOT** compose wake/`Router` paths from Config another module fills later. See [§2m](#2m-module-defaultsettings-before-routes-must--law).
+20. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. When the user names that host, **MUST** read it first. See [§2n](#2n-module-airules-must--law).
 
 ### Dotapper-first rule
 
@@ -133,6 +135,9 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **HTML via Renderer** | Diff of Controllers / Libraries vs `views/` | A screen or fragment (table, grid, empty state, pager chrome, tree, crumbs, card) built with `$html .=` / `'<table` / `'<tr` / `'<div class=` / `'<ul class=` / a `*Html()` factory in PHP. Fail unless that **one piece** has `// Why:` naming a real exception (sandbox callable drop, pager `<li>` / button, one tiny chip) — never a whole list ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **Cursor rules mirror** | `.cursor/rules/` vs `AIRULES/cursor/rules/` | A new `.mdc` exists only under `.cursor/`; AIRULES cursor rules were not copied into `.cursor/rules/` this session / after an AIRULES rule change ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
+| **defaultSettings / routes** | `initializeRoutes()` + `initialize()` + RouteMap wake lists | Config used to build a wake prefix or `Router` path without `defaultSettings()` first; URL composed from another module’s Config that is filled only later; hardcoded foreign fallback that skips their `defaultSettings()` ([§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md)) |
+| **Wake `{not:}`** | Public catch-all in `initializeRoutes()` | Wakes on `/{path*}` and excludes `/admin` only in `initializeCondition` — exclusion **MUST** be on the wake string (`{not:/admin*\|/api/v1*\|…}`) ([03](03-MODULES-AND-ROUTING.md)) |
+| **Module AIRULES** | Named host / pack / Extender target + `app/modules/<Named>/AIRULES/` | User named a host and that folder exists but was not read; a pack registered routes the host does not listen to; a **new host** that others extend shipped with no `AIRULES/` folder; module rules treated as a replacement for project AIRULES ([§2n](#2n-module-airules-must--law)) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
@@ -255,6 +260,41 @@ Canonical: [45](45-MODULE-PLANNING.md). UI: [05](05-VIEWS-TEMPLATES-ASSETS.md) �
 
 This mirror copy is the **only** allowed write to `.cursor/rules/` and root `AGENTS.md`. It does **not** authorize inventing project code there.
 
+### 2m. Module `defaultSettings()` before routes (MUST — law)
+
+Config fallbacks run only when **`defaultSettings()`** runs. With `modulesAutoLoader.php`, **this** module can `initialize()` **before** another module. Composing `Router::get` / wake prefixes from a key that is filled later produces the wrong path.
+
+**MUST:**
+
+1. One **`defaultSettings()`** on the module: every `Config::module` default, idempotent (`??` / `IF_NOT_EXIST`). `app/config.php` wins.
+2. Call it at the start of **`initializeRoutes()`** — **before** the array you return (wake decision).
+3. Call it at the start of **`initialize()`** — then you may read Config to register routes.
+4. Paths that must work before a **foreign** module has run `defaultSettings()` **MUST** also list a **literal** URL this module owns. **MUST NOT** invent the other module’s fallback so their `defaultSettings()` never applies.
+
+**MUST NOT** `include` another module’s `module.init.php` to steal defaults.
+
+Deep: [03](03-MODULES-AND-ROUTING.md). Compact: `AIRULES/cursor/rules/18-module-default-settings.mdc`.
+
+### 2n. Module AIRULES (MUST — law)
+
+Project `AIRULES/` is the **framework** contract. A host that other modules extend (Shop + payment packs, a public-site host + templates) **stretches** that stack. Project rules alone cannot list every route that **this** host listens to. Inventing a public `Router::get` in a pack that the host never wakes is a **bug**.
+
+**MUST write** `app/modules/<ThisModule>/AIRULES/` when **this** module is a **host** or an **extendable surface** (picks packs, publishes stems, owns public catch-alls, or expects Extender/listener modules). English. Index first (`README.md`), then topic files. A short `app/modules/<ThisModule>/AIRULES.md` pointer to that folder is allowed.
+
+**MUST follow both** when the folder exists: **project `AIRULES/` + `app/modules/<Named>/AIRULES/`**. Module rules **add** host-specific MUST/MUST NOT. They **MUST NOT** weaken project law (CRC once, PHP 7.4+, finish gate). Conflict → project AIRULES wins; say so in chat.
+
+**When the user names a host** (“create a template for Shop”, “listen to Shop”, “Extender for Shop cart”):
+
+1. Target = the pack / extender you are programming.
+2. Named folder = that host.
+3. **MUST** read `app/modules/<Host>/AIRULES/` **before** coding if it exists.
+
+**MUST NOT** skip a present host `AIRULES/` and invent routes; put host-only law only under project `AIRULES/`; invent a law only under `.cursor/` ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
+
+**What a host handbook MUST cover** (when the surface exists): routes this module registers (wake + `Router`); view stems / vars; what a pack **MUST NOT** register; how to build URLs the host will resolve (including `{not:}` if used).
+
+Compact: `AIRULES/cursor/rules/19-module-airules.mdc`.
+
 ---
 
 ## 3. No-invention rule
@@ -322,6 +362,9 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Premium Cursor subagent (Opus / GPT-5 / xhigh) without asking | **MUST inherit** the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Short plan (“Settings + list + edit”) for a new module / first surface / rewrite | Extremely detailed inventory: every nav item, page, tab, control ([§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md)) |
 | New compact law only under `.cursor/rules/` | Write `AIRULES/cursor/rules/*.mdc` first, then copy the mirror ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
+| Wake `/{path*}` then skip `/admin` only in `initializeCondition` | `{not:/admin*\|/api/v1*}` **on the wake string** ([03](03-MODULES-AND-ROUTING.md)) |
+| `Router` / wake from Config before `defaultSettings()` | Call `defaultSettings()` first ([§2m](#2m-module-defaultsettings-before-routes-must--law)) |
+| Skip a present host `AIRULES/` / pack invents the host’s public catch-alls | Read `app/modules/<Host>/AIRULES/` first ([§2n](#2n-module-airules-must--law)) |
 | `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` in installer SQL | Probe first (`SHOW TABLES LIKE` / `information_schema`), then `CREATE TABLE` / `ALTER TABLE` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0) |
 
 Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
@@ -364,6 +407,8 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 25. **HTML via Renderer (MUST):** when markup can be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / pager `<li>` or button / one tiny chip). Canonical: [§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
 26. **Planning depth (MUST):** a plan for a new module / first major surface / rewrite **MUST** list every nav item (or `No menu`), every page, every tab, and every control (what it does, default, persist). Length is not a defect. Canonical: [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
 27. **Cursor rules live in AIRULES (MUST):** compact `.mdc` files live in `AIRULES/cursor/rules/`. The agent **MUST** copy them into `.cursor/rules/` and `AGENTS.md` to the project root. **MUST NOT** invent a law only under `.cursor/`. Canonical: [§2l](#2l-cursor-rules-live-in-airules-must--law), [INSTALL.md](INSTALL.md).
+28. **defaultSettings before routes (MUST):** **MUST** `defaultSettings()` in `initializeRoutes()` before `return` **and** at the start of `initialize()`. **MUST NOT** compose wake/`Router` paths from Config filled later. Canonical: [§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md).
+29. **Module AIRULES (MUST):** a host **MUST** ship `app/modules/<This>/AIRULES/`. Named host + unread folder = fail. Canonical: [§2n](#2n-module-airules-must--law).
 
 ---
 
@@ -410,6 +455,9 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - HTML via Renderer (LAW): when it can be a template it MUST be; PHP HTML string only for a named one-piece exception — 00 §2j / 05 §1c
  * - Planning depth (LAW): new module / first surface / rewrite plan MUST inventory every nav item (or No menu), page, tab, control — length is OK — 00 §2k / 45
  * - Cursor rules (LAW, 00 §2l): compact .mdc live in AIRULES/cursor/rules/. Agent MUST copy them to .cursor/rules/ + AGENTS.md to project root. MUST NOT invent a law only under .cursor/
+ * - defaultSettings (LAW, 00 §2m): call defaultSettings() in initializeRoutes() before return and at the start of initialize(). MUST NOT build Router/wake paths from Config filled later. Literal own path if the other module has not run yet
+ * - URL {not:} (03): exclude before the positive match — /{path*}{not:/admin*|/api/v1*}. /admin* not /admin/* for exact /admin. Public catch-all MUST put {not:} on the wake string
+ * - Host AIRULES (00 §2n): extendable hosts MUST ship app/modules/<This>/AIRULES/; read it first when the user names that host
  * - Edit only this module + app/config.php. Never edit app/parts/, app/DotApp.php, dotapper.php, index.php — not even if the user asks. The kernel is frozen.
  * See AIRULES/00-AGENT-CONTRACT.md
  */
@@ -447,6 +495,9 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | Plan / PHP version | **00 §2i** — ASK 7.4+ (default) vs a higher PHP; no answer → 7.4+ | — |
 | Plan / new module, first major surface, or rewrite | **00 §2k** / **[45](45-MODULE-PLANNING.md)** — extremely detailed inventory (nav, pages, tabs, controls) + security before code | — |
 | Cursor `.mdc` / copied AIRULES folder | **00 §2l** — source is `AIRULES/cursor/rules/`; agent **MUST** copy into `.cursor/rules/` | [INSTALL.md](INSTALL.md) |
+| `defaultSettings` / Config-built routes | **00 §2m** / **03** — call defaults before wake `return` and before `Router` | [EX-03](examples/EX-03-module-scaffold.md) |
+| URL `{not:}` / public catch-all | **03** path parameters — exclude **before** the positive match; on the wake string | — |
+| Host / pack handbook | **00 §2n** — `app/modules/<Host>/AIRULES/` | — |
 | **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware conflicts | [17](17-CHECKLISTS.md) Finish gate |
 | Stay-on-page save / errors | **00 §2d** visible outcome — mark the wrong field; your own toast/status | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | New module | 00, 02, 03 | [EX-03](examples/EX-03-module-scaffold.md) |

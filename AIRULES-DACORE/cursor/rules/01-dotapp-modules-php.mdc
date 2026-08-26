@@ -18,7 +18,7 @@ Router::before(['POST'], ['/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'], '#DAC
 ```
 
 - Prefixes: `#` Middleware, `*` Models, trailing `!` skips DI
-- Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`
+- Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`. `{not:/admin*|/api/v1*}` excludes those prefixes **before** the positive match (`strpos` / `substr`; `/admin*` not `/admin/*` for exact `/admin`)
 - No named routes, no Laravel `Route::prefix()->group()` — cover an area with `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`)
 - **MUST:** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login` (no CRC). **POST API** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — action **MUST NOT** `crcCheck()` again. Wrap login-only handlers in `if (Auth::isLogged() === true)`. `AIRULES/03`, `AIRULES/32`
 - **MUST:** `initializeRoutes()` = this module’s prefixes only. **MUST NOT** `['*']` unless the user asked for a global hook. **MUST NOT** `include` another module to list or show its about/changelog (`AIRULES/03`)

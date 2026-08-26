@@ -419,8 +419,10 @@ HTML,
 </ul>
 HTML,
     ],
-    // Optional — omit on a normal app module. Theme pack example: extra1 = template
-    // 'extra1' => 'template',
+    // Optional — omit on a normal app module. Reserved roles: AIRULES/46
+    // 'extra1' => 'filemanager',
+    // 'extra2' => 'v1',
+    // 'extra3' => 'full',
 ];
 ```
 
@@ -434,36 +436,44 @@ Installer flow: upload ZIP → DACore shows changelog (for an update: only versi
 
 `dacore_modules.extra1` … `extra5` are **short text tokens** copied from `about.php` at ZIP install/update. They exist so one module can **find other installed packages by role** without waking them.
 
-### Why this exists (CMS / templates)
+**DACore owns the reserved `extra1` vocabulary and v1 peer call shapes.** Agents **MUST** use [46](46-DACORE-EXTRA-CONTRACTS.md) (`filemanager`, `template`, `payment`, …). **MUST NOT** invent a synonym. Private host-only flags **MUST** be `{lowercase_modulename}.{token}`. Machine catalog: `DACore\Libraries\ExtraContracts`.
 
-A **CMS** (editorial system) must not bake a public theme into its own files. A CMS update would overwrite operator customisations. The durable design is:
+### Why this exists (CMS / templates / file manager)
 
-1. **CMS module** — settings, articles, routing. It does **not** own the public HTML theme.
-2. **Template pack module** — a separate DACore-installable package that only carries the theme (views/assets).
-3. CMS settings: “Choose the template module.” The dropdown is **not** every folder under `app/modules/`. It is **only** installed rows in `dacore_modules` whose **`extra1` is `template`** (the vocabulary the CMS author published).
+A **CMS** must not bake a public theme (or a file picker) into its own files. A CMS update would overwrite operator customisations. The durable design is:
 
-The template-pack author writes in `about.php`:
+1. **CMS module** — settings, articles, routing. It does **not** own the public HTML theme and does **not** own the file jail.
+2. **Template pack** / **filemanager pack** — separate DACore-installable packages (`extra1` = `template` or `filemanager`, `extra2` = `v1`).
+3. CMS settings: “Choose the template” / “Choose the file manager.” The dropdown is **not** every folder under `app/modules/`. It is **only** `dacore_modules` rows whose extras match the **reserved** role.
+
+The file-manager pack author writes in `about.php`:
 
 ```php
-'extra1' => 'template',
+'extra1' => 'filemanager',
+'extra2' => 'v1',
+'extra3' => 'full',
 ```
 
-After install, CMS lists packs:
+After install, the CMS lists packs:
 
 ```php
-$packs = DotApp::call('DACore:Plugins@listByExtra!', 1, 'template');
+$packs = DotApp::call('DACore:Plugins@listByContract!', 'filemanager', 'v1');
+// older slot lookup still works:
+$packs = DotApp::call('DACore:Plugins@listByExtra!', 1, 'filemanager');
 // $packs = list of [module, version, extra1…extra5] — status=1 only. Never boots those modules.
 ```
 
-Shipped in **DACore 1.0.26** (`dacore_modules.extra1`…`extra5` + this helper). It is a **static in-process helper**, not an HTTP action — no CRC. Slot must be `1`–`5`. Empty token, invalid charset, unknown slot, or extra columns not yet migrated → `[]`. **MUST NOT** call it with `''` to mean “all modules” (blank extra columns are the default).
+Then the host stores the **selected module name** in **its** settings and calls `{Module}:MediaContract@…!` ([46-contracts/filemanager.md](46-contracts/filemanager.md)). Discovery **MUST NOT** call into the pack.
 
-If that helper is unavailable on an older DACore, **READ** is still allowed:
+`listByExtra!` shipped in **DACore 1.0.26**. `listByContract!` (extra1 + extra2, optional extra3) shipped in **DACore 1.0.45**. Both are **static in-process helpers**, not HTTP — no CRC. Empty token, invalid charset, unknown slot, or extra columns not yet migrated → `[]`. **MUST NOT** call them with `''` to mean “all modules”.
+
+If those helpers are unavailable on an older DACore, **READ** is still allowed:
 
 ```php
 $rows = DB::module('RAW')->q(function ($qb) {
     $qb->raw(
-        'SELECT `module`, `version`, `extra1`, `extra2`, `extra3`, `extra4`, `extra5` FROM `dacore_modules` WHERE `status` = 1 AND `extra1` = :flag ORDER BY `module` ASC',
-        ['flag' => 'template']
+        'SELECT `module`, `version`, `extra1`, `extra2`, `extra3`, `extra4`, `extra5` FROM `dacore_modules` WHERE `status` = 1 AND `extra1` = :flag AND `extra2` = :contract ORDER BY `module` ASC',
+        ['flag' => 'filemanager', 'contract' => 'v1']
     );
 })->all();
 ```
@@ -472,21 +482,23 @@ $rows = DB::module('RAW')->q(function ($qb) {
 
 ### What the five slots are for
 
-DACore does **not** assign a global meaning to extra2–extra5. The **host** module (CMS, shop, mail) publishes a small vocabulary; **pack** modules fill the slots.
+| Column | Meaning | Example |
+|--------|---------|---------|
+| `extra1` | Reserved role **or** `{module}.{private}` | `filemanager`, `template`, `dacore.admin-skin` |
+| `extra2` | Contract version | `v1` |
+| `extra3` | Mode for that role | `full`, `picker`, `css` |
+| `extra4` | Host family when the role uses one | `generic`, `cms`, `shop`, `erp` |
+| `extra5` | Optional qualifier | `assets-only`, or empty |
 
-| Column | Typical use | Example |
-|--------|-------------|---------|
-| `extra1` | Primary kind / role | `template`, `gateway`, `locale` |
-| `extra2` | Family / variant the host documented | `blog`, `shop` |
-| `extra3`…`extra5` | Further host-defined tokens | only if the host’s README / AIRULES-style comment in **that** module says so |
+Full reserved list, peer controllers, and MUST/MUST NOT: [46](46-DACORE-EXTRA-CONTRACTS.md).
 
 **MUST:**
 
-- Tokens: quoted strings in `about.php` (`'template'`), **not** HTML nowdoc
+- Tokens: quoted strings in `about.php` (`'filemanager'`), **not** HTML nowdoc
 - Length ≤ 64; charset `[a-zA-Z0-9._-]`; no spaces, no sentences, no secrets, no rights names
-- Omit unused keys (empty columns). A normal Shop/CMS host often has **no** extras
-- **ASK** when planning a **pack**: “Which host should discover this, and which extra1–extra5 tokens does that host require?” Do not invent `template` unless the host is a CMS/theme picker
-- **ASK** when planning a **host** that will pick among packs: document the required `extra1` (and others) in that host’s settings UI copy and in a short comment at the query. Packs **MUST** use that exact string
+- Omit unused keys (empty columns). A normal Shop/CMS **host** often has **no** extras
+- **ASK** when planning a **pack**: “Which **reserved** `extra1` from [46](46-DACORE-EXTRA-CONTRACTS.md)?” Do not invent `template` / `filemanager` synonyms
+- **ASK** when planning a **host** that will pick among packs: which reserved role it lists; document it in settings copy and at the query. Packs **MUST** use that exact string
 - Re-install / update the pack after changing extras — flags are stored at install, not read live from disk on every request
 
 **MUST NOT:**
@@ -494,8 +506,9 @@ DACore does **not** assign a global meaning to extra2–extra5. The **host** mod
 - `UPDATE dacore_modules` from your module to set extras (installer + `about.php` only)
 - Put HTML, URLs, JSON blobs, or passwords in extra*
 - Use extras instead of `DACore:Rights@*`
-- Set `extra1 = template` on the CMS host itself (that would list the CMS as a theme)
-- Assume extra1 is always `template` — that word is the **CMS author’s** contract, not a DACore enum
+- Set `extra1 = template` on the CMS host, or `extra1 = filemanager` on the file-manager host itself
+- Invent a host-private short `extra1` that collides with [46](46-DACORE-EXTRA-CONTRACTS.md) — private flags need a `{module}.` prefix
+- Give `email` / `sms` / `webhook` / `notification` / `ip-geo` / `widget` / `settings-panel` / `backup` as `extra1` — those are DACore registries, not pack roles
 
 ---
 

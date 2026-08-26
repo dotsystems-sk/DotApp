@@ -38,6 +38,9 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 20. **Extender (judge — not every method):** owner `Extender::exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender registers in `Listeners::register()` before Module initialization. Target URLs belong in the listener map; the Module map stays on its own URLs or `[]`. Prefer a controller string. **MUST NOT** invent `next()`, return the marker, use `.loaded` for initialize-time points, Events, `$request`/secrets, or patch the owner. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h.
 21. **Planning depth (LAW):** a plan for a new module / first major surface / rewrite **MUST** be extremely detailed — every nav item (or `No menu`), every page, every tab, every control. Length is not a defect. Canonical: [00](00-AGENT-CONTRACT.md) §2k, [45](45-MODULE-PLANNING.md).
 22. **Cursor rules live in AIRULES (LAW):** compact `.mdc` files live in `AIRULES/cursor/rules/`. The agent **MUST** copy them into `.cursor/rules/`. Copying only `AIRULES/` must be enough. Canonical: [00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md).
+23. **defaultSettings before routes (LAW):** **MUST** `defaultSettings()` at the start of `initializeRoutes()` and `initialize()`. **MUST NOT** compose wake/`Router` paths from Config another module fills later. Canonical: [00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md).
+24. **URL `{not:}` (LAW):** exclude **before** the positive match. A public catch-all **MUST** put `{not:/admin*|/api/v1*|…}` **on the wake string**. `/admin/*` does not match exact `/admin` — use `{not:/admin*}`. Canonical: [03](03-MODULES-AND-ROUTING.md).
+25. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. When the user names that host, **MUST** read it first. Canonical: [00](00-AGENT-CONTRACT.md) §2n.
 
 ## What's New (2026-08-22)
 
@@ -92,7 +95,7 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [examples/](examples/) | Short code samples by situation |
 | [01-ARCHITECTURE.md](01-ARCHITECTURE.md) | Lifecycle, module structure — incl. core `dotapp.catchall` debug funnel |
 | [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
-| [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()`; English why-comments |
+| [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — `defaultSettings()`, `{not:}` on public catch-alls, prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md) | Controllers, response |
 | [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets; **§1c** HTML via Renderer (no PHP HTML factories) |
 | [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder — `$qb->raw()`: every `?` is a placeholder, including comments |

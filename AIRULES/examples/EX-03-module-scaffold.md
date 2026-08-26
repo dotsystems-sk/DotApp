@@ -20,10 +20,15 @@ use Dotsystems\App\Parts\Config;
 
 class Module extends \Dotsystems\App\Parts\Module
 {
-    public function initialize($dotApp)
+    public static function defaultSettings()
     {
         Config::module('Shop', 'prefix') ?? Config::module('Shop', 'prefix', '/Shop');
         Config::module('Shop', 'enckey') ?? Config::module('Shop', 'enckey', bin2hex(random_bytes(16)));
+    }
+
+    public function initialize($dotApp)
+    {
+        self::defaultSettings();
 
         $p = Config::module('Shop', 'prefix');
         $member = $p . '/account';
@@ -46,6 +51,7 @@ class Module extends \Dotsystems\App\Parts\Module
 
     public function initializeRoutes()
     {
+        self::defaultSettings();
         return ['/Shop', '/Shop/*', '/api/v1/auth/Shop', '/api/v1/auth/Shop/*', '/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'];
     }
 

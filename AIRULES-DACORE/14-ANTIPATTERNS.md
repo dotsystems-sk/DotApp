@@ -190,7 +190,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `$e->getMessage()` / `var_dump` in the reply | Generic message + `Logger` ([24](24-ATTACK-VECTORS.md) §8) |
 | AI / webhook output executed, echoed raw, or trusted unsigned | Treat as input: escape, whitelist, `hash_hmac` + `hash_equals` ([24](24-ATTACK-VECTORS.md) §10) |
 | Edit core to add config API | Use `Config::module` / `Config::set` |
-| `include` another module’s `about.php` / `module.init.php` to list it or pick a template | Read `dacore_modules` / `DACore:Plugins@listByExtra!`; keep `initializeRoutes()` to **this** module ([03](03-MODULES-AND-ROUTING.md), [35](35-DACORE-INSTALL.md) §3c) |
+| `include` another module’s `about.php` / `module.init.php` to list it or pick a template | Read `dacore_modules` / `DACore:Plugins@listByContract!` / `@listByExtra!`; keep `initializeRoutes()` to **this** module ([03](03-MODULES-AND-ROUTING.md), [35](35-DACORE-INSTALL.md) §3c, [46](46-DACORE-EXTRA-CONTRACTS.md)) |
 | `initializeRoutes() => ['*']` “so the catalog works” | Own prefixes + `--optimize-modules`. `['*']` only for a user-asked global hook |
 
 ## DACore

@@ -6,6 +6,8 @@ A bullet list of endpoints is **not** a plan. A plan that is **very long** is co
 
 This folder is **framework-only**. There is no DACore sidebar registration. If the module has **any** menu or nav, the plan still **MUST** list every item — just as **your** routes and markup, not `DACore:Menu@register`.
 
+**Pack for a named host:** the plan **MUST** read `app/modules/<Host>/AIRULES/` first and list only routes that host listens to ([00](00-AGENT-CONTRACT.md) §2n). A new **host** plan **MUST** include creating that folder.
+
 Canonical pointers: [00](00-AGENT-CONTRACT.md) [§2k](00-AGENT-CONTRACT.md#2k-module-planning-depth-must), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8d, [17](17-CHECKLISTS.md) Pre-flight.
 
 ---
