@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A Shop / CMS / ERP **host** and a helpdesk **pack** must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `chat` (live channel) and **not** `kb` (articles).
+A `<Host>` and a helpdesk **pack** must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `chat` (live channel) and **not** `kb` (articles).
 
 ---
 
@@ -36,7 +36,7 @@ $tickets = DotApp::call('DACore:Plugins@listByContract!', 'helpdesk', 'v1', 'tic
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 

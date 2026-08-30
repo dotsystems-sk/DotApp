@@ -67,9 +67,9 @@ Copy-Item -Force "AIRULES\cursor\rules\*.mdc" ".cursor\rules\"
 Copy-Item -Force "AIRULES\cursor\AGENTS.md" "AGENTS.md"
 ```
 
-Result: project-root `AGENTS.md` plus `.cursor/rules/` containing **every** `AIRULES/cursor/rules/*.mdc` (numbered `00`–`21` and the named law files: layout, choice controls, pack zip, read scope, MySQL DDL, Renderer, step-up 2FA, module AIRULES, module PLAN). **MUST NOT** invent extra `.mdc` files only in `.cursor/`.
+Result: project-root `AGENTS.md` plus `.cursor/rules/` containing **every** `AIRULES/cursor/rules/*.mdc` (numbered `00`–`25` and the named law files: layout, choice controls, pack zip, read scope, MySQL DDL, Renderer, step-up 2FA, module AIRULES, module PLAN, DACore is not Bootstrap, **no unsolicited browser**). **MUST NOT** invent extra `.mdc` files only in `.cursor/`.
 
-**Module AIRULES:** a host that packs extend (CMS) **MUST** also keep `app/modules/<Host>/AIRULES/`. When that folder exists, agents follow **project AIRULES + those files together** ([00](00-AGENT-CONTRACT.md) §2n). Copying only project `AIRULES/` into a new app is not enough if the host module is missing.
+**Module AIRULES:** a `<Host>` that packs extend **MUST** also keep `app/modules/<Host>/AIRULES/`. When that folder exists, agents follow **project AIRULES + those files together** ([00](00-AGENT-CONTRACT.md) §2n). Copying only project `AIRULES/` into a new app is not enough if the host module is missing.
 
 **Module PLAN:** a new module **MUST** keep `app/modules/<This>/PLAN/` as a **split folder** (laws, rules, positions). That folder travels with the module. Packs read the host’s `AIRULES/`, not the host’s `PLAN/` ([00](00-AGENT-CONTRACT.md) §2o, §2p).
 

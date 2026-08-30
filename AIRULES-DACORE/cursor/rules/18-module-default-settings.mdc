@@ -12,11 +12,11 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2m, `AIRULES/03-MODULES-AND-ROUTING.
 - Put every module Config default in **`defaultSettings()`** (`Config::module(...) ?? Config::module(..., $default)`). Idempotent. `config.php` wins.
 - Call **`defaultSettings()`** at the start of **`initializeRoutes()`** (before the wake-list `return`) **and** at the start of **`initialize()`**.
 - Only **after** that may `initialize()` read Config to register `Router::get` / `post`.
-- Wake prefixes that must work before another module loads use a **literal path** this module owns (e.g. `/admin/CMS` and `/admin/CMS/*`), not a Config key that module fills later. **MUST NOT** list every leaf, lowercase copy, or `//` variant.
+- Wake prefixes that must work before another module loads use a **literal path** this module owns (for example, `/admin/<Module>` and `/admin/<Module>/*`), not a Config key that module fills later. **MUST NOT** list every leaf, lowercase copy, or `//` variant.
 
 ## MUST NOT
 
-- Compose wake maps or `Router` paths from Config that is only set in someone else’s `initialize()` / `defaultSettings()` (typical: `DACore` `prefixUrl` while CMS wakes first under `modulesAutoLoader.php`).
+- Compose wake maps or `Router` paths from Config that is only set in another module’s `initialize()` / `defaultSettings()` (for example, a host waking before DACore has supplied `prefixUrl` under `modulesAutoLoader.php`).
 - Hardcode that owner’s fallback (`/admin`) so their `defaultSettings()` never applies when `config.php` omitted the key.
 - `include` another module’s `module.init.php` just to steal their defaults.
 - Invent a second default channel (constructor constants, `dacorePrefix()`, RouteMap-only guesses that skip `defaultSettings()`).

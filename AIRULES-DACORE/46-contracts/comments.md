@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop) and a pack must be able to interoperate from this page alone. This is **not** `reviews` (stars) and **not** `forum` (board).
+A `<Host>` and a pack must be able to interoperate from this page alone. This is **not** `reviews` (stars) and **not** `forum` (board).
 
 ---
 
@@ -40,7 +40,7 @@ $threaded = DotApp::call('DACore:Plugins@listByContract!', 'comments', 'v1', 'th
 
 **Kind:** peer. **Controller:** `{Module}:CommentsContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=comments` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=comments` on itself.
 
 ---
 

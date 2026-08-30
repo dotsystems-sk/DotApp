@@ -1,25 +1,29 @@
 ---
-description: LAW — new CMS template pack MUST write app/modules/{Pack}/PLAN/ (copy + rasters) before building views/assets
+description: LAW — after approved PLAN/html/, production CMS pack views MAY place CMS-prepared inspector attributes; never IDs/URLs/routes; empty when off
 alwaysApply: true
 ---
 
-# CMS template PLAN kit (LAW)
+# CMS template plan + inspectable markers (LAW)
 
-Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o (every module), `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`, `01-TEMPLATE-PACKS.md`.
+Canonical: `app/modules/CMS/AIRULES/01-TEMPLATE-PACKS.md`, `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`, `app/modules/CMS/AIRULES/08-EDITOR-COMPONENTS.md`.
 
-When creating or rewriting a **CMS template pack** (`extra1=template`):
+New or rewrite CMS template pack: **HTML-first**. Standalone `PLAN/html/` (filled texts, vanilla CSS/JS) until the user **approves**. **MUST NOT** open CMS PHP or host AIRULES 01/07/08 to design that HTML.
 
-## MUST
+## After approval (production views only)
 
-1. Scaffold the pack, then fix `initializeRoutes()` — **MUST NOT** leave `['*']`.
-2. Write **`app/modules/{Pack}/PLAN/`** first: laws, brand, design, pages, **full texts**, image manifest, admin, seed, file map.
-3. Put rasters in **`PLAN/assets/`**. Build copies them into `assets/` / `about-assets/`. A DACore zip ships the live `assets/` copy — **MUST NOT** include `PLAN/`.
-4. Start production views/CSS only after the user says **build** (or PLAN is complete and they asked to implement).
+Production pack views **MAY** place **CMS-prepared** inspector attribute variables on real visible elements (for example `{{ var: $cms_inspect_body_attr }}`).
 
-## MUST NOT
+**MUST**
 
-- Skip PLAN because a chat plan exists.
-- Open `app/modules/CMS/PLAN/` — that is CMS’s own roadmap, not the template contract. Read `CMS/AIRULES/` instead (`AIRULES/00` §2p).
-- Hotlink the source site from public views.
-- Copy a sibling pack’s CSS.
-- Invent this law only under `.cursor/rules/` (source is `AIRULES/cursor/rules/`).
+- Use only attribute strings CMS already built and escaped
+- Leave the value **empty** when inspector mode is off or the visitor is anonymous
+- Keep markers out of standalone `PLAN/html/`
+- Follow `app/modules/CMS/AIRULES/01-TEMPLATE-PACKS.md` and `08-EDITOR-COMPONENTS.md`
+
+**MUST NOT**
+
+- Concatenate IDs, admin URLs, routes, controllers, or rights into markup
+- Emit `data-cms-inspect-*` by hand
+- Treat packs without markers as invalid
+
+Source of this compact rule is **this file**. Mirror to `.cursor/rules/` — **MUST NOT** author the law only under `.cursor/`.

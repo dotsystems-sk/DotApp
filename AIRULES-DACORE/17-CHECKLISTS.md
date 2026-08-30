@@ -14,7 +14,7 @@
 - [ ] **PHP version:** asked whether to stay on **PHP 7.4+** (default) or write for a higher version; no answer → 7.4+ ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] New visible module: asked once for public name/purpose, installer identity (text-only / compact logo / wide banner), existing local asset + alt text, optional landing/header placement and colours ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b)
 - [ ] **Planning depth:** new module / first major surface / rewrite — plan inventories **every** `DACore:Menu@register` row (or `No menu`), **every** page, **every** tab, **every** control (what it does, default, persist) plus designer-grade UI and senior-grade security. A long plan is correct. Short plans only for small edits to shipped screens ([45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k)
-- [ ] **PLAN folder:** new module / first surface / rewrite writes `app/modules/<This>/PLAN/` as a **split folder** (laws, rules, inventories, **positions**, optional images) and implements from it. Existing **this-module** `PLAN/` was read first. Chat-only / one-file plan is not enough. **CMS template pack:** standalone `PLAN/html/` exists and the user **approved** it before production views ([00](00-AGENT-CONTRACT.md) §2o, `CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`)
+- [ ] **PLAN folder:** new module / first surface / rewrite writes `app/modules/<This>/PLAN/` as a **split folder** (laws, rules, inventories, **positions**, optional images) and implements from it. Existing **this-module** `PLAN/` was read first. Chat-only / one-file plan is not enough ([00](00-AGENT-CONTRACT.md) §2o)
 - [ ] **Rule stack:** project `AIRULES/` applies; named-host `AIRULES/` was read if this is a pack; host `PLAN/` was **not** opened for a pack ([00](00-AGENT-CONTRACT.md) §2p)
 - [ ] **Finish gate:** will grep after **every** code chunk (CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest, `Events::trigger` vs `.hooks`) — [00](00-AGENT-CONTRACT.md) §2c, [41](41-MODULE-HOOKS.md)
 - [ ] Domain persist in this task: if another module could log/history/sync, fire `module.{lowercase_modulename}.{hook_name}.hook` (comment block + `.hooks`) — **not** on every save ([41](41-MODULE-HOOKS.md))
@@ -54,8 +54,9 @@
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
 - [ ] User-visible strings are product copy — not prompt-echo / “this user can…” ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
-- [ ] **Layout / UX-UI:** every new button has padding vs the parent (especially **bottom**), is centered or aligned to siblings, and is not flush to the card/page edge ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c)
+- [ ] **Layout / UX-UI:** every new button has padding vs the parent on **all sides** (left, right, top, bottom); when buttons are the **last** content of a block, **almost always** pad **below**; not flush to the card/page edge; centered or aligned to siblings ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6)
 - [ ] No PHP function names in `setViewVar` / `setLayoutVar` / `PrivateBlock::set` (`time`, `copy`, `count`, `key`, `header`, `date`, `sort`, `file`, …) — sandbox **drops the whole var**; empty `foreach` with a visible heading is this, not a broken template ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
+- [ ] Renderer lifecycle listeners use `RendererLifecycleContext`; replacement is `useReplacement()` only in `before` for layout/view/rendered code; explicit listener routes; no output/secrets logged ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
 
 ## Database checklist
 
@@ -85,7 +86,7 @@
 - [ ] `$request->form(...)` has an error callback and `null`/`false` guards
 - [ ] `Email::send` checked with `!== true` (returns an array of errors)
 - [ ] `Auth::login` checked for `false` before array access; login/install **shows** every failure (`crcCheck`, `form()` `null`/`false`, `false` login)
-- [ ] Passwords / HTML / hashes from `$request->data(true)` — not `$request->data()` ([19](19-VALIDATION-AND-INPUT.md))
+- [ ] Persist / passwords / HTML / URLs / hashes from `$request->data(true)` — not `$request->data()`; SQL write uses named / `?` bindings ([19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md))
 - [ ] AI / SchemaBuilder / raw DDL wrapped in `try/catch`
 - [ ] Persist / save handlers wrapped in `try/catch` (`\Throwable`) — log + structured reply, never leak `$e->getMessage()`
 - [ ] Renderer output checked for `''` (missing view fails silently)
@@ -107,7 +108,7 @@
 - [ ] Success **MUST** patch the DOM (`reply.html` / data) + short toast — no `location.reload()` while staying on the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md))
 - [ ] Row actions (toggle/delete/reorder/drag-and-drop) use `$dotapp().load()` + encrypted `data-*` — **not** one `<fo-rm>` per button
 - [ ] PHP: `crcCheck()` **once** (API prefix **or** action) then `form([...], "handler", ...)` then `ajaxReply` — **never both** ([08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md))
-- [ ] Passwords / HTML from `$request->data(true)` — not `$request->data()` ([19](19-VALIDATION-AND-INPUT.md))
+- [ ] Persist / passwords / HTML / URLs from `$request->data(true)` — not `$request->data()` ([19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md))
 - [ ] Failures show `reply.message` (including `crcCheck` / `form()` reject / `Auth::login === false`)
 - [ ] Followed `AIRULES/examples/EX-01-secure-form-complete.md` when implementing
 - [ ] New / ported `$dotapp` libraries follow [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 / [EX-15](examples/EX-15-dotapp-js-library.md) (`dotapp-register`, `fn()`, `this.load` — no `$.ajax`)
@@ -203,7 +204,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) (DACore hunts = §7).
 - [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::`), Controllers, listeners
 - [ ] Counted `crcCheck()` on the failing route — **not** middleware + controller (first call burns the token)
 - [ ] If this module’s middleware calls `crcCheck()`, the action does **not**
-- [ ] Passwords/HTML from `$request->data(true)`
+- [ ] Persist / passwords / HTML / URLs from `$request->data(true)` (bindings on write)
 - [ ] `form()` error callback + `null`/`false` guarded; JS shows `reply.message`
 - [ ] Upload endpoints do **not** `crcCheck()`
 - [ ] Read the catch trail: temporarily `Events::on('dotapp.catch', …)` in **your** module (or check the log) to see `operation`, `source`, `message` of the real failure instead of guessing ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
@@ -248,15 +249,18 @@ Tick only the rows for the surface you touched.
 **MUST** after **every** code chunk. **MUST NOT** claim done until every applicable row was actually grepped — not imagined.
 
 - [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::` / `#DACore:AuthTest@CRC!` / `LoginAndCRC!`), Controllers — **one** call per POST (API prefix **XOR** action). Not on GET/HTML login `before`. Not on `$request->upload()`. Action does **not** `crcCheck()` after a CRC prefix. New public controller/middleware methods start PHPDoc with **`CRCchecking —`** matching that layer ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
-- [ ] No plain record IDs in HTML/JSON (`value="7"`, `data-id="7"`, `{{ var: $id }}` as an id) — `{{ enc(Shop.item.id): $id }}` unique `$key2`; decrypt `=== false` rejected; PHP still `Auth::can` / ownership ([11](11-AUTH-AND-CRYPTO.md) §8)
+- [ ] No plain record IDs in HTML/JSON (`value="7"`, `data-id="7"`, `{{ var: $id }}` as an id) — `{{ enc(Shop.item.id): $id }}` unique `$key2`; decrypt `=== false` rejected; PHP still `Auth::can` / ownership. Path `href` / `{token}` / `redirectTo` uses **sealed** `[A-Za-z0-9_-]+` (not raw `Crypto::encrypt` / `{{ enc }}` in the path) ([11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13)
 - [ ] Privilege / records grepped: secrets not in read-only views; SQL has owner (or can on that row); no escalate; public noauth bot **warning** if applicable ([11](11-AUTH-AND-CRYPTO.md) §11); custom user UI filtered by **your** origin (or explicit ASK + warning before listing another origin) ([42](42-DACORE-USER-ORIGIN.md))
 - [ ] **Origin/global Auth:** grepped `createUser|registerOrigin|stampOrigin|UserPolicy@read|Auth::login|loggedStage|Auth::isLogged|findByExtra` plus user SQL. Checked register result, exact-id lookup, stamp+read equality, logout on mismatch, login+2FA+every gate, profile INNER JOIN + bound origin, generic duplicate/foreign replies ([42](42-DACORE-USER-ORIGIN.md))
 - [ ] Queries use bindings; no user input in SQL strings; `$qb->raw()` has no `?` except real bindings ([06](06-DATABASE.md))
-- [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation; step-up code only if the plan named it) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
+- [ ] Persist / passwords / HTML / URLs / hashes from `$request->data(true)` (SQL write = named / `?` bindings, not `protect()`); persist re-checked in **PHP** (rights, validation; step-up code only if the plan named it) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md), [08](08-FORMS-AND-SECURITY.md), [32](32-DACORE-RIGHTS.md) §6)
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate; rights via `#YourModule:Rights@check!` — **not** `#DACore:AuthTest@check!` ([03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md))
 - [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. **Admin:** grepped DACore, then **toast** (Notiflix / `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
-- [ ] **Layout / UX-UI:** grepped/read the chrome you added — buttons have padding vs parent (esp. bottom); not flush; aligned to siblings; `pt-0` footers still have `pb-*` / CSS padding-bottom ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c)
+- [ ] **Layout / UX-UI:** grepped/read the chrome you added — buttons have padding vs parent on **all sides**; last-in-block buttons have space **below** (usual Save-at-the-bottom hole); not flush; aligned to siblings; `pt-0` footers still have `pb-*` / CSS padding-bottom ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6)
+- [ ] **Admin page composition:** new/rewritten form/settings/editor has a page purpose sentence, numbered section + one-sentence lede, a tinted Why-this-matters note when the cluster is not obvious, related fields only in that card, GET workspaces when there are more than ~two jobs — **not** one wall of inputs. Chrome lives in **this** module (`{lowercase_modulename}_*`); did **not** copy another module’s chrome ([00](00-AGENT-CONTRACT.md) §2f, [33](33-DACORE-PAGES-AND-UI.md) §6b, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8e)
 - [ ] **HTML via Renderer:** grepped Controllers/Libraries for `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factories — screen/fragment markup is a layout. A PHP HTML string has `// Why:` naming a one-piece exception, never a whole list ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
+- [ ] **Renderer lifecycle:** listener does not return replacement HTML; `useReplacement()` only in `before` for layout/view/rendered code; custom/after observe only; listener routes explicit; output/vars not logged ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
+- [ ] **DACore is not Bootstrap:** grepped `data-bs-toggle="tab"` / `tab-pane fade` / `bootstrap.bundle` in this module — tab look is real GET links + this module’s CSS, not Bootstrap Tab JS ([33](33-DACORE-PAGES-AND-UI.md) §0)
 - [ ] **Catch reported:** grepped `catch (` and `execute(` in this chunk — each one reports `dotapp.catch` + `dotapp.catch.error|info` with the fixed payload and no secrets ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 - [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, duplicated DACore library, missing docblock, comments that restate the code)
 - [ ] **Threat pass** run on this chunk — the 12 greps in [24](24-ATTACK-VECTORS.md) §11 (injection, header/redirect, `eval`/`exec`/`unserialize`, upload checks, rate limit, leaked `getMessage()` / `var_dump`, bot warning, no `dacore_*` write)
@@ -265,8 +269,10 @@ Tick only the rows for the surface you touched.
 - [ ] **PHP 7.4+:** grepped the chunk for PHP 8+ syntax (`match`, `?->`, `str_contains`, `str_starts_with`, `str_ends_with`, `#[`, `enum `, `readonly `, `: mixed`) unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] **defaultSettings / routes:** `defaultSettings()` exists; called at the start of `initializeRoutes()` (before `return`) and at the start of `initialize()`. Wake/`Router` paths are not built from Config another module fills later. No hardcoded foreign fallback (`/admin` as DACore `prefixUrl`). Foreign path needed before they run uses a literal URL this module owns ([00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md))
 - [ ] **Module AIRULES:** if this chunk is a pack / listener / Extender for a named host, that host’s `AIRULES/` was read and public routes match what the host listens to. A new host that others extend has `app/modules/<ThisModule>/AIRULES/`. Module rules were not used to skip project law ([00](00-AGENT-CONTRACT.md) §2n)
-- [ ] **PLAN folder:** if this chunk is a new module / first surface / rewrite, `app/modules/<This>/PLAN/` exists (split files) and the chunk matches it. If **this** `PLAN/` already existed, it was read first. **CMS template:** do not write production views before user-approved `PLAN/html/` ([00](00-AGENT-CONTRACT.md) §2o)
+- [ ] **PLAN folder:** if this chunk is a new module / first surface / rewrite, `app/modules/<This>/PLAN/` exists (split files) and the chunk matches it. If **this** `PLAN/` already existed, it was read first ([00](00-AGENT-CONTRACT.md) §2o)
 - [ ] **Rule stack:** host `PLAN/` was not opened while writing a pack ([00](00-AGENT-CONTRACT.md) §2p)
+- [ ] **Admin AJAX:** every `load()` / `form()` action unwraps nested `data` and answers HTTP **200** + `status` 0|1. No product-fail HTTP 400/500. If one handler had the hole, every sibling in this module was grepped and fixed ([00](00-AGENT-CONTRACT.md) §2q, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- [ ] **No unsolicited browser:** did **not** open MCP browser / CDP / screenshot-click unless this turn’s user **asked** or said **yes**. UX was checked in **source**. Functionality = a short click list for the operator ([00](00-AGENT-CONTRACT.md) §2r)
 - [ ] Touched-area checklists above are satisfied (forms, lists, DSM, files, templates, DACore, …)
 - [ ] No core file modifications in the diff
 - [ ] No `app/modules/DACore/` files in the diff (edit, add, or delete) — unless an informed, user-initiated DACore edit was confirmed ([00](00-AGENT-CONTRACT.md) §1)
@@ -298,6 +304,9 @@ Tick only the rows for the surface you touched.
 - Handler skips `crcCheck` for DotApp JS POST, **or** calls `crcCheck()` twice (middleware + controller)
 - Login-only / admin page reachable while anonymous (route registered outside `Auth::isLogged()`, or no prefix `Gate@login` 403)
 - `crcCheck()` on a **GET**/HTML `Gate@login` `before` (GET has no CRC); **or** `crcCheck()` **again** after `#DACore:AuthTest@CRC!` / `LoginAndCRC!` / `check`
+- `$request->data()['id']` after `$dotapp().load()` / `form()` without unwrapping nested `data`; product fail as HTTP 400/500 → generic Request failed ([00](00-AGENT-CONTRACT.md) §2q)
+- Fixed only the reported Disable/Save and left Delete / Purge / Test / list on the same pattern ([00](00-AGENT-CONTRACT.md) §2q)
+- Live browser / CDP / screenshot-click to “verify” Save without the user asking or saying yes ([00](00-AGENT-CONTRACT.md) §2r)
 - Success path is `location.reload()` / empty `.after()` while staying on the page
 - One `<fo-rm>` per row button (up/down/toggle/delete) or drag-and-drop via forms
 - List/form still clickable during `load()`; overlay not removed on the error path; no preloaders because Notiflix was skipped
@@ -306,7 +315,7 @@ Tick only the rows for the surface you touched.
 - Named step-up uses a 6-digit field on the card / no `$dotapp().twoFactor` / `autoSubmit: false` on unlock
 - Delete via `alert()` / `window.confirm()` or with no graphical confirm
 - Prompt-echo UI copy (“this user can…”, “as requested…”) instead of product language
-- Save / primary button flush against the card or page edge; `pt-0` footer with no bottom padding; uncentered vs sibling cards ([00](00-AGENT-CONTRACT.md) §2f)
+- Save / primary button flush against the card or page edge; buttons last in a `card-body`/modal with no bottom padding; `pt-0` footer with no `pb-*`; uncentered vs sibling cards ([00](00-AGENT-CONTRACT.md) §2f, [33](33-DACORE-PAGES-AND-UI.md) §6)
 - `$html .= '<table'` / `'<tr'` / `'<div class='` or a `listHtml()` factory building a screen/fragment in Controllers/Libraries without `// Why:` naming a real one-piece exception ([00](00-AGENT-CONTRACT.md) §2j)
 - Successful SMS/mail/payment/lockout with no `module.{mod}.{name}.hook`, or a trigger missing from `.hooks` / missing `Hook:` comment ([41](41-MODULE-HOOKS.md))
 - Hook on every save “just in case”; old `shop.item.saved` name ([41](41-MODULE-HOOKS.md))

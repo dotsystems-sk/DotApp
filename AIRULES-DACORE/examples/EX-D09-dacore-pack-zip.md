@@ -16,7 +16,7 @@ Windows (PowerShell), from the project root:
 
 ```powershell
 Copy-Item AIRULES\examples\EX-D09-dacore-pack-zip.php.txt .\dacore-pack-zip.php
-php dacore-pack-zip.php DAFiles 1.2.0
+php dacore-pack-zip.php ExampleModule 1.2.0
 Remove-Item .\dacore-pack-zip.php
 ```
 
@@ -24,16 +24,16 @@ Linux / macOS:
 
 ```bash
 cp AIRULES/examples/EX-D09-dacore-pack-zip.php.txt ./dacore-pack-zip.php
-php dacore-pack-zip.php DAFiles 1.2.0
+php dacore-pack-zip.php ExampleModule 1.2.0
 rm ./dacore-pack-zip.php
 ```
 
 Flags:
 
 ```text
-php dacore-pack-zip.php Module 1.2.0
-php dacore-pack-zip.php --module=DAFiles --version=1.2.0
-php dacore-pack-zip.php --module=DAFiles --version=1.2.0 --out=C:\releases
+php dacore-pack-zip.php ExampleModule 1.2.0
+php dacore-pack-zip.php --module=ExampleModule --version=1.2.0
+php dacore-pack-zip.php --module=ExampleModule --version=1.2.0 --out=C:\releases
 ```
 
 `--version` **MUST** equal the highest quoted key in `Installation.php` (`'1.2.0' =>`).

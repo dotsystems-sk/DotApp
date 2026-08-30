@@ -1,5 +1,5 @@
 ---
-description: UX/UI layout law — padding and placement of buttons vs the parent
+description: LAW — button padding vs parent on all sides; bottom padding when buttons are last in a block
 alwaysApply: true
 ---
 
@@ -7,17 +7,22 @@ alwaysApply: true
 
 General UX/UI principles **MUST** be followed **at all costs**. A control that works but looks unfinished is a **bug**.
 
-Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8c.
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8c–§8e, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6–§6b.
 
-## When adding a button
+**Admin forms (MUST):** numbered section + one-sentence lede + tinted Why-this-matters when the cluster is not obvious. **MUST NOT** one wall of inputs. Chrome stays in **this** module — do not copy another module’s namespaced chrome. Compact: `23-admin-page-sections.mdc`.
 
-1. Check **padding on all sides**, especially **below**. It **MUST NOT** sit flush against the parent (card, footer, modal, page).
-2. Place it **deliberately vs the parent**: centered or the same rhythm as sibling cards — not shoved left.
-3. If you zero one side (`pt-0`, `border-0`), **compensate** the other (`pb-4` or CSS `padding-bottom`).
-4. Desktop **and** mobile: touch target, wrap, no overflow.
+## When adding a button (MUST, every time)
+
+1. Check **padding on all sides** — left, right, **top**, and **bottom**. It **MUST NOT** sit flush against the parent (card, `card-body`, footer, modal, drawer, page).
+2. **Last in the block:** if the buttons are the **last content** of that block, **almost always** add space **below** (`card-footer` + `pb-3`/`pb-4`, or CSS `padding-bottom`). Dropping Save at the bottom with no bottom padding is the most common layout bug.
+3. Place it **deliberately vs the parent**: centered or the same rhythm as sibling cards — not shoved left.
+4. If you zero one side (`pt-0`, `border-0`), **compensate** the other (`pb-4` or CSS `padding-bottom`).
+5. Desktop **and** mobile: touch target, wrap, no overflow.
 
 ## Fail now
 
 - Save/primary glued to the card or page edge
+- Buttons last in a card/`card-body`/modal with **no** padding below
 - Uncentered or cramped vs sibling footers
 - Claiming done from the PHP handler without reading the HTML/CSS chrome
+- Opening a live browser to “check padding” unless the user asked (`AIRULES/00` §2r) — read the layouts instead

@@ -438,13 +438,13 @@ Installer flow: upload ZIP → DACore shows changelog (for an update: only versi
 
 **DACore owns the reserved `extra1` vocabulary and v1 peer call shapes.** Agents **MUST** use [46](46-DACORE-EXTRA-CONTRACTS.md) (`filemanager`, `template`, `payment`, …). **MUST NOT** invent a synonym. Private host-only flags **MUST** be `{lowercase_modulename}.{token}`. Machine catalog: `DACore\Libraries\ExtraContracts`.
 
-### Why this exists (CMS / templates / file manager)
+### Why this exists (hosts and packs)
 
-A **CMS** must not bake a public theme (or a file picker) into its own files. A CMS update would overwrite operator customisations. The durable design is:
+A `<Host>` must not bake a replaceable presentation or provider pack into its own files. A host update would overwrite operator customisations. The durable design is:
 
-1. **CMS module** — settings, articles, routing. It does **not** own the public HTML theme and does **not** own the file jail.
-2. **Template pack** / **filemanager pack** — separate DACore-installable packages (`extra1` = `template` or `filemanager`, `extra2` = `v1`).
-3. CMS settings: “Choose the template” / “Choose the file manager.” The dropdown is **not** every folder under `app/modules/`. It is **only** `dacore_modules` rows whose extras match the **reserved** role.
+1. **`<Host>` module** — owns product settings, records, and routing. It does **not** own a replaceable `<Pack>`.
+2. **`<Pack>` module** — a separate DACore-installable package with the reserved `extra1` role and `extra2 = v1`.
+3. Host settings provide a bounded pack picker. The dropdown is **not** every folder under `app/modules/`; it contains only `dacore_modules` rows whose extras match the reserved role.
 
 The file-manager pack author writes in `about.php`:
 
@@ -454,7 +454,7 @@ The file-manager pack author writes in `about.php`:
 'extra3' => 'full',
 ```
 
-After install, the CMS lists packs:
+After install, the `<Host>` lists compatible packs:
 
 ```php
 $packs = DotApp::call('DACore:Plugins@listByContract!', 'filemanager', 'v1');
@@ -487,7 +487,7 @@ $rows = DB::module('RAW')->q(function ($qb) {
 | `extra1` | Reserved role **or** `{module}.{private}` | `filemanager`, `template`, `dacore.admin-skin` |
 | `extra2` | Contract version | `v1` |
 | `extra3` | Mode for that role | `full`, `picker`, `css` |
-| `extra4` | Host family when the role uses one | `generic`, `cms`, `shop`, `erp` |
+| `extra4` | Host family when the role uses one | `generic` or a documented `<host-family>` token |
 | `extra5` | Optional qualifier | `assets-only`, or empty |
 
 Full reserved list, peer controllers, and MUST/MUST NOT: [46](46-DACORE-EXTRA-CONTRACTS.md).
@@ -496,7 +496,7 @@ Full reserved list, peer controllers, and MUST/MUST NOT: [46](46-DACORE-EXTRA-CO
 
 - Tokens: quoted strings in `about.php` (`'filemanager'`), **not** HTML nowdoc
 - Length ≤ 64; charset `[a-zA-Z0-9._-]`; no spaces, no sentences, no secrets, no rights names
-- Omit unused keys (empty columns). A normal Shop/CMS **host** often has **no** extras
+- Omit unused keys (empty columns). A normal `<Host>` often has **no** extras
 - **ASK** when planning a **pack**: “Which **reserved** `extra1` from [46](46-DACORE-EXTRA-CONTRACTS.md)?” Do not invent `template` / `filemanager` synonyms
 - **ASK** when planning a **host** that will pick among packs: which reserved role it lists; document it in settings copy and at the query. Packs **MUST** use that exact string
 - Re-install / update the pack after changing extras — flags are stored at install, not read live from disk on every request
@@ -506,7 +506,7 @@ Full reserved list, peer controllers, and MUST/MUST NOT: [46](46-DACORE-EXTRA-CO
 - `UPDATE dacore_modules` from your module to set extras (installer + `about.php` only)
 - Put HTML, URLs, JSON blobs, or passwords in extra*
 - Use extras instead of `DACore:Rights@*`
-- Set `extra1 = template` on the CMS host, or `extra1 = filemanager` on the file-manager host itself
+- Set a pack role on the `<Host>` itself (for example, `extra1 = template` on a host that selects template packs), or set a provider role on the provider host itself
 - Invent a host-private short `extra1` that collides with [46](46-DACORE-EXTRA-CONTRACTS.md) — private flags need a `{module}.` prefix
 - Give `email` / `sms` / `webhook` / `notification` / `ip-geo` / `widget` / `settings-panel` / `backup` as `extra1` — those are DACore registries, not pack roles
 

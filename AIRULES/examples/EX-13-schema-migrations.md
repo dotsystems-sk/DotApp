@@ -6,6 +6,8 @@ Rules: [07-SCHEMA-AND-INSTALL.md](../07-SCHEMA-AND-INSTALL.md).
 
 **MUST:** raw installer SQL probes first (`SHOW TABLES LIKE` / `information_schema`), then `CREATE TABLE` / `ALTER TABLE` **without** `IF NOT EXISTS` ([07](../07-SCHEMA-AND-INSTALL.md) §0).
 
+**MUST:** installer versions run in written array order. Append new keys; never `ksort` / `krsort` the map (`1.0.10` sorts before `1.0.9`).
+
 After you add a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php` so the next page load runs it. Do not leave that step for the user. To copy the module to another project (no DACore): keep `install.php` and copy the folder.
 
 ## SchemaBuilder — wrap DDL in try/catch (it throws)

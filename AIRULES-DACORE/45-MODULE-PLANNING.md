@@ -6,7 +6,7 @@ A bullet list of endpoints is **not** a plan. A plan that is **very long** is co
 
 Canonical pointers: [00](00-AGENT-CONTRACT.md) §2 item 1, [§2k](00-AGENT-CONTRACT.md#2k-module-planning-depth-must), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8d, [17](17-CHECKLISTS.md) Pre-flight, [31](31-DACORE-MENU.md), [33](33-DACORE-PAGES-AND-UI.md).
 
-**Pack for a named host:** the plan **MUST** follow that host’s `AIRULES/` ([00](00-AGENT-CONTRACT.md) §2n). **MUST NOT** open `app/modules/<Host>/PLAN/` — that is the host’s own roadmap ([00](00-AGENT-CONTRACT.md) §2p). **CMS template packs:** **HTML-first** — write `PLAN/html/` as a standalone site **before** reading CMS routes/stems (`CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`). After the user **approves** the HTML, read `01-TEMPLATE-PACKS.md` and list only routes CMS listens to. A new **host** plan **MUST** include creating **both** `AIRULES/` (for future packs) and `PLAN/` (for host development).
+**Pack for a named host:** the plan **MUST** follow that host’s `AIRULES/` ([00](00-AGENT-CONTRACT.md) §2n). **MUST NOT** open `app/modules/<Host>/PLAN/` — that is the host’s own roadmap ([00](00-AGENT-CONTRACT.md) §2p). Host-specific pack workflows belong in the host’s own handbook and travel with that host. A new **host** plan **MUST** include creating **both** `AIRULES/` (for future packs) and `PLAN/` (for host development).
 
 **PLAN folder (MUST — law):** the inventory below **MUST** live in **`app/modules/<ThisModule>/PLAN/`**, not only in chat. Split **laws** and **rules**, include **positions**, optional images in `PLAN/assets/`. Then implement from that folder. Canonical: [00](00-AGENT-CONTRACT.md) [§2o](00-AGENT-CONTRACT.md#2o-module-plan-folder-must--law).
 
@@ -24,7 +24,7 @@ app/modules/<ThisModule>/PLAN/
   02-menu.md         — every Menu@register row or No menu
   03-screens.md      — every page / tab / control (what it does, default, persist)
   04-positions.md    — desktop + mobile regions, padding, where each control sits
-  assets/            — optional rasters / mockups (CMS packs: copy into live assets/)
+  assets/            — optional rasters / mockups
 ```
 
 Filenames may vary; the **split** (index + laws + rules + inventories + positions) **MUST** exist. English.
@@ -88,7 +88,7 @@ Walk **every** HTML page the module will ship. For **each** page write:
 - desktop **and** mobile layout (regions, widths, scroll, what collapses)
 - empty / loading / error / forbidden / unconfigured states
 - toolbar, primary vs secondary actions, confirmations, toasts
-- spacing vs the parent (especially padding **below** Save)
+- spacing vs the parent on **all sides**; when Save is last in the block, **almost always** pad **below**
 
 Then walk **inside** the page. Tabs, cards, side panels, and drawers are **not optional footnotes**.
 
@@ -108,7 +108,9 @@ Then walk **inside** the page. Tabs, cards, side panels, and drawers are **not o
 
 **MUST** do the same for lists (columns, search, filters, sort, pager, row actions), forms (every field, validation, save/fail), and wizards (every step). **MUST** say what each control **does**, its default, and where it persists.
 
-**MUST NOT:** “Settings page with some options”; “tabs for interface and frontend”; “the rest we invent while coding.”
+**Admin composition (MUST):** each form/settings/editor page **MUST** name its **numbered sections** (heading + one-sentence lede), whether a **Why-this-matters** panel is on, and which **GET workspace** (tab/leaf) owns it. A plan that says “Settings page with these fields” and draws **one card** is a **failed plan**. Density: [33](33-DACORE-PAGES-AND-UI.md) §6b, [00](00-AGENT-CONTRACT.md) §2f.
+
+**MUST NOT:** “Settings page with some options”; “tabs for interface and frontend”; “the rest we invent while coding”; one inventory list of twenty inputs with no section boundaries.
 
 ---
 
@@ -119,6 +121,7 @@ In addition to the screen inventory, the plan **MUST** specify:
 - Hierarchy (tree vs list vs grid), selection model
 - Icon system (Remix vs thumbs); what DACore CSS/JS is **reused** after a read-only grep
 - Interaction model: click vs double-click, drag-drop, keyboard where relevant
+- **Section chrome** in **this** module: numbered headers, ledes, Why-this-matters panels, GET workspaces — **MUST NOT** copy a sibling’s CSS ([33](33-DACORE-PAGES-AND-UI.md) §6b)
 
 ---
 

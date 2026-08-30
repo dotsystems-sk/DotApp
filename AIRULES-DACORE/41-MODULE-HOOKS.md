@@ -196,7 +196,7 @@ Shape: module.{modulename}.{hook_name}.hook
 
 ### DACore catalog (**MUST**)
 
-When you program a **DACore-bound** module (create Shop, extend CMS, add an SMS driver, audit, … — new **or** existing), **MUST** open **`app/modules/DACore/.hooks`** **read-only** **before** scaffolding listeners, history tables, lockout reactions, mail/SMS audit, or template-delete protection.
+When you program a **DACore-bound** `<TargetModule>` (new **or** existing), **MUST** open **`app/modules/DACore/.hooks`** **read-only** **before** scaffolding listeners, history tables, lockout reactions, mail/SMS audit, or template-delete protection.
 
 That file is the catalog of events DACore already fires (`Fired` = `module.dacore.*.hook`, **Veto contracts** = `module.dacore.*.veto`: login, lockout, 2FA, mail/SMS sent, plugin install, template delete, …). Subscribe in **your** `module.listeners.php` so the module uses that potential instead of reinventing it or patching DACore.
 

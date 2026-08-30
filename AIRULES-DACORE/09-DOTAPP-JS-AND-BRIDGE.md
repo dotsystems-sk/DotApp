@@ -86,6 +86,20 @@ $dotapp().load(url, "POST", { id: $dotapp(el).attr("data-id") },
 
 `$dotapp().parseReply(text)` is required because PHP `ajaxReply()` returns **base64-encoded JSON**.
 
+### Nested `data` + HTTP 400 = “Request failed” (**MUST** — law)
+
+This is how Disable / Test route / Clear looked “broken” while PHP had a real `message`.
+
+`$dotapp().load(url, "POST", { rule: token, enabled: "0" })` does **not** POST a flat object. The body is `{ data: { rule, enabled, csrf… }, crc }`. `$request->data()['rule']` is empty. Decrypt fails. `ajaxReply(..., 400)` makes `fetch` take the **error** path. The toast is generic **Request failed**. `reply.message` never shows.
+
+`$request->form()` nests the same way. `load()` onError is `(httpStatus, bodyText)`, not the success `(raw)` shape.
+
+**MUST:** unwrap (`formBag` / `posted()` of `$request->data()`, or the `form()` bag). Admin product outcomes: HTTP **200** + `status` 0|1 + `message`.
+
+**MUST:** when this class is found on **one** action, grep **this module** for every `load()` / `form()` sibling (`$request->data()[` without unwrap, `ajax(..., 400)`, `ajax(..., 500)`) and fix them in the same chunk. **MUST NOT** ship “Disable works, Delete still 400”. Canonical: [00](00-AGENT-CONTRACT.md) §2q.
+
+**MUST NOT:** product-fail a `load()` / `form()` action as HTTP 400/500 “to be RESTful”. Middleware 403 (anonymous / rights) and prefix CRC 400 stay as they are.
+
 Form submits are routed through this pipeline automatically unless the form has `data-dotapp-nojs`. **There is no full-page reload.** If `.after()` / the `load` callback does not update the DOM, the user sees nothing until they refresh — that is a **bug**.
 
 Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms. **Files:** `$dotapp().uploadFile` — never hand-built `FormData` on `load()` / `<fo-rm>`.
@@ -231,7 +245,7 @@ Skipping Notiflix on an admin page does **not** waive preloaders. A custom syste
 - Do not rely on desktop-only layout for the busy state.
 - One in-flight request per region; a second tap/drag is ignored until the overlay is gone.
 - Toasts are short and non-blocking. Never `alert()`.
-- **Layout (LAW):** every new button/control has padding vs its parent (especially **below**), and is centered or aligned to the same rhythm as siblings. A Save glued to the card edge is a **bug**. Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
+- **Layout (LAW):** every new button/control has padding vs its parent on **all sides** (left, right, top, bottom). When the buttons are the **last** content of a block, **almost always** pad **below**. A Save glued to the card edge is a **bug**. Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6.
 
 Notiflix API (when you choose option 1):
 

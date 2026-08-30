@@ -227,6 +227,15 @@ Key composition (AES-256-CBC): `app.c_enc_key` + the per-session `_enc_key` + yo
 
 Because the session key participates, ciphertext is **not portable across sessions** — do not persist `Crypto::encrypt()` output in the database expecting to decrypt it later in another session.
 
+**URL path (MUST — law):** `encrypt()` returns **standard base64** (`+`, `/`, `=`). In a path those become `%2B` `%2F` `%3D`. Apache treats **`%2F` as a slash** and returns **Not Found**. **MUST** keep AES + `$key2`. **MUST** wrap the blob in base64url before it is an `href`, `{token}` segment, or `redirectTo`:
+
+```php
+$sealed = rtrim(strtr($cipher, '+/', '-_'), '='); // A-Za-z0-9-_
+// open: rawurldecode, space→+, -_→+/, pad to length % 4 === 0, then decrypt
+```
+
+**MUST** accept both sealed and leftover standard tokens on decrypt (`{{ enc }}` is still standard base64). **MUST NOT** put `{{ enc(...) }}` into a URL **path**. Hidden / `data-*` / POST may use `{{ enc }}` when PHP opens both shapes. Implement the sealing and opening helper in **this** module. **MUST NOT** patch DACore or `app/parts/` for this. DACore admin pages: [33](33-DACORE-PAGES-AND-UI.md) §13.
+
 There is no HMAC facade; use PHP `hash_hmac()` if you need signatures.
 
 ---

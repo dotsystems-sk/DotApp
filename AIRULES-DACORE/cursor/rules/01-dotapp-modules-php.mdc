@@ -40,7 +40,7 @@ With `!` in the route: **no** `Renderer $renderer` type-hints.
 
 ## Request input
 
-`$request->data()` is **protected**. `$request->data(true)` is **original**. **MUST** use `true` for passwords, HTML, hashes (`Auth::login` / `createUser`). See `AIRULES/19`.
+`$request->data()` is **protected**. `$request->data(true)` is **original**. **MUST** persist `true` (URLs, settings, HTML, passwords, hashes). SQL injection protection is named / `?` bindings — not `protect()`. See `AIRULES/19`, `AIRULES/06`.
 
 ## Session
 

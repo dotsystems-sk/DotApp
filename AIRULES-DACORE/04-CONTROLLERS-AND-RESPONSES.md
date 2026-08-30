@@ -61,14 +61,14 @@ Prefixes: `#` Middleware, `*` Models.
 
 ```php
 $data = $request->data();           // protected/escaped copy (by reference) — default
-$raw  = $request->data(true);       // original bytes — MUST for passwords, HTML, hashes
+$raw  = $request->data(true);       // original bytes — MUST for persist (URLs, settings, HTML, passwords)
 $get  = $request->query();          // protected GET
 $getRaw = $request->query(true);    // original GET
 $id   = $request->matchData()['id'] ?? null;
 $method = $request->getMethod();
 ```
 
-**MUST:** `data()` / `query()` run `protect()` (old injection/XSS guard). **MUST** pass `true` for passwords, HTML, anything stored or compared as-is. `data()` on a password with `)`, `=`, `%` hashes the **wrong** string. Canonical: [19](19-VALIDATION-AND-INPUT.md). There is **no `headers()` method**.
+**MUST:** `data()` / `query()` run `protect()` (old programmer-guard). SQL injection protection is **named / `?` bindings** ([06](06-DATABASE.md)). **MUST** persist `$request->data(true)` — passwords, HTML, URLs, settings. `data()` on a password or `?q=` URL with `)`, `=`, `%` stores the **wrong** string (`&#61;`). Canonical: [19](19-VALIDATION-AND-INPUT.md). There is **no `headers()` method**.
 
 Uploads: `$request->upload(function ($files) { ... });` — each entry has `field, name, type, size, tmp_name, error, extension`. Always check `$f['error'] !== UPLOAD_ERR_OK`.
 

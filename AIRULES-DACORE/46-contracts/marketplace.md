@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This is a **vendor directory**. It is **not** the Shop **host** and **not** `catalog`. A host and a pack must be able to interoperate from this page alone.
+This is a **vendor directory**. It is **not** the <Host> **host** and **not** `catalog`. A host and a pack must be able to interoperate from this page alone.
 
 ---
 

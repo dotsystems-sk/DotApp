@@ -26,7 +26,7 @@ Full contract: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 6. `Email::send()` returns **`string[]`** on failure → `!== true` check.
 7. `Validator::validate()` → `=== true` check (failure array is truthy).
 8. `$request->form()` may return your value, `false`, `null`, or **throw** → give it an error callback and guard.
-9. Passwords/HTML: `$request->data(true)` — never `$request->data()`. Show login `reply.message` on every failure.
+9. Persist / passwords / HTML / URLs: `$request->data(true)` — never `$request->data()`. SQL write = named bindings. Show login `reply.message` on every failure.
 10. Missing view/layout renders **`""`** with only a log warning → use the fallback argument and check for `''`.
 11. `Entity::save()` returns **void** — never test it.
 12. `trigger()` ignores listener return values; listener exceptions propagate.

@@ -57,7 +57,9 @@ RewriteBase /
 RewriteCond %{REQUEST_URI} ^/dotapper$
 RewriteRule ^ - [F,L]
 
-# Preskocit prepis pre specificke subory
+# Fyzicky sitemap.xml alebo robots.txt nacitat priamo.
+# Ak subor neexistuje, pravidlo sa nepouzije a poziadavka pokracuje na index.php.
+RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^(sitemap\.xml|robots\.txt)$ - [NC,L]
 
 # Zablokovat /app/ okrem assets v moduloch

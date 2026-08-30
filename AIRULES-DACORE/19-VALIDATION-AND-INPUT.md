@@ -150,6 +150,10 @@ Failure shapes:
 
 DotApp **always** runs incoming GET/POST-like values through `DotApp::protect()` (replaces `# $ " ' , ; % * < = > ( ) & ^ \` ~ ! { }` with HTML entities, then `addslashes`). That is an old **programmer-guard** against naive SQL/XSS mistakes. It is **not** a substitute for QueryBuilder bindings.
 
+**SQL injection protection is named (or `?`) bindings** — `where('maps_url', '=', $url)`, `raw('… WHERE id = :id', ['id' => $id])`, QueryBuilder `insert`/`update` values. Those placeholders are the wall. `protect()` is **not** that wall. XSS on output is `htmlspecialchars` before `{{ var: }}`, not `protect()`.
+
+**MUST persist and compare the original request** (`$request->data(true)` / `$request->query(true)`), then bind that string. **MUST NOT** store the protected copy. `protect()` rewrites `=` to `&#61;` (and `)`, `%`, `&`, `'`…), so a maps URL `https://maps.google.com/?q=Sabinov` becomes `?&#61;Sabinov` in the row. Same for Instagram query strings, ciphertext padding `=`, passwords, HTML.
+
 The switch is the boolean on `data()` / `query()`:
 
 | Call | What you get |
@@ -157,9 +161,9 @@ The switch is the boolean on `data()` / `query()`:
 | `$request->data()` / `$request->query()` | **Protected** copy (`$orig = false`, default) |
 | `$request->data(true)` / `$request->query(true)` | **Original** payload (`$orig = true`) |
 
-**MUST** use `true` (original) when you hash or compare a **password** (`Auth::login`, `Auth::createUser`, installer admin), persist **HTML**, signatures, tokens, or any value that must round-trip unchanged.
+**MUST** use `true` (original) for **every** value that is stored, hashed, decrypted, or compared as the operator typed it: passwords (`Auth::login`, `Auth::createUser`, installer admin), HTML, URLs, settings, tokens, signatures, encrypted ids, titles, notes.
 
-**MUST NOT** take a password or HTML from `$request->data()` without `true`. Characters like `)`, `=`, `%`, `&`, `'` become a **different string**. The stored hash then never matches login — or the installer hashed the *escaped* password.
+**MUST NOT** take a password, URL, HTML, or other persist field from `$request->data()` without `true`. Characters like `)`, `=`, `%`, `&`, `'` become a **different string**. The stored hash then never matches login — or the installer hashed the *escaped* password — or the public href is broken.
 
 Secure `<fo-rm>` fields after unwrap: `$request->data(true)['data']`.
 

@@ -6,6 +6,30 @@ Your module renders **only its content**. DACore supplies the shell (head, sideb
 
 ---
 
+## 0. DACore is not Bootstrap (MUST — law)
+
+The admin shell is **DotApp + DACore** (`$dotapp`, `Page@withMenu!`, `core.css`, `dotapp.modals.js`, Notiflix). It is **not** a Bootstrap app.
+
+`core.css` reuses some familiar class names (`btn`, `card`, `form-control`, `nav-link`) so the page looks like the DACore theme. That is **theme CSS**, not a license to use Bootstrap as a framework.
+
+**MUST NOT:**
+
+- Load `bootstrap.bundle.js`, `bootstrap.min.js`, or a second Bootstrap CSS
+- Assume Bootstrap’s JS Data API is present (`Tab`, `Collapse`, `Tooltip` as Bootstrap plugins)
+- Switch “tabs” with `data-bs-toggle="tab"` / `data-bs-target` / `.tab-pane.fade` — the shell does **not** run Bootstrap Tab, so those clicks do nothing
+- Use Bootstrap grid (`row` / `col-*`) for new admin layout — **MUST** `<dot-grid>` / `<dot-col>` (this file §7)
+- Invent Bootstrap Icons / Bootstrap JS widgets
+
+**MUST:**
+
+- Chrome that looks like tabs = **real GET subpages** + `<a href>` styled in **this module’s** CSS.
+- Modals that the shell already wires: `$dotapp().modal()` / documented `data-bs-dismiss` on **DACore modal markup** — that is `dotapp.modals.js`, not `bootstrap.bundle.js`
+- New look in `{lowercase_modulename}_*` CSS under **your** module
+
+Every module that uses the DACore admin shell **MUST** follow this law. Canonical compact rule: `AIRULES/cursor/rules/22-dacore-not-bootstrap.mdc`.
+
+---
+
 ## 1. The rendering pattern
 
 Two steps: render your content with the framework `Renderer`, then hand the HTML to DACore.
@@ -60,7 +84,8 @@ DotApp::call(
     array|string $css = [],
     array|string $js = [],
     ?string $menuId = null,
-    ?string $currentFile = null
+    ?string $currentFile = null,
+    ?string $assetModule = null
 ): string
 ```
 
@@ -73,6 +98,7 @@ DotApp::call(
 | `$js` | Array of URLs → `<script src="..."></script>` before `</body>` |
 | `$menuId` | `''`/`null` = full shared menu; a `menuid` = **direct children of that id** (one level) plus a synthetic **Return back** leaf at the bottom (do not register Return back) |
 | `$currentFile` | Empty / omitted = real `REQUEST_URI`. Non-empty = highlight **as if** this URL were open (`Menu@generate` `current_file`). **MUST** on edit/detail pages whose path is not a longer path under the registered leaf (e.g. `/dacore/users/4` vs `/dacore/users-list`). Canonical: [31](31-DACORE-MENU.md) Active sidebar |
+| `$assetModule` | Optional 8th. Installed module whose `assets/` **mirrors DACore filenames and CSS class names**. DACore rewrites `/assets/modules/DACore/…` chrome URLs (and `$css`/`$js` entries that still point at DACore) to that module. Empty = selected `dacore.admin-skin` with `extra3=assets`, otherwise DACore. `/assets/dotapp/dotapp.js` never moves. Existing callers that omit this argument keep the built-in look. |
 
 **MUST ASK** when starting a **new** DACore module: shared nested sidebar (`0` → `2` → `1`, `$menuId` `''`) vs module-own. **No answer → shared nested.** Module-own only if the user explicitly chose it. Canonical: [31](31-DACORE-MENU.md).
 
@@ -106,7 +132,21 @@ DotApp::DotApp()->on('Dacore:Page@withMenu.rendered', function ($viewcode, $titl
 });
 ```
 
-`trigger()` ignores listener return values, so you cannot rewrite the output this way — build the HTML you want before calling `withMenu`.
+`trigger()` ignores listener return values, so you cannot rewrite the output this way — build the HTML you want before calling `withMenu`, **or** register an Extender on the chrome APIs below.
+
+### Extender (skins that need different HTML)
+
+Events cannot replace chrome. These methods **opt in** to `Extender` so a pack can return completely different HTML, or `Extender::original()` to keep DACore’s renderer. Register in `Listeners::register()` ([12](12-SERVICES.md) §10, [EX-17](examples/EX-17-extender.md)). **MUST NOT** pass `$request`, tokens, or bodies.
+
+| Target | Arguments (safe) |
+|--------|------------------|
+| `DACore\Controllers\Page::withMenu` | `$title, $body, $header, $css, $js, $menuId, $currentFile, $assetModule` |
+| `DACore\Controllers\Page::navbar` | `$vars` (already-escaped navbar scalars) |
+| `DACore\Controllers\Page::paginate` | `$actual_page, $number_of_pages, $href, $callable` |
+| `DACore\Controllers\Menu::generate` | `$items, $options` |
+| `DACore\Controllers\Login::renderLoginForm` | *(none)* |
+| `DACore\Controllers\Setup::pageHtml` | *(none)* |
+| `DACore\Controllers\ErrorPages::error403` / `error404` / `error500` | *(none)* |
 
 When `AI.enabled` is true, DACore injects the chat CSS/JS itself; do not add them.
 
@@ -162,7 +202,7 @@ DACore ships **many admin subpages and libraries** in the base. Agents **MUST NO
 2. Search **your** module `app/modules/<YourModule>/assets/` — it may already exist from an earlier task.
 3. Check what the shell already loads (this file §4) and named `$dotapp` widgets (including `dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`, `twoFactor`, Notiflix, `Page@paginate!`, dotgrid, Remix). The files on disk are the source of truth — that list is not exhaustive.
 
-**MUST NOT** search `app/modules/<Sibling>/` (Shop, CMS, DAFiles, …) for cards, CSS, or “how they laid out a page.” That is a [00](00-AGENT-CONTRACT.md) §1b read-scope violation. A sibling is readable **only** when the user named it as the module this work extends / listens to. Examples of DotApp admin pages live in `AIRULES/examples/`, not in a live neighbour.
+**MUST NOT** search `app/modules/<Sibling>/` for cards, CSS, or “how they laid out a page.” That is a [00](00-AGENT-CONTRACT.md) §1b read-scope violation. A sibling is readable **only** when the user named it as the module this work extends / listens to. Examples of DotApp admin pages live in `AIRULES/examples/`, not in a live neighbour.
 
 **If it exists: use it.** Call it from **your** page. Do not fork it. Do not copy DACore files into your module. Do not add a second select / DataTable / modal / toast / date / confirm library.
 
@@ -252,6 +292,43 @@ Your content is placed inside the shell's content container. Start from a card, 
 
 The surrounding shell (`layout-wrapper` → `layout-container` → `layout-menu` + `layout-page` → `content-wrapper` → `container-xxl container-p-y`) is DACore's responsibility.
 
+### Button padding vs the parent (MUST — law)
+
+Whenever you **add or move a button** (Save, Back, Copy, empty-state action, modal footer, pager cluster), **MUST** check padding vs the parent on **all sides**: left, right, **top**, and **bottom**. A working POST with a flush control is **not** done.
+
+The usual hole: a Save (or a row of actions) is the **last content** in a card, `card-body`, modal, drawer, or page block. The parent then has no leftover space **below**, so the control sits on the bottom edge. That is a **bug**. When buttons are the last piece of a block, **almost always** add bottom padding — `card-footer` with `pb-3`/`pb-4`, or CSS `padding-bottom` on that parent. `pt-0` on a footer **MUST** still keep that bottom padding.
+
+**MUST NOT:** drop Save at the end of `card-body` with no footer / `pb-*`; claim done from the PHP handler without reading the HTML/CSS chrome.
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c. Compact: `AIRULES/cursor/rules/ux-ui-layout.mdc`.
+
+### 6b. Admin page composition (MUST — law)
+
+A DACore admin **form / settings / editor** that is **one long card of inputs** is unfinished — even if every field posts. Operators need **readable density**: numbered Identity / Content / Advanced sections, a one-sentence lede, and a tinted “Why this matters” note. That is product law for every module.
+
+**MUST** on every new or rewritten admin workspace:
+
+| Piece | What the operator sees |
+|-------|------------------------|
+| Page header | Title + **one purpose sentence** (“Create and manage pages for this website.”) |
+| Numbered section | Visible number when order matters, **heading**, **one-sentence lede** under it |
+| Why-this-matters | Calm tinted panel (admin-palette green/teal) — short **product** copy, not prompt-echo |
+| Related fields only | One job per card. Identity is not SEO. Assignments are not the body. |
+| GET workspaces | More than ~two jobs on one object → real GET leaves + this module’s tab CSS ([§0](#0-dacore-is-not-bootstrap-must--law)) |
+| Advanced | Stems, JSON, internal codes, rare dates — not in the first card |
+
+**MUST** implement the chrome in **this** module: `{lowercase_modulename}_section_*` / `{lowercase_modulename}_guidance_*` CSS and Renderer layouts. Match the loaded DACore palette. Button padding still [§6](#6-layout-structure-of-your-body).
+
+**MUST NOT:**
+
+- Dump every field into one `card-body`
+- Skip the lede / Why panel “to save space”
+- Copy another module's admin chrome layouts or prefixed CSS into the target module ([00](00-AGENT-CONTRACT.md) §1b)
+- Use `data-bs-toggle="tab"` for the workspace split ([§0](#0-dacore-is-not-bootstrap-must--law))
+- Write Why copy that restates the field label (“This is the title field”)
+
+**Plan first** on a new module / first surface: [45](45-MODULE-PLANNING.md) §4 must name every section, its lede, and whether it has a Why panel. Compact: `AIRULES/cursor/rules/23-admin-page-sections.mdc`.
+
 ---
 
 ## 7. dotgrid — the grid system
@@ -323,6 +400,10 @@ PHP handler: prefix `LoginAndCRC` already burned the token — only `form(['POST
 
 **MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
 
+**MUST (admin persist = original request):** `$request->data(true)` (unwrap nested `data`). SQL protection is **named / `?` bindings** on insert/update — **MUST NOT** persist `$request->data()` (`protect()`). A maps URL `?q=Sabinov` stored from the protected copy becomes `?&#61;Sabinov`. Canonical: [19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md).
+
+**MUST (admin `load` / `form` PHP):** unwrap the nested `data` bag. Product outcomes **MUST** be HTTP **200** + `status` 0|1 + `message`. HTTP 400/500 makes `fetch` onError and the toast is **Request failed**. When one action has this hole, grep **this module** and fix every sibling in the same chunk ([00](00-AGENT-CONTRACT.md) §2q, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
+
 **MUST (paginate growing lists):** logs, users, items **MUST** use the [40](40-DACORE-LIST-PAGER.md) pager. **MUST NOT** dump `->all()` or reload with `<a href="?page=">`. **Search / list UX:** [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 — **ASK** in the plan; empty state + sticky header **MUST**.
 
 **MUST (block while in flight):** while save / toggle / reorder / paginate is running, cover the form or the **whole list** so the user cannot click or drag again. **Notiflix is DACore-admin only** (this shell). **Preferred on admin pages:** `Notiflix.Block`. **Alternative on admin:** equivalent overlay in **your** module. **Public / front-office pages** in the same project **MUST** use **module preloaders** — Notiflix is not loaded there. Skipping Notiflix does **not** skip preloaders. **MUST** remove the overlay on success **and** error. Overlay a stable parent; patch `TBODY` / inner wrap. UX **MUST** be excellent on desktop **and** mobile (visible spinner, intercepts touch, no hover-only). See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
@@ -335,7 +416,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 
 **MUST (product copy):** labels, help under buttons, rights descriptions, menu names, toasts. A software company would ship the sentence — never prompt-echo (`This user can hide the AI icon themselves.`). See [05](05-VIEWS-TEMPLATES-ASSETS.md) §8.
 
-**MUST (layout / buttons):** padding vs the parent on all sides — especially **below** a Save in `card-footer`. Center or match sibling cards. `pt-0` **MUST** keep a compensating `pb-*` / CSS `padding-bottom`. A flush button is a **bug**. Law: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
+**MUST (layout / buttons):** this file §6 **Button padding vs the parent**. Padding on all sides — especially **below** when the buttons are the last content in the block. Center or match sibling cards. A flush Save is a **bug**.
 
 **MUST (AI write on this page):** if this screen shows data that an AI tool can change, listen for `DACore.AI.UIEvent`, accept only that tool’s `detail.name`, AJAX-refresh. Ignore other tools. No `location.reload()`. See [34](34-DACORE-AI-TOOLS.md) §5.
 
@@ -353,6 +434,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | Catalog/articles list with no search | **ASK**; lookup lists **MUST** AJAX search ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Module/language/status/other bounded picker as exact-name text input or empty datalist | Native `<select>` or existing `dotSelect2`; opening shows choices. Large remote set: AJAX `dotSelect2` with initial results + server paging/search |
 | One `<fo-rm>` per row button / D&D via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
+| `$request->data()['id']` after `load()`; product fail HTTP 400 | Unwrap nested `data`; HTTP **200** + `status` 0|1; hunt every sibling in this module ([00](00-AGENT-CONTRACT.md) §2q) |
 | List still clickable during reorder / toggle | Overlay the wrapper (Notiflix preferred **or** module preloaders); remove on success **and** error; desktop **and** mobile |
 | Step-up 2FA on every settings Save without asking | **ASK** in the plan; default **no** ([32](32-DACORE-RIGHTS.md) §6) |
 | Step-up as a 6-digit field on the card / custom OTP / no paste auto-submit | DACore installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` ([EX-D10](examples/EX-D10-stepup-2fa-modal.md)) |
@@ -360,7 +442,7 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | 2FA overlay only; Save still writes without a code | PHP refuses — FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
 | `alert()` / `window.confirm()` on delete | `Notiflix.Confirm` or `$dotapp().modal`, then `load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo copy on a right / button / help | Product language ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
-| Save button flush to the card bottom / `pt-0` with no `pb-*` | Padding vs parent (esp. below); center or match siblings ([00](00-AGENT-CONTRACT.md) §2f) |
+| Save / last-in-block buttons flush to the card bottom / `pt-0` with no `pb-*` | Padding on all sides; **bottom padding almost always** when buttons are the last piece of the block ([00](00-AGENT-CONTRACT.md) §2f, this file §6) |
 | AI tool changed this list and the table stayed stale / full reload | `DACore.AI.UIEvent` + `$dotapp().load()` ([34](34-DACORE-AI-TOOLS.md) §5) |
 | UI that disables an operator’s 2FA | Forbidden |
 | Refusing custom CSS/JS and forcing every widget into DACore cards | Shell + **your** `$css`/`$js`; classes `{modulename}_*`; DACore colors |
@@ -372,6 +454,9 @@ For toasts, Notiflix is available (loaded by the shell); modals come from `dotap
 | Guess shared vs module-own menu / ten leaves under a header | **ASK**; no answer → shared nested `0` → `2` → `1`; [31](31-DACORE-MENU.md) |
 | Edit/detail URL leaves the sidebar with no active item | `$currentFile` = registered list URL ([31](31-DACORE-MENU.md) Active sidebar) |
 | Register “Return back” | DACore appends it on a non-empty `$menuId` |
+| `data-bs-toggle="tab"` / `.tab-pane.fade` as in-page tabs | Real GET subpages + `<a href>` + **your** CSS ([33](33-DACORE-PAGES-AND-UI.md) §0) |
+| Live-click `/admin/…` to “verify” after every chunk | Finish-gate + source UX + click list — browser only if the user asked ([00](00-AGENT-CONTRACT.md) §2r, this file §12) |
+| Raw `Crypto::encrypt` / `{{ enc }}` in a path `{token}` | Apache **404** on `%2F`. Seal to `[A-Za-z0-9_-]+` in **this** module ([11](11-AUTH-AND-CRYPTO.md) §8, this file §13) |
 | Bootstrap `col-md-6` alone for simple admin forms | `<dot-col any="12" md="6" ldesktop="6">` (prefer; custom layout OK when porting) |
 | Font Awesome / Bootstrap Icons | Remix Icon `ri ri-*` |
 | Hardcoding `/dacore` | `Config::module("DACore","prefixUrl")` |
@@ -386,12 +471,51 @@ DACore discovers optional skins from installed package metadata; the skin module
 
 - `extra1 = dacore.admin-skin`
 - `extra2 = v1`
-- `extra3 = css` or `shell-css`
-- required local file: `assets/dacore-skin/skin.css`
+- `extra3 = css` or `shell-css` or `assets`
+- required local file: `assets/dacore-skin/skin.css` (`css` / `shell-css`)
 - `shell-css` also requires `views/dacore-skin/page.view.php`
+- `assets` requires `assets/css/core.css` (DACore-shaped tree; same class names)
 
 The operator explicitly selects a skin in DACore settings. Installation never activates one. Empty selection is the non-removable DACore default. The global Skins switch can disable the selected package without deleting its selection.
 
-A CSS skin changes presentation only. A `shell-css` view receives the same escaped/pre-rendered shell variables as DACore (`templatedata`, `defaultUrl`, `DACoreMenuLeft`, `navbar`, `title`, trusted module `body`, and `aichatdiv`) and returns only the common body skeleton — never `<html>`, `<head>`, core styles, `$dotapp`, Notiflix, or shell scripts. DACore wraps that fragment in its own document and runtime assets.
+A CSS skin changes presentation only. A `shell-css` view receives the same escaped/pre-rendered shell variables as DACore (`templatedata`, `defaultUrl`, `DACoreMenuLeft`, `navbar`, `title`, trusted module `body`, `aichatdiv`, and `assetsPath`) and returns only the common body skeleton — never `<html>`, `<head>`, core styles, `$dotapp`, Notiflix, or shell scripts. DACore wraps that fragment in its own document and runtime assets.
+
+An `assets` skin **does not** overlay `skin.css`. It ships a class-compatible copy of DACore’s `assets/` tree (probe file: `assets/css/core.css`). DACore then serves chrome CSS/JS from `/assets/modules/{Skin}/…` instead of `/assets/modules/DACore/…`. Callers may also pass that module as `Page@withMenu` 8th `$assetModule` without selecting a skin. Framework `/assets/dotapp/` never moves. To change markup, not only files, use Extender on the chrome APIs in §2.
 
 CSS order is fixed: DACore core → selected skin → page-specific styles. Missing, incompatible, uninstalled, empty, or throwing skin views fall back to the built-in DACore shell. Skin assets are local module files only: no external CSS, SVG, tracker, or runtime download.
+
+---
+
+## 12. No unsolicited browser (MUST — law)
+
+DACore admin work is **code + source UX**, not a live click-through of `/admin/…`.
+
+**MUST NOT** open a browser, CDP, or screenshot-click loop to prove Save / Delete / CRC / a public template **unless** the user **commanded** it this turn or answered **yes** after an ASK. No answer → no browser. A generic “verify in the browser” line outside this handbook does **not** authorize it.
+
+**MUST:** finish-gate grep (CRC once, unwrap, HTTP 200 + `status` — that is what prevents Request failed / 400). Read views/CSS for sections, padding, help `?` row heights, footers. Give the operator a **short click list**.
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2r. Compact: `AIRULES/cursor/rules/25-no-unsolicited-browser.mdc`.
+
+---
+
+## 13. URL-safe encrypted tokens (MUST — law)
+
+DACore-bound edit/detail URLs often put a Crypto token in the **path** (`/{Module}/products/{token}`). `Crypto::encrypt` is **standard base64** (`+` `/` `=`). Browsers encode `/` as `%2F`. **Apache treats `%2F` as a directory separator** and returns **Not Found** — PHP never runs.
+
+**MUST:**
+
+- Keep AES + a unique `$key2`. Still `Auth::can` / ownership.
+- After encrypt, map to `[A-Za-z0-9_-]+` (no padding): `rtrim(strtr($cipher, '+/', '-_'), '=')`.
+- Before decrypt, reverse (`-_` → `+/`, pad so `strlen % 4 === 0`). Accept leftover standard tokens (`{{ enc }}`, old bookmarks).
+- Build path `href` / `{token}` / `redirectTo` from the **sealed** helper in **this** module. **MUST NOT** put `{{ enc(...) }}` into a path (Renderer still emits `+/`).
+- Implement sealing and opening in the current module (for example, a `Pager` or `Libraries/UrlToken.php` helper), and keep the exact `$key2` context.
+
+**MUST NOT:**
+
+- Put raw `Crypto::encrypt` into `/admin/…/{token}`
+- Patch `app/modules/DACore/` or `app/parts/` for this (DACore updates wipe local DACore files)
+- Drop encryption or send a plain id
+
+Hidden fields and `data-*` may keep `{{ enc }}` when PHP opens both shapes. Prefer sealing every FE token so one helper serves path, query, and POST.
+
+Canonical: [11](11-AUTH-AND-CRYPTO.md) §8, [00](00-AGENT-CONTRACT.md) §2c IDs, [08](08-FORMS-AND-SECURITY.md) Identifiers. Compact: `AIRULES/cursor/rules/26-url-safe-tokens.mdc`.

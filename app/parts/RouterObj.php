@@ -75,6 +75,7 @@ class RouterObj {
     private $match_cache_file;
     private $match_cache_maxsize;
     private $route_matched; // Match routy uz nastal? Ak ano, dropneme zvysok
+    private $reset_on_match; // Po makkom resete nahradime povodnu routu az ked nova routa skutocne matchne
     private $matchdata;
     private $emptyChain; // Aby sme setrili pamat, nebudeme zakazdym tvorit prazdny objekt a vraciat ho ako referenciu ale pouzijeme tento
     private $patternCache;
@@ -84,7 +85,10 @@ class RouterObj {
         $this->emptyChain = $this->routeChain(false,"");
         $this->match_cache_maxsize = 100;
         $this->match_cache_use = Config::router('match_cache');
-        $this->hooks = array();
+        $this->hooks = array(
+            'before' => array(),
+            'after' => array()
+        );
         $this->match_cache_file = "";
         $this->match_cache = array();
 		$this->dotAppObj = DotApp::dotApp();
@@ -118,6 +122,7 @@ class RouterObj {
 		}
 		$this->set_default_limiter();
         $this->route_matched = false;
+        $this->reset_on_match = false;
         $this->matchdata = array();
         $this->matchdata['matched'] = array(); // Data po matchovani, ktore pojdu do hookov a middleware
         $this->matchdata['helper'] = array(); // Data po akomkolvek matchovani, sluzia len ako helper
@@ -400,8 +405,52 @@ class RouterObj {
         return $this->match(['trace'],$cesta,$callback,$static);
 	}
 
-    public function reset() {
+    public function reset($force=false,$resetHooks=false) {
+        if ($force === true) {
+            $methods = array('any', 'get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace');
+            $limiterCounters = isset($this->ratelimiter['counters']) && is_array($this->ratelimiter['counters'])
+                ? $this->ratelimiter['counters']
+                : array();
+
+            // Tvrdym resetom zahodime routy, resources aj error handlery. Bez noveho matchu musi resolve skoncit na cistej 404.
+            $this->routy = array();
+            $this->obsadene_routy = array();
+            foreach ($methods as $method) {
+                $this->obsadene_routy[$method] = array();
+            }
+
+            if ($resetHooks === true) {
+                // Stare before/after hooky a limiter definicie nesmu prejst na novu routu. Bezpecnostne pocitadla ostavaju zachovane.
+                $this->hooks = array(
+                    'before' => array(),
+                    'after' => array()
+                );
+            }
+            
+            $this->ratelimiter = array('counters' => $limiterCounters);
+            $this->set_default_limiter();
+            if (isset($this->request->response)) {
+                $this->request->response->limiter = false;
+            }
+
+            $this->reserved = array();
+            $this->dir = __ROOTDIR__."/app/parts/Controllers/";
+            $this->clear_chain();
+            $this->thendata = array();
+            $this->match_cache = array();
+            $this->patternCache = array();
+            $this->matchdata = array(
+                'matched' => array(),
+                'helper' => array()
+            );
+            $this->route_matched = false;
+            $this->reset_on_match = false;
+            return;
+        }
+
+        // Makky reset len odomkne porovnavanie. Povodna routa ostava fallbackom, kym nenajdeme novu zhodu.
         $this->route_matched = false;
+        $this->reset_on_match = true;
     }
 
     private function uniMethod($cesta,$callback,$static=false,$method="get",$fromArray=false) {
@@ -422,7 +471,17 @@ class RouterObj {
         }
         $chain = $this->emptyChain;
 		$this->clear_chain();
-		if ( ($static && $cesta == $this->request->getPath()) || ( !$static && $this->route_allow($method,$cesta)) ) {
+        $routeAllowed = false;
+        if (!$static) {
+            $routeAllowed = $this->reset_on_match
+                ? $this->route_allow($method, $cesta, true)
+                : $this->route_allow($method, $cesta);
+        }
+		if ( ($static && $cesta == $this->request->getPath()) || ( !$static && $routeAllowed) ) {
+            // Nova zhoda po makkom resete atomicky odstrani povodny kontroler aj jeho hooky este pred zapisom novej routy.
+            if ($this->reset_on_match) {
+                $this->reset(true);
+            }
             $this->route_matched = true;
             // Ako obsadenu routu musime ratat aktualnu cestu ale zachovat musime aj originalny vyraz
             ($this->request->getPath() != $cesta) ? $this->obsadene_routy[$method][] = $this->request->getPath() : $this->obsadene_routy[$method][] = $cesta;
@@ -1239,7 +1298,8 @@ class RouterObj {
 					Teraz ideme patterny pre get a post...
 
 				*/
-				foreach ($this->routy[$method] as $route => $callback) {
+				$methodRoutes = isset($this->routy[$method]) ? $this->routy[$method] : array();
+				foreach ($methodRoutes as $route => $callback) {
 					$matchdata = $this->match_url($route, $path);
 					if ($matchdata !== false) {
 						return $this->resolve_with_hooks($method,$path,$callback,$matchdata,$route);

@@ -2,7 +2,7 @@
 
 This file is **extra hunt rules**, not a replacement for [08](08-FORMS-AND-SECURITY.md) / [19](19-VALIDATION-AND-INPUT.md). Use it when the user asks **why** a form, login, AJAX save, installer, or list request fails.
 
-**After writing code** (before the user reports a bug): **MUST** run the finish gate — [00](00-AGENT-CONTRACT.md) §2c. This playbook is the **reactive** hunt.
+**After writing code** (before the user reports a bug): **MUST** run the finish gate — [00](00-AGENT-CONTRACT.md) §2c. This playbook is the **reactive** hunt. **MUST NOT** open a live browser to hunt or “prove” a POST unless the user asked ([00](00-AGENT-CONTRACT.md) §2r).
 
 **MUST** search before inventing a core or DACore bug. **MUST NOT** patch `app/parts/`, `DotApp.php`, or `app/modules/DACore/` (unless the informed exception in [00](00-AGENT-CONTRACT.md) §1).
 
@@ -118,7 +118,7 @@ Work top-down. Stop when you find a match.
 2. **`formName` placement** — must sit **between** `<fo-rm>` and `</fo-rm>`. Outside the pair the tag is left unchanged (silent fail).
 3. **`/assets/dotapp/dotapp.js`** loaded **before** module JS (session keys). Missing → CRC/CSRF fields wrong.
 4. **`$request->form(...)`** — missing error callback throws; method mismatch → `false`; wrong handler name → `null`. Guard all three and **show** `reply.message`.
-5. **Original vs protected input** — passwords / HTML / hashes **MUST** be `$request->data(true)` (secure fields: `['data']`). `$request->data()` runs `protect()` (`)`, `=`, `%`, … become a different string). Login/installer then “never matches”. [19](19-VALIDATION-AND-INPUT.md).
+5. **Original vs protected input** — persist / passwords / HTML / URLs / hashes **MUST** be `$request->data(true)` (secure fields: `['data']`). `$request->data()` runs `protect()` (`)`, `=`, `%`, … become a different string — `?q=` → `?&#61;`). SQL protection is named / `?` bindings, not `protect()`. Login/installer then “never matches”; settings Save stores a broken href. [19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md).
 6. **`Auth::login` === `false`** (malformed) vs `['error']` 1–5 / 99. **MUST** map every branch to a visible message — silent 400 is a frontend/handler bug. [11](11-AUTH-AND-CRYPTO.md), [EX-14](examples/EX-14-auth-and-2fa.md).
 7. **File/ZIP** — `FormData` + `load()` / `<fo-rm>` cannot carry CRC. **MUST** `$dotapp().uploadFile` + `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint. [09](09-DOTAPP-JS-AND-BRIDGE.md).
 8. **JS** — `$dotapp().form` / `load` + `parseReply`. Raw `fetch` / `$.ajax` fails `crcCheck()`. `.after()` **MUST** show `reply.message` on `status != 1` and on HTTP 400. Admin: Notiflix toast OK. Public site: your module UI — Notiflix is DACore-only.
@@ -131,6 +131,7 @@ Work top-down. Stop when you find a match.
 | User sees | Hunt |
 |-----------|------|
 | 400 / “Bad request” / empty toast on Save | `crcCheck()` twice; `crcCheck()` on GET; `form()` `null`/`false`; JS ignores `reply.message` |
+| Toggle / delete / test / purge → “Request failed” | `load()` nests fields under `data`; PHP read `$request->data()['id']`; HTTP 400/500 hid `reply.message`. Unwrap + HTTP 200. Then **grep this module** for every sibling ([00](00-AGENT-CONTRACT.md) §2q, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Login always wrong password | `$request->data()` instead of `data(true)`; installer hashed the protected password |
 | Works once, second click fails | Token already burned (double submit without new token, or double `crcCheck`) |
 | Upload “Request failed” | `crcCheck()` on upload endpoint, or file stuffed into `load()` `FormData` |
@@ -140,6 +141,7 @@ Work top-down. Stop when you find a match.
 | `formName` visible as text | tag **outside** `<fo-rm>…</fo-rm>` |
 | Admin 403 / rights ignored | `#DACore:AuthTest@check!` used as the guard ([36](36-DACORE-KNOWN-ISSUES.md) §1) |
 | “Fix it in DACore” | Implement in **this** module. Do not patch DACore ([00](00-AGENT-CONTRACT.md) §1) |
+| Apache **Not Found** on `/admin/…/{long-token}` | Path token is raw `Crypto::encrypt` (`%2F` = slash). Seal to `[A-Za-z0-9_-]+` in **this** module ([11](11-AUTH-AND-CRYPTO.md) §8, [36](36-DACORE-KNOWN-ISSUES.md) §16) |
 
 ---
 
@@ -159,5 +161,6 @@ Do these **after** the framework list when the failing URL is under the admin sh
 4. **2FA** — operators keep 2FA on; dangerous actions need step-up. Boxes: `$dotapp().twoFactor`. [32](32-DACORE-RIGHTS.md) §6.
 5. **Did someone edit `app/modules/DACore/`?** Those changes vanish on update and are the wrong fix. Revert the idea; implement in the current module.
 6. **Pager click does nothing / CRC on page 2** — `$dotapp().live` first arg is the **element** (`function (el, e)`), not `e.currentTarget`. **MUST NOT** `history.replaceState` / `?page=` (Referer CRC). Total “1–10 of 10”: COUNT via `all()`, not `paginate()['total']`. [40](40-DACORE-LIST-PAGER.md).
+7. **Apache Not Found on an edit URL with a long token** — `%2F` in the path. Seal Crypto tokens in **this** module. [36](36-DACORE-KNOWN-ISSUES.md) §16, [33](33-DACORE-PAGES-AND-UI.md) §13.
 
 Full DACore trap list: [36](36-DACORE-KNOWN-ISSUES.md).

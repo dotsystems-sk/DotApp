@@ -7,14 +7,14 @@ alwaysApply: true
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2n, §2p, §1b.
 
-Project `AIRULES/` always applies and **wins**. A host that packs extend (CMS + templates) **MUST** ship `app/modules/<ThisModule>/AIRULES/` so a pack does not invent routes the host never listens to.
+Project `AIRULES/` always applies and **wins**. A host that packs extend **MUST** ship `app/modules/<Host>/AIRULES/` so a pack does not invent routes the host never listens to.
 
 `AIRULES/` in the host is the **contract for other modules**. `PLAN/` in the host is the **host’s own roadmap** — pack authors **MUST NOT** open it.
 
 ## MUST
 
-- Hosts / extendable modules keep **`app/modules/<ThisModule>/AIRULES/`** (English; index + topic files). That handbook **MUST** tell packs to write `PLAN/` **in the pack**.
-- When the user names a host (“template for CMS”) **and** that folder exists: follow **project AIRULES + those files together**. **CMS new/rewrite pack:** read `CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md` first (standalone `PLAN/html/`). **MUST NOT** open CMS 01 / 03 / CMS PHP until the user **approves** that HTML. Then read 01 for the pack implementation.
+- Hosts / extendable modules keep **`app/modules/<Host>/AIRULES/`** (English; index + topic files). That handbook **MUST** tell packs to write `PLAN/` **in `app/modules/<Pack>/PLAN/`**.
+- When the user names `<Host>` and that handbook exists, follow **project AIRULES + `app/modules/<Host>/AIRULES/` together**. Host-specific design and approval phases belong in that optional handbook, not in general compact rules.
 - The host folder is on the named-dependency allow-list. It is **not** a license to copy a sibling pack’s CSS.
 - A new host that others will extend **MUST** create this folder in the same work (and its own `PLAN/` for host development).
 
@@ -26,6 +26,6 @@ Project `AIRULES/` always applies and **wins**. A host that packs extend (CMS + 
 - Put host-only law only under project `AIRULES/` (the host zip must carry its handbook).
 - Invent a law only under `.cursor/rules/`.
 
-Example: template for a finished CMS → project `AIRULES/` + `CMS/AIRULES/` + **your pack’s** `PLAN/`. Do **not** open `CMS/PLAN/`.
+Generic stack: project `AIRULES/` + `app/modules/<Host>/AIRULES/` + `app/modules/<Pack>/PLAN/`. Do **not** open `app/modules/<Host>/PLAN/`.
 
-Finish gate: named host + unread `AIRULES/` = fail (CMS HTML phase: 02 counts; CMS build phase: 01 + 02). Host `PLAN/` opened while writing a pack = fail.
+Finish gate: named host + unread host `AIRULES/` = fail. Host `PLAN/` opened while writing a pack = fail.

@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This is the **v1 peer contract** for an SSO / directory pack. A host (CMS, Shop, ERP member area) and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+This is the **v1 peer contract** for an SSO / directory pack. A `<Host>` and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 This role is **not** DACore login, **not** step-up 2FA (`$dotapp().twoFactor`), and **not** a second Auth store. Origin law: [42](../42-DACORE-USER-ORIGIN.md).
 
@@ -47,7 +47,7 @@ A pack that implements more than one mode sets `extra3` to the **primary** mode 
 
 **Kind:** peer. **Controller:** `{Module}:AuthProviderContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=auth-provider` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=auth-provider` on itself.
 
 Client secrets, SAML certificates, LDAP bind passwords, and IdP URLs **MUST NOT** appear in `extra1`…`extra5`. Those live in the **pack’s** settings.
 

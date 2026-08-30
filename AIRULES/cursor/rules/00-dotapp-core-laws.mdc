@@ -34,6 +34,9 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 16. **Module AIRULES (LAW):** hosts that packs extend **MUST** keep `app/modules/<ThisModule>/AIRULES/`. Named host + that folder exists → follow **project AIRULES + those files together**. Do not invent public routes the host does not listen to. **MUST NOT** open the host’s `PLAN/` when writing a pack. (`AIRULES/00` §2n, §2p)
 17. **PLAN folder (LAW):** new module / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** and implement from it. Chat-only / one-file plans fail. (`AIRULES/00` §2o)
 18. **Rule stack (LAW):** 1 project AIRULES (always) → 2 named-host AIRULES → 3 **this** module PLAN. Priority 1 wins. (`AIRULES/00` §2p)
+19. **Same class of bug (LAW):** one broken `load()` / `form()` means grep this module and fix every sibling; unwrap nested `data`; handled product outcomes use HTTP 200 + `status`. (`AIRULES/00` §2q)
+20. **No unsolicited browser (LAW):** source + tests + finish gate + click list by default. Browser only when the user explicitly asks or says yes. (`AIRULES/00` §2r)
+21. **Renderer lifecycle:** `dotapp.renderer.before/after` use `RendererLifecycleContext`; replacement is `useReplacement()`, not listener return. (`AIRULES/05` §5)
 
 ## Syntax locks
 
@@ -44,7 +47,9 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - DB: `DB::module("RAW")->q(fn($qb)=>...)->all()` + `[0] ?? null` (never bare `first()`). **MUST** `execute($ok,$err)` both callbacks. Persist `try/catch`. `AIRULES/18`
 - Views: `{{ var: $x }}`, `{{ /if }}`, `{{ /foreach }}` — NOT `{{ $x }}` / `endif`. VIEW = outer file; `setLayout`+`renderView()` fills `{{ content }}` in that view (or `renderLayout()` / inject a string). **HTML via Renderer (LAW):** when it can be a template it **MUST** be; **MUST NOT** `$html .= '<table'` factories. PHP markup **only** for a named one-piece exception. `AIRULES/05` §1b + §1c
 - Forms: `<fo-rm>` + `{{ formName(x) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit + `/assets/dotapp/dotapp.js` + `crcCheck()` **once** (API prefix **or** action) + `form()`. Row actions (toggle/delete/reorder/D&D) = `$dotapp().load()` + encrypted `data-*` — NOT one `<fo-rm>` per button
-- Request: `data()` = protected (`protect()`); `data(true)` = original — **MUST** `true` for passwords, HTML, hashes. Show every login failure. `AIRULES/19`
+- Request: `data()` = protected (`protect()`); `data(true)` = original — **MUST** use original for every persisted URL/setting/title/token/password/HTML/hash, then SQL bindings. `AIRULES/19`
+- AJAX: `load()`/forms post fields under `data`; handled product outcomes = HTTP 200 + `status` + `message`; transport/auth failures keep real status. One hit → hunt all siblings. `AIRULES/00` §2q
+- URL path IDs: encrypt with unique `$key2`, then base64url-seal to `[A-Za-z0-9_-]+`; raw `{{ enc }}` / standard-base64 `%2F` must not enter a path. `AIRULES/11` §8
 - Sample: `AIRULES/examples/EX-01-secure-form-complete.md`
 - JS: `$dotapp` + `/assets/dotapp/dotapp.js` — NOT jQuery `$`
 - 2FA code boxes: `$dotapp().twoFactor` — NOT a custom OTP widget (`AIRULES/09` §3, EX-14)
@@ -70,6 +75,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Extender (judge — not every method): owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; `extend()` in `Listeners::register()`; target listener routes; own Module routes or `[]`; controller string preferred — NOT `next()`, marker response, `.loaded` for initialize-time, global `['*']` just to attach, Events, `$request`/secrets, duplicate (`AIRULES/12` §10, EX-17)
 - PHP 7.4+ (ASK in the plan): default floor; no `match` / `?->` / union `mixed` / named args / promotion / attributes / `enum` / `readonly` / `str_contains` unless they named a higher version (`AIRULES/00` §2i)
 - Installer DDL: probe `SHOW TABLES LIKE` / `information_schema` then `CREATE`/`ALTER` — NOT `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` (`AIRULES/07` §0)
+- Installer order: append version keys in written dependency order; **MUST NOT** `ksort`/`krsort`/`usort` installer maps (`1.0.10` sorts before `1.0.9`). `AIRULES/07`
 
 ## Never ignore return values (AIRULES/18)
 

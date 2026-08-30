@@ -7,9 +7,9 @@
  * run with arguments, then delete that copy. Do not invent another packer.
  *
  * Usage (from project root):
- *   php dacore-pack-zip.php DAFiles 1.2.0
- *   php dacore-pack-zip.php --module=DAFiles --version=1.2.0
- *   php dacore-pack-zip.php --module=DAFiles --version=1.2.0 --out=C:\releases
+ *   php dacore-pack-zip.php ExampleModule 1.2.0
+ *   php dacore-pack-zip.php --module=ExampleModule --version=1.2.0
+ *   php dacore-pack-zip.php --module=ExampleModule --version=1.2.0 --out=C:\releases
  */
 
 if (PHP_SAPI !== 'cli') {

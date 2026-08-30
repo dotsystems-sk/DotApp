@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, ERP, POS) and a stock pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `inventory`, controller `InventoryContract`.
+A `<Host>` and a stock pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `inventory`, controller `InventoryContract`.
 
 ---
 
@@ -40,7 +40,7 @@ $lots = DotApp::call('DACore:Plugins@listByContract!', 'inventory', 'v1', 'lots'
 
 **Kind:** peer. **Controller:** `{Module}:InventoryContract@…!`
 
-The **host** (Shop, ERP) **MUST NOT** set `extra1=inventory` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=inventory` on itself.
 
 ---
 
@@ -222,7 +222,7 @@ Fire only after a useful persist — **not** on `quote`.
 - Leak `getMessage()`, raw table dumps, or reservation plaintext in HTML
 - `all()` on a growing stock / reservation table
 - Fire a hook on every `quote`
-- Set `extra1=inventory` on the Shop / ERP **host**
+- Set `extra1=inventory` on `<Host>`
 - PHP 8+ syntax unless the plan named a higher version
 
 ---

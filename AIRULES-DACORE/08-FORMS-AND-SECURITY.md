@@ -2,7 +2,7 @@
 
 ## Policy for agents (non-negotiable)
 
-When building a **real HTML form** (user fills fields and submits — CMS name/surname, login, settings, create/edit):
+When building a **real HTML form** (user fills fields and submits — profile name, login, settings, create/edit):
 
 1. **Prefer** `<fo-rm>` + `{{ formName(handler) }}` + `/assets/dotapp/dotapp.js` + `crcCheck()` **once** (API prefix **or** action) + `$request->form(...)`.
 2. **MUST:** `{{ formName(handler) }}` is a child **between** `<fo-rm …>` and `</fo-rm>`. Never before `<fo-rm>`, never after `</fo-rm>`. Outside that pair the renderer leaves the tag unchanged (silent failure).
@@ -21,11 +21,13 @@ Edit/API sample: [examples/EX-02-secure-form-edit-api.md](examples/EX-02-secure-
 
 | Use | When |
 |-----|------|
-| `<fo-rm>` + `{{ formName }}` | Real form: several fields + submit (profile, CMS article, login, “save employee”). |
+| `<fo-rm>` + `{{ formName }}` | Real form: several fields + submit (profile, host content, login, “save employee”). |
 | `$dotapp().load(url, method, data, ok, err)` | One-shot action: click, toggle, delete, paginate, filter, **reorder / drag-and-drop**. |
 | `$dotapp().uploadFile(file, url, progress)` | **Files / ZIP.** Never `FormData` on `load()` / `<fo-rm>` — CRC cannot wrap a file. |
 
 `load()` **automatically** adds CSRF, CRC, the `dotapp: load` header and posts `{ data, crc }`. PHP **MUST** still `crcCheck()` — **once**. A `<fo-rm>` submit uses this same pipeline. **`fo-rm` does not make a click “more secure” than `load()`.**
+
+Posted fields sit **inside** `data`. **MUST** unwrap (`formBag` / `posted()`) — `$request->data()['id']` is empty. Product fail **MUST** be HTTP **200** + `status` 0 + `message`. HTTP 400/500 on a `load()` / `form()` action becomes generic **Request failed**. One hit → grep **this module** and fix every sibling ([00](00-AGENT-CONTRACT.md) §2q, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3).
 
 ### `crcCheck()` burns the token (**MUST once**)
 
@@ -90,6 +92,8 @@ Never send a raw primary key the browser can copy onto another field or endpoint
 **Forbidden:** `value="7"`, `data-id="7"`, `data-user="6"`, JSON `{ "userid": 6, "productid": 8 }`.
 
 **MUST:** encrypt with `Crypto::encrypt` / `{{ enc(Context): $id }}` and a **different `$key2` for every field** (`Shop.user.id` vs `Shop.product.id`). Same extra key on two fields → attacker copies `productid` ciphertext into `userid` and the other endpoint decrypts it.
+
+**Path tokens (MUST):** `Crypto::encrypt` / `{{ enc }}` output contains `+` `/` `=`. In `/admin/Shop/items/{token}` that becomes `%2F` → Apache **404**. **MUST** seal to `[A-Za-z0-9_-]+` (no padding) for every path `href` / `{token}` / `redirectTo`. Decrypt **MUST** open first and **MUST** accept leftover standard base64. **MUST NOT** put `{{ enc }}` into a path. Canonical: [11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13.
 
 ```html
 <select name="userid">
@@ -216,15 +220,15 @@ For standard UX forms, **formName remains preferred**.
 
 ## Request data (**MUST**)
 
-Incoming values are **auto-protected** (`DotApp::protect()`). Ask for the original with `true`.
+Incoming values are **auto-protected** (`DotApp::protect()`). Ask for the original with `true`. SQL injection protection is **named / `?` bindings** on write ([06](06-DATABASE.md)) — **MUST** persist `$request->data(true)`, not the protected copy.
 
 | Call | Use |
 |------|-----|
-| `$request->data(true)['data']` | Secure form fields after unwrap — **MUST** for passwords, HTML, hashes |
-| `$request->data()` / `$request->query()` | Protected copy — **MUST NOT** hash, `Auth::login`, or store HTML from this |
+| `$request->data(true)['data']` | Secure form fields after unwrap — **MUST** for persist (URLs, settings, HTML, passwords, hashes, tokens) |
+| `$request->data()` / `$request->query()` | Protected copy — **MUST NOT** hash, `Auth::login`, or **store** from this (`=` → `&#61;`) |
 | `$request->query(true)` | Original GET |
 
-A password with `)`, `=`, `%` (and similar) is a **different string** after `protect()`. Login then fails or the installer stored the wrong hash. Full rule: [19](19-VALIDATION-AND-INPUT.md) “Protected vs original input”.
+A password or maps URL with `)`, `=`, `%` (and similar) is a **different string** after `protect()`. Login then fails, the installer stored the wrong hash, or `?q=Sabinov` is saved as `?&#61;Sabinov`. Full rule: [19](19-VALIDATION-AND-INPUT.md) “Protected vs original input”.
 
 **MUST** return a user-visible `message` on every login/install failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`). JS **MUST** show `reply.message` — silent “Bad request” is incomplete.
 

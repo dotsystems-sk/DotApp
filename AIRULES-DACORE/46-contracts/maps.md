@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This page is the **v1 peer contract** for a maps / geocode pack. A host (CMS, Shop, ERP) and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+This page is the **v1 peer contract** for a maps / geocode pack. A `<Host>` and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 This role is **not** IP geolocation. DACore already owns **`IpGeoDriver`** (registry style A). **MUST NOT** set `extra1=ip-geo` or invent a peer that looks up an IP. [30](../30-DACORE-OVERVIEW.md) §3a.
 

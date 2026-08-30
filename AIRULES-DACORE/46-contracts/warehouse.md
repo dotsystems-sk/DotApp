@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (ERP, Shop) and a location pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `warehouse`, controller `WarehouseContract`.
+A `<Host>` and a location pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `warehouse`, controller `WarehouseContract`.
 
 This role is **locations**. On-hand sellable qty and checkout holds are `inventory`. Do not merge the two packs into one `extra1`.
 
@@ -42,7 +42,7 @@ $lotBins = DotApp::call('DACore:Plugins@listByContract!', 'warehouse', 'v1', 'lo
 
 **Kind:** peer. **Controller:** `{Module}:WarehouseContract@…!`
 
-The **host** (ERP, Shop) **MUST NOT** set `extra1=warehouse` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=warehouse` on itself.
 
 ---
 
@@ -206,7 +206,7 @@ Fire only after a useful persist — **not** on `locate`.
 - `all()` on a growing bin-balance table
 - Fire a hook on `locate`
 - Treat this role as `inventory` (no `reserve` / `commit` here)
-- Set `extra1=warehouse` on the ERP **host**
+- Set `extra1=warehouse` on `<Host>`
 - PHP 8+ syntax unless the plan named a higher version
 
 ---

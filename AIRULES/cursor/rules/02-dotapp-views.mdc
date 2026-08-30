@@ -51,6 +51,14 @@ When markup **can** be a template, it **MUST** be. Pages, tables, grids, empty s
 
 - `renderView()` → `setViewVar` only
 - `renderLayout()` → `setLayoutVar` only
+- Sandbox checks variable names and nested values with `is_callable()`. A value/key such as `time`, `copy`, `count`, `key`, or `header` can silently drop the entire bag. Prefix risky keys; **MUST NOT** patch Renderer.
+
+## Renderer lifecycle
+
+- `dotapp.renderer.before` / `after` receive one `RendererLifecycleContext` (contract 1).
+- A `before` listener may `useReplacement($html)` for layout/view/rendered code; listener return values do nothing.
+- Custom renderer events and the `after` phase are observe-only.
+- Register cheaply in `Listeners::register()` with explicit listener routes; never log output/secrets. Full: `AIRULES/05` §5.
 
 ## Assets
 

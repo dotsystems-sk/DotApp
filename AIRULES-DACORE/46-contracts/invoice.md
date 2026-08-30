@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A Shop / ERP **host** and an invoice **pack** must be able to interoperate from this page alone.
+A `<Host>` and an invoice **pack** must be able to interoperate from this page alone.
 
 ---
 
@@ -39,7 +39,7 @@ $sales = DotApp::call('DACore:Plugins@listByContract!', 'invoice', 'v1', 'sales'
 
 **Kind:** peer. **Controller:** `{Module}:InvoiceContract@…!`
 
-The **host** (Shop, ERP) **MUST NOT** set `extra1=invoice` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=invoice` on itself.
 
 ---
 

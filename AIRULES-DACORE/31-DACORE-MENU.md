@@ -69,13 +69,13 @@ Not every module has a sidebar. If **your** module **does** register menu items:
 **Default layout (MUST when the user does not pick one):** shared nested tree on the **full** admin sidebar:
 
 1. Section header `type => 0` (area name, e.g. Website, Media)
-2. One expandable product item `type => 2` with **empty** `url` (product name, e.g. CMS, Files)
+2. One expandable product item `type => 2` with **empty** `url` (the `<TargetModule>` product name)
 3. Page leaves `type => 1` under that item
 4. Every admin page: `Page@withMenu!(…, '')` — **not** a branch `$menuId`
 
 From about **five** items, nest under `type => 2`. Do **not** dump ten `type => 1` leaves under a header. Do **not** treat “many items” or “this is a real app” as a reason to switch to module-own.
 
-Independent products each own a section. Do **not** hang Files under CMS (or the reverse) unless the user asked for an extension `parent`.
+Independent products each own a section. Do **not** hang one product under another unless the user asked for an extension `parent`.
 
 **ASK in chat before you scaffold a new DACore module.** Two layouts:
 
@@ -220,7 +220,7 @@ Each node:
 
 Passing a non-empty `$menuId` selects `menuid = X OR parent = X` (**one level**), then appends a synthetic **"Return back"** leaf pointing at `prefixUrl + defaultUrl` (last — do not register it). Results are cached under key `DACore.menu` with context `{menuid, user}` for 600 s when `useCache` is on.
 
-Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — returns `<li>` fragments without a wrapping `<ul>`. `$options` accepts `current_file` and `base_href`. Admin pages **MUST** go through `Page@withMenu!` (7th argument `$currentFile` → `current_file`). Do not rebuild the sidebar.
+Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — returns `<li>` fragments without a wrapping `<ul>`. `$options` accepts `current_file` and `base_href`. Admin pages **MUST** go through `Page@withMenu!` (7th argument `$currentFile` → `current_file`; optional 8th `$assetModule` for a class-compatible chrome module). `Menu@generate` is an Extender target — a skin may replace the `<li>` HTML. Do not rebuild the sidebar.
 
 ---
 

@@ -158,9 +158,9 @@ A sibling may join the allow-list **only** when the user **named** it as the thi
 
 Example: “write `Module2` that adds X to `Module1`” → read `Module2` + `Module1` + `DACore`. `Module1` is in play because `Module2` is built **for** it, not because it is a convenient demo.
 
-Then you may read that **named** folder (API, `.hooks`, tables, the screens you are extending). **MUST NOT** also open `Shop`, `CMS`, `DAFiles`, or any other **unnamed** sibling “for inspiration.”
+Then you may read that **named** folder (API, `.hooks`, tables, the screens you are extending). **MUST NOT** also open any **unnamed** sibling “for inspiration.”
 
-**Host / named-dependency AIRULES (MUST):** if `app/modules/<Named>/AIRULES/` exists, **MUST** read that folder **first** (index, then the files for this task) **before** opening that module’s PHP, views, or CSS. Follow **project `AIRULES/` + that folder together**. This is not a tour of a sibling product — it is the host’s contract for how to extend it. **MUST NOT** open that host’s `PLAN/` unless the user asked to continue **developing the host** (a pack for CMS does not need CMS’s development plan). Canonical: [§2n](#2n-module-airules-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
+**Host / named-dependency AIRULES (MUST):** if `app/modules/<Named>/AIRULES/` exists, **MUST** read that folder **first** (index, then the files for this task) **before** opening that module’s PHP, views, or CSS. Follow **project `AIRULES/` + that folder together**. This is not a tour of a sibling product — it is the host’s contract for how to extend it. **MUST NOT** open that host’s `PLAN/` unless the user asked to continue **developing the host**; a pack does not need the host’s development plan. Canonical: [§2n](#2n-module-airules-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
 
 #### Forbidden
 
@@ -176,7 +176,7 @@ Use `AIRULES/examples/`. Use DACore’s own admin pages **read-only** for shell 
 
 #### User override
 
-If they say “look at `Shop`” / “match `CMS`” / “copy the list from `DAFiles`”, that **names** the extra folder. Until they name it: stay on the default allow-list.
+If they say “look at `<NamedModule>`” / “match `<NamedHost>`” / “copy the list from `<NamedDependency>`”, that **names** the extra folder. Until they name it: stay on the default allow-list.
 
 #### Subagents
 
@@ -186,8 +186,8 @@ Explore / Composer / any subagent **MUST** inherit this allow-list. **MUST NOT**
 
 ## 2. Mandatory workflow
 
-1. **Identify the target module** (or create one). If it is a **new DACore-bound module**, **ASK in chat first**: shared nested sidebar (section `type => 0` → one expandable product item `type => 2` → leaves `type => 1`, `Page@withMenu` `$menuId` `''`) vs **module-own** (`$menuId` = branch id). No answer → **shared nested**. **MUST NOT** pick module-own just because the module has many pages. From about five items, nest under `type => 2` — do not dump leaves under a header. [31](31-DACORE-MENU.md). **Also ASK one grouped identity question:** public display name + one-sentence purpose; installer preview as text-only, compact logo near the heading, or wide banner above the summary; existing local asset + alt text; and whether the identity also appears on the module landing/header. The menu Remix icon is separate from the logo. No preference → clean text-only preview, do not block work. [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b. **Sending mail, inbox notifications, or SMS?** Open [38](38-DACORE-EMAIL.md) / [37](37-DACORE-NOTIFICATIONS.md) / [39](39-DACORE-SMS.md) — do not invent SMTP or a gateway. **DACore hooks (MUST):** before scaffolding a DACore-bound module, **MUST** read **`app/modules/DACore/.hooks`** (read-only catalog of `module.dacore.*.hook` and `.veto`) so the module can subscribe instead of reinventing login/lockout/mail/SMS/template-delete events. **Also ASK** for `about.php` copy: module description HTML, license HTML, and changelog HTML for **1.0.0**. If the user has not given that text, **ASK** — do not invent legal terms or a fake changelog. **Pack vs host:** if this module is a **pack** (template, filemanager, payment, …), or a **host** that will pick among packs (CMS “choose template / file manager”), **ASK** which **reserved** `extra1` from [46](46-DACORE-EXTRA-CONTRACTS.md) (then `extra2`=`v1` and the role’s extra3). A normal app module omits extras. Hosts list packs with `DACore:Plugins@listByContract!`. **Planning depth (MUST):** if they asked to **plan** a **new module**, a **first** major operator surface, or a **rewrite**, the plan **MUST** meet [45](45-MODULE-PLANNING.md) / [§2k](#2k-module-planning-depth-must): **extremely detailed** — every DACore menu row to register, every page, every tab, every control (what it does, default, persist). A long plan is correct. A bullet list of endpoints is not a plan. Small edits to an already shipped screen may stay short.
-2. **Read** the relevant project AIRULES docs for the task (routing / views / DB / forms / JS). Rule stack ([§2p](#2p-rule-stack-where-to-look-must--law)): project `AIRULES/` **always**; then `app/modules/<Host>/AIRULES/` if this work extends a named host; then **this** module’s `PLAN/` if it exists. **MUST NOT** open the host’s `PLAN/` when writing a pack (template for CMS → CMS `AIRULES/` only).
+1. **Identify the target module** (or create one). If it is a **new DACore-bound module**, **ASK in chat first**: shared nested sidebar (section `type => 0` → one expandable product item `type => 2` → leaves `type => 1`, `Page@withMenu` `$menuId` `''`) vs **module-own** (`$menuId` = branch id). No answer → **shared nested**. **MUST NOT** pick module-own just because the module has many pages. From about five items, nest under `type => 2` — do not dump leaves under a header. [31](31-DACORE-MENU.md). **Also ASK one grouped identity question:** public display name + one-sentence purpose; installer preview as text-only, compact logo near the heading, or wide banner above the summary; existing local asset + alt text; and whether the identity also appears on the module landing/header. The menu Remix icon is separate from the logo. No preference → clean text-only preview, do not block work. [05](05-VIEWS-TEMPLATES-ASSETS.md) §8b, [35](35-DACORE-INSTALL.md) §3b. **Sending mail, inbox notifications, or SMS?** Open [38](38-DACORE-EMAIL.md) / [37](37-DACORE-NOTIFICATIONS.md) / [39](39-DACORE-SMS.md) — do not invent SMTP or a gateway. **DACore hooks (MUST):** before scaffolding a DACore-bound module, **MUST** read **`app/modules/DACore/.hooks`** (read-only catalog of `module.dacore.*.hook` and `.veto`) so the module can subscribe instead of reinventing login/lockout/mail/SMS/template-delete events. **Also ASK** for `about.php` copy: module description HTML, license HTML, and changelog HTML for **1.0.0**. If the user has not given that text, **ASK** — do not invent legal terms or a fake changelog. **Pack vs host:** if this module is a **pack** (template, filemanager, payment, …), or a **host** that will pick among packs, **ASK** which **reserved** `extra1` from [46](46-DACORE-EXTRA-CONTRACTS.md) (then `extra2`=`v1` and the role’s extra3). A normal app module omits extras. Hosts list packs with `DACore:Plugins@listByContract!`. **Planning depth (MUST):** if they asked to **plan** a **new module**, a **first** major operator surface, or a **rewrite**, the plan **MUST** meet [45](45-MODULE-PLANNING.md) / [§2k](#2k-module-planning-depth-must): **extremely detailed** — every DACore menu row to register, every page, every tab, every control (what it does, default, persist). A long plan is correct. A bullet list of endpoints is not a plan. Small edits to an already shipped screen may stay short.
+2. **Read** the relevant project AIRULES docs for the task (routing / views / DB / forms / JS). Rule stack ([§2p](#2p-rule-stack-where-to-look-must--law)): project `AIRULES/` **always**; then `app/modules/<Host>/AIRULES/` if this work extends a named host; then **this** module’s `PLAN/` if it exists. **MUST NOT** open the host’s `PLAN/` when writing a pack.
 3. **Generate** with `dotapper.php` whenever possible (module, controller, model, middleware).
 4. **Implement** only inside the allowed paths. **Read** only the [§1b](#1b-read-scope-must--law) allow-list (`<Target>` + DACore + core + project `AIRULES/` + named-host `AIRULES/`). **MUST NOT** browse a sibling module for an example or a look unless the user named that module as the extend/listen/Extender target.
 5. **Tables:** every table your module owns **MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names, `dotapp_*`, or `dacore_*` for module data. See [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) §3.
@@ -204,6 +204,8 @@ Explore / Composer / any subagent **MUST** inherit this allow-list. **MUST NOT**
 16. **HTML via Renderer (LAW):** when markup **can** be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named exception ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c).
 17. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** (not one chat file) and implement **from that folder**. Chat-only plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. See [§2o](#2o-module-plan-folder-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
 18. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. See [§2p](#2p-rule-stack-where-to-look-must--law).
+19. **Same class of bug (LAW):** when a production/debug failure is a **class** (same transport, unwrap, HTTP code, toast), finding it in **one** handler is not enough. **MUST** grep **this module** and fix every sibling in the same chunk. Canonical class: `$dotapp().load()` nests fields under `data`; HTTP 400/500 hides `reply.message` as Request failed. See [§2q](#2q-same-class-of-bug--hunt-the-module-must--law), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+20. **No unsolicited browser (LAW):** **MUST NOT** drive a live browser / CDP / screenshot-click loop to prove Save/Delete/CRC. **MUST** write code, finish-gate grep, and **read** views/CSS for UX. Functionality clicks belong to the user unless they **asked** or answered **yes**. See [§2r](#2r-no-unsolicited-browser--click-through-must--law).
 
 ### Dotapper-first rule
 
@@ -257,15 +259,18 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | Check | How | Fail = stop and fix **now** |
 |-------|-----|-----------------------------|
 | **CRC once** | Count `crcCheck(` on **this POST’s** pipeline (middleware + `before` + `#DACore:AuthTest@CRC!` / `LoginAndCRC!` + action) **and** the action’s first PHPDoc line `CRCchecking —` | Two calls (first **burns** the token); CRC on GET/HTML login `before`; CRC on `$request->upload()`; action `crcCheck()` after a CRC API prefix; PHPDoc names a CRC prefix **and** the action still `crcCheck()`; controller/middleware public method with no `CRCchecking —` first line ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
-| **IDs encrypted** | Views / JS / JSON: `value=`, `data-*`, hidden, payload | Plain `7` / `{{ var: $id }}` as an id sent to the browser. **MUST** `{{ enc(Shop.item.id): $id }}` with a unique `$key2`. Decrypt `=== false` → reject. Still `Auth::can` / ownership in PHP. **Pager:** encrypted `data-page` ([40](40-DACORE-LIST-PAGER.md)) |
+| **IDs encrypted** | Views / JS / JSON: `value=`, `data-*`, hidden, payload, **path `href` / `{token}`** | Plain `7` / `{{ var: $id }}` as an id sent to the browser. **MUST** `{{ enc(Shop.item.id): $id }}` with a unique `$key2` for form/`data-*`. **Path / `redirectTo` / `{token}`:** **MUST** seal `Crypto::encrypt` to `[A-Za-z0-9_-]+` (base64url, no padding) — Apache treats path `%2F` as a slash and **404s**. Decrypt opens then `Crypto::decrypt`; **MUST** accept leftover standard base64. **MUST NOT** put `{{ enc }}` into a path (it is still `+/`). Decrypt `=== false` → reject. Still `Auth::can` / ownership. **Pager:** encrypted `data-page` ([40](40-DACORE-LIST-PAGER.md), [11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13) |
 | **Queries bound** | Every SQL in the chunk | User input concatenated into SQL; `$qb->raw()` `?` that is not a binding (comments / `COMMENT` count); mix `?` and `:named` |
-| **Inputs** | Request + persist | Password / HTML / hash from `$request->data()` not `data(true)`; missing `form()` / `Validator` where required; persist with only an FE overlay — PHP **MUST** still refuse (if the plan named step-up, PHP still refuses without a valid code) |
+| **Inputs** | Request + persist | Persist / password / URL / HTML / hash from `$request->data()` not `data(true)` (`protect()` rewrites `=` so `?q=` becomes `?&#61;`); SQL write not bound (`:name` / QueryBuilder values); missing `form()` / `Validator` where required; persist with only an FE overlay — PHP **MUST** still refuse (if the plan named step-up, PHP still refuses without a valid code) |
 | **Middleware / route conflicts** | `module.init.php` + Middleware vs the action | Login `before` missing **or** handlers outside `Auth::isLogged()`; CRC layer **and** action `crcCheck()`; CRC on a GET gate; `#DACore:AuthTest@check!` used as a rights guard (it **ignores** passed rights — use `#YourModule:Rights@check!`) |
 | **DACore files** | The diff | Any edit/add/delete under `app/modules/DACore/` unless the informed exception in [§1](#dacore-files--strict-default-informed-exception-only) |
 | **Read scope** | Tool paths in this chunk (Read / Grep / Glob / Task) | Opened `app/modules/<Sibling>/` while programming `<Target>` without the user naming that sibling as the extend/listen/Extender target. Copied a sibling’s cards/CSS/chrome. Hunt over `app/modules/*`. Examples taken from a live sibling instead of `AIRULES/examples/` ([§1b](#1b-read-scope-must--law)) |
 | **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; admin save without a DACore toast; public field errors without marking the input ([§2d](#2d-visible-outcome-must--law)) |
-| **Layout / UX-UI** | Diff of views, CSS, and chrome (buttons, footers, cards, modals) | Control flush to the parent edge; missing padding (especially **below** a Save button); uncentered/cramped vs siblings; `pt-0` footer with no `pb-*`; desktop-only placement ([§2f](#2f-layout-and-uxui-must--law)) |
+| **Layout / UX-UI** | Diff of views, CSS, and chrome (buttons, footers, cards, modals) | Control flush to the parent edge; missing padding on a side / **top** / **bottom**; buttons last in a block with no space below (the usual Save-at-the-bottom hole); uncentered/cramped vs siblings; `pt-0` footer with no `pb-*`; desktop-only placement ([§2f](#2f-layout-and-uxui-must--law), [33](33-DACORE-PAGES-AND-UI.md) §6) |
+| **Admin page composition** | New/rewritten admin form, settings, or editor views | One undifferentiated card of inputs; missing numbered section + one-sentence lede; missing “Why this matters” note when the cluster is not obvious; two unrelated jobs on one GET; purpose-less page header; copied another module’s chrome into the target module ([§2f](#2f-layout-and-uxui-must--law), [33](33-DACORE-PAGES-AND-UI.md) §6b) |
 | **HTML via Renderer** | Diff of Controllers / Libraries vs `views/` | A screen or fragment (table, grid, empty state, pager chrome, tree, crumbs, card) built with `$html .=` / `'<table` / `'<tr` / `'<div class=` / `'<ul class=` / a `*Html()` factory in PHP. Fail unless that **one piece** has `// Why:` naming a real exception (sandbox callable drop, `Page@paginate!` `<li>`, one tiny chip) — never a whole list ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
+| **Renderer lifecycle** | `dotapp.renderer.before/after` listeners | Listener returns HTML instead of `useReplacement()`; replacement attempted during `custom`/`after`; output/vars with secrets logged; heavy registration or missing explicit listener routes ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
+| **DACore is not Bootstrap** | Diff of views / JS / `$css` | `data-bs-toggle="tab"` / `data-bs-target` tab panes / `.tab-pane.fade` as the switcher; `bootstrap.bundle.js` / extra Bootstrap CSS loaded from this module. Tab look must be real GET links + this module’s CSS ([33](33-DACORE-PAGES-AND-UI.md) §0) |
 | **Catch reported** | `rg -n "catch \(|catch\(" ` + every `execute(` in the chunk | A `catch` (or `execute()` `$err`) that does **not** call the module’s report helper → `dotapp.catch` + `dotapp.catch.error|info`; ad-hoc payload keys; a secret/token/rights blob/request body inside the payload ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9) |
 | **Privilege / records** | Persist + GET view vars + SQL | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password without current; public noauth shipped with no bot warning ([11](11-AUTH-AND-CRYPTO.md) §11); custom user UI listing **another origin** without an explicit ASK + warning ([42](42-DACORE-USER-ORIGIN.md)) |
 | **Origin / global Auth** | Every create/login/2FA/gate/list/write touching users | `Auth::createUser` id assumed; unchecked `registerOrigin`/`stampOrigin`; no `read()` exact token+positive id verification; route checks only `Auth::isLogged()`; mismatch does not `Auth::logout()`; list does not INNER JOIN `dacore_users_profiles` + bind expected origin; duplicate/foreign response enumerates; `findByExtra` treated as authorization ([42](42-DACORE-USER-ORIGIN.md)) |
@@ -280,9 +285,12 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **DACore zip packer** | User asked to zip / pack a DACore-bound module | Invented a one-off packer; did not copy [EX-D09](examples/EX-D09-dacore-pack-zip.php.txt) → `dacore-pack-zip.php` → run → delete; left the `.php` copy in the repo ([35](35-DACORE-INSTALL.md) §5) |
 | **Cursor rules mirror** | `.cursor/rules/` vs `AIRULES/cursor/rules/` | A new `.mdc` exists only under `.cursor/`; AIRULES cursor rules were not copied into `.cursor/rules/` this session / after an AIRULES rule change ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
 | **defaultSettings / routes** | `initializeRoutes()` + `initialize()` + RouteMap wake lists | Config used to build a wake prefix or `Router` path without `defaultSettings()` first; URL composed from another module’s Config that is filled only later; hardcoded foreign fallback that skips their `defaultSettings()` ([§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md)) |
-| **Module AIRULES** | Named host / pack / Extender target + `app/modules/<Named>/AIRULES/` | User named a host and that folder exists but was not read (CMS HTML phase: unread `02` is a fail; unread `01` is OK until HTML approval); a pack registered routes the host does not listen to; a **new host** that others extend shipped with no `AIRULES/` folder; module rules treated as a replacement for project AIRULES ([§2n](#2n-module-airules-must--law)) |
-| **PLAN folder** | New module / first surface / rewrite + `app/modules/<This>/PLAN/` | No `PLAN/`; chat-only plan; one mega-file instead of a split folder; implement a screen/position not in PLAN; PLAN used to skip project law; **CMS pack:** production views before user-approved `PLAN/html/` ([§2o](#2o-module-plan-folder-must--law), [45](45-MODULE-PLANNING.md), `CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`) |
+| **Module AIRULES** | Named host / pack / Extender target + `app/modules/<Named>/AIRULES/` | User named a host and that folder exists but was not read; a pack registered routes the host does not listen to; a **new host** that others extend shipped with no `AIRULES/` folder; module rules treated as a replacement for project AIRULES ([§2n](#2n-module-airules-must--law)) |
+| **PLAN folder** | New module / first surface / rewrite + `app/modules/<This>/PLAN/` | No `PLAN/`; chat-only plan; one mega-file instead of a split folder; implement a screen/position not in PLAN; PLAN used to skip project law ([§2o](#2o-module-plan-folder-must--law), [45](45-MODULE-PLANNING.md)) |
 | **Rule stack** | Paths opened this session | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` ([§2p](#2p-rule-stack-where-to-look-must--law)) |
+| **Admin AJAX (`load` / `form`)** | Every `$dotapp().load` / `form()` POST in this module vs its PHP action | `$request->data()['id']` without unwrapping the nested `data` bag; product fail as HTTP 400/500 so `fetch` onError shows Request failed; JS onError treats the first arg as the body ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [§2q](#2q-same-class-of-bug--hunt-the-module-must--law)) |
+| **Same class of bug** | The reported handler **and** every sibling in this module | Fixed only the clicked button; left toggle/delete/purge/list/test on the same unwrap or HTTP 400 pattern ([§2q](#2q-same-class-of-bug--hunt-the-module-must--law)) |
+| **No unsolicited browser** | Tools this chunk (browser MCP, CDP click, screenshot loop) | Opened a live site / admin click-through / “senior verify” without the user **asking** or answering **yes** after an ASK. Generic “verify in the browser” user rules do **not** override this ([§2r](#2r-no-unsolicited-browser--click-through-must--law)) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without the [40](40-DACORE-LIST-PAGER.md) pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
@@ -347,14 +355,31 @@ A control that **works** but looks unfinished is a **bug**, same rank as a silen
 
 **When adding a button (or any action control) — MUST, every time:**
 
-1. Check **padding on all sides**, especially **below** (and above). The control **MUST NOT** sit flush against the parent’s edge.
-2. Place it **deliberately vs the parent**: centered or aligned to the same rhythm as sibling cards/footers — not shoved left by leftover `text-start` / missing flex.
-3. Match the **shell**. **DACore admin:** grep existing `card-footer` / `btn` spacing first (read-only). **Public:** your module CSS. Do not invent a second spacing system.
-4. Desktop **and** mobile: adequate touch target, wrap without overflow, no hover-only placement.
+1. Check **padding on all sides** — left, right, **top**, and **bottom**. The control **MUST NOT** sit flush against the parent’s edge.
+2. **Last in the block (usual fail):** if the buttons are the **last content** of a card, `card-body`, modal, drawer, or page section, **almost always** add space **below** (`card-footer` + `pb-3`/`pb-4`, or CSS `padding-bottom`). Dropping Save at the bottom with no bottom padding is the most common layout bug.
+3. Place it **deliberately vs the parent**: centered or aligned to the same rhythm as sibling cards/footers — not shoved left by leftover `text-start` / missing flex.
+4. Match the **shell**. **DACore admin:** grep existing `card-footer` / `btn` spacing first (read-only). **Public:** your module CSS. Do not invent a second spacing system.
+5. Desktop **and** mobile: adequate touch target, wrap without overflow, no hover-only placement.
 
-**Fail now if:** a Save/primary button is glued to the card or page edge; a footer has `pt-0` with **no** compensating bottom padding; a cluster of buttons is cramped or uncentered vs siblings; a new control ignores the parent’s padding box.
+**Fail now if:** a Save/primary is glued to the card or page edge; buttons are the last piece of a block with **no** bottom padding; a footer has `pt-0` with **no** compensating `pb-*`; a cluster is cramped or uncentered vs siblings; a new control ignores the parent’s padding box.
 
-Canonical: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md).
+**Admin page composition (MUST — every DACore-bound form / settings / editor):**
+
+A working POST on **one wall of inputs** is a **bug**. Operators must see **where they are**, **what this cluster is for**, and **why it matters**: numbered sections, one-sentence ledes, and tinted “Why this matters” notes. Implement that pattern in **this** module’s templates and `{lowercase_modulename}_*` CSS. **MUST NOT** copy another module’s chrome files or open a sibling for a look ([§1b](#1b-read-scope-must--law)).
+
+**MUST:**
+
+1. **Page header** — product title + one short purpose sentence (what this screen is for).
+2. **Numbered sections** — related controls live in a card/block with a visible number (when order matters), a heading, and a **one-sentence lede**. Identity / Content / Advanced are three sections, not one dump.
+3. **Why-this-matters note** — a calm tinted panel (admin-palette green/teal, not a second theme) under the header when the cluster is not obvious. Title + two or three sentences of **product** copy. Not prompt-echo. Not a wall of help.
+4. **GET workspaces** — more than about two jobs on one object → real GET subpages + this module’s tab CSS ([33](33-DACORE-PAGES-AND-UI.md) §0), not one scroll of forty fields.
+5. **Advanced** — stems, JSON, internal codes, rare dates live under Advanced (or Expert), not in the first card.
+
+**Fail now if:** one undifferentiated `card-body` of labels+inputs; missing section heading/lede; a settings/editor page with no purpose line; a “Why” panel that is empty or prompt-echo; two unrelated jobs (SEO + body + assignments) on one GET.
+
+Canonical: [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c–§8e, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §6–§6b, [45](45-MODULE-PLANNING.md) §4.
+
+Canonical (buttons): [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §6.
 
 ### 2g. Module hooks (MUST — law)
 
@@ -458,14 +483,14 @@ This mirror copy is the **only** allowed write to `.cursor/rules/` and root `AGE
 
 ### 2m. Module `defaultSettings()` before routes (MUST — law)
 
-Config fallbacks run only when **`defaultSettings()`** runs. With `modulesAutoLoader.php`, **this** module can `initialize()` **before** another module (DACore `prefixUrl` is the usual trap). Composing `Router::get` / wake prefixes from a key that is filled later produces the wrong path (`/CMS` instead of `/admin/CMS`).
+Config fallbacks run only when **`defaultSettings()`** runs. With `modulesAutoLoader.php`, **this** module can `initialize()` **before** another module (DACore `prefixUrl` is the usual trap). Composing `Router::get` / wake prefixes from a key that is filled later produces the wrong path (for example, `/<TargetModule>` instead of `/admin/<TargetModule>`).
 
 **MUST:**
 
 1. One **`defaultSettings()`** on the module: every `Config::module` default, idempotent (`??` / `IF_NOT_EXIST`). `app/config.php` wins.
 2. Call it at the start of **`initializeRoutes()`** — **before** the array you return (wake decision).
 3. Call it at the start of **`initialize()`** — then you may read Config to register routes (DACore pattern: `initializeRoutes()` already ran in `autoInitializeCondition()`; call again anyway).
-4. Paths that must work before a **foreign** module has run `defaultSettings()` **MUST** also list a **literal** URL this module owns (CMS: `/admin/CMS`). **MUST NOT** invent the other module’s fallback so their `defaultSettings()` never applies.
+4. Paths that must work before a **foreign** module has run `defaultSettings()` **MUST** also list a **literal** URL this module owns (for example, `/admin/<TargetModule>`). **MUST NOT** invent the other module’s fallback so their `defaultSettings()` never applies.
 
 **MUST NOT** `include` another module’s `module.init.php` to steal defaults. **MUST NOT** hardcode `/admin` as a substitute for `DACore::defaultSettings()`.
 
@@ -473,7 +498,7 @@ Pattern: `app/modules/DACore/module.init.php` (`defaultSettings()` + `initialize
 
 ### 2n. Module AIRULES (MUST — law)
 
-**`app/modules/<ThisModule>/AIRULES/` is the host contract** — how *other* modules extend *this* one (CMS → how to write a template pack; Shop → how to write a payment pack). It is **not** the development plan of this module. That is `PLAN/` ([§2o](#2o-module-plan-folder-must--law)). Lookup order: [§2p](#2p-rule-stack-where-to-look-must--law).
+**`app/modules/<ThisModule>/AIRULES/` is the host contract** — how *other* modules extend *this* one (for example, how to write a template or payment pack). It is **not** the development plan of this module. That is `PLAN/` ([§2o](#2o-module-plan-folder-must--law)). Lookup order: [§2p](#2p-rule-stack-where-to-look-must--law).
 
 Project `AIRULES/` is the **framework + DACore** contract and **always applies**. A host that others will extend **MUST** also write module AIRULES, because project rules cannot list every route **this** host listens to. Inventing a public `Router::get` in a pack that the host never wakes is a **bug**.
 
@@ -483,19 +508,19 @@ Project `AIRULES/` is the **framework + DACore** contract and **always applies**
 
 **MUST follow** when the folder exists: **project `AIRULES/` + `app/modules/<Host>/AIRULES/`**. Module rules **add** host-specific MUST/MUST NOT (routes, stems, extras). They **MAY** name a host-only exception (a stem, a wake list, an extra). They **MUST NOT** weaken project law (DACore ban, CRC once, PHP 7.4+, read scope, finish gate). Conflict → project AIRULES wins; say so in chat.
 
-**When the user names a host** (“create a template for CMS”, “listen to Shop”, “Extender for CMS cart”):
+**When the user names a host** (“create a template for `<Host>`”, “listen to `<Host>`”, “Extender for `<Host>` output”):
 
 1. Target = the pack / extender you are programming — write **that** module’s `PLAN/`.
 2. Named folder = that host (already on the [§1b](#1b-read-scope-must--law) allow-list).
-3. **MUST** read `app/modules/<Host>/AIRULES/` **before** coding if it exists. **CMS new/rewrite template:** “before coding” means **before phase B**. Phase A (standalone `PLAN/html/`) reads only `02-TEMPLATE-PLAN-FOLDER.md` — see **CMS template packs** below.
-4. **MUST NOT** read `app/modules/<Host>/PLAN/` (CMS’s own roadmap has nothing to do with the template).
+3. **MUST** read `app/modules/<Host>/AIRULES/` **before** coding if it exists.
+4. **MUST NOT** read `app/modules/<Host>/PLAN/`; the host’s own roadmap has nothing to do with the pack.
 5. The host’s rules will say it is DACore-bound — then DACore laws in project AIRULES apply as well (stack, not a rewrite of DACore).
 
 **MUST NOT**
 
 - Skip a present host `AIRULES/` and invent routes, stems, or chrome from a live sibling pack.
 - Open the host’s `PLAN/` while programming a pack for that host.
-- Put host-only law only under project `AIRULES/` (a CMS zip must ship **its** handbook).
+- Put host-only law only under project `AIRULES/`; a host package must ship **its** handbook.
 - Invent a law only under `.cursor/` ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
 - Copy a sibling pack’s cards/CSS because the host folder is now readable — examples stay in `AIRULES/examples/` plus the **host AIRULES** and the host APIs those files name.
 
@@ -507,11 +532,7 @@ Project `AIRULES/` is the **framework + DACore** contract and **always applies**
 - How to build URLs the host will resolve (helpers, default-language unprefixed slugs, `{not:}` if used).
 - Reserved `extra1`…`extra5` this host lists ([46](46-DACORE-EXTRA-CONTRACTS.md)).
 - That a pack **MUST** create `app/modules/<Pack>/PLAN/` ([§2o](#2o-module-plan-folder-must--law)).
-- **CMS:** HTML-first in `PLAN/html/` (standalone site, user approval) **before** mapping onto this host’s stems. That law lives in the CMS zip: `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`.
-
-Example: `app/modules/CMS/AIRULES/`. Compact Cursor rule: `AIRULES/cursor/rules/19-module-airules.mdc`.
-
-**CMS template packs (MUST):** a new or rewritten public theme **MUST** first ship a **standalone HTML site** in `app/modules/{Pack}/PLAN/html/` (real subpages, hard-filled texts, vanilla CSS/JS) **without** reading the CMS system. The user **reviews and approves** that HTML. **Only then** read CMS `AIRULES/` 01 (+ 03 if Extender) and implement the approved look as pack views. Copy `PLAN/assets/` → pack `assets/`. Read **CMS `AIRULES/`**, not CMS `PLAN/`. Host law: `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`. Compact rule: `AIRULES/cursor/rules/20-cms-template-plan.mdc`.
+Host-specific workflows belong in the host’s own `AIRULES/` and travel with that host. Compact Cursor rule: `AIRULES/cursor/rules/19-module-airules.mdc`.
 
 ### 2o. Module PLAN folder (MUST — law)
 
@@ -531,7 +552,7 @@ Example: `app/modules/CMS/AIRULES/`. Compact Cursor rule: `AIRULES/cursor/rules/
 
 - Skip `PLAN/` because the chat already has a long plan.
 - Treat `PLAN/` as project AIRULES or as the host handbook.
-- Read another module’s `PLAN/` (CMS `PLAN/` when writing a template).
+- Read another module’s `PLAN/` when writing a pack.
 - Weaken project law or host AIRULES from a PLAN file.
 - Keep the only copy of the plan outside the module.
 
@@ -544,19 +565,66 @@ Agents **MUST** know where laws live and what wins. Folders travel with the proj
 | Priority (1 wins) | Path | Who writes it | Who reads it | What it is |
 |-------------------|------|---------------|--------------|------------|
 | **1 — always** | project `AIRULES/` | framework / this rulebook | **everyone, every task** | Hard laws. CRC, PHP 7.4+, DACore ban, finish gate. |
-| **2 — if this work extends a named host** | `app/modules/<Host>/AIRULES/` | the **host** (CMS, Shop, …) | packs / listeners / Extenders **for that host** | How to extend the host. May add host-only MUST/MUST NOT. **MUST NOT** weaken priority 1. |
+| **2 — if this work extends a named host** | `app/modules/<Host>/AIRULES/` | the **host** | packs / listeners / Extenders **for that host** | How to extend the host. May add host-only MUST/MUST NOT. **MUST NOT** weaken priority 1. |
 | **3 — the module you are building** | `app/modules/<This>/PLAN/` | **this** module’s authors | only agents **continuing this module** | Portable plan (screens, positions, next steps). Not a contract for others. **MUST NOT** weaken 1 or 2. |
 
-**Example — template pack for a finished CMS that runs under DACore:**
+**Example — pack for a finished `<Host>` that runs under DACore:**
 
 1. Project `AIRULES/` (includes DACore laws) — still applies.
-2. `app/modules/CMS/AIRULES/` — how templates must register, which routes CMS wakes.
-3. `app/modules/<YourTemplate>/PLAN/` — **your** theme plan.
-4. **Do not** open `app/modules/CMS/PLAN/`. **Do not** skip step 1 because CMS has its own rules.
+2. `app/modules/<Host>/AIRULES/` — how packs must register and which routes the host wakes.
+3. `app/modules/<Pack>/PLAN/` — **the pack’s** development plan.
+4. **Do not** open `app/modules/<Host>/PLAN/`. **Do not** skip step 1 because the host has its own rules.
 
-**Example — you are building CMS itself:** write `CMS/AIRULES/` (for future template authors) **and** `CMS/PLAN/` (for CMS development). Same two folders, two jobs.
+**Example — you are building `<Host>` itself:** write `app/modules/<Host>/AIRULES/` (for future pack authors) **and** `app/modules/<Host>/PLAN/` (for host development). Same two folders, two jobs.
 
 **MUST NOT** invent a third place for law (only `.cursor/`, a gist, one mega-file in chat). Compact laws still live in `AIRULES/cursor/rules/` and are **mirrored** ([§2l](#2l-cursor-rules-live-in-airules-must--law)).
+
+### 2q. Same class of bug — hunt the module (MUST — law)
+
+A user report of **one** broken button is often a **class**. Shipping only that button is a **bug**.
+
+**How the DACore admin “Request failed” class happens**
+
+1. `$dotapp().load(url, "POST", { rule, enabled })` serializes `{ data: { rule, enabled, csrf… }, crc }`.
+2. PHP reads `$request->data()['rule']`. That key is empty — it lives under `data`. Decrypt / validate fails.
+3. The action returns `ajaxReply(..., 400)` (or 500 in `catch`).
+4. `dotapp.js` `fetch` treats HTTP 400/500 as **onError**. The toast is generic **Request failed**. `reply.message` never shows.
+5. The same nest applies to `$request->form()` (fields under `data`). The same HTTP hole applies to every sibling `load()` (toggle, delete, purge, list, test, hook).
+
+`load()` onError is `(httpStatus, bodyText)` — not the success `(raw)` shape. Parsing the first argument as JSON always fails.
+
+**MUST**
+
+- Unwrap posted fields (`formBag` / `posted()` of `$request->data()`, or the `form()` bag). Do **not** read `$request->data()['id']` as if `load()` posted a flat object.
+- Admin `form()` / `load()` product outcomes: HTTP **200** + `status` 0|1 + `message`. Middleware 403 for anonymous/rights may stay 403.
+- When this class (or any similar class: same unwrap, same HTTP code, same toast, same missing CRC, same double-escape) is found in **one** place: grep **this module** (`$request->data()[`, `ajax(..., 400)`, `ajax(..., 500)`, every `$dotapp().load` / `loadJson` URL vs its action) and fix **every** hit in the same chunk.
+- **MUST NOT** claim done if Disable works and Delete / Purge / Test / Clear still use the old pattern.
+
+Rights 403 and CRC 400 from `#DACore:AuthTest@LoginAndCRC!` are **not** this class — do not rewrite those prefixes to 200.
+
+Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [33](33-DACORE-PAGES-AND-UI.md) §9, compact `AIRULES/cursor/rules/24-admin-ajax-and-class-bugs.mdc`.
+
+### 2r. No unsolicited browser / click-through (MUST — law)
+
+Live browser click-through **burns tokens**. The operator is faster at Save / Delete / “did it work?”. If the finish gate and UX source pass, a 400 / double CRC / nested-`data` hole **must not** ship.
+
+**MUST NOT** (default, every module including DACore-bound admin):
+
+- Open browser tools, MCP browser, CDP, screenshot-and-click, or a “senior verify” loop to prove functionality
+- Recreate a public template in the browser to check routing or Save
+- Treat a generic Cursor / user-rule “verify in the browser” line as permission on **this** project — **this law wins**
+- Ask the user “may I click?” every slice and then click anyway if they do not answer — **no answer = no browser**
+
+**MUST**
+
+- Write the code. Run the finish gate (CRC once, enc IDs, unwrap, HTTP **200** + `status`, CatchBus, PHP 7.4+).
+- Verify UX/UI from **source**: numbered sections, lede, Why panel, target-module label-row heights (label with `?` vs sibling without), `card-footer` padding, no `pt-0` on Save.
+- If the operator should click: write a **short click list** (“open `/admin/<TargetModule>/items`, Add, Save, Delete, tell me if it worked”). Do **not** perform those clicks.
+- **ASK** before any live browser. Proceed **only** if this turn’s user message **commands** it (`over to v prehliadači`, `klikni`, `verify in the browser`) **or** they answered **yes** to that ASK.
+
+**When the user reports a live fail:** [23](23-DEBUG-PLAYBOOK.md) — grep first. Browser still only if they asked.
+
+Canonical: [33](33-DACORE-PAGES-AND-UI.md) §12, compact `AIRULES/cursor/rules/25-no-unsolicited-browser.mdc`.
 
 ---
 
@@ -601,7 +669,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | `$`, `jQuery`, `$.ajax` | `$dotapp`, `$dotapp().load(...)` |
 | `<form>` + manual CSRF only | Prefer `<fo-rm>` + `{{ formName(handler) }}` |
 | `{{ formName }}` after `</fo-rm>` | **MUST** between `<fo-rm>` and `</fo-rm>` |
-| Plain IDs in HTML/JSON (`value="7"`, `data-id="7"`) | **MUST** `{{ enc(Shop.item.id): $id }}` — unique `$key2` per field |
+| Plain IDs in HTML/JSON (`value="7"`, `data-id="7"`) | **MUST** `{{ enc(Shop.item.id): $id }}` — unique `$key2` per field. Path `{token}` **MUST** be sealed `[A-Za-z0-9_-]+` ([11](11-AUTH-AND-CRYPTO.md) §8) |
 | `<fo-rm>` around every row button / D&D | `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)) |
 | List/form still clickable during `load()` | Cover the region — **DACore admin:** Notiflix or module preloaders; **public site:** module preloaders ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Desktop-only public header / hover menu / no mobile drawer | Overlay drawer L/R; lock page scroll while open; drawer itself scrolls ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
@@ -617,9 +685,9 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | Step-up as a 6-digit field on the card / no paste auto-submit | DACore installer modal + `{ autoSubmit: true }` ([EX-D10](examples/EX-D10-stepup-2fa-modal.md)) |
 | `alert()` / `window.confirm()` to delete | Graphical dialog first (`Notiflix.Confirm` on admin, module modal on the public site) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Prompt-echo UI copy (“this user can hide the icon…”) | Product copy a software company would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
-| Save button flush to the card edge / `pt-0` footer with no bottom padding | Padding vs parent (esp. below); center or match siblings ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c) |
+| Save button flush to the card edge / last-in-block buttons with no space below / `pt-0` footer with no bottom padding | Padding on all sides; when last in the block **almost always** pad below; center or match siblings ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6) |
 | New admin library without searching DACore | **MUST** grep `app/modules/DACore/` (read-only) + your module first ([33](33-DACORE-PAGES-AND-UI.md)) |
-| Browse `app/modules/Shop` / `CMS` / another sibling for a look or “example” | **Forbidden** — current module + DACore + `AIRULES/examples/`. Sibling only if the user **named** it as the extend/listen/Extender target ([§1b](#1b-read-scope-must--law)). Then **MUST** read that sibling’s `AIRULES/` first if it exists ([§2n](#2n-module-airules-must--law)) |
+| Browse an unnamed sibling for a look or “example” | **Forbidden** — current module + DACore + `AIRULES/examples/`. Sibling only if the user **named** it as the extend/listen/Extender target ([§1b](#1b-read-scope-must--law)). Then **MUST** read that sibling’s `AIRULES/` first if it exists ([§2n](#2n-module-airules-must--law)) |
 | `f-form` attribute | **Does not exist** — use `<fo-rm>` |
 | `$_SESSION` / `session_start()` | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
 | JS overlay / modal as the only save or 2FA gate | **MUST** re-check in PHP; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
@@ -659,7 +727,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
    - Full sample: [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md)
 2. This stack is **stronger than plain CSRF** (binds handler + action + method, CRC, one-time tokens, JS key material). Use it **only for real HTML forms** (several fields + submit). **MUST NOT** wrap row actions (toggle, delete, reorder, drag-and-drop, paginate) in `<fo-rm>` — those are `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)).
 3. Never skip CRC/CSRF for endpoints that receive `$dotapp().load()` / secure forms. **MUST** `crcCheck()` **once** per request — API prefix **or** action, **never both** (first call **burns** the token). Canonical: [08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md).
-4. **MUST encrypt every identifier sent to the browser** (`<option value>`, `data-*`, hidden, JSON). Use `{{ enc(Shop.user.id): $id }}` / `Crypto::encrypt($id, 'Shop.user.id')` with a **different `$key2` per field**. Never `value="7"` / `data-id="7"`. Decrypt with the **same** `$key2`; `false` → reject. **MUST still** `Auth::can()` / ownership — encryption is not a substitute for rights ([11](11-AUTH-AND-CRYPTO.md) §8).
+4. **MUST encrypt every identifier sent to the browser** (`<option value>`, `data-*`, hidden, JSON, **URL path**). Use `{{ enc(Shop.user.id): $id }}` / `Crypto::encrypt($id, 'Shop.user.id')` with a **different `$key2` per field**. Never `value="7"` / `data-id="7"`. Decrypt with the **same** `$key2`; `false` → reject. **MUST still** `Auth::can()` / ownership — encryption is not a substitute for rights. **`Crypto::encrypt` is standard base64 (`+` `/` `=`).** A path segment with that blob becomes `%2F` → Apache **Not Found**. **MUST** map to `[A-Za-z0-9_-]+` (base64url, no padding) in the **current module** before building `/admin/…/{token}` or `redirectTo`; **MUST NOT** patch DACore or framework core for this. Decrypt **MUST** reverse the map and **MUST** still accept leftover `{{ enc }}` / old tokens. **MUST NOT** put `{{ enc }}` into a path `href`. Canonical: [11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13.
 5. Never interpolate user input into SQL — use QueryBuilder bindings or `raw($sql, $bindings)`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments and `COMMENT 'SMS?'` count too ([06](06-DATABASE.md)).
 6. On new apps, generate real `app.c_enc_key` / `rm_key` / `rmrcm_key` (see [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md)).
 7. Module settings must have **fallbacks** if the user did not fill `app/config.php`.
@@ -667,7 +735,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 9. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).
 10. **MUST** re-check every persist in **PHP** (`Auth::can`, 2FA code, ownership, validation). `crcCheck()` is transport — **once** per request, not again. Frontend modal/overlay/disabled control is **UX only**. Removing the overlay **MUST** still fail on the server ([08](08-FORMS-AND-SECURITY.md)).
 11. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP: `$request->upload()` — not `crcCheck()` on that endpoint. **MUST** reject `.php` and other executables (extension + `finfo` MIME + headers); FE `accept=` is UX only ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
-12. **MUST** take passwords, HTML, and other round-trip values from `$request->data(true)` / `$request->query(true)` (original). `$request->data()` is the **protected** copy (`protect()`). Login/createUser/installer **MUST NOT** hash the protected string. **MUST** show every login failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`). Canonical: [19](19-VALIDATION-AND-INPUT.md).
+12. **MUST** take persist values from `$request->data(true)` / `$request->query(true)` (original) — passwords, HTML, **URLs**, settings, tokens, ciphertext. `$request->data()` is the **protected** copy (`protect()` rewrites `)`, `=`, `%`, `&`…). SQL injection protection is **named / `?` bindings** when writing to the DB — **MUST NOT** store the protected string so `?q=Sabinov` does not become `?&#61;Sabinov`. Login/createUser/installer **MUST NOT** hash the protected string. **MUST** show every login failure (`crcCheck`, `form()` `null`/`false`, `Auth::login === false`). Canonical: [19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md).
 13. **Login-required / admin routes (MUST):** HTML `{DACore prefixUrl}/{ModuleName}/…` + `Gate@login`. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the **start** of `initialize()`; handlers **MUST NOT** `crcCheck()` again. Register login-only handlers **only** inside `if (Auth::isLogged() === true)`. Those pages **MUST NEVER** render for anonymous users. Canonical: [03](03-MODULES-AND-ROUTING.md), [32](32-DACORE-RIGHTS.md).
 14. **Documentation (MUST):** English. Every file/class gets a docblock. Every public/static method in **`Controllers/`** and **`Middleware/`** starts PHPDoc with **`CRCchecking —`** naming **where** CRC runs (exact prefix/middleware such as `#DACore:AuthTest@LoginAndCRC!`, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence** — tags alone (`@return array<string, mixed>`) are a **bug**. Then `@param` / `@return` / `@throws` with **meaning**, not only types. Inline comments **MUST** use the labels **`// Why:`** (every logical step), **`// About:`** (what the chunk is / what the record represents), **`// Section:`** (admin menu or route). **MUST NOT** restate the code (`// increment i`), prompt-echo, omit the labels, or leave dead code / bare `TODO`. **MUST NOT** write `CRCchecking — prefix … MUST NOT crcCheck()` and then call `crcCheck()` in that method. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md).
 15. **Errors (MUST):** persist handlers in `try/catch` (`\Throwable`) — log, structured `ajaxReply`, **never** leak `$e->getMessage()`, **never** empty `catch`. `execute()` **MUST** get **both** callbacks (`$ok` and `$err`); omitting `$err` **throws**. **Every `catch` and every `execute()` `$err` MUST also report to the catch bus:** `Events::trigger('dotapp.catch', $payload)` then `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered/expected), with the fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`) — no secrets, tokens, rights blobs or request bodies in it. Route it through **one** report helper per module (in **your** module, never a file under `app/modules/DACore/`) so a future debugger listener cannot break the reply. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
@@ -676,7 +744,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 18. **Privilege and records (MUST):** no secret in a read-only view; no grant/mutate above the actor; SQL scoped to owner; own password needs current password; live routes; lockout covers 2FA if you built lockout. Public noauth that bots can hammer: **MUST warn** in chat (CAPTCHA optional — not MUST). Canonical: [11](11-AUTH-AND-CRYPTO.md) §11.
 19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, wrong guard, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI/prompt injection. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix a vector in **your** module — **never** by patching `app/modules/DACore/`. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
 20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend (**reuse DACore assets** instead of a second library), and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Index and query **your** tables only — never `dacore_*`. Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
-21. **Layout and UX/UI (MUST):** general UX/UI principles **MUST** be followed **at all costs** on every visible control. Adding a button **MUST** include a padding check vs the parent (especially bottom), deliberate alignment (center / same rhythm as siblings), and desktop+mobile. A flush Save on the card edge is a **bug**. Canonical: [§2f](#2f-layout-and-uxui-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c.
+21. **Layout and UX/UI (MUST):** general UX/UI principles **MUST** be followed **at all costs** on every visible control. Adding a button **MUST** include a padding check vs the parent on **all sides** (left, right, top, bottom). When buttons are the **last content** of a block, **almost always** pad **below**. A flush Save on the card edge is a **bug**. Canonical: [§2f](#2f-layout-and-uxui-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6.
 22. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. A DACore-bound module **MUST** read `app/modules/DACore/.hooks` first. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md) §6.
 23. **Extender (judge — not every method):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender `extend()` belongs in `Listeners::register()`, target URLs in listener map, own Module routes or `[]`, controller string preferred. **MUST NOT** use `.loaded` for initialize-time, spray on every method, invent `next()`, return the marker, use Events, pass `$request`/secrets, or patch the owner / DACore. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 24. **PHP version (MUST):** default **PHP 7.4+**. When **planning**, **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, promotion, attributes, `enum`, `readonly`, `str_contains`, …) unless they named a higher version. Canonical: [§2i](#2i-php-version-must).
@@ -688,10 +756,12 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 30. **MySQL-safe installer DDL (MUST):** probe first, then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, or `CREATE INDEX IF NOT EXISTS` — older MySQL errors; `ADD COLUMN IF NOT EXISTS` is MariaDB-only. Table probe = `SHOW TABLES LIKE` after `[A-Za-z0-9_]+` whitelist. Column/index probe = `information_schema` scoped to `DATABASE()` with bindings. Helpers live in **your** module — **MUST NOT** call DACore `SetupGuard` / `SchemaCompat`. `DROP TABLE IF EXISTS` on uninstall is allowed. `$qb->createTableIfNotExist()` is allowed (it already probes and emits `CREATE TABLE` without `IF NOT EXISTS`). Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
 31. **HTML via Renderer (MUST):** when markup can be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / `Page@paginate!` `<li>` / one tiny chip). Canonical: [§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
 32. **Planning depth (MUST):** a plan for a new module / first major surface / rewrite **MUST** list every DACore `Menu@register` row (or `No menu`), every page, every tab, and every control (what it does, default, persist). Length is not a defect. Canonical: [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
-33. **defaultSettings before routes (MUST):** **MUST NOT** compose wake lists or `Router` paths from Config that is only set later (another module’s `initialize()` / `defaultSettings()`, or your own defaults you never called yet). **MUST** `defaultSettings()` in `initializeRoutes()` before `return` **and** at the start of `initialize()`. Foreign prefix (DACore `prefixUrl`): literal own path (`/admin/CMS`) plus Config **after** it exists — **MUST NOT** hardcode their fallback. Canonical: [§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md).
+33. **defaultSettings before routes (MUST):** **MUST NOT** compose wake lists or `Router` paths from Config that is only set later (another module’s `initialize()` / `defaultSettings()`, or your own defaults you never called yet). **MUST** `defaultSettings()` in `initializeRoutes()` before `return` **and** at the start of `initialize()`. Foreign prefix (DACore `prefixUrl`): literal own path (`/admin/<TargetModule>`) plus Config **after** it exists — **MUST NOT** hardcode their fallback. Canonical: [§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md).
 34. **Module AIRULES (MUST):** a host / extendable module **MUST** keep `app/modules/<ThisModule>/AIRULES/` that tells packs and extenders which routes, stems, and extras **this** module actually uses. When that folder exists on a **named** host, follow **project AIRULES + those files together**. Module rules **MUST NOT** weaken project law. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [§2n](#2n-module-airules-must--law), [§2p](#2p-rule-stack-where-to-look-must--law).
 35. **PLAN folder (MUST):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` (split files: laws, rules, positions) and implement from it. Chat-only / one-file plans fail. **MUST NOT** read a host’s `PLAN/` when writing a pack. Canonical: [§2o](#2o-module-plan-folder-must--law), [§2p](#2p-rule-stack-where-to-look-must--law), [45](45-MODULE-PLANNING.md).
 36. **Rule stack (MUST):** project `AIRULES/` always; then named-host `AIRULES/`; then **this** module’s `PLAN/`. Priority 1 wins. Canonical: [§2p](#2p-rule-stack-where-to-look-must--law).
+37. **Same class of bug (MUST):** one broken `load()` / `form()` (nested `data`, HTTP 400 → Request failed) **MUST** trigger a grep of **this module** and a fix of every sibling in the same chunk. Canonical: [§2q](#2q-same-class-of-bug--hunt-the-module-must--law), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+38. **No unsolicited browser (MUST):** **MUST NOT** live-click admin/public pages to prove they work. Finish-gate grep + source UX. Click lists for the user. Browser only after they ask or say yes. Canonical: [§2r](#2r-no-unsolicited-browser--click-through-must--law).
 
 ---
 
@@ -712,7 +782,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - JS: $dotapp — NOT jQuery $; after save/toggle MUST patch DOM + toast (no reload); MUST overlay until request ends (DACore admin: Notiflix or module; public site: module preloaders; desktop+mobile)
  * - Public site nav: mobile drawer slides L/R over the page; lock document scroll while open; drawer list scrolls; contacts+compact search in the drawer unless large search is its own mobile section
  * - Lists: accumulating records (users/logs/items) MUST COUNT+LIMIT + AIRULES/40 pager on first ship — NOT all() dump, NOT ?page= / replaceState / e.currentTarget
- * - Packs/host: about.php extra1…extra5 from AIRULES/46 (filemanager/template/…) so a CMS can list packs — NOT glob/include other modules (35 §3c, 46)
+ * - Packs/host: about.php extra1…extra5 from AIRULES/46 (filemanager/template/…) so a host can list packs — NOT glob/include other modules (35 §3c, 46)
  * - Cheap I/O: exists/COUNT/limit(1)/needed columns/paginate/one join — NOT all() then filter, NOT N+1
  * - Memory: page big sets, keyed map instead of in_array in a loop, unset the raw copy, stream files — NOT load-all-then-filter
  * - Indexes (25 §3): FK + every WHERE/JOIN/ORDER BY column; composite = equality → range → sort; leftmost prefix; one comment line per index naming its query; never touch dacore_*
@@ -728,18 +798,20 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - Session: DSM::use('Shop') — NEVER $_SESSION / session_start()
  * - Save checks: PHP MUST re-verify — FE modal/overlay is UX only
  * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST reject .php (ext+MIME+headers)
- * - Request: data() = protected; data(true) = original — MUST true for passwords/HTML/hashes
+ * - Request: data() = protected; data(true) = original — MUST persist true (URLs/settings/HTML/passwords); SQL write = named bindings, not protect()
  * - Login-required / admin: {prefixUrl}/{Module}/… + Gate@login 403 Response; MUST register handlers inside Auth::isLogged()
  * - Comments: English; labels Why: / About: / Section: — not every line, not unlabeled
  * - PHP: default 7.4+; ASK in the plan for a higher version — NOT match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they said yes (00 §2i)
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
  * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action, Events::trigger vs .hooks — 00 §2c / 41
  * - Visible outcome (LAW): user always sees save/fail; DACore admin = search DACore then toast; public = mark the wrong field — 00 §2d
- * - Layout / UX-UI (LAW): buttons MUST have padding vs parent (esp. bottom); center/align to siblings; never flush to the card edge — 00 §2f
+ * - Layout / UX-UI (LAW): buttons MUST have padding vs parent on all sides; when last in a block almost always pad below; never flush to the card edge — 00 §2f, 33 §6
  * - HTML via Renderer (LAW): when it can be a template it MUST be; PHP HTML string only for a named one-piece exception — 00 §2j / 05 §1c
  * - Planning depth (LAW): new module / first surface / rewrite plan MUST inventory every Menu@register row (or No menu), page, tab, control — length is OK — 00 §2k / 45
  * - PLAN folder (LAW, 00 §2o): write app/modules/<This>/PLAN/ as a split folder (not one chat file). Implement from it. MUST NOT read a host PLAN when writing a pack
  * - Rule stack (LAW, 00 §2p): 1 project AIRULES (always) 2 host AIRULES (if extending a named host) 3 this module PLAN. Priority 1 wins
+ * - Same class of bug (LAW, 00 §2q): one broken load/form handler → grep this module and fix every sibling. load() nests data; HTTP 400/500 → Request failed
+ * - No unsolicited browser (LAW, 00 §2r): do not live-click admin/public pages unless the user asked or said yes; finish-gate + source UX + a click list
  * - Cursor rules (LAW, 00 §2l): compact .mdc live in AIRULES/cursor/rules/. Agent MUST copy them to .cursor/rules/ + AGENTS.md to project root. MUST NOT invent a law only under .cursor/
  * - defaultSettings (LAW, 00 §2m): call defaultSettings() in initializeRoutes() before return and at the start of initialize(). MUST NOT build Router/wake paths from Config filled later (DACore prefixUrl). MUST NOT hardcode their fallback. Literal own path if the other module has not run yet.
  * - After a new Installation.php version: rename installed_*_install.php → install.php (agent does it)
@@ -788,6 +860,7 @@ This rulebook variant covers **framework + DACore**. DACore is an admin-UI **mod
 | **New module menu** | **ASK** before scaffolding: shared nested (`0` → `2` → `1`, `withMenu` `$menuId` `''`) vs module-own. **No answer → shared nested.** Module-own **only** if the user explicitly chose it. Do not register “Return back”. [31](31-DACORE-MENU.md) |
 | **Active sidebar on subpages** | Edit/detail **MUST** keep the list/section leaf highlighted. `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). **MUST NOT** register a menu row per edit URL. [31](31-DACORE-MENU.md) Active sidebar |
 | Render admin pages | `Renderer` + `.layout.php` → `DACore:Page@withMenu!`. Never build your own HTML shell. Never concatenate the fragment in PHP ([§2j](#2j-html-via-renderer-must--law)) |
+| **Not Bootstrap** | DACore is **not** a Bootstrap app. No `bootstrap.bundle.js`. No `data-bs-toggle="tab"` (those clicks do nothing). Tab look = real GET subpages + **your** CSS. Grid = `<dot-grid>` / `<dot-col>`. [33](33-DACORE-PAGES-AND-UI.md) §0 |
 | Missing widgets / ported UI | **MUST search DACore first** (read-only). Then **MUST** add CSS/JS in **your** module (`$css`/`$js` on `withMenu`) only if nothing fits. Prefix classes `{lowercase_modulename}_*`. Match DACore colors. Never patch DACore. |
 | Admin JS / ports | DACore runs on **`$dotapp`**. jQuery may coexist for **UI only**. **All requests** use `$dotapp().form` / `load` / bridge — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library — **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C, [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget, use it. |
 | **Notiflix** | **DACore admin shell only.** On `Page@withMenu!` you may use it (preferred) **or** your module overlay. Public / front-office pages **MUST** ship **module preloaders** — Notiflix is not there. Preloaders are **MUST** either way ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3). |
@@ -811,7 +884,7 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Leftover `database_guide.md` invented APIs | **Ignore** — follow [06-DATABASE.md](06-DATABASE.md) |
 | User explicit instruction to edit core | Ask once to confirm; still prefer not to |
 | User wants a DACore change | **Do not propose** editing DACore. Implement in the current module. **If they themselves** ask to edit `app/modules/DACore/` **and** confirm they accept the update wipe: then edit DACore for that request. Otherwise **strict ban**. |
-| Agent wants an example from Shop / CMS / another sibling while programming `<Target>` | **Forbidden** — `AIRULES/examples/` + DACore + `<Target>`. A sibling is readable **only** if the user named it as the extend/listen/Extender target ([§1b](#1b-read-scope-must--law)) |
+| Agent wants an example from another sibling while programming `<Target>` | **Forbidden** — `AIRULES/examples/` + DACore + `<Target>`. A sibling is readable **only** if the user named it as the extend/listen/Extender target ([§1b](#1b-read-scope-must--law)) |
 
 ---
 
@@ -826,10 +899,12 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Cursor `.mdc` / copied AIRULES folder | **00 §2l** — source is `AIRULES/cursor/rules/`; agent **MUST** copy into `.cursor/rules/` | [INSTALL.md](INSTALL.md) |
 | **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest conflicts | [17](17-CHECKLISTS.md) Finish gate |
 | Stay-on-page save / errors | **00 §2d** visible outcome — DACore toast (search first); public = mark the wrong field | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
-| Buttons / card footers / chrome spacing | **00 §2f** layout + UX/UI — padding vs parent (esp. bottom), alignment | [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) |
+| Buttons / card footers / chrome spacing | **00 §2f** layout + UX/UI — padding on all sides; **bottom** when buttons are last in the block | [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6 |
 | Page / list / AJAX HTML fragment | **00 §2j** / **05 §1c** — Renderer + layout; PHP markup only for a named one-piece exception | [EX-05](examples/EX-05-renderer-page.md), [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | New module | 00, 02, 03, **00 §1b** (read only this module + DACore — not siblings) | [EX-03](examples/EX-03-module-scaffold.md) |
-| Pack / host / named extend | **00 §2n** + **§2p** — project AIRULES **plus** `app/modules/<Host>/AIRULES/` when it exists; **MUST NOT** open host `PLAN/` when writing a pack | CMS: `app/modules/CMS/AIRULES/` |
+| Pack / host / named extend | **00 §2n** + **§2p** — project AIRULES **plus** `app/modules/<Host>/AIRULES/` when it exists; **MUST NOT** open host `PLAN/` when writing a pack | `app/modules/<Host>/AIRULES/` |
+| Admin `load()` / `form()` “Request failed” | **00 §2q** + **[09](09-DOTAPP-JS-AND-BRIDGE.md)** §3 — unwrap nested `data`; HTTP **200** + `status` 0|1; one hit → hunt **this module** | — |
+| Live browser / “senior verify” | **00 §2r** — **MUST NOT** unless the user asked or said yes; write a click list instead | — |
 | Route / middleware | 03, 04, 32 | EX-03 / EX-D01 — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | Template / CSS / JS page | 05 (incl. **§1c HTML via Renderer law**, §8 product copy), **09 §3** public mobile nav | [EX-05](examples/EX-05-renderer-page.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Public website header / nav | **09 §3** “Public website mobile navigation” — drawer overlay, lock page scroll | [EX-05](examples/EX-05-renderer-page.md) |

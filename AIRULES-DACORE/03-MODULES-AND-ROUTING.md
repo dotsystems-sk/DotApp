@@ -58,9 +58,9 @@ Canonical: [00](00-AGENT-CONTRACT.md) §2m. DACore reference: `app/modules/DACor
 1. Implement **`defaultSettings()`**: every default this module owns; `Config::module($mod, $key) ?? Config::module($mod, $key, $default)`.
 2. Call it as the **first** statement of **`initializeRoutes()`**, then `return` the wake prefixes.
 3. Call it as the **first** statement of **`initialize()`**, then read Config and register `Router` paths.
-4. If a path must work when a **foreign** Config key is still empty, also list a **literal** URL this module owns (CMS admin: `/admin/CMS` and `/admin/CMS/*`). **MUST NOT** invent the other module’s default so their `defaultSettings()` never runs when `config.php` omitted the key. **MUST NOT** explode every leaf, lowercase, or `//` variant into the wake list.
+4. If a path must work when a **foreign** Config key is still empty, also list a **literal** URL this module owns (for example, `/admin/<TargetModule>` and `/admin/<TargetModule>/*`). **MUST NOT** invent the other module’s default so their `defaultSettings()` never runs when `config.php` omitted the key. **MUST NOT** explode every leaf, lowercase, or `//` variant into the wake list.
 
-**MUST NOT** compose `/` + `Config::module('DACore', 'prefixUrl')` + `/CMS` for wake or `Router::get` until that key is set (config.php or DACore `defaultSettings()`). **MUST NOT** `include` `app/modules/DACore/module.init.php` to force it.
+**MUST NOT** compose `/` + `Config::module('DACore', 'prefixUrl')` + `/<TargetModule>` for wake or `Router::get` until that key is set (config.php or DACore `defaultSettings()`). **MUST NOT** `include` `app/modules/DACore/module.init.php` to force it.
 
 ```php
 public static function defaultSettings()
@@ -98,7 +98,7 @@ All matching listeners register before any matching module performs full initial
 3. Another module’s description / license / changelog / **discovery flags** (`extra1`…`extra5`) is in DACore `dacore_modules` (filled at install from `about.php`). **MUST NOT** `include` / `require` / `eval` that module’s `about.php`, `module.init.php`, `Installation.php`, or `settings.php` just to render a list, drawer, or “pick a template” dropdown. Filter with `DACore:Plugins@listByContract!` / `@listByExtra!` or a bound `SELECT` ([35](35-DACORE-INSTALL.md) §3c, [46](46-DACORE-EXTRA-CONTRACTS.md)).
 4. **MUST NOT** `glob('app/modules/*')` or loop other module folders on a request to catalog them. **MUST NOT** `DotApp::call('OtherModule:…')` for that.
 5. **Extender:** judge first. Register `Extender::extend()` in `Listeners::register()` before Module initialization. Keep own URLs (or `[]`) in the Module map; target URLs in the listener map. Prefer a controller string. Owner handles `original()` with `isOriginal()`. **MUST NOT** patch DACore. Canonical: [12](12-SERVICES.md) §10.
-6. **Pack vs host routes:** a template / payment / file-manager **pack** **MUST NOT** register the host’s public catch-alls (`/`, `/{path*}`, `/search`). Read `app/modules/<Host>/AIRULES/` when it exists ([00](00-AGENT-CONTRACT.md) §2n). CMS: `app/modules/CMS/AIRULES/`.
+6. **Pack vs host routes:** a template / payment / file-manager **pack** **MUST NOT** register the host’s public catch-alls (`/`, `/{path*}`, `/search`). Read `app/modules/<Host>/AIRULES/` when it exists ([00](00-AGENT-CONTRACT.md) §2n).
 
 **MUST NOT** return `['*']` unless the dependency is genuinely global/dynamic and you warned which part wakes everywhere. DACore uses it for the app firewall — not a pattern to copy.
 
@@ -352,6 +352,10 @@ Dispatch via `Controller::apiDispatch` → methods like `getUsers`, `postUsers`.
 
 Once a dynamic route matches for the current request during registration/resolution, later registrations may be dropped for that request. Keep route lists ordered intentionally.
 
+`Router::reset(false)` performs a soft reset: it unlocks route comparison but keeps the current matched route and its hooks as a fallback. If a later route matches, the router atomically performs a hard reset before registering that new route, so only the new controller and its newly attached hooks remain. If no later route matches, the original controller still resolves.
+
+`Router::reset(true)` performs an immediate hard reset: it removes all registered routes, resources, error handlers, occupied-route records, before/after hooks, reserved paths and route-specific limiter configuration. If no route is registered and matched afterwards, resolution falls through to a plain 404.
+
 ---
 
 ## Middleware systems
@@ -434,6 +438,7 @@ Lifecycle events: `dotapp.module.{name}.init.start`, `.init.condition`, `.init.e
 
 - Verb methods return a **route chain object** only when the route matches the current request; otherwise an inert chain (calls are no-ops).
 - After the first dynamic match, `route_matched` is set and later registrations get the inert chain for that request.
+- `Router::reset(false)` unlocks matching while retaining the old match as fallback; the first subsequent successful match replaces the old routing state. `Router::reset(true)` clears routing state immediately.
 - `Router::hasRoute(...)` is **inverted**: it returns `false` when the route *would* match. Prefer `php dotapper.php --list-routes` to inspect routes.
 - 404: the `dotapp.router.resolve.404` listener wins, else `Router::errorHandle(404, $view)`, else an empty 404 and `die()`. **HTTP 405 is not implemented.**
 - `->throttle([...])` without `->limitExceeded($fn)` sends a 429 JSON response and **exits**.

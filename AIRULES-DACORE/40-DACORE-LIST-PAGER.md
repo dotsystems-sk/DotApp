@@ -101,6 +101,8 @@ $links = (string) DotApp::call(
         }
         $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
         $token = Crypto::encrypt((string) (int) $pageNo, 'Shop.items.page');
+        // Why: path-safe alphabet. Raw + / = in a URL path is Apache 404 (%2F = slash).
+        $token = is_string($token) ? rtrim(strtr($token, '+/', '-_'), '=') : '';
         if (!is_string($token) || $token === '') {
             return '<li class="page-item disabled"><span class="page-link">'
                 . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
@@ -122,7 +124,7 @@ $links = (string) DotApp::call(
 
 **MUST NOT** `<a class="page-link" href="?page=">`.
 
-`$key2` for the page token is unique per list (`Shop.items.page`, `Shop.orders.page`). Decrypt with the **same** key. `false` / non-string / page `< 1` → reject (`Bad request`) or, for search reset with no token, default to page **1**.
+`$key2` for the page token is unique per list (`Shop.items.page`, `Shop.orders.page`). Decrypt with the **same** key after **opening** a sealed token (`-_` → `+/`, pad to 4) — leftover standard base64 **MUST** still decrypt. `false` / non-string / page `< 1` → reject (`Bad request`) or, for search reset with no token, default to page **1**. Path edit URLs use the same seal ([11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13).
 
 ---
 

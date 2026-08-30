@@ -345,7 +345,7 @@ HTML,
 
 After you add a version in `Installation.php`, add the same key here. If the notes are unknown, **ASK**.
 
-Optional discovery flags ([35](../35-DACORE-INSTALL.md) §3c, [46](../46-DACORE-EXTRA-CONTRACTS.md)) — omit on a normal Shop. A **template pack** for a CMS host:
+Optional discovery flags ([35](../35-DACORE-INSTALL.md) §3c, [46](../46-DACORE-EXTRA-CONTRACTS.md)) — omit on a normal module. A `<Pack>` using the reserved `template` role:
 
 ```php
     'extra1' => 'template',
@@ -355,7 +355,7 @@ Optional discovery flags ([35](../35-DACORE-INSTALL.md) §3c, [46](../46-DACORE-
 
 A **file manager** pack uses `extra1` = `filemanager`, `extra2` = `v1`, `extra3` = `full` \| `picker` \| `storage`.
 
-The CMS settings dropdown **MUST** list `DotApp::call('DACore:Plugins@listByContract!', 'template', 'v1')` (or `listByExtra!` / a bound `SELECT`), not `glob(app/modules)`. **ASK** which reserved role from [46](../46-DACORE-EXTRA-CONTRACTS.md) — do not invent a synonym.
+The `<Host>` settings dropdown **MUST** list `DotApp::call('DACore:Plugins@listByContract!', 'template', 'v1')` (or `listByExtra!` / a bound `SELECT`), not `glob(app/modules)`. **ASK** which reserved role from [46](../46-DACORE-EXTRA-CONTRACTS.md) — do not invent a synonym.
 
 ## Re-running after adding a version
 

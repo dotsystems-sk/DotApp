@@ -12,7 +12,6 @@ Canonical: `AIRULES/32-DACORE-RIGHTS.md` §6. Sample: `AIRULES/examples/EX-D10-s
 - **No answer / user says no** → **MUST NOT** add step-up. Ordinary settings Save does not get a 2FA modal.
 - **User names actions** (install package, wipe, grant `dotapp.root`, change a jail) → those only.
 - **MUST NOT** invent it on every settings card “to be safe.”
-- **DAFiles:** settings Save is unlocked by default. Step-up only after the operator enables “require a confirmation code.” Turning that flag **off** is a separate 2FA handler (32 §6). Recursive delete does **not** get invented 2FA.
 
 When the user asked for it, chrome is **one** look (DACore plugin installer):
 

@@ -2,9 +2,9 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6. Renderer: [05-VIEWS-TEMPLATES-ASSETS.md](../05-VIEWS-TEMPLATES-ASSETS.md).
 
-This is a **pack** contract (files only). A host (CMS, Shop) and a theme pack must be able to interoperate from this page alone. There is **no** `{Role}Contract` controller.
+This is a **pack** contract (files only). A named `<Host>` and a template pack must be able to interoperate from this page alone. There is **no** `{Role}Contract` controller.
 
-**CMS host handbook:** when the pack is for **CMS**, also read **`app/modules/CMS/AIRULES/`** (routes CMS listens to, stems, chrome vars). Follow **project AIRULES + that folder together** ([00](../00-AGENT-CONTRACT.md) §2n). This file is the reserved-role I/O; it does **not** list CMS public catch-alls.
+When the named host is installed, the pack author **MUST** read `app/modules/<Host>/AIRULES/` and follow **project AIRULES + host AIRULES together** ([00](../00-AGENT-CONTRACT.md) §2n). The host handbook defines its supported routes, view names, slots, and variables. This generic contract does not assume any optional host or host-specific route catalogue.
 
 ---
 
@@ -22,13 +22,13 @@ This is a **pack** contract (files only). A host (CMS, Shop) and a theme pack mu
 'extra1' => 'template',
 'extra2' => 'v1',
 'extra3' => 'site',
-'extra4' => 'cms',
+'extra4' => 'generic',
 'extra5' => '',
 ```
 
 ```php
 $packs = DotApp::call('DACore:Plugins@listByContract!', 'template', 'v1');
-$shopThemes = DotApp::call('DACore:Plugins@listByContract!', 'template', 'v1', 'shop');
+$siteTemplates = DotApp::call('DACore:Plugins@listByContract!', 'template', 'v1', 'site');
 ```
 
 | extra3 | Meaning |
@@ -45,16 +45,16 @@ $shopThemes = DotApp::call('DACore:Plugins@listByContract!', 'template', 'v1', '
 
 **Kind:** pack. **Controller:** none.
 
-The **host** (CMS / Shop) **MUST NOT** set `extra1=template` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=template` on itself.
 
 ---
 
 ## 2. Discovery (host)
 
 1. Settings `<select>` / `dotSelect2` from `listByContract!('template','v1')`. Optional fourth argument filters `extra3`.
-2. Persist the **selected module name** in the **host’s** settings (example: `Config::module('Cms', 'template_module', 'ThemeBlog')`). **MUST NOT** `UPDATE dacore_modules`.
+2. Persist the **selected module name** in the **host’s** settings (example: `Config::module('HostModule', 'template_module', 'TemplatePack')`). **MUST NOT** `UPDATE dacore_modules`.
 3. Zero packs = empty state. One pack = operator still chooses unless host copy says auto-single.
-4. After pick, the host **probes** `views/public/` on **that** module via Renderer (see §3–§4). There is **no** `TemplateContract`.
+4. After pick, the host **probes** `views/public/` on **that** module via Renderer (see §3–§4). There is **no** `TemplateContract`. The host’s own AIRULES define the supported view-name allow-list and any registration API. **MUST NOT** glob `views/` or read a pack-defined JSON catalogue.
 5. Host **MUST** listen for `module.dacore.plugin_uninstall.veto` when that pack is the selected theme.
 
 Discovery **MUST NOT** boot the pack. **MUST NOT** `include` / `require` the pack’s `about.php`, `module.init.php`, `Installation.php`, or `settings.php` to list or describe it. **MUST NOT** `glob('app/modules')` or `glob` the pack’s `views/`.
@@ -75,10 +75,10 @@ After pick, the host checks that the selected module is still `status = 1` in th
 [
     'ok' => true,
     'contract' => 'v1',
-    'module' => 'ThemeBlog',         // exact module name
+    'module' => 'TemplatePack',      // exact module name
     'modes' => ['blog'],             // extra3 this pack declared
     'views_root' => 'public',        // views/public/ — not a disk path
-    'assets_base' => '/assets/modules/ThemeBlog/',
+    'assets_base' => '/assets/modules/TemplatePack/',
 ]
 ```
 
@@ -101,7 +101,7 @@ Ids that leave PHP toward HTML **MUST** be `{{ enc(...) }}`. Incoming encrypted 
 | `module` | string | Exact `module` from a `listByContract!` row. Whitelist against that list. |
 | `mode` | string | Optional. Expected `extra3` (`site` / `blog` / `shop` / `landing` / `email-html`) |
 
-**Success:** `['ok' => true, 'module' => 'ThemeBlog']`. Host writes **its** settings only.
+**Success:** `['ok' => true, 'module' => 'TemplatePack']`. Host writes **its** settings only.
 
 **Failure:** unknown module (not in the list); mode mismatch → `ok:false`. **MUST NOT** write `dacore_modules`.
 
@@ -123,7 +123,7 @@ Map `name` → `public/{name}` → `app/modules/{Module}/views/public/{name}.vie
 [
     'ok' => true,
     'html' => '…Renderer output…',
-    'module' => 'ThemeBlog',
+    'module' => 'TemplatePack',
     'view' => 'public/article',
 ]
 ```
@@ -151,7 +151,7 @@ Cross-module form: `setView($module . ':public/' . $name)`.
 | `module` | string | Selected pack |
 | `path` | string | Relative file under that pack’s `assets/` (`css/site.css`). No `..` |
 
-**Success:** `['ok' => true, 'url' => '/assets/modules/ThemeBlog/css/site.css']` **only** when the file is under `/assets/modules/{Module}/…`.
+**Success:** `['ok' => true, 'url' => '/assets/modules/TemplatePack/css/site.css']` **only** when the file is under `/assets/modules/{Module}/…`.
 
 **Failure:** path escape, missing file → `ok:false` (no guessed URL).
 
@@ -193,10 +193,11 @@ The **host** may fire **its** hooks when an article is published. The pack **MUS
 
 ## 8. MUST NOT
 
-- Invent `extra1` (`theme`, `theme-pack`, `skin`, `cms-template`)
+- Invent `extra1` (`theme`, `theme-pack`, `skin`, `content-template`)
 - `glob('app/modules')` or `include` the pack to discover it
 - `glob` `views/public/` to invent view names
-- Set `extra1=template` on the CMS / Shop **host**
+- Ship a pack-defined JSON view catalogue instead of using the named host’s documented registration or allow-list mechanism
+- Set `extra1=template` on `<Host>`
 - Pass unescaped user strings into `{{ var: }}`
 - Invent SMTP for `email-html` (use [38](../38-DACORE-EMAIL.md))
 - Leak `getMessage()`, raw disk paths, or request bodies

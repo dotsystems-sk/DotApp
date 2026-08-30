@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6. Linked users: [42](../42-DACORE-USER-ORIGIN.md).
 
-A host (ERP, Shop) and an employee-directory pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `hr`, controller `HrContract`.
+A `<Host>` and an employee-directory pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `hr`, controller `HrContract`.
 
 v1 is **directory lookup**. Payroll, contracts, and national-id cards stay **inside** the pack UI, not this peer. **MUST NOT** return national IDs, salaries, or passwords.
 
@@ -41,7 +41,7 @@ $employees = DotApp::call('DACore:Plugins@listByContract!', 'hr', 'v1', 'employe
 
 **Kind:** peer. **Controller:** `{Module}:HrContract@…!`
 
-The **host** (ERP) **MUST NOT** set `extra1=hr` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=hr` on itself.
 
 ---
 
@@ -198,7 +198,7 @@ If the pack’s own admin persists an employee **outside** this contract, that p
 - Allow `dacore.legacy` when a user link exists internally
 - Leak `getMessage()`, secrets, or request bodies
 - `all()` on a growing employee table
-- Set `extra1=hr` on the ERP **host**
+- Set `extra1=hr` on `<Host>`
 - PHP 8+ syntax unless the plan named a higher version
 
 ---

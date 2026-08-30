@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This page is the **v1 peer contract** for a gallery pack. A host (CMS, Shop) and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+This page is the **v1 peer contract** for a gallery pack. A `<Host>` and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 This role is **not** `filemanager` (jail picker), **not** `slider` (hero / carousel), and **not** `storage`.
 

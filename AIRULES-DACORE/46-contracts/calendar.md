@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop, ERP) and an agenda pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `calendar`, controller `CalendarContract`.
+A `<Host>` and an agenda pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `calendar`, controller `CalendarContract`.
 
 v1 is a **bounded agenda window**. Ticket sales are `events`. Slot booking is `booking`. **MUST NOT** `all()` a growing event table.
 

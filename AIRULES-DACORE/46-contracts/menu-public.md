@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This page is the **v1 peer contract** for a **public website** menu pack. A host (CMS, Shop) and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+This page is the **v1 peer contract** for a **public website** menu pack. A `<Host>` and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 This role is **not** DACore admin sidebar (`dacore_menu`, `DACore:Menu@register`). **MUST NOT** read or write `dacore_menu`.
 
@@ -142,7 +142,7 @@ Each `href` **MUST** be one of:
 
 - a host-relative path starting with `/`, charset `[A-Za-z0-9._:/-]`, no `..`, no `?` from the request, no `#` javascript; or
 - a path the **pack** registered in `initialize()`; or
-- an `https://` URL whose host is on the operator allowlist in **pack** settings (external “Shop” / docs).
+- an `https://` URL whose host is on the operator allowlist in **pack** settings (external “<Host>” / docs).
 
 **MUST NOT:**
 

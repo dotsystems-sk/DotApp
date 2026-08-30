@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop, ERP) and a work-order pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `asset` (register) and **not** `fleet` (vehicles) — those are separate `extra1` roles.
+A `<Host>` and a work-order pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `asset` (register) and **not** `fleet` (vehicles) — those are separate `extra1` roles.
 
 ---
 
@@ -36,7 +36,7 @@ $workorders = DotApp::call('DACore:Plugins@listByContract!', 'maintenance', 'v1'
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 

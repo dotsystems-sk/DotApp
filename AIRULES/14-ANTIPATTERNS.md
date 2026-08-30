@@ -46,6 +46,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Prompt-echo labels / help (“this user can…”) | Product copy a vendor would ship ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) |
 | Stock `.cursorrules` template examples | Trust AIRULES + Renderer.php |
 | `$html .= '<table'` / `listHtml()` / `iconsHtml()` / `treeHtml()` factory in a Controller or Library | `Renderer` + `.layout.php`; PHP prepares data. PHP markup **only** when a template cannot do that **one** piece and `// Why:` names the problem ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1c, [00](00-AGENT-CONTRACT.md) §2j) |
+| Renderer var bag contains `time`, `copy`, `count`, `key`, or another callable value | Prefix keys (`feat_time`, `row_count`); one callable drops the entire bag ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
+| Patch Renderer because a heading renders but `foreach` is empty | Hunt callable names/nested values in the bag first |
+| Renderer-event listener returns HTML | `trigger()` ignores returns; call `$ctx->useReplacement($html)` during `dotapp.renderer.before` for layout/view/rendered code |
 
 ## Database
 
@@ -89,7 +92,9 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `if (Validator::validate(...))` | `if (Validator::validate(...) === true)` |
 | `if (!Email::send(...))` | `if (Email::send(...) !== true)` (returns an array) |
 | `$r = Auth::login(...); $r['error']` | check `$r === false` first |
-| `$request->data()` then `Auth::login` / `createUser` / store HTML | `$request->data(true)` — `protect()` rewrites `)`, `=`, `%` ([19](19-VALIDATION-AND-INPUT.md)) |
+| `$request->data()` then persist URL/setting/title/password/HTML | `$request->data(true)` + SQL bindings — `protect()` rewrites `)`, `=`, `%` ([19](19-VALIDATION-AND-INPUT.md)) |
+| `$request->data()['id']` for a `$dotapp().load()` payload | unwrap original nested `$request->data(true)['data']` ([00](00-AGENT-CONTRACT.md) §2q) |
+| Handled save/delete failure returned as HTTP 400/500 | HTTP 200 + `status: 0` + product `message`; reserve transport status for CRC/auth failures |
 | Login `ajaxReply` 400 with no toast | **MUST** show `reply.message` (`crcCheck`, `form()` `null`/`false`, `login === false`) |
 | `$request->form($n, $ok)` only | add the error callback, guard `null`/`false` |
 | Trusting a rendered view is non-empty | missing view returns `""` |
@@ -107,6 +112,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `initializeRoutes() => ['*']` without a global job | Own prefixes + `--optimize-modules`. Listener map may be narrower ([03](03-MODULES-AND-ROUTING.md)) |
 | Wake `/{path*}` then skip `/admin` only in `initializeCondition` | `{not:/admin*\|/api/v1*}` **on the wake string** ([03](03-MODULES-AND-ROUTING.md)) |
 | `Router` / wake from Config before `defaultSettings()` | Call `defaultSettings()` first ([00](00-AGENT-CONTRACT.md) §2m) |
+| Raw `Crypto::encrypt()` / `{{ enc }}` in a URL path | base64url-seal to `[A-Za-z0-9_-]+`; raw `%2F` may become a slash ([11](11-AUTH-AND-CRYPTO.md) §8) |
+| `ksort` / `krsort` an installer version map | Keep written dependency order; uninstall reverses it ([07](07-SCHEMA-AND-INSTALL.md)) |
 | Pack registers the host’s public catch-alls | Read `app/modules/<Host>/AIRULES/` first ([00](00-AGENT-CONTRACT.md) §2n) |
 | `Events::trigger('dotapp.catchall', …)` | **Core** already fires it on every other `trigger()` — subscribe with `Events::on('dotapp.catchall', …)` ([01](01-ARCHITECTURE.md)) |
 | Heavy / throwing `dotapp.catchall` listener | cheap + own `try/catch` — a throw **aborts the original event** ([23](23-DEBUG-PLAYBOOK.md) §1c) |

@@ -77,6 +77,17 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 22. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. Packs read that handbook first. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2p.
 23. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** and implement **from that folder**. Chat-only / one-file plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2o, §2p, [45](45-MODULE-PLANNING.md).
 24. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. Canonical: [00](00-AGENT-CONTRACT.md) §2p.
+25. **No unsolicited browser (LAW):** **MUST NOT** live-click admin/public pages (MCP browser / CDP) to prove Save/Delete. Finish-gate grep + source UX + a short click list for the operator. Browser only if they asked or said yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r.
+
+## What's New (2026-08-30)
+
+### No unsolicited browser
+
+Agents **MUST NOT** drive a live browser to prove admin/public Save/Delete. Finish-gate grep + source UX. Give the operator a click list. Browser only if they asked or said yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r, [33](33-DACORE-PAGES-AND-UI.md) §12, compact `25-no-unsolicited-browser.mdc`.
+
+### Renderer lifecycle events
+
+Core `dotapp.renderer.before` / `dotapp.renderer.after` events carry `RendererLifecycleContext` contract 1. A before-listener substitutes layout/view/rendered-code output only with `useReplacement()`; listener returns are ignored, and custom/after events are observe-only. Canonical: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5, [EX-18](examples/EX-18-renderer-lifecycle.md).
 
 ## What's New (2026-08-26)
 
@@ -85,14 +96,10 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 Agents look in **folders**, not in one Cursor chat file. Priority (1 wins):
 
 1. Project `AIRULES/` — always. Hard laws. A host handbook cannot skip CRC / PHP 7.4+ / DACore ban / finish gate.
-2. `app/modules/<Host>/AIRULES/` — only when this work **extends** that host (CMS templates, payment packs). How to write a pack. **MUST NOT** weaken 1.
+2. `app/modules/<Host>/AIRULES/` — only when this work **extends** that host (for example, template or payment packs). How to write a pack. **MUST NOT** weaken 1.
 3. `app/modules/<This>/PLAN/` — portable plan of **the module you are building**. Split files. **MUST NOT** weaken 1 or 2.
 
-A pack for a finished CMS writes **`PLAN/html/`** as a standalone site first (no CMS PHP). After the user **approves** that HTML, it reads `CMS/AIRULES/` 01 and implements the pack. **MUST NOT** open `CMS/PLAN/`. Building CMS itself writes **both** `CMS/AIRULES/` (for future packs) and `CMS/PLAN/` (for CMS development).
-
-### CMS templates — HTML-first
-
-A new or rewritten public theme **MUST** be a clean static HTML template (`PLAN/html/`: subpages, hard-filled texts, vanilla CSS/JS) **before** it becomes a CMS pack. The user reviews that site in a browser and **approves** it. Only then map it onto CMS stems/views. Canonical: `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`, compact `AIRULES/cursor/rules/20-cms-template-plan.mdc`.
+Pack-specific workflows belong in the named host’s own `AIRULES/` and travel with that host. A pack **MUST NOT** open the host’s `PLAN/`. Building a host itself writes both `app/modules/<Host>/AIRULES/` (for future pack authors) and `app/modules/<Host>/PLAN/` (for host development).
 
 Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2o, §2p, [45](45-MODULE-PLANNING.md).
 
@@ -177,7 +184,7 @@ The framework uses **four different failure styles**. That is why [18-ERROR-HAND
 - `Email::send()` returns an **array of error strings**, not `false`
 - a missing template renders **`""`** with no exception
 - `Auth::login()` returns **`false`** on bad input
-- `$request->data()` is **protected**; passwords/HTML **MUST** use `$request->data(true)` ([19](19-VALIDATION-AND-INPUT.md))
+- `$request->data()` is **protected**; persist / passwords / HTML / URLs **MUST** use `$request->data(true)` — SQL write is named / `?` bindings, not `protect()` ([19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md))
 
 ## What AIRULES is not
 

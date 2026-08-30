@@ -21,7 +21,7 @@ When the user asks to zip / pack a **DACore-bound** module:
 
 ```powershell
 Copy-Item AIRULES\examples\EX-D09-dacore-pack-zip.php.txt .\dacore-pack-zip.php
-php dacore-pack-zip.php DAFiles 1.2.0
+php dacore-pack-zip.php ExampleModule 1.2.0
 Remove-Item .\dacore-pack-zip.php
 ```
 

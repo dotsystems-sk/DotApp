@@ -40,7 +40,7 @@ $blocks = DotApp::call('DACore:Plugins@listByContract!', 'page-builder', 'v1', '
 
 **Kind:** peer. **Controller:** `{Module}:PageBuilderContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=page-builder` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=page-builder` on itself.
 
 ---
 
@@ -178,7 +178,7 @@ The host owns the public URL and `withMenu` / public layout. After pick it calls
 
 Optional `builder_js`: host loads it via `$css` / `$js`. The pack implements `$dotapp().fn` — **MUST NOT** copy DACore JS. Saves on the builder screen are pack HTTP (`/api/v1/auth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!`); those actions **MUST NOT** `crcCheck()` again. Then the action **MAY** persist and later `renderPage` stays in-process.
 
-`editor` is a different `extra1`. A page-builder pack **MUST NOT** set `extra1=editor`. A CMS **MAY** pick both modules.
+`editor` is a different `extra1`. A page-builder pack **MUST NOT** set `extra1=editor`. A `<Host>` **MAY** pick both modules.
 
 After AJAX save on the same page: patch `reply.html` + toast — **MUST NOT** `location.reload()`. Overlay until the request ends.
 

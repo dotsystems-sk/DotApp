@@ -1,6 +1,6 @@
 # 46 — DACore reserved `extra1`…`extra5` and peer contracts (**MUST**)
 
-`dacore_modules.extra1`…`extra5` are **short discovery tokens** copied from a package `about.php` at ZIP install/update. They exist so a **host** (CMS, Shop, ERP) can **find installed packs by role** without booting them.
+`dacore_modules.extra1`…`extra5` are **short discovery tokens** copied from a package `about.php` at ZIP install/update. They exist so a named **`<Host>` module** can **find installed packs by role** without booting them.
 
 DACore owns the **reserved** `extra1` vocabulary. This file is the **index**: slot grammar, discovery, universal peer rules, and a table of every reserved role.
 
@@ -8,7 +8,7 @@ DACore owns the **reserved** `extra1` vocabulary. This file is the **index**: sl
 
 Agents **MUST NOT** invent a competing token (`files`, `media`, `fm`, `theme-pack`) when a reserved role already exists.
 
-A **host** that picks packs **MUST** keep `app/modules/<Host>/AIRULES/` so a pack does not invent routes that host never listens to. When that folder exists, follow **project AIRULES + those files** ([00](00-AGENT-CONTRACT.md) §2n). CMS: `app/modules/CMS/AIRULES/`.
+A **host** that picks packs **MUST** keep `app/modules/<Host>/AIRULES/` so a pack does not invent routes, slots, or capabilities that host never exposes. When that named host is installed, pack work **MUST** read that folder and follow **project AIRULES + host AIRULES together** ([00](00-AGENT-CONTRACT.md) §2n). This generic index does not assume any optional host is installed.
 
 Machine catalog (same tokens): `DACore\Libraries\ExtraContracts` and `DotApp::call('DACore:Plugins@listByContract!', $role, 'v1')`.
 
@@ -40,7 +40,7 @@ Canonical discovery helper: [35](35-DACORE-INSTALL.md) §3c. Sleep law: [03](03-
 
 **MUST:**
 
-- Omit unused keys (empty columns). A normal Shop / CMS **host** often has **no** extras
+- Omit unused keys (empty columns). A normal `<Host>` often has **no** extras
 - **ASK** when planning a **pack**: “Which **reserved** `extra1` from this file?” Do not invent a synonym
 - **ASK** when planning a **host** that picks packs: which reserved role it will list (`filemanager`, `template`, …). Packs **MUST** use that exact string
 - Re-install / update the pack after changing extras — flags are stored at install, not read live from disk on every request
@@ -48,7 +48,7 @@ Canonical discovery helper: [35](35-DACORE-INSTALL.md) §3c. Sleep law: [03](03-
 
 **MUST NOT:**
 
-- Set `extra1` of the host’s own role on the host (`template` on the CMS, `filemanager` on the file manager host itself, `shop` on Shop)
+- Set a selected pack role on the host itself (`template` on `<Host>`, or `filemanager` on a host that selects file-manager packs)
 - `UPDATE dacore_modules` from your module (installer + `about.php` only)
 - Use extras instead of `DACore:Rights@*`
 - Put HTML, URLs, JSON blobs, passwords, or a comma-separated list of roles in extra*
@@ -92,7 +92,7 @@ After the operator picks a module, the host **MAY** `DotApp::call('{Module}:{Rol
 
 **B. Peer contracts:** discover with extras, then `DotApp::call('{Module}:{Role}Contract@method!')`. DACore does **not** dispatch the call (unlike `Sms@send`).
 
-Administration skins stay on extras and **fixed files** (no peer controller): `dacore.admin-skin` / `v1` / `css` or `shell-css` — [33](33-DACORE-PAGES-AND-UI.md) §11.
+Administration skins stay on extras and **fixed files** (no peer controller): `dacore.admin-skin` / `v1` / `css`, `shell-css`, or `assets` — [33](33-DACORE-PAGES-AND-UI.md) §11.
 
 ---
 
@@ -106,11 +106,11 @@ Administration skins stay on extras and **fixed files** (no peer controller): `d
 
 | extra1 | extra3 | Deep contract |
 |--------|--------|---------------|
-| `dacore.admin-skin` | `css` \| `shell-css` | [46-contracts/dacore.admin-skin.md](46-contracts/dacore.admin-skin.md) |
+| `dacore.admin-skin` | `css` \| `shell-css` \| `assets` | [46-contracts/dacore.admin-skin.md](46-contracts/dacore.admin-skin.md) |
 | `template` | `site` \| `blog` \| `shop` \| `landing` \| `email-html` | [46-contracts/template.md](46-contracts/template.md) |
 | `locale` | language code (`sk`, `en`, …) | [46-contracts/locale.md](46-contracts/locale.md) |
 
-### 5b. Web / CMS peers
+### 5b. Web peers
 
 | extra1 | extra3 | Controller | Deep contract |
 |--------|--------|------------|---------------|
@@ -228,7 +228,7 @@ Full I/O lives in the role file. These notes only stop agents from picking the w
 - **template / locale / dacore.admin-skin** — no `{Role}Contract`; see their pack-only files
 - **newsletter send** is still `DACore:Email@send!` — [newsletter.md](46-contracts/newsletter.md)
 - **maps** is not IP geo — [maps.md](46-contracts/maps.md)
-- **catalog** is not the Shop **host** — [catalog.md](46-contracts/catalog.md)
+- **catalog** is a satellite role, not the host’s own catalogue — [catalog.md](46-contracts/catalog.md)
 
 ---
 

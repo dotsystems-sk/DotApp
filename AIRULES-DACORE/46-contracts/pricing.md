@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, ERP, POS) and a price-list pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `pricing`, controller `PricingContract`.
+A `<Host>` and a price-list pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `pricing`, controller `PricingContract`.
 
 This role is **list / promo quotes**. Tax is `tax`. FX is `currency`. Capture is `payment`. Do not invent a second money float.
 
@@ -42,7 +42,7 @@ $promo = DotApp::call('DACore:Plugins@listByContract!', 'pricing', 'v1', 'promo'
 
 **Kind:** peer. **Controller:** `{Module}:PricingContract@…!`
 
-The **host** (Shop, ERP) **MUST NOT** set `extra1=pricing` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=pricing` on itself.
 
 ---
 
@@ -182,7 +182,7 @@ Most packs fire **nothing** for v1 host `quote`. Document any event in the pack 
 - Leak `getMessage()`, cost markup, or competitor lists
 - `all()` on a growing price table then filter in PHP
 - Redeem a coupon code here (`coupon` role)
-- Set `extra1=pricing` on the Shop **host**
+- Set `extra1=pricing` on `<Host>`
 - PHP 8+ syntax unless the plan named a higher version
 
 ---

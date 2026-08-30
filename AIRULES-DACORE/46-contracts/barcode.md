@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop, ERP, warehouse) and a barcode-render pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+A `<Host>` and a barcode-render pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 This role is **not** `label` (shipping label PDF) and **not** `pdf` (document render). A barcode pack only encodes a short payload into an image.
 
@@ -38,7 +38,7 @@ $code128 = DotApp::call('DACore:Plugins@listByContract!', 'barcode', 'v1', 'code
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 

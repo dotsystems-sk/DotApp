@@ -1,0 +1,33 @@
+---
+description: LAW — admin load/form nested data + HTTP 200; one class of bug → hunt the whole module
+alwaysApply: true
+---
+
+# Admin AJAX + same class of bug (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2q, `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3, `AIRULES/33-DACORE-PAGES-AND-UI.md` §9.
+
+Do **not** write this only under `.cursor/`. Source is this file.
+
+## How “Request failed” happens (DACore admin)
+
+1. `$dotapp().load(url, "POST", { rule, enabled })` posts `{ data: { rule, enabled, csrf… }, crc }` — not a flat object.
+2. PHP `$request->data()['rule']` is empty. Decrypt / validate fails.
+3. `ajaxReply(..., 400)` or `500` in `catch`.
+4. `dotapp.js` `fetch` treats HTTP 400/500 as onError. Toast = **Request failed**. `reply.message` never shows.
+5. `$request->form()` nests the same way. `load()` onError is `(httpStatus, bodyText)`, not success `(raw)`.
+
+## MUST
+
+- Unwrap (`formBag` / `posted()` of `$request->data()`, or the `form()` bag).
+- Admin `form()` / `load()` product outcomes: HTTP **200** + `status` 0|1 + `message`.
+- When this class (or any similar class: same unwrap, HTTP code, toast, CRC hole) is found in **one** place: grep **this module** and fix **every** sibling in the same chunk (`$request->data()[`, `ajax(..., 400)`, `ajax(..., 500)`, every `load` / `loadJson` URL vs its action).
+- **MUST NOT** ship “Disable works, Delete still 400”.
+
+## MUST NOT
+
+- Read `$request->data()['id']` as if `load()` posted a flat object.
+- Product-fail a `load()` / `form()` action as HTTP 400/500 “to be RESTful”.
+- Fix only the reported button.
+
+Middleware 403 (anonymous / rights) and prefix CRC 400 stay as they are.

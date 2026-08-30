@@ -86,6 +86,8 @@ Events::triggerWithVeto($event, $result, ...$data);   // first Veto or null
 
 **`dotapp.catchall` (core, DotApp 2.0):** every `trigger($name, $result, …$data)` except `dotapp.catchall` itself first fires `dotapp.catchall` with `($result, $name, …$data)`. That is the **one** place a debugger / event tracer **MUST** subscribe to see every event. Do **not** trigger `dotapp.catchall` yourself. A throw in that listener aborts the original event. Distinct from `dotapp.catch` (module-fired failures — [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9) and from **`module.{mod}.{name}.hook`** (business steps — [41](41-MODULE-HOOKS.md)). Canonical: [01](01-ARCHITECTURE.md) Built-in events, [23](23-DEBUG-PLAYBOOK.md) §1c.
 
+**Renderer lifecycle (contract v1):** `dotapp.renderer.before` and `dotapp.renderer.after` each receive one `RendererLifecycleContext`. A `before` listener may call `$ctx->useReplacement($html)` for `layout`, `view`, or rendered `code`; returning HTML from the listener does nothing because `trigger()` ignores returns. `custom` renderers are observe-only, and `after` reads the final `$ctx->output()`. Full contract: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5.
+
 **Your `module.{mod}.{name}.hook` names (MUST judge):** fire **only** when another module could log, show history, or sync (SMS/mail sent, payment, lockout). Name: `module.{lowercase_modulename}.{hook_name}.hook`. **MUST** document it in `app/modules/<YourModule>/.hooks` and put `Hook:` / `Why:` / `About:` / `Params:` / `Use:` above `trigger()`. **MUST NOT** fire on every save. **MUST NOT** skip a **decided** hook because `hasListener` is false. Listener returns on `trigger()` are **ignored** (not a veto). No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md). Sample: [EX-16](examples/EX-16-module-hooks.md).
 
 ---
@@ -199,7 +201,8 @@ Module middleware classes extend `ModuleMiddleware` and are referenced as `#Modu
 | `Router::apiPoint($ver, $modul, $controller, $custom = null)` | chain |
 | `Router::hasRoute(...)` | **inverted** — `false` means the route *would* match |
 | `Router::matched()` | `bool` |
-| `Router::reset()` | void |
+| `Router::reset(false)` | void — unlock matching; retain the old route/hooks as fallback until a later route matches, then replace atomically |
+| `Router::reset(true)` | void — immediately clear routes, resources, error handlers, occupied records, hooks, reserved paths, and route-specific limiter state |
 | `Router::match_url($route, $url = false, $static = false)` | params `array` or `false` |
 
 404 handling: the `dotapp.router.resolve.404` listener wins; otherwise `errorHandle(404, $view)` renders `error_{$view}`; otherwise an empty 404 and `die()`. **HTTP 405 is not implemented.**

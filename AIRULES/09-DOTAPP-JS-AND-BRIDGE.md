@@ -86,6 +86,14 @@ $dotapp().load(url, "POST", { id: $dotapp(el).attr("data-id") },
 
 `$dotapp().parseReply(text)` is required because PHP `ajaxReply()` returns **base64-encoded JSON**.
 
+### Nested `data` + HTTP 400 = “Request failed” (**MUST**)
+
+`$dotapp().load(url, "POST", { rule: token, enabled: "0" })` does not post a flat object. Its body is `{ data: { rule, enabled, csrf… }, crc }`; secure forms nest fields the same way. Reading `$request->data()['rule']` misses the value. Also, a handled product failure returned as `ajaxReply(..., 400|500)` takes `load()`’s transport-error path, whose arguments are `(httpStatus, bodyText)`, so the user usually sees generic “Request failed” instead of `reply.message`.
+
+**MUST:** unwrap the posted/form bag (`$request->data(true)['data']` or the validated `form()` result). Handled product outcomes use HTTP **200** + `status` 0|1 + `message`; real transport/auth failures such as CRC 400 and login/rights 403 keep their status.
+
+When one action has this class of bug, grep every `load()` / `form()` sibling and its PHP action in **this module**. Fix all flat reads, product-level 400/500 replies, missing messages, and matching error callbacks in the same chunk. Canonical: [00](00-AGENT-CONTRACT.md) §2q.
+
 Form submits are routed through this pipeline automatically unless the form has `data-dotapp-nojs`. **There is no full-page reload.** If `.after()` / the `load` callback does not update the DOM, the user sees nothing until they refresh — that is a **bug**.
 
 Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms. **Files:** `$dotapp().uploadFile` — never hand-built `FormData` on `load()` / `<fo-rm>`.

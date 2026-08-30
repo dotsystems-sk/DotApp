@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, POS) and a checkout pack must be able to interoperate from this page alone.
+A `<Host>` and a checkout pack must be able to interoperate from this page alone.
 
 ---
 
@@ -36,7 +36,7 @@ $api = DotApp::call('DACore:Plugins@listByContract!', 'checkout', 'v1', 'api');
 
 **Kind:** peer. **Controller:** `{Module}:CheckoutContract@…!`
 
-The **host** (Shop) **MUST NOT** set `extra1=checkout` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=checkout` on itself.
 
 Payment / tax / shipping / cart are **other** reserved roles. This pack **MAY** `DotApp::call` those contracts **only after** the host picked each module (`listByContract!`). **MUST NOT** invent `extra1` (`pay`, `psp`, `tax-engine`).
 
@@ -99,7 +99,7 @@ Ids that leave PHP toward HTML **MUST** be `{{ enc(Pack.checkout.id): $id }}` wi
 | Arg / key | Type | Meaning |
 |-----------|------|---------|
 | `$cartRef` | string | Cart token or ciphertext from the **host-picked** cart pack (`CartContract@get`) |
-| `$opts['host']` | string | Host module name (`Shop`). Required for `session`. `DSM::use($host)` |
+| `$opts['host']` | string | Host module name (`<Host>`). Required for `session`. `DSM::use($host)` |
 | `$opts['visitor']` | string | Optional bound visitor token the host already resolved. Length ≤ 64 |
 | `$opts['currency']` | string | Optional ISO-4217 on the pack whitelist |
 
@@ -204,7 +204,7 @@ $pay = DotApp::call(
 - Leak `getMessage()`, PAN, or gateway tokens
 - Put a plain `checkout_id` in HTML
 - PHP 8+ syntax unless the plan named a higher version
-- Set `extra1=checkout` on the Shop **host**
+- Set `extra1=checkout` on `<Host>`
 
 ---
 

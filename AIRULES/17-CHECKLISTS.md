@@ -45,6 +45,8 @@
 - [ ] VIEW is the outer file; `setLayout` + `renderView()` fills `{{ content }}` in that view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b)
 - [ ] **HTML via Renderer:** pages / tables / grids / empty states / pager chrome / trees / crumbs / AJAX fragments are `.layout.php` via `Renderer`. No `$html .= '<table'` / `*Html()` factory in Controllers/Libraries unless `// Why:` names a one-piece exception ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
 - [ ] Layouts via `{{ layout:... }}` / Renderer setLayout
+- [ ] Renderer var bags contain no callable names/nested values (`time`, `copy`, `count`, `key`, `header`); empty `foreach` was not “fixed” by patching Renderer ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5)
+- [ ] Renderer lifecycle listeners use `RendererLifecycleContext`; replacement is `useReplacement()` only in `before` for layout/view/rendered code; listeners have explicit routes and do not log output/secrets
 - [ ] Assets via `/assets/modules/{Module}/...`
 - [ ] Script `/assets/dotapp/dotapp.js` before module JS
 - [ ] User-visible strings are product copy — not prompt-echo / “this user can…” ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8)
@@ -61,6 +63,7 @@
 - [ ] `$qb->raw()` has no `?` except real bindings (not in comments / `COMMENT '…'`) ([06](06-DATABASE.md))
 - [ ] After a new version, `installed_*_install.php` renamed back to `install.php` ([07](07-SCHEMA-AND-INSTALL.md))
 - [ ] Installer DDL: probe (`SHOW TABLES LIKE` / `information_schema`) then `CREATE TABLE` / `ALTER TABLE` — **no** `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0)
+- [ ] Installer/uninstaller version maps remain in written dependency order; no `ksort` / `uksort` / `krsort` / `usort` ([07](07-SCHEMA-AND-INSTALL.md))
 - [ ] **All module tables named `{lowercase_modulename}_*`** (Shop → `shop_items`) — never `items` or `dotapp_*`
 - [ ] Transactions wrapped in `try/catch` with `rollback()`
 - [ ] Growing lists (users, logs, items, orders) use `paginate()` on **first ship** — not `->all()` into the view; “few rows now” is not a skip ([06](06-DATABASE.md))
@@ -75,7 +78,7 @@
 - [ ] `$request->form(...)` has an error callback and `null`/`false` guards
 - [ ] `Email::send` checked with `!== true` (returns an array of errors)
 - [ ] `Auth::login` checked for `false` before array access; login/install **shows** every failure (`crcCheck`, `form()` `null`/`false`, `false` login)
-- [ ] Passwords / HTML / hashes from `$request->data(true)` — not `$request->data()` ([19](19-VALIDATION-AND-INPUT.md))
+- [ ] Every persisted URL/setting/title/token/password/HTML/hash comes from `$request->data(true)` and is SQL-bound — protected `data()` is not stored ([19](19-VALIDATION-AND-INPUT.md))
 - [ ] AI / SchemaBuilder / raw DDL wrapped in `try/catch`
 - [ ] Persist / save handlers wrapped in `try/catch` (`\Throwable`) — log + structured reply, never leak `$e->getMessage()`
 - [ ] Renderer output checked for `''` (missing view fails silently)
@@ -95,6 +98,7 @@
 - [ ] JS: `$dotapp().form` + `parseReply` + **MUST** block while in flight (**module preloaders**; desktop **and** mobile; remove overlay on success **and** error)
 - [ ] Success **MUST** patch the DOM (`reply.html` / data) + short toast — no `location.reload()` while staying on the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md))
 - [ ] Row actions (toggle/delete/reorder/drag-and-drop) use `$dotapp().load()` + encrypted `data-*` — **not** one `<fo-rm>` per button
+- [ ] `load()` / secure-form fields are unwrapped from nested `data`; handled product outcomes return HTTP 200 + `status` 1|0 + `message`; same-class siblings were hunted ([00](00-AGENT-CONTRACT.md) §2q)
 - [ ] PHP: `crcCheck()` **once** (API prefix **or** action) then `form([...], "handler", ...)` then `ajaxReply` — **never both** ([08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md))
 - [ ] Passwords / HTML from `$request->data(true)` — not `$request->data()` ([19](19-VALIDATION-AND-INPUT.md))
 - [ ] Failures show `reply.message` (including `crcCheck` / `form()` reject / `Auth::login === false`)
@@ -152,18 +156,22 @@ Tick only the rows for the surface you touched.
 **MUST** after **every** code chunk. **MUST NOT** claim done until every applicable row was actually grepped — not imagined.
 
 - [ ] Grepped `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before` / `Middleware::`), Controllers — **one** call per POST (API prefix **XOR** action). Not on GET/HTML login `before`. Not on `$request->upload()`. New public controller/middleware methods start PHPDoc with **`CRCchecking —`** matching that layer ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7)
-- [ ] No plain record IDs in HTML/JSON (`value="7"`, `data-id="7"`, `{{ var: $id }}` as an id) — `{{ enc(Shop.item.id): $id }}` unique `$key2`; decrypt `=== false` rejected; PHP still `Auth::can` / ownership ([11](11-AUTH-AND-CRYPTO.md) §8)
+- [ ] No plain record IDs in HTML/JSON; unique `$key2`; URL path tokens additionally sealed to `[A-Za-z0-9_-]+`; decrypt `=== false` rejected; PHP still checks rights/ownership ([11](11-AUTH-AND-CRYPTO.md) §8)
 - [ ] Privilege / records grepped: secrets not in read-only views; SQL has owner (or can on that row); no escalate; public noauth bot **warning** if applicable ([11](11-AUTH-AND-CRYPTO.md) §11)
 - [ ] Queries use bindings; no user input in SQL strings; `$qb->raw()` has no `?` except real bindings ([06](06-DATABASE.md))
-- [ ] Passwords / HTML / hashes from `$request->data(true)`; persist re-checked in **PHP** (rights, validation, 2FA) — FE overlay is not the gate ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md))
+- [ ] Persisted URLs/settings/titles/tokens/passwords/HTML/hashes from `$request->data(true)`; persist re-checked in PHP ([19](19-VALIDATION-AND-INPUT.md), [08](08-FORMS-AND-SECURITY.md))
 - [ ] Middleware vs action: no double CRC; login `before` + handlers **inside** `Auth::isLogged()`; no CRC on a GET gate ([03](03-MODULES-AND-ROUTING.md))
 - [ ] **Visible outcome:** every save/toggle/delete shows success **and** fail. Field errors: PHP `errors` + mark the input (red + message on the field). Your own toast/status — never silent `.after()` ([00](00-AGENT-CONTRACT.md) §2d)
+- [ ] **Layout / UX:** action controls have space on all sides, especially below as final card/modal content; intentional alignment; mobile touch/wrap/overflow checked ([00](00-AGENT-CONTRACT.md) §2f)
+- [ ] **AJAX class:** nested data unwrapped; handled outcomes use HTTP 200 + `status`; every sibling handler checked ([00](00-AGENT-CONTRACT.md) §2q)
 - [ ] **Catch reported:** grepped `catch (` and `execute(` in this chunk — each one reports `dotapp.catch` + `dotapp.catch.error|info` with the fixed payload and no secrets ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9)
 - [ ] **Perf / readability pass** run on this chunk — [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8 (`->all()`, query in `foreach`, `select('*')`, O(n²), missing index for a new `WHERE`/`ORDER BY`, tags-only PHPDoc, comments that restate the code)
 - [ ] **Hooks:** grepped `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` — useful side-effects (SMS/mail/paid/lockout) use `module.{mod}.{name}.hook` + `Hook:`/`Why:`/`Params:`/`Use:` block; **no** hook on a trivial save; no old `shop.item.saved` shape; no secrets; no `trigger()` inside a growing `foreach`; `.hooks` is not under `assets/`; pre-action stop uses `triggerWithVeto()` + `Veto`, not `return false` ([41](41-MODULE-HOOKS.md), [00](00-AGENT-CONTRACT.md) §2g)
 - [ ] **Extender (judge):** not on every method. If opted in: owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; marker is never returned/serialized; no `next()`; `extend()` in `Listeners::register()`; target URLs in explicit `Listeners::initializeRoutes()`; Module map has only own URLs or `[]`; controller string preferred; no listener `['*']` just to attach; no `.loaded` for initialize-time points; no `$request`/secrets; not Events; no duplicate registration ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h)
 - [ ] **PHP 7.4+:** grepped the chunk for PHP 8+ syntax (`match`, `?->`, `str_contains`, `str_starts_with`, `str_ends_with`, `#[`, `enum `, `readonly `, `: mixed`) unless the plan named a higher version ([00](00-AGENT-CONTRACT.md) §2i)
 - [ ] If `Installation.php` / store `ensureTable` is in this chunk: no `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`; table/column/index added only after a PHP probe ([07](07-SCHEMA-AND-INSTALL.md) §0)
+- [ ] If installer maps changed: no sorting; keys remain in written dependency order and uninstall reverses that order ([07](07-SCHEMA-AND-INSTALL.md))
+- [ ] No browser/CDP/screenshot click-through unless the user explicitly asked or said yes ([00](00-AGENT-CONTRACT.md) §2r)
 - [ ] **HTML via Renderer:** grepped Controllers/Libraries for `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factories — screen/fragment markup is a layout. A PHP HTML string has `// Why:` naming a one-piece exception, never a whole list ([00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c)
 - [ ] **Cursor rules:** no new `.mdc` exists only under `.cursor/rules/`; `AIRULES/cursor/rules/*.mdc` were copied into `.cursor/rules/` this session / after an AIRULES rule change ([00](00-AGENT-CONTRACT.md) §2l)
 - [ ] **defaultSettings / routes:** `defaultSettings()` exists; called at the start of `initializeRoutes()` (before `return`) and at the start of `initialize()`. Wake/`Router` paths are not built from Config another module fills later. No hardcoded foreign fallback. Foreign path needed before they run uses a literal URL this module owns ([00](00-AGENT-CONTRACT.md) §2m, [03](03-MODULES-AND-ROUTING.md))

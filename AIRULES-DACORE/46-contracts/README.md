@@ -16,7 +16,7 @@ Agents **MUST NOT** invent a new `extra1`. Missing role → ASK, then add to 46 
 | `template` | [template.md](template.md) |
 | `locale` | [locale.md](locale.md) |
 
-## Web / CMS peers
+## Web peers
 
 | extra1 | File |
 |--------|------|

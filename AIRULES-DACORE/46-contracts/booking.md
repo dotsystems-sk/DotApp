@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop, ERP) and a reservation-slot pack must be able to interoperate from this page alone.
+A `<Host>` and a reservation-slot pack must be able to interoperate from this page alone.
 
 ---
 
@@ -36,7 +36,7 @@ $slot = DotApp::call('DACore:Plugins@listByContract!', 'booking', 'v1', 'slot');
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 

@@ -165,6 +165,16 @@ Law: [35](35-DACORE-INSTALL.md) §2, [00](00-AGENT-CONTRACT.md) §5 item 27.
 
 ---
 
+## 16. Encrypted id in the path → Apache “Not Found”
+
+`Crypto::encrypt` is standard base64 (`+` `/` `=`). A DACore-bound edit URL like `/{prefix}/{Module}/products/{token}` percent-encodes `/` as `%2F`. Apache treats that as a **slash** and returns **Not Found** before PHP. The token is still correct AES — the **alphabet** is wrong for a path.
+
+**Fix in the current module:** seal `+/` → `-_`, strip `=`; open before decrypt and still accept leftover standard `{{ enc }}` tokens. **MUST NOT** put `{{ enc }}` into a path `href`. **MUST NOT** patch DACore or `app/parts/` for this.
+
+Law: [11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13.
+
+---
+
 ## Priority order when docs disagree
 
 1. DACore source under `app/modules/DACore/` — **read-only by default**. Do not edit or add files there (updates wipe them) unless the user **themselves** asked and confirmed the wipe ([00](00-AGENT-CONTRACT.md) §1). **MUST NOT propose** that edit.

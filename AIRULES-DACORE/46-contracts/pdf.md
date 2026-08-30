@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop, ERP, invoice) and a PDF-render pack must be able to interoperate from this page alone.
+A `<Host>` and a PDF-render pack must be able to interoperate from this page alone.
 
 ---
 

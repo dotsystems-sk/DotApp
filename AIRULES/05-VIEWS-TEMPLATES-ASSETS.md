@@ -306,11 +306,40 @@ renderView / renderLayout / renderCode
   → RenderingIsolator (sandbox + eval)
 ```
 
-### Sandbox
+### Sandbox (**MUST** — silent empty lists)
 
-Dangerous functions (`eval`, `exec`, `system`, `file_*`, `curl_*`, `mail`, `header`, `extract`, `call_user_func*`, …) are **silently stripped** from template PHP. If a template call "does nothing", that is why. Put logic in controllers.
+`RenderingIsolator` (and `PrivateBlock::set`) is a security sandbox. **MUST NOT** patch `app/parts/Renderer.php` to “fix” it. Work around in the module.
 
-Eval failure prints `ERROR WHILE EVAL: ...` into the output.
+#### A. Template PHP calls are stripped
+
+Dangerous calls (`eval(`, `exec(`, `system(`, `file_*`, `curl_*`, `mail(`, `header(`, `extract(`, `call_user_func*`, `copy(`, `unlink(`, … — see `RenderingIsolator::phpsandbox_disabled()`) are **silently removed** from compiled template PHP. Put logic in controllers. Eval failure prints `ERROR WHILE EVAL: ...` into the output.
+
+#### B. Whole vars are dropped before eval
+
+Before extract, every variable name and every nested value must pass `is_callable($value) === false`. One callable name/value skips that **entire** `setViewVar`, `setLayoutVar`, or `PrivateBlock::set` bag without a warning. PHP considers strings such as `time`, `date`, `key`, `count`, `sort`, `reset`, `copy`, `header`, `trim`, `explode`, and `['ClassName', 'method']` callable.
+
+**Symptom:** a card heading or separate flag renders, but a `foreach` prints no rows because its bag was dropped.
+
+**MUST:** prefix risky keys (`feat_time`, `row_count`, `show_date`) and keep flags in separate `0`/`1` vars. If the sandbox makes one tiny templated piece impossible, the [§1c](#1c-html-via-renderer-must--law) exception still permits only one short escaped chip with a `// Why:` comment — never a table/list factory.
+
+**MUST NOT** put PHP function names in the bag or patch Renderer for an empty `foreach`. Grep the bag for callable names first.
+
+### Renderer lifecycle events (contract v1)
+
+Every `renderLayout()`, `renderView()`, and `renderCode()` fires:
+
+| Event | Context phase | Purpose |
+|-------|---------------|---------|
+| `dotapp.renderer.before` | `before` | Observe a render or supply a cached replacement |
+| `dotapp.renderer.after` | `after` | Observe the final output |
+
+The one listener argument is `Dotsystems\App\Parts\RendererLifecycleContext`. Read `contractVersion()` before depending on fields. Contract 1 exposes `phase()`, `operation()` (`layout`, `view`, `code`, `custom`), `module()`, `source()`, `customKey()`, `sequence()`, and `output()` after completion.
+
+For `layout`, `view`, or rendered `code`, a `before` listener may call `$ctx->useReplacement($html)`. Empty string is a valid replacement. This skips the normal compile/eval pipeline, then still fires the matching `after` event. A listener **return value is ignored**. `custom` renderer events are observe-only; `useReplacement()` has no effect. The `after` phase is observe-only through `$ctx->output()`.
+
+**MUST:** register lifecycle listeners cheaply in your module’s `Listeners::register()` and give them explicit listener routes. Wrap risky listener work in `try/catch`; exceptions propagate. **MUST NOT** log template output or variable bags that may contain secrets, patch Renderer to add hooks, treat these events as business `.hooks`, or use them where a named owner method should opt into Extender.
+
+Mechanism choice: Renderer lifecycle substitutes/observes the template pipeline; Extender replaces a named owner method; `triggerWithVeto()` stops a pre-action; `module.*.hook` reports a useful business side-effect.
 
 ### Debugging templates
 

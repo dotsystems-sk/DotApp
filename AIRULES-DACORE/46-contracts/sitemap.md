@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop) and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `seo` (per-URL meta) and **not** `newsletter`.
+A `<Host>` and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `seo` (per-URL meta) and **not** `newsletter`.
 
 ---
 
@@ -37,7 +37,7 @@ $xml = DotApp::call('DACore:Plugins@listByContract!', 'sitemap', 'v1', 'xml');
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 
@@ -47,7 +47,7 @@ $xml = DotApp::call('DACore:Plugins@listByContract!', 'sitemap', 'v1', 'xml');
 
 **Kind:** peer. **Controller:** `{Module}:SitemapContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=sitemap` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=sitemap` on itself.
 
 ---
 

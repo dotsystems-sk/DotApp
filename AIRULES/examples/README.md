@@ -21,6 +21,7 @@ Short, copy-paste-ready patterns. Every example shows **return values** and **er
 | [EX-14-auth-and-2fa.md](EX-14-auth-and-2fa.md) | Login, permissions, 2FA (`$dotapp().twoFactor`), user creation; **`data(true)`** for password |
 | [EX-16-module-hooks.md](EX-16-module-hooks.md) | Fire `module.{mod}.{name}.hook` when useful, `.hooks`, listen (own `Listeners::initializeRoutes()` if needed), **`triggerWithVeto` / `Veto`** — [41](../41-MODULE-HOOKS.md) |
 | [EX-17-extender.md](EX-17-extender.md) | Judged `Extender` swap of a render/cart/export method, including `original()` fallback (not every method, not Events/hooks) — [12](../12-SERVICES.md) §10, [00](../00-AGENT-CONTRACT.md) §2h |
+| [EX-18-renderer-lifecycle.md](EX-18-renderer-lifecycle.md) | `dotapp.renderer.before/after`, context v1, safe cached replacement via `useReplacement()` — [05](../05-VIEWS-TEMPLATES-ASSETS.md) §5 |
 
 Theory lives in `AIRULES/0x-*.md` / `1x-*.md` / `2x-*.md`. These files are **executable patterns**.
 

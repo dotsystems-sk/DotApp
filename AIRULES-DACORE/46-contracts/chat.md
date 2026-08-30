@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This page is the v1 peer contract. A host (CMS, Shop, ERP) and a live-chat pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+This page is the v1 peer contract. A `<Host>` and a live-chat pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 This is **not** DACore notifications, email, or SMS (`extra1` `notification` / `email` / `sms` are forbidden). Inbox push stays `DACore:Notifications@push` on a real event — not from `send`. This is **not** `helpdesk` (tickets) and **not** `forum` (board).
 
@@ -38,7 +38,7 @@ $live = DotApp::call('DACore:Plugins@listByContract!', 'chat', 'v1', 'live');
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 

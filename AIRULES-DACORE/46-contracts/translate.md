@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop) and a pack must be able to interoperate from this page alone. This is **not** `locale` (language **files**; extra3 is a language code). See [locale.md](locale.md) when that file exists; extras for locale stay on the parent table.
+A `<Host>` and a pack must be able to interoperate from this page alone. This is **not** `locale` (language **files**; extra3 is a language code). See [locale.md](locale.md) when that file exists; extras for locale stay on the parent table.
 
 ---
 
@@ -40,7 +40,7 @@ $machine = DotApp::call('DACore:Plugins@listByContract!', 'translate', 'v1', 'ma
 
 **Kind:** peer. **Controller:** `{Module}:TranslateContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=translate` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=translate` on itself.
 
 A **locale pack** uses `extra1=locale`, extra3 = `sk` / `en` / …, extra5 = `ui` \| `content` \| `both`. That pack has **no** `TranslateContract`. **MUST NOT** set `extra1=translate` on a locale zip.
 
@@ -122,7 +122,7 @@ The host `htmlspecialchars` `text` before `{{ var: }}` when it prints the result
 | `locale` | File pack: UI / content strings on disk. extra3 = language code |
 | `translate` | Peer API: turn `$text` from `$from` into `$to` |
 
-A CMS that ships Slovak UI files is `locale`. A CMS that calls a glossary or machine API is `translate`. **MUST NOT** merge the extras.
+A `<Host>` that ships Slovak UI files is `locale`. A `<Host>` that calls a glossary or machine API is `translate`. **MUST NOT** merge the extras.
 
 ---
 

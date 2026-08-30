@@ -28,6 +28,6 @@ The required path: scaffold the module → write **`app/modules/<ThisModule>/PLA
 
 Stack (`AIRULES/00` §2p): 1 project AIRULES (always) → 2 host AIRULES (if extending a named host) → 3 this PLAN. Priority 1 wins.
 
-CMS template packs: also `20-cms-template-plan.mdc` — standalone `PLAN/html/` first (no CMS), user approves, then pack views (`PLAN/assets/` → live `assets/`).
+Host-specific pack phases belong in `app/modules/<Host>/AIRULES/`; the pack records its approved implementation plan under `app/modules/<Pack>/PLAN/`.
 
 Finish gate: new module / rewrite with no `PLAN/` = fail. Host `PLAN/` opened while writing a pack = fail.

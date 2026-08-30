@@ -1,0 +1,22 @@
+---
+description: LAW — encrypted URL path tokens must use base64url because Apache treats encoded slash as a path separator
+alwaysApply: true
+---
+
+# URL-safe encrypted tokens (LAW)
+
+Canonical: `AIRULES/11-AUTH-AND-CRYPTO.md` §8.
+
+`Crypto::encrypt()` returns standard base64 (`+`, `/`, `=`). Raw `%2F` in a URL path may become a slash and return Not Found.
+
+## MUST
+
+- Keep AES, a unique `$key2`, and server-side rights/ownership checks.
+- Seal path ciphertext to `[A-Za-z0-9_-]+`: `rtrim(strtr($cipher, '+/', '-_'), '=')`.
+- Before decrypting, reverse `-_` to `+/`, restore padding, and accept legacy standard-base64 tokens.
+- Use the sealed helper for path `href`, `{token}`, and `redirectTo`; `{{ enc }}` is standard base64 and must not be placed directly in a path.
+- Keep sealing/opening in the owning module.
+
+## MUST NOT
+
+- Drop encryption, invent another cipher, persist session-bound ciphertext, or patch framework core.

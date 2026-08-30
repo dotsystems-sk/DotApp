@@ -150,6 +150,8 @@ Failure shapes:
 
 DotApp **always** runs incoming GET/POST-like values through `DotApp::protect()` (replaces `# $ " ' , ; % * < = > ( ) & ^ \` ~ ! { }` with HTML entities, then `addslashes`). That is an old **programmer-guard** against naive SQL/XSS mistakes. It is **not** a substitute for QueryBuilder bindings.
 
+SQL injection protection is named or `?` **bindings**. XSS protection is `htmlspecialchars` before `{{ var: }}`. `protect()` is neither wall.
+
 The switch is the boolean on `data()` / `query()`:
 
 | Call | What you get |
@@ -157,9 +159,9 @@ The switch is the boolean on `data()` / `query()`:
 | `$request->data()` / `$request->query()` | **Protected** copy (`$orig = false`, default) |
 | `$request->data(true)` / `$request->query(true)` | **Original** payload (`$orig = true`) |
 
-**MUST** use `true` (original) when you hash or compare a **password** (`Auth::login`, `Auth::createUser`, installer admin), persist **HTML**, signatures, tokens, or any value that must round-trip unchanged.
+**MUST** use `true` (original) for every value stored, hashed, decrypted, or compared as typed: passwords, HTML, URLs, settings, signatures, tokens, encrypted ids, titles, and notes. Bind that original string in SQL; **MUST NOT** persist the protected copy.
 
-**MUST NOT** take a password or HTML from `$request->data()` without `true`. Characters like `)`, `=`, `%`, `&`, `'` become a **different string**. The stored hash then never matches login — or the installer hashed the *escaped* password.
+**MUST NOT** take a password, URL, HTML, or other persist field from `$request->data()` without `true`. Characters like `)`, `=`, `%`, `&`, `'` become a different string. For example, `https://example.test/?q=Sabinov` is stored with `?q&#61;Sabinov`; hashes no longer match and links break.
 
 Secure `<fo-rm>` fields after unwrap: `$request->data(true)['data']`.
 

@@ -13,8 +13,8 @@ Canonical: `AIRULES/46-DACORE-EXTRA-CONTRACTS.md` (index). Deep I/O: `AIRULES/46
 - Hosts list packs with `DotApp::call('DACore:Plugins@listByContract!', 'filemanager', 'v1')` (or `listByExtra!`). **MUST NOT** `glob(app/modules)` or `include` another module to discover it.
 - Implementing or calling a reserved role **MUST** follow that role’s file under `AIRULES/46-contracts/` (methods, inputs, outputs). The 46 index table is not enough.
 - File manager pack: `extra1=filemanager`, `extra2=v1`, `extra3=full|picker|storage`. After the operator picks a module, call `{Module}:MediaContract@…!`.
-- Template pack: `extra1=template`, `extra2=v1`. Admin skin stays `dacore.admin-skin` / `v1` / `css|shell-css`. **CMS pack:** also read `app/modules/CMS/AIRULES/` (`AIRULES/00` §2n).
+- Template pack: `extra1=template`, `extra2=v1`. Admin skin stays `dacore.admin-skin` / `v1` / `css|shell-css|assets`. A pack **MUST** also read `app/modules/<Host>/AIRULES/` when that named host handbook exists (`AIRULES/00` §2n).
 - **MUST NOT** invent a synonym (`files`, `media`, `theme-pack`). Missing role → **ASK**, then add to 46 + `ExtraContracts` + a new `46-contracts/{role}.md` in a later DACore version.
-- **MUST NOT** set the host’s own role on the host (`template` on CMS, `filemanager` on itself).
+- **MUST NOT** set a pack role on its host (for example, `template` or `filemanager` belongs to the pack, not `<Host>`).
 - **MUST NOT** use `email` / `sms` / `webhook` / `notification` / `ip-geo` / `widget` / `settings-panel` / `backup` as `extra1` — those are DACore registries.
 - Discovery helpers are in-process, no CRC, empty token → `[]`. Peer `capabilities()` is after pick only.

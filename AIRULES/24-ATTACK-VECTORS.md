@@ -181,7 +181,7 @@ Part of the finish gate ([00](00-AGENT-CONTRACT.md) §2c). Grep **your module + 
 | 1 | `crcCheck(` | not exactly once on that POST; on a GET; on an upload |
 | 2 | `raw(`, `where(`, `->q(` | request data concatenated into SQL; `?` that is not a binding; sort column from the request |
 | 3 | `{{ var:`, `.html(`, `innerHTML` | a user/DB string printed or injected without PHP escaping |
-| 4 | `data(`, `query(` | password/HTML/hash without `true`; a posted `price` / `role` / `user_id` trusted; no length cap |
+| 4 | `data(`, `query(` | persisted URL/setting/title/token/password/HTML/hash without `true`; protected copy stored; posted `price` / `role` / `user_id` trusted; no length cap |
 | 5 | `enc(`, `decrypt(` | plain id in HTML/JSON; reused `$key2`; `false` not rejected |
 | 6 | `Auth::can`, `isLogged`, `where('user_id'` | action without a rights check; `WHERE id` alone after decrypt; handler outside `Auth::isLogged()` |
 | 7 | `header(`, `redirect(`, `HttpHelper::request` | input in a header; redirect target from the request; URL from the request |

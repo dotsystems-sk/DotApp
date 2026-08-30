@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop, ERP, invoice) and an electronic-signature pack must be able to interoperate from this page alone.
+A `<Host>` and an electronic-signature pack must be able to interoperate from this page alone.
 
 ---
 
@@ -39,7 +39,7 @@ $session = DotApp::call('DACore:Plugins@listByContract!', 'esign', 'v1', 'sessio
 
 **Kind:** peer. **Controller:** `{Module}:EsignContract@…!`
 
-The **host** (Shop, CMS, Invoice) **MUST NOT** set `extra1=esign` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=esign` on itself.
 
 This role is **not** `dms`, **not** `filemanager`, and **not** `workflow`. Those packs store records, files, or BPM steps. An esign pack only opens a signing session and reports its state.
 

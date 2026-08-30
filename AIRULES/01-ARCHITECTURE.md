@@ -153,8 +153,12 @@ Canonical singleton: `DotApp::dotApp()` / `DotApp::DotApp()`.
 | `dotapp.module.{name}.install` | Before one-shot `install.php` |
 | `dotapp.router.resolve` | Start of routing (alias `dotapp.middleware`) |
 | `dotapp.router.resolve.404` | No route matched |
+| `dotapp.renderer.before` | Before layout/view/code/custom rendering; context v1 may supply a replacement for non-custom operations |
+| `dotapp.renderer.after` | After rendering; context v1 exposes final output |
 
 Event names are lowercased on register/trigger. `trigger()` **ignores** listener return values. `triggerWithVeto()` stops only on `Dotsystems\App\Parts\Veto` and returns `Veto|null`.
+
+Renderer events receive one `RendererLifecycleContext`; substitution is `$ctx->useReplacement($html)` during `before`, not a listener return. Contract: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5.
 
 ### `dotapp.catchall` — core debug funnel (DotApp 2.0)
 

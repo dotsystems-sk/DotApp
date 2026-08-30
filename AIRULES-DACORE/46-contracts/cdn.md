@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This page is the **v1 peer contract** for a CDN pack. A host (CMS, Shop, ERP) and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+This page is the **v1 peer contract** for a CDN pack. A `<Host>` and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 ---
 
@@ -38,7 +38,7 @@ A pack that implements both sets `extra3` to the **primary** mode it advertises 
 
 **Kind:** peer. **Controller:** `{Module}:CdnContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=cdn` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=cdn` on itself.
 
 Vendor account ids, API tokens, zone secrets, and signing keys **MUST NOT** appear in `extra1`…`extra5`. Those live in the **pack’s** settings (operator form), never in `dacore_modules`.
 
@@ -98,7 +98,7 @@ Ids that leave PHP toward HTML **MUST** be `{{ enc(...) }}`. Incoming encrypted 
 | Key | Type | Meaning |
 |-----|------|---------|
 | `urls` | string[] | Public `https://` URLs already on this CDN, or host-relative paths starting with `/`. Empty array = omit. Length ≤ `max_purge_urls` |
-| `prefix` | string | Path prefix to invalidate, e.g. `/assets/modules/Shop/`. Charset `[A-Za-z0-9._:/-]`, must start with `/`, **MUST NOT** `..` |
+| `prefix` | string | Path prefix to invalidate, e.g. `/assets/modules/{HostModule}/`. Charset `[A-Za-z0-9._:/-]`, must start with `/`, **MUST NOT** `..` |
 
 **Success:**
 
@@ -131,7 +131,7 @@ Each `urls[]` entry **MUST** be a path starting with `/` **or** an `https://` UR
 ```php
 [
     'ok' => true,
-    'url' => 'https://cdn.example.test/assets/modules/Shop/img/hero.jpg',
+    'url' => 'https://cdn.example.test/assets/modules/{HostModule}/img/hero.jpg',
 ]
 ```
 

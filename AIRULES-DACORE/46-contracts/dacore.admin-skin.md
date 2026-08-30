@@ -12,14 +12,14 @@ This is a **pack / skin** contract (files only). A host and a skin pack must be 
 |------|----------------|
 | `extra1` | `dacore.admin-skin` |
 | `extra2` | `v1` |
-| `extra3` | `css` \| `shell-css` |
+| `extra3` | `css` \| `shell-css` \| `assets` |
 | `extra4` | *(omit — this role does not use a host family)* |
 | `extra5` | *(omit)* |
 
 ```php
 'extra1' => 'dacore.admin-skin',
 'extra2' => 'v1',
-'extra3' => 'css',
+'extra3' => 'css', // or 'shell-css' or 'assets'
 ```
 
 ```php
@@ -32,6 +32,7 @@ $legacy = DotApp::call('DACore:Plugins@listByExtra!', 1, 'dacore.admin-skin');
 |--------|---------|
 | `css` | Presentation only. Pack **MUST** ship `assets/dacore-skin/skin.css`. DACore keeps the built-in shell HTML. |
 | `shell-css` | CSS **and** a body skeleton. Pack **MUST** ship `assets/dacore-skin/skin.css` **and** `views/dacore-skin/page.view.php`. |
+| `assets` | Class-compatible **file mirror**. Pack **MUST** ship DACore’s relative asset tree starting at `assets/css/core.css`. DACore rewrites chrome URLs from `/assets/modules/DACore/` to this module. **MUST NOT** require `dacore-skin/skin.css`. Different HTML → Extender on `Page@withMenu` / `Menu@generate` ([33](../33-DACORE-PAGES-AND-UI.md) §2). |
 
 | extra5 | Meaning |
 |--------|---------|
@@ -39,7 +40,7 @@ $legacy = DotApp::call('DACore:Plugins@listByExtra!', 1, 'dacore.admin-skin');
 
 **Kind:** pack / skin (`dacore-skin`). **Controller:** none.
 
-The **host** (DACore itself for this role) **MUST NOT** set `extra1=dacore.admin-skin` on DACore. A CMS / Shop host **MUST NOT** set this token on itself either.
+DACore **MUST NOT** set `extra1=dacore.admin-skin` on itself. A `<Host>` that selects an administration-skin pack **MUST NOT** set this token on itself either.
 
 ---
 
@@ -62,7 +63,7 @@ Discovery **MUST NOT** boot the pack. Listing extras is enough. File probe happe
 **Input:** selected module name (string from settings).  
 **MUST NOT** throw out to the operator — a bad skin falls back to the built-in shell.
 
-After pick, the host **probes** `{moduleDir}/assets/dacore-skin/skin.css` and, when `extra3=shell-css`, `{moduleDir}/views/dacore-skin/page.view.php`. Treat the result as:
+After pick, the host **probes** `{moduleDir}/assets/dacore-skin/skin.css` and, when `extra3=shell-css`, `{moduleDir}/views/dacore-skin/page.view.php`. When `extra3=assets`, it probes `{moduleDir}/assets/css/core.css` instead. Treat the result as:
 
 **Success:**
 
@@ -71,9 +72,9 @@ After pick, the host **probes** `{moduleDir}/assets/dacore-skin/skin.css` and, w
     'ok' => true,
     'contract' => 'v1',
     'module' => 'DarkAdmin',          // exact module name
-    'modes' => ['shell-css'],         // extra3 this pack declared
-    'skin_css' => '/assets/modules/DarkAdmin/dacore-skin/skin.css',
-    'shell_view' => 'DarkAdmin:dacore-skin/page', // '' when extra3=css
+    'modes' => ['shell-css'],         // extra3 this pack declared (`css` | `shell-css` | `assets`)
+    'skin_css' => '/assets/modules/DarkAdmin/dacore-skin/skin.css', // '' when extra3=assets
+    'shell_view' => 'DarkAdmin:dacore-skin/page', // '' when extra3=css or assets
 ]
 ```
 
@@ -139,6 +140,7 @@ The host loads the view with Renderer from **that** module (`setView('DarkAdmin:
 |--------|-----------------------------------------------|
 | `css` | `assets/dacore-skin/skin.css` |
 | `shell-css` | `assets/dacore-skin/skin.css` **and** `views/dacore-skin/page.view.php` |
+| `assets` | `assets/css/core.css` plus the rest of the DACore-shaped tree the operator expects (`colors.css`, `js/dotapp.shell.js`, …) |
 
 Public URL for the CSS is only `/assets/modules/{Module}/dacore-skin/skin.css`. Runtime / vendor / CDN paths are **not** skins.
 
@@ -169,6 +171,7 @@ A `shell-css` view receives the **same** escaped / pre-rendered shell variables 
 | `title` | Page title (already escaped) |
 | `body` | Trusted module fragment from `Page@withMenu!` |
 | `aichatdiv` | Pre-rendered AI chat mount |
+| `assetsPath` | Chrome asset prefix (`/assets/modules/DACore` or the selected assets module), already escaped |
 
 Use `{{ var: $title }}` (and the others) as provided. **MUST NOT** wrap them in a second document. **MUST NOT** emit `<html>`, `<head>`, core styles, `$dotapp` boot, Notiflix, or shell scripts. DACore wraps the fragment in its own document and runtime assets.
 

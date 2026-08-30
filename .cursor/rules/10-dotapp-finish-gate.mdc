@@ -12,12 +12,15 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | Check | Fail if |
 |-------|---------|
 | **CRC once** | `crcCheck()` in middleware/`before`/`#DACore:AuthTest@CRC!` **and** in the action; CRC on GET; CRC on `$request->upload()`; PHPDoc `CRCchecking —` names a prefix **and** the method still `crcCheck()`; a new public controller/middleware method with no `CRCchecking —` first line |
-| **IDs** | Plain `value="7"` / `data-id="7"` / `{{ var: $id }}` sent to the browser — need `{{ enc(Shop.item.id): $id }}` unique `$key2`. Pager `data-page` must be ciphertext (`AIRULES/40`) |
+| **IDs** | Plain `value="7"` / `data-id="7"` / `{{ var: $id }}` sent to the browser — need `{{ enc(Shop.item.id): $id }}` unique `$key2`. Path `{token}` / `redirectTo` with raw `Crypto::encrypt` / `{{ enc }}` (Apache `%2F` 404) — need `[A-Za-z0-9_-]+` seal. Pager `data-page` must be ciphertext (`AIRULES/40`, `AIRULES/33` §13) |
 | **Queries** | User input in SQL; `$qb->raw()` `?` that is not a binding (comments count) |
-| **Inputs** | Password/HTML/hash from `$request->data()` not `data(true)`; persist only gated in JS (if the plan named step-up, PHP still refuses without a code; invented step-up on ordinary Save is also a fail) |
+| **Inputs** | Persist / password / URL / HTML / hash from `$request->data()` not `data(true)` (`protect()` rewrites `=` → `&#61;`); SQL write not bound; persist only gated in JS (if the plan named step-up, PHP still refuses without a code; invented step-up on ordinary Save is also a fail) |
 | **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers; `#DACore:AuthTest@check!` as a rights guard |
 | **DACore files** | Diff touches `app/modules/DACore/` without the informed exception (`AIRULES/00` §1) |
+| **DACore is not Bootstrap** | `data-bs-toggle="tab"` / `.tab-pane.fade` / `bootstrap.bundle` in this module — tab look must be GET links + this module’s CSS (`AIRULES/33` §0) |
 | **Visible outcome** | Silent `.after()`; admin save without a DACore toast; public field errors without marking the input (`AIRULES/00` §2d) |
+| **Layout / UX-UI** | Button flush to a card/`card-body`/modal/page edge; missing padding on a side / **top** / **bottom**; buttons last in a block with no space below (usual Save-at-the-bottom hole); `pt-0` footer with no `pb-*`; uncentered vs siblings (`AIRULES/00` §2f, `AIRULES/33` §6) |
+| **Admin page composition** | New/rewritten admin form/settings/editor is one undifferentiated card of inputs; missing numbered section + lede; missing Why-this-matters when the cluster is not obvious; two unrelated jobs on one GET; copied sibling-module chrome (`AIRULES/00` §2f, `AIRULES/33` §6b) |
 | **Privilege / records** | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged operator; `WHERE id` only after decrypt; own password with no current-password check (`AIRULES/11` §11) |
 | **Catch reported** | A `catch` or `execute()` `$err` that does not call the module report helper → `dotapp.catch` + `dotapp.catch.error|info`; ad-hoc payload keys; a secret/token/rights blob/request body in the payload; the helper or listener placed under `app/modules/DACore/` (`AIRULES/18` §9) |
 | **Perf / readability** | `->all()` on a growing table; query/HTTP/rights check/log inside `foreach`; `select('*')` on a list; O(n²) or array copy per row; a new `WHERE`/`ORDER BY` column with no index; an index with no comment naming its query; a duplicate of a library DACore ships; a public method with tags-only PHPDoc (`@return array<string, mixed>` and no purpose sentence); comments that restate the code (`AIRULES/25` §8) |
@@ -28,9 +31,11 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Comments** | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; controller/middleware public method whose PHPDoc does not start with `CRCchecking —` (`AIRULES/25` §7) |
 | **Cursor rules** | A new `.mdc` exists only under `.cursor/rules/`; AIRULES cursor rules were not copied into `.cursor/rules/` (`AIRULES/00` §2l) |
 | **defaultSettings** | Wake list or `Router` path built from Config without `defaultSettings()` first; foreign `prefixUrl` composed before that module’s defaults; hardcoded foreign fallback (`AIRULES/00` §2m) |
-| **Module AIRULES** | Named host `AIRULES/` exists but was not read; pack registered routes the host does not listen to; new host with no `app/modules/<This>/AIRULES/`; module rules used to skip project law (`AIRULES/00` §2n) |
+| **Module AIRULES** | Named host `app/modules/<Host>/AIRULES/` exists but was not read; pack registered routes the host does not listen to; new host with no `app/modules/<This>/AIRULES/`; module rules used to skip project law (`AIRULES/00` §2n) |
 | **PLAN folder** | New module / rewrite with no `app/modules/<This>/PLAN/`; chat-only plan; one mega-file instead of a split folder; screen/position not in PLAN; PLAN used to skip project law (`AIRULES/00` §2o) |
-| **DACore zip** | Zip contains `PLAN/` or `install.php`; invented packer (`AIRULES/00` §2e) |
 | **Rule stack** | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` (`AIRULES/00` §2p) |
+| **Admin AJAX** | `$request->data()['id']` after `load()` / `form()` without unwrap; product fail HTTP 400/500 → Request failed (`AIRULES/00` §2q, `AIRULES/09` §3) |
+| **Same class of bug** | Fixed only the reported handler; left toggle/delete/purge/list/test on the same pattern (`AIRULES/00` §2q) |
+| **No unsolicited browser** | MCP browser / CDP / screenshot-click to prove Save without the user asking or saying yes (`AIRULES/00` §2r) |
 
 Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.

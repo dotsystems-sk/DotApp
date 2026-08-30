@@ -27,6 +27,8 @@ Edit/API sample: [examples/EX-02-secure-form-edit-api.md](examples/EX-02-secure-
 
 `load()` **automatically** adds CSRF, CRC, the `dotapp: load` header and posts `{ data, crc }`. PHP **MUST** still `crcCheck()` — **once**. A `<fo-rm>` submit uses this same pipeline. **`fo-rm` does not make a click “more secure” than `load()`.**
 
+**Nested payload (MUST):** fields are under the posted `data` key. Use the original nested bag (`$request->data(true)['data']`) or the validated result from `$request->form()`; **MUST NOT** read `$request->data()['id']` as if `load()` posted a flat object. Handled product outcomes return HTTP 200 + `status` 1|0 + `message`; CRC/login/rights failures keep their transport status. Canonical: [00](00-AGENT-CONTRACT.md) §2q, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+
 ### `crcCheck()` burns the token (**MUST once**)
 
 `$request->crcCheck()` is **one-shot**. On a valid token it calls `invalidateCSRF()` (stores `md5(token)` in DSM `_CSRF`). A **second** `crcCheck()` in the same request sees a used token and returns **`false`**. `$request->form()` does **not** run `crcCheck()`.

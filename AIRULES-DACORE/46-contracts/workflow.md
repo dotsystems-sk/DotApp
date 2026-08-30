@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This is the **v1 peer contract** for reserved role `workflow`. A host (CMS, Shop, ERP) and a BPM pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). Machine catalog: `DACore\Libraries\ExtraContracts` role `workflow`, controller `WorkflowContract`, methods `capabilities`, `start`, `advance`.
+This is the **v1 peer contract** for reserved role `workflow`. A `<Host>` and a BPM pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). Machine catalog: `DACore\Libraries\ExtraContracts` role `workflow`, controller `WorkflowContract`, methods `capabilities`, `start`, `advance`.
 
 ---
 
@@ -239,7 +239,7 @@ Fire only after a useful persist — **not** on `capabilities`.
 - `call_user_func` / `eval` / dynamic `include` from `$action`
 - `all()` on a growing instance table
 - Leak `getMessage()`, subject payloads, or secrets
-- Set `extra1=workflow` on the CMS / Shop / ERP **host**
+- Set `extra1=workflow` on `<Host>`
 - PHP 8+ syntax unless the plan named a higher version
 
 ---

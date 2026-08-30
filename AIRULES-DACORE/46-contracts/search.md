@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop) and a pack must be able to interoperate from this page alone. This is **not** `kb` (articles) and **not** `bi` (charts).
+A `<Host>` and a pack must be able to interoperate from this page alone. This is **not** `kb` (articles) and **not** `bi` (charts).
 
 ---
 
@@ -41,7 +41,7 @@ $sql = DotApp::call('DACore:Plugins@listByContract!', 'search', 'v1', 'sql');
 
 **Kind:** peer. **Controller:** `{Module}:SearchContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=search` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=search` on itself.
 
 ---
 

@@ -52,8 +52,17 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 
 `RenderingIsolator` **silently skips** a whole var if the name **or any nested value** is `is_callable()` — `time`, `copy`, `count`, `key`, `header`, `date`, `sort`, `file`, `['Class','method']`, closures. Symptom: heading/`if` shows, `foreach` is empty. Prefix keys (`feat_time`) or pass one escaped HTML string. Dangerous calls in template PHP are stripped. **MUST NOT** patch `app/parts/Renderer.php`. Full: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §5.
 
+## Renderer lifecycle
+
+- `dotapp.renderer.before` / `after` receive one `RendererLifecycleContext` (contract 1).
+- A `before` listener may `useReplacement($html)` for layout/view/rendered code; listener return values do nothing.
+- Custom renderer events and the `after` phase are observe-only.
+- Register cheaply in `Listeners::register()` with explicit listener routes; never log output/secrets. Full: `AIRULES/05` §5.
+
 ## Assets
 
 `/assets/modules/{Module}/...` and `/assets/dotapp/dotapp.js`.
 
 **Public website chrome:** overlay mobile drawer (L/R), lock page scroll while open, scrollable nav list, contacts + compact search in the drawer unless large search is its own section. `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3. DACore admin uses `Page@withMenu!` — do not rebuild that shell.
+
+**Buttons (MUST):** padding vs the parent on all sides. When the buttons are the last content of a card/`card-body`/modal, **almost always** pad below. `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6.

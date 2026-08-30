@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (CMS, Shop, ERP) and a fixed-asset pack must be able to interoperate from this page alone.
+A `<Host>` and a fixed-asset pack must be able to interoperate from this page alone.
 
 ---
 
@@ -36,13 +36,13 @@ $register = DotApp::call('DACore:Plugins@listByContract!', 'asset', 'v1', 'regis
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 
 **Kind:** peer. **Controller:** `{Module}:AssetContract@…!`
 
-The **host** (CMS, Shop, ERP) **MUST NOT** set `extra1=asset` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=asset` on itself.
 
 ---
 

@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6. User ids: [42-DACORE-USER-ORIGIN.md](../42-DACORE-USER-ORIGIN.md).
 
-This page is the v1 peer contract. A host (CMS, Shop, ERP) and an LMS pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `kb` (articles) and **not** `forum` (board).
+This page is the v1 peer contract. A `<Host>` and an LMS pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `kb` (articles) and **not** `forum` (board).
 
 ---
 
@@ -36,7 +36,7 @@ $course = DotApp::call('DACore:Plugins@listByContract!', 'lms', 'v1', 'course');
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 
@@ -46,7 +46,7 @@ $course = DotApp::call('DACore:Plugins@listByContract!', 'lms', 'v1', 'course');
 
 **Kind:** peer. **Controller:** `{Module}:LmsContract@…!`
 
-The **host** (CMS, Shop, ERP) **MUST NOT** set `extra1=lms` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=lms` on itself.
 
 ---
 

@@ -43,6 +43,19 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 25. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. When the user names that host, **MUST** read it first. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2p.
 26. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** and implement **from that folder**. Chat-only / one-file plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2o, §2p, [45](45-MODULE-PLANNING.md).
 27. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. Canonical: [00](00-AGENT-CONTRACT.md) §2p.
+28. **AJAX same-class law:** `load()` / secure-form fields are nested under `data`; handled product outcomes use HTTP 200 + `status` + `message`. One broken handler requires a sibling hunt in that module. Canonical: [00](00-AGENT-CONTRACT.md) §2q.
+29. **No unsolicited browser:** source + tests + finish gate + click list by default. Browser only when the user explicitly asks or says yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r.
+
+## What's New (2026-08-30)
+
+### Router, Renderer, and shared bug classes
+
+- `Router::reset(false)` keeps the old match as fallback until a later match atomically replaces it; `reset(true)` clears routing immediately.
+- `dotapp.renderer.before` / `after` expose `RendererLifecycleContext` contract 1; substitution is explicit `useReplacement()`.
+- `Module::baseLanguages()` supplies small labels while route-bound modules sleep and is compiled by `--optimize-modules`.
+- General rules now include nested AJAX data + handled HTTP 200 outcomes, URL-safe path ciphertext, original-input persistence, Renderer callable-var drops, and written-order installer migrations.
+
+Canonical: [03](03-MODULES-AND-ROUTING.md), [05](05-VIEWS-TEMPLATES-ASSETS.md) §5, [07](07-SCHEMA-AND-INSTALL.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [11](11-AUTH-AND-CRYPTO.md) §8.
 
 ## What's New (2026-08-26)
 
@@ -76,9 +89,11 @@ Canonical: [12](12-SERVICES.md) §10. Sample: [EX-17](examples/EX-17-extender.md
 
 The kernel is **finished**. Agents **MUST NOT** edit `app/parts/`, `DotApp.php`, `dotapper.php`, or `index.php` — even if the user asks.
 
-- Module loader **v2:** `php dotapper.php --optimize-modules` writes `$modules` + `$listeners` (`$modulesAutoLoaderVersion = 2`). Old `$modules`-only files still work.
+- Module loader **v2:** `php dotapper.php --optimize-modules` writes `$modules` + `$listeners` + optional compiled `$baseLanguages` (`$modulesAutoLoaderVersion = 2`). Old `$modules`-only files still work.
 - `Listeners::initializeRoutes()` may differ from `Module::initializeRoutes()`; omit/`null` inherits the module map.
 - Matching listeners register **before** matching modules initialize.
+- **`Router::reset(false|true)`** — soft unlock with old-match fallback, or immediate hard clear ([03](03-MODULES-AND-ROUTING.md), [12](12-SERVICES.md) §6).
+- **Renderer lifecycle contract v1:** `dotapp.renderer.before` / `after` receive `RendererLifecycleContext`; replacement is explicit `useReplacement()`, not listener return ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5, [EX-18](examples/EX-18-renderer-lifecycle.md)).
 - **`Events::triggerWithVeto()`** + `Dotsystems\App\Parts\Veto` — ordinary `trigger()` still ignores returns.
 - **`Extender`:** judge first; owner `exists()` / `call()`, ordinary result returns, only `isOriginal()` continues; extender `extend()` in `Listeners::register()` on target listener routes. Own Module routes or `[]`; controller string preferred. Not Events, not `next()`. Sample [EX-17](examples/EX-17-extender.md).
 
@@ -113,9 +128,9 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
 | [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — `defaultSettings()`, `{not:}` on public catch-alls, prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md) | Controllers, response |
-| [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets; **§1c** HTML via Renderer (no PHP HTML factories) |
+| [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets; **§1c** HTML via Renderer; §5 sandbox + Renderer lifecycle events |
 | [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder — `$qb->raw()`: every `?` is a placeholder, including comments |
-| [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, Installation.php; **§0** probe-then-CREATE (no `CREATE TABLE IF NOT EXISTS`) |
+| [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, written-order installer keys (no sorting); **§0** probe-then-CREATE |
 | [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md) | fo-rm, CRC, CSRF |
 | [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
 | [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md) | Config, keys, fallbacks |

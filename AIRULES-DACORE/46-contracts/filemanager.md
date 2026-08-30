@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This is the **density template** for every file in this folder. A host (CMS, Shop) and a pack must be able to interoperate from this page alone.
+This is the **density template** for every file in this folder. A `<Host>` and a pack must be able to interoperate from this page alone.
 
 ---
 
@@ -32,7 +32,7 @@ $full = DotApp::call('DACore:Plugins@listByContract!', 'filemanager', 'v1', 'ful
 | extra3 | Meaning |
 |--------|---------|
 | `full` | Admin workspace + picker + list / mkdir / resolve / publicUrl / delete |
-| `picker` | Choose existing files only (CMS inserts an image). `mkdir` / `delete` / upload may return `ok:false` |
+| `picker` | Choose existing files only (the host inserts an image). `mkdir` / `delete` / upload may return `ok:false` |
 | `storage` | list / mkdir / resolve / publicUrl / delete — **no** picker JS |
 
 | extra5 | Meaning |
@@ -42,7 +42,7 @@ $full = DotApp::call('DACore:Plugins@listByContract!', 'filemanager', 'v1', 'ful
 
 **Kind:** peer. **Controller:** `{Module}:MediaContract@…!`
 
-The **host** (CMS) **MUST NOT** set `extra1=filemanager` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=filemanager` on itself.
 
 ---
 
@@ -70,13 +70,13 @@ Discovery **MUST NOT** boot the pack. `capabilities()` is the first wake.
 [
     'ok' => true,
     'contract' => 'v1',
-    'module' => 'DAFiles',           // exact module name
+    'module' => 'FilePack',          // exact pack module name
     'modes' => ['full'],             // extra3 this pack actually implements
     'jails' => ['module', 'assets', 'runtime'], // omit runtime when extra5=assets-only
     'public_urls' => true,           // false when no assets jail
-    'picker_js' => '/assets/modules/DAFiles/js/picker.js', // '' when extra3=storage
-    'picker_css' => '/assets/modules/DAFiles/css/picker.css',
-    'upload_url' => '/api/v1/auth/DAFiles/media-upload', // '' when picker-only
+    'picker_js' => '/assets/modules/FilePack/js/picker.js', // '' when extra3=storage
+    'picker_css' => '/assets/modules/FilePack/css/picker.css',
+    'upload_url' => '/api/v1/auth/FilePack/media-upload', // '' when picker-only
 ]
 ```
 
@@ -114,7 +114,7 @@ Ids that leave PHP toward HTML **MUST** be `{{ enc(...) }}`. Incoming encrypted 
             'kind' => 'file',          // file | dir
             'mime' => 'image/jpeg',
             'size' => 12044,
-            'public_url' => '/assets/modules/Shop/img/hero.jpg', // or null
+            'public_url' => '/assets/modules/{HostModule}/img/hero.jpg', // or null
         ],
     ],
     'page' => 1,
@@ -147,7 +147,7 @@ Ids that leave PHP toward HTML **MUST** be `{{ enc(...) }}`. Incoming encrypted 
     'name' => 'hero.jpg',
     'mime' => 'image/jpeg',
     'size' => 12044,
-    'public_url' => '/assets/modules/Shop/img/hero.jpg', // null if not public
+    'public_url' => '/assets/modules/{HostModule}/img/hero.jpg', // null if not public
     'jail' => 'assets',
 ]
 ```
@@ -183,7 +183,7 @@ CRC on the upload **route** is `#DACore:AuthTest@LoginAndCRC!` on `/api/v1/auth/
 When `extra3` is `full` or `picker` and `picker_js` is non-empty:
 
 1. Host page loads that CSS/JS via `withMenu` `$css` / `$js` (or inject after pick).
-2. Host calls **`$dotapp().mediaPicker({ module: 'DAFiles', target: $input })`**.
+2. Host calls **`$dotapp().mediaPicker({ module: 'FilePack', target: $input })`**.
 3. The **pack** implements `$dotapp().fn('mediaPicker')`. **MUST NOT** copy DACore JS.
 
 `storage` mode: no picker fn.

@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This page is the **v1 peer contract** for a full-page or fragment cache pack. A host (CMS, Shop) and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
+This page is the **v1 peer contract** for a full-page or fragment cache pack. A `<Host>` and a pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md).
 
 This role is **not** `cdn` (edge purge / rewrite) and **not** framework `Cache::` used as a host-only shortcut. Discovery still uses extras.
 

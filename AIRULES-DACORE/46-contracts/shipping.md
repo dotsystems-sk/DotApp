@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, ERP) and a shipping pack must be able to interoperate from this page alone.
+A `<Host>` and a shipping pack must be able to interoperate from this page alone.
 
 ---
 
@@ -37,7 +37,7 @@ $courier = DotApp::call('DACore:Plugins@listByContract!', 'shipping', 'v1', 'cou
 
 **Kind:** peer. **Controller:** `{Module}:ShippingContract@…!`
 
-The **host** (Shop, ERP) **MUST NOT** set `extra1=shipping` on itself. A separate `label` pack (`extra1=label`) prints shelf / shipping labels after the host picks it — **MUST NOT** invent `extra1`.
+The **`<Host>` module** **MUST NOT** set `extra1=shipping` on itself. A separate `label` pack (`extra1=label`) prints shelf / shipping labels after the host picks it — **MUST NOT** invent `extra1`.
 
 ---
 
@@ -238,7 +238,7 @@ Fire only after a useful persist — **not** on `rates` or `track`.
 - Return a public URL for `app/runtime`
 - `all()` a growing shipments / events table
 - PHP 8+ syntax unless the plan named a higher version
-- Set `extra1=shipping` on the Shop **host**
+- Set `extra1=shipping` on `<Host>`
 
 ---
 

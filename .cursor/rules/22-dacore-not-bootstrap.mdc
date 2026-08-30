@@ -1,0 +1,22 @@
+---
+description: LAW — DACore admin is not Bootstrap; no Bootstrap Tab JS
+alwaysApply: true
+---
+
+# DACore is not Bootstrap (LAW)
+
+Canonical: `AIRULES/33-DACORE-PAGES-AND-UI.md` §0.
+
+The DACore shell is **DotApp + DACore**, not a Bootstrap app. `core.css` may reuse class names (`btn`, `card`, `form-control`). That is **theme CSS**. Bootstrap JS is **not** loaded.
+
+## MUST NOT
+
+- `bootstrap.bundle.js` / extra Bootstrap CSS
+- `data-bs-toggle="tab"` / `data-bs-target` / `.tab-pane.fade` as the tab switcher (clicks do nothing)
+- Bootstrap `row` / `col-*` for new admin layout
+
+## MUST
+
+- Tab look = **real GET subpages** + `<a href>` + **this module’s** CSS
+- Grid = `<dot-grid>` / `<dot-col>`
+- Modals the shell already wires = `$dotapp().modal()` (`dotapp.modals.js`), not Bootstrap Tab

@@ -261,6 +261,8 @@ Space required after `{{` before `if`. Closing tag is `{{ /if }}`.
 
 `{{ enc(key): $x }}` encrypts at runtime; `{{ enc: "literal" }}` encrypts at **compile time**. Decrypt with the same context key via `Crypto::decrypt($v, 'key')` — remember it returns **`false`** on failure.
 
+**MUST NOT** put `{{ enc(...) }}` into a URL **path**. The tag emits standard Crypto base64 (`+` `/` `=`). Apache treats path `%2F` as a slash → **Not Found**. Path `href`s **MUST** use a module helper that seals to `[A-Za-z0-9_-]+`. Hidden / `data-*` / POST may keep `{{ enc }}` when PHP accepts both shapes. Canonical: [11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13.
+
 ### Blocks
 
 ```html
@@ -357,6 +359,23 @@ $row->set('sort', 'name')          // PrivateBlock::set — same drop
 ```
 
 **MUST NOT** “fix” an empty foreach by editing the Renderer. If a heading without rows appears after a `foreach` of controller data, grep the bag for `time` / `copy` / `count` / `key` / `header` first.
+
+### Renderer lifecycle events (contract v1)
+
+Every `renderLayout()`, `renderView()`, and `renderCode()` fires:
+
+| Event | Context phase | Purpose |
+|-------|---------------|---------|
+| `dotapp.renderer.before` | `before` | Observe a render or supply a cached replacement |
+| `dotapp.renderer.after` | `after` | Observe the final output |
+
+The one listener argument is `Dotsystems\App\Parts\RendererLifecycleContext`. Read `contractVersion()` before depending on fields. Contract 1 exposes `phase()`, `operation()` (`layout`, `view`, `code`, `custom`), `module()`, `source()`, `customKey()`, `sequence()`, and `output()` after completion.
+
+For `layout`, `view`, or rendered `code`, a `before` listener may call `$ctx->useReplacement($html)`. Empty string is a valid replacement. This skips the normal compile/eval pipeline, then still fires the matching `after` event. A listener **return value is ignored**. `custom` renderer events are observe-only; `useReplacement()` has no effect. The `after` phase is observe-only through `$ctx->output()`.
+
+**MUST:** register lifecycle listeners cheaply in your module’s `Listeners::register()` and give them explicit listener routes. Wrap risky listener work in `try/catch`; exceptions propagate. **MUST NOT** log template output or variable bags that may contain secrets, patch Renderer to add hooks, treat these events as business `.hooks`, or use them where a named owner method should opt into Extender.
+
+Mechanism choice: Renderer lifecycle substitutes/observes the template pipeline; Extender replaces a named owner method; `triggerWithVeto()` stops a pre-action; `module.*.hook` reports a useful business side-effect.
 
 ### Debugging templates
 
@@ -465,7 +484,8 @@ General UX/UI principles **MUST** be followed **at all costs**. A screen that po
 
 | Check | Fail if |
 |-------|---------|
-| Padding vs the **parent** (card, footer, modal, drawer) | Control glued to the edge — especially **no space below** a Save |
+| Padding vs the **parent** on **all sides** (left, right, top, bottom) | Control glued to any edge |
+| **Last in the block** | Buttons are the last content of a card / `card-body` / modal / page section with **no space below** — the usual Save-at-the-bottom hole. **Almost always** needs `card-footer` + `pb-3`/`pb-4` (or CSS `padding-bottom`) |
 | Alignment vs siblings | One card’s Save left-stacked, the next centered; leftover `text-start` / missing flex |
 | Rhythm | `pt-0` (or `border-0`) with **no** compensating `pb-*` / CSS `padding-bottom` |
 | Touch / wrap | Hover-only placement; overflow on a phone; hit target too small |
@@ -476,11 +496,30 @@ General UX/UI principles **MUST** be followed **at all costs**. A screen that po
 - Prefer the shell’s existing spacing (`card-footer`, `pb-3`/`pb-4`, centered flex) — **grep DACore first** on admin pages ([33](33-DACORE-PAGES-AND-UI.md)).
 - After adding a button, **re-read the rendered structure** (HTML class list + CSS). Do not claim done from the PHP handler alone.
 
-**MUST NOT:** ship a primary Save flush against the bottom of a card; zero the footer padding on one side and forget the other; invent a one-off margin that fights the parent’s flex/`h-100` layout.
+**MUST NOT:** ship a primary Save flush against the bottom of a card; leave the last buttons in a block without bottom padding; zero the footer padding on one side and forget the other; invent a one-off margin that fights the parent’s flex/`h-100` layout.
 
 ## 8d. Plan the UI before code (**MUST** — first surfaces)
 
 A **new module**, a **first** major operator workspace, or a **rewrite** **MUST** specify desktop and mobile layout, hierarchy, empty/error states, toolbar, and spacing in the **plan** — **and** inventory every page, tab, and control (what it does, default, persist). Not “we will polish in the diff.” Canonical: [45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k, [33](33-DACORE-PAGES-AND-UI.md).
+
+## 8e. Admin page composition (**MUST** — law)
+
+DACore admin forms **MUST** be **sectioned workspaces**, not one scroll of inputs. Same rank as button padding ([§8c](#8c-layout-padding-and-uxui-must--law)).
+
+**MUST** (every new/rewritten settings, editor, or multi-field form):
+
+- Page title + one purpose sentence
+- Numbered section header + one-sentence lede
+- Tinted “Why this matters” note when the cluster is not obvious (product copy)
+- Related fields only in that card
+- GET subpages when the object has more than ~two jobs (not Bootstrap tabs)
+- Advanced / rare controls out of the first card
+
+**MUST** ship the chrome in **this** module (`{lowercase_modulename}_*`). **MUST NOT** copy another module's section-header, guidance-panel, or prefixed chrome into the target module ([00](00-AGENT-CONTRACT.md) §1b).
+
+Fail = one undifferentiated `card-body` of inputs; missing lede; purpose-less header; two unrelated jobs on one GET.
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2f, [33](33-DACORE-PAGES-AND-UI.md) §6b, [45](45-MODULE-PLANNING.md) §4.
 
 ---
 

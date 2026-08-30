@@ -9,7 +9,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | “This is basically Laravel” | DotApp is a separate BE+FE framework |
 | Copy Blade/Eloquent snippets | Use AIRULES syntax only |
 | Edit `app/parts` to “fix” something | Ask user; edit module + `config.php` only |
-| Browse `app/modules/Shop` / `CMS` / another sibling for a look or “example” while programming `<Target>` | Read only `<Target>` + DACore + AIRULES. Sibling only if the user **named** it as the extend/listen/Extender target ([00](00-AGENT-CONTRACT.md) §1b) |
+| Browse `app/modules/<Sibling>` for a look or “example” while programming `<TargetModule>` | Read only `<TargetModule>` + DACore + AIRULES. A sibling is allowed only if the user **named** it as the extend/listen/Extender target ([00](00-AGENT-CONTRACT.md) §1b) |
 | Premium Cursor subagent without asking (Opus / GPT-5 / xhigh / cloud / best-of-N) | Inherit the chat model; **ASK** in the plan ([00](00-AGENT-CONTRACT.md) §2b) |
 | Composer 2.5 as the programmer | Composer 2.5 only for a pile of files; programming = parent model ([00](00-AGENT-CONTRACT.md) §2b) |
 | Claiming done / next feature without grepping CRC, IDs, SQL, inputs, middleware | **MUST** finish gate after every chunk ([00](00-AGENT-CONTRACT.md) §2c) |
@@ -18,6 +18,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Chat-only plan / one mega-file / no `app/modules/<This>/PLAN/` | Write a **split** `PLAN/` folder then implement from it ([00](00-AGENT-CONTRACT.md) §2o) |
 | Open host `PLAN/` while writing a pack | Read host `AIRULES/` only; write `PLAN/` in **this** pack ([00](00-AGENT-CONTRACT.md) §2p) |
 | Silent save / empty `.after()` / invent a second toast instead of grepping DACore | Admin: search DACore then **toast**. Public: mark the wrong field ([00](00-AGENT-CONTRACT.md) §2d) |
+| `$request->data()['id']` after `$dotapp().load()`; `ajaxReply(..., 400)` on Disable | Unwrap nested `data`; HTTP **200** + `status` 0|1 + `message`. One hit → fix every sibling in this module ([00](00-AGENT-CONTRACT.md) §2q, [09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | SMS/mail/payment/lockout with no hook, or a trigger not listed in `.hooks` | Fire **`module.{mod}.{name}.hook`** when a future module would subscribe; document in `.hooks` ([41](41-MODULE-HOOKS.md)) |
 | Hook on every save / unlabeled `// turning SMS off…` | Judge first; comments **MUST** start with `Why:` / `About:` / `Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 
@@ -93,7 +94,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `if (Validator::validate(...))` | `if (Validator::validate(...) === true)` |
 | `if (!Email::send(...))` | `if (Email::send(...) !== true)` (returns an array) |
 | `$r = Auth::login(...); $r['error']` | check `$r === false` first |
-| `$request->data()` then `Auth::login` / `createUser` / store HTML | `$request->data(true)` — `protect()` rewrites `)`, `=`, `%` ([19](19-VALIDATION-AND-INPUT.md)) |
+| `$request->data()` then `Auth::login` / `createUser` / store HTML / URL / settings | `$request->data(true)` + bound `:name` on write — `protect()` rewrites `)`, `=`, `%` so `?q=` becomes `?&#61;` ([19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md)) |
 | Login `ajaxReply` 400 with no toast | **MUST** show `reply.message` (`crcCheck`, `form()` `null`/`false`, `login === false`) |
 | `$request->form($n, $ok)` only | add the error callback, guard `null`/`false` |
 | Trusting a rendered view is non-empty | missing view returns `""` |
@@ -168,7 +169,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Naked empty table / unvalidated `ORDER BY` / JS-only sort / toast-undo after delete | Empty state **MUST**; sort whitelist; confirm is enough ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + `$request->upload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 | Desktop-only public header / hover-only nav / no drawer | Overlay drawer L/R; lock page scroll; drawer list scrolls; contacts+compact search in the drawer ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
-| Save / primary button flush to the card or page edge | Padding vs parent (esp. **bottom**); center or match sibling footers ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c) |
+| Save / primary button flush to the card or page edge; last-in-block buttons with no space below | Padding on all sides; when buttons are last in the block **almost always** pad **bottom**; center or match sibling footers ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6) |
 | Accept `.php` / trust browser MIME on upload | Reject scripts in PHP: extension + `finfo` + headers ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 
 ## Config / security
@@ -240,6 +241,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | AI tool `rights => []` | Explicit list — empty hides it from everyone |
 | AI tool `rights => ['Mod.*']` | No wildcards for AI tools |
 | Bootstrap `col-md-6` in admin forms | `<dot-col any="12" md="6" ldesktop="6">` |
+| `data-bs-toggle="tab"` / `.tab-pane.fade` / `bootstrap.bundle.js` | DACore is **not** Bootstrap. Tab look = real GET links + **your** CSS ([33](33-DACORE-PAGES-AND-UI.md) §0) |
 | Re-add `dotapp.js` / dotgrid / core.css | The shell already loads them |
 | Ignoring `Menu@register` / `AITools@register` / `Notifications@push` return | They return `bool`, never throw or log |
 | Step-up 2FA on every settings Save without the user asking | **ASK** in the plan; default **no** ([32](32-DACORE-RIGHTS.md) §6) |

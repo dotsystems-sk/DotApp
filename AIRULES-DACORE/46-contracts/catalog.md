@@ -2,9 +2,9 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (POS, marketplace, CMS merchandising) and a catalog **pack** must be able to interoperate from this page alone.
+A `<Host>` and a catalog **pack** must be able to interoperate from this page alone.
 
-This role is **not** the Shop **host**. A Shop that owns products **omits** extras. A satellite catalog package sets `extra1=catalog`.
+This role is **not** the <Host> **host**. A <Host> that owns products **omits** extras. A satellite catalog package sets `extra1=catalog`.
 
 ---
 
@@ -38,7 +38,7 @@ $variants = DotApp::call('DACore:Plugins@listByContract!', 'catalog', 'v1', 'pro
 
 **Kind:** peer. **Controller:** `{Module}:CatalogContract@…!`
 
-The **host** (Shop, POS, marketplace) **MUST NOT** set `extra1=catalog` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=catalog` on itself.
 
 ---
 
@@ -172,7 +172,7 @@ If the pack **persists** a product (own admin, not this contract), that save **M
 ## 7. MUST NOT
 
 - Invent `extra1` (`pim`, `products`, `shop-catalog`)
-- Set `extra1=catalog` on the Shop **host**
+- Set `extra1=catalog` on `<Host>`
 - `glob('app/modules')` or `include` the pack to discover it
 - `all()` or `select('*')` on a growing catalog
 - Put a plain product id in HTML

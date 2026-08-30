@@ -211,6 +211,14 @@ Key composition (AES-256-CBC): `app.c_enc_key` + the per-session `_enc_key` + yo
 
 Because the session key participates, ciphertext is **not portable across sessions** — do not persist `Crypto::encrypt()` output in the database expecting to decrypt it later in another session.
 
+**URL path (MUST — law):** `encrypt()` returns standard base64 containing `+`, `/`, and `=`. In a path these become `%2B`, `%2F`, and `%3D`; Apache treats `%2F` as a slash and can return Not Found. Keep AES and a unique `$key2`, but seal the ciphertext before using it in an `href`, `{token}` path segment, or `redirectTo`:
+
+```php
+$sealed = rtrim(strtr($cipher, '+/', '-_'), '='); // A-Za-z0-9-_
+```
+
+When opening, raw-URL-decode, normalize spaces back to `+` for legacy tokens, reverse `-_` to `+/`, restore `=` padding to a multiple of four, then decrypt with the same `$key2`. **MUST** accept both sealed and leftover standard-base64 tokens during migration. `{{ enc(...) }}` remains standard base64 and **MUST NOT** be placed directly in a URL path. Hidden fields, `data-*`, and POST bodies may keep it. Put the sealing/opening helper in the owning module; **MUST NOT** patch core or invent another cipher.
+
 There is no HMAC facade; use PHP `hash_hmac()` if you need signatures.
 
 ---

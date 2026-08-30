@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, ERP, invoice) and a tax pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `pricing` (list / promo) and **not** `invoice` (document store).
+A `<Host>` and a tax pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `pricing` (list / promo) and **not** `invoice` (document store).
 
 ---
 
@@ -38,7 +38,7 @@ $rules = DotApp::call('DACore:Plugins@listByContract!', 'tax', 'v1', 'rules');
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 
@@ -48,7 +48,7 @@ $rules = DotApp::call('DACore:Plugins@listByContract!', 'tax', 'v1', 'rules');
 
 **Kind:** peer. **Controller:** `{Module}:TaxContract@…!`
 
-The **host** (Shop, ERP) **MUST NOT** set `extra1=tax` on itself. Checkout **MAY** call this controller **after** the host picked a tax module — **MUST NOT** invent `extra1`.
+The **`<Host>` module** **MUST NOT** set `extra1=tax` on itself. Checkout **MAY** call this controller **after** the host picked a tax module — **MUST NOT** invent `extra1`.
 
 ---
 
@@ -221,7 +221,7 @@ If the pack later **persists** a filed return / jurisdiction lock (not v1 `quote
 - `all()` a growing rules table per line inside `foreach` — prefetch + keyed map
 - Fire a hook on every `quote`
 - PHP 8+ syntax unless the plan named a higher version
-- Set `extra1=tax` on the Shop **host**
+- Set `extra1=tax` on `<Host>`
 
 ---
 

@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, POS) and a cart pack must be able to interoperate from this page alone.
+A `<Host>` and a cart pack must be able to interoperate from this page alone.
 
 ---
 
@@ -36,7 +36,7 @@ $session = DotApp::call('DACore:Plugins@listByContract!', 'cart', 'v1', 'session
 
 **Kind:** peer. **Controller:** `{Module}:CartContract@…!`
 
-The **host** (Shop) **MUST NOT** set `extra1=cart` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=cart` on itself.
 
 ---
 
@@ -50,7 +50,7 @@ The **host** (Shop) **MUST NOT** set `extra1=cart` on itself.
 
 Discovery **MUST NOT** boot the pack. `capabilities()` is the first wake.
 
-The host passes its **module name** (e.g. `Shop`) into `capabilities` context via `get` / `add` `$opts['host']` so `session` mode can `DSM::use('Shop')`.
+The host passes its **module name** (e.g. `<Host>`) into `capabilities` context via `get` / `add` `$opts['host']` so `session` mode can `DSM::use('HostModule')`.
 
 ---
 
@@ -95,7 +95,7 @@ Line ids that leave PHP toward HTML **MUST** be `{{ enc(Pack.cart.line): $lineId
 
 | Key | Type | Meaning |
 |-----|------|---------|
-| `host` | string | Host module name (`Shop`). Required for `session`. Charset `[A-Za-z0-9_]`. **MUST NOT** a sibling tour — the host passes its own name |
+| `host` | string | Host module name (`<Host>`). Required for `session`. Charset `[A-Za-z0-9_]`. **MUST NOT** a sibling tour — the host passes its own name |
 | `cart_ref` | string | Required for `api`. Pack token or ciphertext. `session` **MAY** omit (DSM key is host + visitor) |
 | `visitor` | string | Optional bound visitor / user id token the **host** already resolved. Length ≤ 64. **MUST NOT** a raw email |
 
@@ -194,7 +194,7 @@ If the pack later **locks** a cart for checkout (handoff), that lock **MAY** fir
 - Use `float` for money
 - Leak `getMessage()` or request bodies
 - PHP 8+ syntax unless the plan named a higher version
-- Set `extra1=cart` on the Shop **host**
+- Set `extra1=cart` on `<Host>`
 
 ---
 

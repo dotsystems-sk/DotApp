@@ -14,6 +14,8 @@
 
 **MUST:** `$qb->raw()` treats **every** `?` as a placeholder, including SQL comments and `COMMENT 'SMS?'`. **MUST NOT** put `?` in CREATE/ALTER strings unless it is a real binding. Canonical: [06-DATABASE.md](06-DATABASE.md) “Raw SQL”.
 
+**MUST:** `installer()` / `uninstaller()` keys run in **written PHP array order**. **MUST NOT** `ksort`, `uksort`, `krsort`, or `usort` those maps (`1.0.10` sorts before `1.0.9`). Canonical: [00](00-AGENT-CONTRACT.md) §5.
+
 **MUST (older MySQL):** installer DDL is **probe-then-CREATE/ALTER**. **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, or `CREATE INDEX IF NOT EXISTS`. Older MySQL rejects those `IF NOT EXISTS` forms; MariaDB-only column syntax must not ship. Canonical: [this file §0](#0-mysql-safe-installer-ddl-must--law), [00](00-AGENT-CONTRACT.md) §5 item 24.
 
 ---
@@ -243,12 +245,12 @@ class Installation extends Installer
 ### Running migrations
 
 ```php
-Installation::module('Shop')->install();          // all versions, ascending
-Installation::module('Shop')->install('1.0.1');   // up to and including 1.0.1
-Installation::module('Shop')->uninstall();        // descending
+Installation::module('Shop')->install();          // all keys, written order
+Installation::module('Shop')->install('1.0.1');   // version_compare filter, still written order
+Installation::module('Shop')->uninstall();        // reverse of uninstaller() written order
 ```
 
-Ordering: `install()` sorts keys ascending and stops when `version_compare($ver, $target, '<=')` fails. `uninstall()` runs descending with `>=`.
+**MUST — installer key order:** `install()` uses `foreach` on `installer()` exactly as the keys were written. Append each new version after the previous key. **MUST NOT** sort that map (or a copy) with `ksort`, `uksort`, `krsort`, or `usort`: string sorting places `1.0.10` before `1.0.9` and can run dependent schema steps in the wrong order. `uninstall()` reverses written order with `array_reverse` while preserving keys; it **MUST NOT** `krsort`. A requested target version may skip keys via `version_compare`; it **MUST NOT** `break` as if the map were sorted.
 
 ### One-shot `install.php`
 

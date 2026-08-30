@@ -12,11 +12,13 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | Check | Fail if |
 |-------|---------|
 | **CRC once** | `crcCheck()` in middleware/`before` **and** in the action; CRC on GET; CRC on `$request->upload()`; PHPDoc `CRCchecking —` names a prefix **and** the method still `crcCheck()`; a new public controller/middleware method with no `CRCchecking —` first line |
-| **IDs** | Plain `value="7"` / `data-id="7"` / `{{ var: $id }}` sent to the browser — need `{{ enc(Shop.item.id): $id }}` unique `$key2` |
+| **IDs** | Plain browser id; path token uses raw standard base64 / `{{ enc }}` instead of sealed `[A-Za-z0-9_-]+`; decrypt not checked for `false` |
 | **Queries** | User input in SQL; `$qb->raw()` `?` that is not a binding (comments count) |
-| **Inputs** | Password/HTML/hash from `$request->data()` not `data(true)`; persist only gated in JS |
+| **Inputs** | Password/HTML/URL/setting/token/hash from `$request->data()` not `data(true)`; protected copy persisted; persist only gated in JS |
 | **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers |
 | **Visible outcome** | Silent `.after()`; success with no toast/status; field errors without marking the input (`AIRULES/00` §2d) |
+| **Layout / UX** | Action flush to parent; final button row has no bottom padding; accidental cramped alignment; mobile overflow/hover-only (`AIRULES/00` §2f) |
+| **AJAX / same class** | Flat `$request->data()['id']` read for nested `load()`/form data; handled product failure uses HTTP 400/500; only one sibling fixed (`AIRULES/00` §2q) |
 | **Privilege / records** | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password with no current-password check (`AIRULES/11` §11) |
 | **Catch reported** | A `catch` or `execute()` `$err` that does not call the module report helper → `dotapp.catch` + `dotapp.catch.error|info`; ad-hoc payload keys; a secret/token/request body in the payload (`AIRULES/18` §9) |
 | **Perf / readability** | `->all()` on a growing table; query/HTTP/log inside `foreach`; `select('*')` on a list; O(n²) or array copy per row; a new `WHERE`/`ORDER BY` column with no index; an index with no comment naming its query; a public method with tags-only PHPDoc (`@return array<string, mixed>` and no purpose sentence); comments that restate the code (`AIRULES/25` §8) |
@@ -25,7 +27,9 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Extender** | Spray on every persist/helper; `extend()` delayed to Module `initialize()`; target URLs in Module map; missing explicit listener routes when Module map is `[]`; `.loaded` for initialize-time; `call()` without owner `exists()`; ordinary result not returned; `original()` marker returned/serialized instead of `isOriginal()`; fake `NEXT`; `$request`/secrets; Events; `['*']` just to attach; duplicate (`AIRULES/12` §10, `AIRULES/00` §2h) |
 | **PHP 7.4+** | PHP 8+ syntax (`match`, `?->`, `str_contains`, union/`mixed`, named args, promotion, `#[`, `enum`, `readonly`) unless the plan named a higher version (`AIRULES/00` §2i) |
 | **MySQL-safe DDL** | `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` in installer / `ensureTable` SQL; missing `SHOW TABLES LIKE` / `information_schema` probe (`AIRULES/07` §0) |
+| **Installer order** | `ksort` / `uksort` / `krsort` / `usort` on installer maps; versions not kept in written dependency order (`AIRULES/07`) |
 | **HTML via Renderer** | `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factory in Controllers/Libraries building a screen/fragment without `// Why:` naming a one-piece exception (`AIRULES/00` §2j, `AIRULES/05` §1c) |
+| **Renderer lifecycle** | Listener returns replacement instead of `useReplacement()`; replacement attempted for `custom`/`after`; listener logs output/secrets; no explicit listener routes (`AIRULES/05` §5) |
 | **Comments** | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; controller/middleware public method whose PHPDoc does not start with `CRCchecking —` (`AIRULES/25` §7) |
 | **Cursor rules** | A new `.mdc` exists only under `.cursor/rules/`; AIRULES cursor rules were not copied into `.cursor/rules/` (`AIRULES/00` §2l) |
 | **defaultSettings** | Wake list or `Router` path built from Config without `defaultSettings()` first; foreign Config composed before that module’s defaults; hardcoded foreign fallback (`AIRULES/00` §2m) |
@@ -33,5 +37,6 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Module AIRULES** | Named host `AIRULES/` exists but was not read; pack registered routes the host does not listen to; new host with no `app/modules/<This>/AIRULES/`; module rules used to skip project law (`AIRULES/00` §2n) |
 | **PLAN folder** | New module / rewrite with no `app/modules/<This>/PLAN/`; chat-only plan; one mega-file instead of a split folder; screen/position not in PLAN; PLAN used to skip project law (`AIRULES/00` §2o) |
 | **Rule stack** | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` (`AIRULES/00` §2p) |
+| **Browser discipline** | Browser/CDP/screenshot click-through used without explicit user request or yes (`AIRULES/00` §2r) |
 
 Grep: `Middleware/`, `module.init.php`, Controllers, views, JS, **and the diff**.

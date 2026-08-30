@@ -88,6 +88,29 @@ All matching listeners register **before** any matching module performs full ini
 
 Without `modulesAutoLoader.php`, DotApp still evaluates listener and module routes separately at runtime. Keep listeners cheap anyway.
 
+### Base translations for sleeping modules
+
+A route-bound module may still be asleep when shared chrome or another module needs one of its labels. Override `baseLanguages()` only for small translation catalogs that must exist before full `initialize()`:
+
+```php
+public function baseLanguages()
+{
+    return [
+        ['file' => 'Shop:shared_sk.json', 'locale' => 'sk_sk'],
+        ['file' => 'Shop:shared_en.json', 'locale' => 'en_us'],
+    ];
+}
+```
+
+**MUST:**
+
+1. Keep each JSON file below 256 KiB and limited to shared labels. Full page copy stays in locale files registered by `initialize()`.
+2. Use only `Module:file.json` paths owned by this module under `translations/`.
+3. Keep `baseLanguages()` pure: descriptors only; no DB, HTTP, logging, routes, listeners, or Translator calls.
+4. Rebuild `modulesAutoLoader.php` after changing descriptors or their JSON contents.
+
+The inherited method returns `[]`; it does not scan translations or wake the module. The optimizer compiles these files into an optional `$baseLanguages` map while keeping `$modulesAutoLoaderVersion = 2`. Old v2 files without the map remain valid. Without the optimizer, DotApp reads active-locale base files only from already declared module classes.
+
 ### Login-required routes (**MUST**)
 
 A page meant only for a logged-in user **MUST NEVER** render for an anonymous visitor.
@@ -324,6 +347,10 @@ Dispatch via `Controller::apiDispatch` → methods like `getUsers`, `postUsers`.
 
 Once a dynamic route matches for the current request during registration/resolution, later registrations may be dropped for that request. Keep route lists ordered intentionally.
 
+`Router::reset(false)` performs a **soft reset**: it unlocks route comparison but keeps the current matched route and its before/after hooks as fallback. If a later route matches, the router atomically performs a hard reset before registering it. If nothing later matches, the original route still resolves.
+
+`Router::reset(true)` performs an **immediate hard reset**: it removes routes, resources, error handlers, occupied-route records, before/after hooks, reserved paths, and route-specific limiter configuration. With no later match, resolution falls through to a plain 404.
+
 ---
 
 ## Middleware systems
@@ -406,6 +433,7 @@ Lifecycle events: `dotapp.module.{name}.init.start`, `.init.condition`, `.init.e
 
 - Verb methods return a **route chain object** only when the route matches the current request; otherwise an inert chain (calls are no-ops).
 - After the first dynamic match, `route_matched` is set and later registrations get the inert chain for that request.
+- `Router::reset(false)` unlocks matching while retaining the old route/hooks as fallback; the first later match replaces the routing state atomically. `Router::reset(true)` clears routing state immediately.
 - `Router::hasRoute(...)` is **inverted**: it returns `false` when the route *would* match. Prefer `php dotapper.php --list-routes` to inspect routes.
 - 404: the `dotapp.router.resolve.404` listener wins, else `Router::errorHandle(404, $view)`, else an empty 404 and `die()`. **HTTP 405 is not implemented.**
 - `->throttle([...])` without `->limitExceeded($fn)` sends a 429 JSON response and **exits**.

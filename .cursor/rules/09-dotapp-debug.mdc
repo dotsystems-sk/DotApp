@@ -13,13 +13,14 @@ When the user asks **why** Save / login / AJAX / installer / admin POST fails (4
 2. **Grep** `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before`, `Middleware::`), `Controllers/`, listeners.
 3. **Count** `crcCheck()` on that route. First call **burns** the one-time CSRF token (`invalidateCSRF`). A second call returns `false`. Middleware + controller is the usual bug.
 4. If **you** add middleware that calls `crcCheck()`, the action **MUST NOT** call it again.
-5. Then check: `data(true)` for passwords/HTML; `form()` `null`/`false`; `reply.message` shown; no `crcCheck()` on `$request->upload()`.
+5. Then check: `data(true)` for persist (URLs/settings/passwords/HTML) — SQL write uses named bindings, not `protect()`; `form()` `null`/`false`; `reply.message` shown; no `crcCheck()` on `$request->upload()`.
 6. **DACore:** grep `AuthTest` — it **ignores** passed rights. Do **not** patch `app/modules/DACore/` to “fix” it (`AIRULES/00` §1).
+7. **“Request failed” on Disable / delete / test / purge:** `$dotapp().load()` nests fields under `data`. `$request->data()['id']` is empty. HTTP 400/500 hides `reply.message`. Unwrap + HTTP 200. Then **grep this module** and fix every sibling (`AIRULES/00` §2q, `AIRULES/09` §3).
 
 **MUST NOT** invent a core/DACore bug or edit `app/parts/` / `DotApp.php`.
 
 **Empty `foreach` / missing switches while the card title shows:** Renderer sandbox dropped the var (`is_callable('time')` etc.). Fix in the module — `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §5, hunt table in `AIRULES/23-DEBUG-PLAYBOOK.md`.
 
-After **writing** code (not only when it fails): **MUST** run the finish gate `AIRULES/00` §2c before claiming done.
+After **writing** code (not only when it fails): **MUST** run the finish gate `AIRULES/00` §2c before claiming done. **MUST NOT** open a live browser to “prove” the POST unless the user asked (`AIRULES/00` §2r).
 
 **Missing business event:** open `app/modules/<Owner>/.hooks`, then grep `Events::trigger(` there. Do not invent a name the owner never fires (`AIRULES/41`).

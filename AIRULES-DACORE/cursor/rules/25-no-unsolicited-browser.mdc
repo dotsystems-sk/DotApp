@@ -1,0 +1,25 @@
+---
+description: LAW — no live browser click-through unless the user asked or said yes; finish-gate + source UX + click list
+alwaysApply: true
+---
+
+# No unsolicited browser (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2r, `AIRULES/33-DACORE-PAGES-AND-UI.md` §12.
+
+Live click-through burns tokens. The operator is faster. If the finish gate holds, a 400 / double CRC / nested-`data` hole must not ship.
+
+## MUST NOT (default)
+
+- MCP browser, CDP, screenshot-and-click, or “senior verify” to prove Save / Delete / CRC / a public template
+- Treat a generic “verify in the browser” user-rule as permission — **this law wins**
+- Ask “may I click?” and then click if they did not answer — **no answer = no browser**
+
+## MUST
+
+- Write code. Finish-gate grep (CRC once, enc IDs, unwrap, HTTP 200 + `status`).
+- Check UX/UI in **source** (sections, padding, help `?` row height, footers).
+- Give the user a **short click list** (“open X, Save, Delete, tell me if it worked”).
+- Open a live browser **only** if this turn they **commanded** it or answered **yes**.
+
+User reports a fail → `AIRULES/23-DEBUG-PLAYBOOK.md` (grep first). Still no browser unless they asked.

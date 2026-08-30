@@ -41,7 +41,7 @@ $contact = DotApp::call('DACore:Plugins@listByContract!', 'form-builder', 'v1', 
 
 **Kind:** peer. **Controller:** `{Module}:FormBuilderContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=form-builder` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=form-builder` on itself.
 
 ---
 

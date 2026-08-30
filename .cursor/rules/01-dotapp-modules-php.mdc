@@ -40,7 +40,7 @@ With `!` in the route: **no** `Renderer $renderer` type-hints.
 
 ## Request input
 
-`$request->data()` is **protected**. `$request->data(true)` is **original**. **MUST** use `true` for passwords, HTML, hashes (`Auth::login` / `createUser`). See `AIRULES/19`.
+`$request->data()` is **protected**. `$request->data(true)` is **original**. **MUST** persist `true` (URLs, settings, HTML, passwords, hashes). SQL injection protection is named / `?` bindings — not `protect()`. See `AIRULES/19`, `AIRULES/06`.
 
 ## Session
 
@@ -56,7 +56,7 @@ Config::module('Shop', 'limit') ?? Config::module('Shop', 'limit', 20);
 
 Use versioned `Installation.php`. Do **not** call `DB::migrate()`. `$qb->raw()`: **every** `?` is a placeholder, including comments — **MUST NOT** write `SMS?` in `COMMENT`. See `AIRULES/06-DATABASE.md`.
 
-**Your** modules: while coding **`install.php`** + live root init files + **`PLAN/`**. After a new version, rename `installed_*_install.php` → `install.php`. User asks to zip a **DACore-bound** module: **MUST** rename `install.php` → **`dainstall.php` in the zip**, copy live init into **`init/`**, inert root, include **`about.php`**; **MUST NOT** ship `install.php` or **`PLAN/`** in the zip (DACore rejects `install.php`; `PLAN/` is author-only). **ASK** for about/license/changelog HTML if missing. Non-DACore: copy the folder with `install.php`. See `AIRULES/00` §2e and `AIRULES/35-DACORE-INSTALL.md` §3b, §4–§5. **Never** pack `app/modules/DACore/`.
+**Your** modules: while coding **`install.php`** + live root init files. After a new version, rename `installed_*_install.php` → `install.php`. User asks to zip a **DACore-bound** module: **MUST** rename `install.php` → **`dainstall.php` in the zip**, copy live init into **`init/`**, inert root, include **`about.php`**; **MUST NOT** ship `install.php` in the zip (DACore rejects it / Installation never runs). **ASK** for about/license/changelog HTML if missing. Non-DACore: copy the folder with `install.php`. See `AIRULES/00` §2e and `AIRULES/35-DACORE-INSTALL.md` §3b, §4–§5. **Never** pack `app/modules/DACore/`.
 
 ## Generate via CLI
 

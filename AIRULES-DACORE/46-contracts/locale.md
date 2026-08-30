@@ -173,7 +173,7 @@ JSON keys are the **source text**, lowercased on lookup. Placeholders: `{{ arg0 
 ## 6. How the host applies locale after pick
 
 1. Operator chooses a `locale` pack from `listByContract!`.
-2. Host stores the module name + normalized `translator_locale` in **host** settings / DSM (`DSM::use('Cms')`) — **not** `$_SESSION`.
+2. Host stores the module name + normalized `translator_locale` in **host** settings / DSM (`DSM::use('HostModule')`) — **not** `$_SESSION`.
 3. On a request that should use that language, host calls `applyLocale` (Translator load + `setLocale`).
 4. Public views still `htmlspecialchars` user content. Translator replaces **keys**, not HTML safety.
 5. If the pack is uninstalled or a required file is missing, host reverts to its default locale and shows a toast / empty state — **MUST NOT** silently invent strings from another pack.

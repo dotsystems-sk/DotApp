@@ -205,6 +205,8 @@ $qb->raw(
 );
 ```
 
+**Named parameters are the persist guard (MUST — law):** SQL injection protection is `:name` / `?` bindings (QueryBuilder `where` / `insert` / `update` values, or `raw($sql, $bindings)`). **MUST** write operator text from `$request->data(true)` into those bindings. **MUST NOT** persist `$request->data()` (`protect()`) so a URL `?q=Sabinov` does not become `?&#61;Sabinov`. `protect()` is not a second SQL wall. Canonical: [19](19-VALIDATION-AND-INPUT.md).
+
 Rules enforced by code (**they throw**):
 
 - Mixing `?` and `:named` in one statement → `\Exception`

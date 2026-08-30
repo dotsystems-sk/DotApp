@@ -134,7 +134,8 @@ Trailing `!` = skip DI. When using `!`, **do not** type-hint injectable services
 | `Config` | Configuration |
 | `Auth` | Authentication |
 | `Crypto` | Encrypt/decrypt |
-| `Events` | Event bus |
+| `Events` | Event bus (`trigger` / `triggerWithVeto`) |
+| `Veto` | Opt-in stop object — only with `triggerWithVeto()` ([12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md)) |
 | `Extender` | Opt-in **method replacement** — owner `exists()` / `call()`; ordinary result returns, `isOriginal()` continues owner logic; extender registers in `Listeners::register()` on target listener routes; own Module routes or `[]` ([12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h) |
 | `Renderer` | Templates |
 | `Translator` | i18n |
@@ -156,8 +157,12 @@ Canonical singleton: `DotApp::dotApp()` / `DotApp::DotApp()`.
 | `dotapp.module.{name}.install` | Before one-shot `install.php` |
 | `dotapp.router.resolve` | Start of routing (alias `dotapp.middleware`) |
 | `dotapp.router.resolve.404` | No route matched |
+| `dotapp.renderer.before` | Before layout/view/code/custom rendering; context v1 may supply a replacement for non-custom operations |
+| `dotapp.renderer.after` | After rendering; context v1 exposes final output |
 
-Event names are lowercased on register/trigger.
+Event names are lowercased on register/trigger. `trigger()` ignores listener returns; `triggerWithVeto()` stops only on a `Veto`.
+
+Renderer events receive one `RendererLifecycleContext`; substitution is `$ctx->useReplacement($html)` during `before`, not a listener return. Contract: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5.
 
 ### `dotapp.catchall` — core debug funnel (DotApp 2.0)
 

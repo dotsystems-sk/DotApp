@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, ERP, CMS prices) and a currency pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `pricing` (list / promo) and **not** `payment` (collect money).
+A `<Host>` and a currency pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). This is **not** `pricing` (list / promo) and **not** `payment` (collect money).
 
 ---
 
@@ -37,7 +37,7 @@ $feed = DotApp::call('DACore:Plugins@listByContract!', 'currency', 'v1', 'feed')
 | extra4 | Meaning |
 |--------|---------|
 | `generic` | Any host family |
-| `cms` | Tuned for a CMS host |
+| `cms` | Tuned for a content-management host family |
 | `shop` | Tuned for a shop host |
 | `erp` | Tuned for an ERP host |
 
@@ -47,7 +47,7 @@ $feed = DotApp::call('DACore:Plugins@listByContract!', 'currency', 'v1', 'feed')
 
 **Kind:** peer. **Controller:** `{Module}:CurrencyContract@…!`
 
-The **host** (Shop, ERP) **MUST NOT** set `extra1=currency` on itself. Checkout / invoice **MAY** call this controller **after** the host picked a currency module — **MUST NOT** invent `extra1` (`fx`, `forex`).
+The **`<Host>` module** **MUST NOT** set `extra1=currency` on itself. Checkout / invoice **MAY** call this controller **after** the host picked a currency module — **MUST NOT** invent `extra1` (`fx`, `forex`).
 
 ---
 
@@ -215,7 +215,7 @@ If the operator **persists** a table rate, that save **MAY** fire:
 - Put `$from` / `$to` into raw SQL
 - Fire a hook on every `convert`
 - PHP 8+ syntax unless the plan named a higher version
-- Set `extra1=currency` on the Shop **host**
+- Set `extra1=currency` on `<Host>`
 
 ---
 

@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, ERP, POS) and a payment pack must be able to interoperate from this page alone.
+A `<Host>` and a payment pack must be able to interoperate from this page alone.
 
 ---
 
@@ -39,7 +39,7 @@ $card = DotApp::call('DACore:Plugins@listByContract!', 'payment', 'v1', 'card');
 
 **Kind:** peer. **Controller:** `{Module}:PaymentContract@…!`
 
-The **host** (Shop, ERP, POS) **MUST NOT** set `extra1=payment` on itself. Checkout / cart packs **MUST NOT** invent a second role (`pay`, `psp`, `gateway`) — they call this controller **after** the host picked a payment module.
+The **`<Host>` module** **MUST NOT** set `extra1=payment` on itself. Checkout / cart packs **MUST NOT** invent a second role (`pay`, `psp`, `gateway`) — they call this controller **after** the host picked a payment module.
 
 ---
 
@@ -239,7 +239,7 @@ Fire only after a useful persist — **not** on `status` or `capabilities`.
 - Put a plain `payment_id` in HTML
 - `all()` a growing payments table to find one row
 - PHP 8+ syntax unless the plan named a higher version
-- Set `extra1=payment` on the Shop / checkout **host**
+- Set `extra1=payment` on `<Host>`
 
 ---
 

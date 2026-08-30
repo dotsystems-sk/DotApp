@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6. Linked users: [42](../42-DACORE-USER-ORIGIN.md).
 
-A Shop / CMS / ERP **host** and a CRM **pack** must be able to interoperate from this page alone.
+A `<Host>` and a CRM **pack** must be able to interoperate from this page alone.
 
 ---
 

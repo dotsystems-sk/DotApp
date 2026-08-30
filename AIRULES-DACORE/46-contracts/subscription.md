@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-A host (Shop, ERP) and a recurring-billing pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `subscription`, controller `SubscriptionContract`.
+A `<Host>` and a recurring-billing pack must be able to interoperate from this page alone. Machine catalog: `DACore\Libraries\ExtraContracts` role `subscription`, controller `SubscriptionContract`.
 
 This role is **recurrence state**. Card capture / refund is `payment`. Mail is `DACore:Email@send!`. **MUST NOT** invent SMTP or store PAN.
 
@@ -41,7 +41,7 @@ $recurring = DotApp::call('DACore:Plugins@listByContract!', 'subscription', 'v1'
 
 **Kind:** peer. **Controller:** `{Module}:SubscriptionContract@…!`
 
-The **host** (Shop) **MUST NOT** set `extra1=subscription` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=subscription` on itself.
 
 ---
 
@@ -211,7 +211,7 @@ Fire only after a useful persist — **not** on `status`.
 - Leak `getMessage()`, PAN, OTP, or gateway tokens
 - `all()` on a growing subscription table
 - Charge cards inside `create` (that is `payment`)
-- Set `extra1=subscription` on the Shop **host**
+- Set `extra1=subscription` on `<Host>`
 - PHP 8+ syntax unless the plan named a higher version
 
 ---

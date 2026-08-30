@@ -32,7 +32,7 @@ CLI-only: non-CLI HTTP requests get 403.
 | Create .htaccess | `--create-htaccess` | Write root `.htaccess` |
 | List routes | `--list-routes` | Boot app, print routes |
 | List one route | `--list-route=<path>` | e.g. `--list-route=/` |
-| Optimize modules | `--optimize-modules` | Write `app/modules/modulesAutoLoader.php` v2 (`$modules` + `$listeners` + `$modulesAutoLoaderVersion = 2`). Old files with only `$modules` still work. |
+| Optimize modules | `--optimize-modules` | Write `app/modules/modulesAutoLoader.php` v2 (`$modules` + `$listeners` + optional compiled `$baseLanguages` + `$modulesAutoLoaderVersion = 2`). Old files with only `$modules` still work. |
 | Core tests | `--test` | Framework tests, or module tests if `--module` set |
 | All module tests | `--test-modules` | All modules' tests |
 | Prepare DB SQL | `--prepare-database[=prefix]` | Export prefixed SQL file (interactive) |
@@ -105,7 +105,7 @@ Commands that ask `[Y/n]:` (Enter = yes): `--install`, `--update`, `--prepare-da
 
 1. Always `Set-Location` to project root before running.
 2. Prefer generators over hand-written skeletons.
-3. After changing `Module::initializeRoutes()` or `Listeners::initializeRoutes()`, run `--optimize-modules`. The generated v2 file keeps legacy `$modules`, adds `$listeners`, and sets `$modulesAutoLoaderVersion = 2`; old files containing only `$modules` still work.
+3. After changing `Module::initializeRoutes()`, `Listeners::initializeRoutes()`, `Module::baseLanguages()`, or a referenced base-language JSON file, run `--optimize-modules`. The generated v2 file keeps legacy `$modules`, adds `$listeners`, may add compiled `$baseLanguages`, and sets `$modulesAutoLoaderVersion = 2`; old files containing only `$modules` still work.
 4. Review generated stubs — they contain example comments; replace with real code.
 5. Expect exit quirks (see [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md)); judge success by printed messages and files created.
 

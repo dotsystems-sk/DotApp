@@ -13,8 +13,9 @@ When the user asks **why** Save / login / AJAX / installer fails (400, Bad reque
 2. **Grep** `crcCheck` in **this module**: `Middleware/`, `module.init.php` (`->before`, `Middleware::`), `Controllers/`, listeners.
 3. **Count** `crcCheck()` on that route. First call **burns** the one-time CSRF token (`invalidateCSRF`). A second call returns `false`. Middleware + controller is the usual bug. Read the action PHPDoc first line `CRCchecking —` — if it names a prefix, the action **MUST NOT** `crcCheck()`.
 4. If **you** add middleware that calls `crcCheck()`, the action **MUST NOT** call it again.
-5. Then check: `data(true)` for passwords/HTML; `form()` `null`/`false`; `reply.message` shown; no `crcCheck()` on `$request->upload()`.
-6. Missing business event: open the owner’s `app/modules/<Owner>/.hooks`, then grep `Events::trigger(` there. Do **not** invent a name the owner never fires (`AIRULES/41`).
+5. Then check: nested `$request->data(true)['data']`; `data(true)` for every persisted URL/password/HTML/setting; `form()` `null`/`false`; handled product outcome is HTTP 200 + `status`; `reply.message` shown; no `crcCheck()` on `$request->upload()`.
+6. Heading/flag renders but `foreach` is empty: Renderer may have dropped the whole bag because a name or nested value is callable (`time`, `copy`, `count`, `key`, `header`). Prefix keys; do not patch Renderer.
+7. Missing business event: open the owner’s `app/modules/<Owner>/.hooks`, then grep `Events::trigger(` there. Do **not** invent a name the owner never fires (`AIRULES/41`).
 
 **MUST NOT** invent a core bug or edit `app/parts/` / `DotApp.php`.
 

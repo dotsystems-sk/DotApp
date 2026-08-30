@@ -112,10 +112,10 @@ Work top-down. Stop when you find a match.
 2. **`formName` placement** — must sit **between** `<fo-rm>` and `</fo-rm>`. Outside the pair the tag is left unchanged (silent fail).
 3. **`/assets/dotapp/dotapp.js`** loaded **before** module JS (session keys). Missing → CRC/CSRF fields wrong.
 4. **`$request->form(...)`** — missing error callback throws; method mismatch → `false`; wrong handler name → `null`. Guard all three and **show** `reply.message`.
-5. **Original vs protected input** — passwords / HTML / hashes **MUST** be `$request->data(true)` (secure fields: `['data']`). `$request->data()` runs `protect()` (`)`, `=`, `%`, … become a different string). Login/installer then “never matches”. [19](19-VALIDATION-AND-INPUT.md).
+5. **Original vs protected input** — every persisted URL/setting/title/token/password/HTML/hash **MUST** be `$request->data(true)` (secure fields: `['data']`). `$request->data()` runs `protect()` (`)`, `=`, `%`, … become a different string). Login never matches and stored URLs break. [19](19-VALIDATION-AND-INPUT.md).
 6. **`Auth::login` === `false`** (malformed) vs `['error']` 1–5 / 99. **MUST** map every branch to a visible message — silent 400 is a frontend/handler bug. [11](11-AUTH-AND-CRYPTO.md), [EX-14](examples/EX-14-auth-and-2fa.md).
 7. **File/ZIP** — `FormData` + `load()` / `<fo-rm>` cannot carry CRC. **MUST** `$dotapp().uploadFile` + `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint. [09](09-DOTAPP-JS-AND-BRIDGE.md).
-8. **JS** — `$dotapp().form` / `load` + `parseReply`. Raw `fetch` / `$.ajax` fails `crcCheck()`. `.after()` **MUST** show `reply.message` on `status != 1` and on HTTP 400.
+8. **JS / payload** — `$dotapp().form` / `load` posts fields under `data`. Unwrap it; do not read a flat `$request->data()['id']`. Handled product failure is HTTP 200 + `status: 0` + `message`; HTTP 400/500 enters onError `(status, bodyText)` and often becomes generic “Request failed”. Raw `fetch` / `$.ajax` fails `crcCheck()`.
 9. **DDL / installer** — `$qb->raw()` treats **every** `?` as a placeholder, including `COMMENT 'SMS?'`. [06](06-DATABASE.md).
 
 ---
@@ -128,8 +128,10 @@ Work top-down. Stop when you find a match.
 | Login always wrong password | `$request->data()` instead of `data(true)`; installer hashed the protected password |
 | Works once, second click fails | Token already burned (double submit without new token, or double `crcCheck`) |
 | Upload “Request failed” | `crcCheck()` on upload endpoint, or file stuffed into `load()` `FormData` |
+| Toggle/Delete says “Request failed” but PHP has a message | flat read instead of nested `data`; handled product failure returned as HTTP 400/500; hunt every sibling ([00](00-AGENT-CONTRACT.md) §2q) |
 | CREATE TABLE never appears | `?` in `$qb->raw()` comments |
 | Blank page / empty body | missing view → `""`; check Renderer fallback |
+| Heading/flag renders but `foreach` is empty | Renderer sandbox dropped the whole bag because a variable name or nested value is callable (`time`, `copy`, `count`, `key`, `header`) |
 | `formName` visible as text | tag **outside** `<fo-rm>…</fo-rm>` |
 
 ---

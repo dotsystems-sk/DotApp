@@ -41,7 +41,7 @@ $html = DotApp::call('DACore:Plugins@listByContract!', 'editor', 'v1', 'html');
 
 **Kind:** peer. **Controller:** `{Module}:EditorContract@…!`
 
-The **host** (CMS, Shop) **MUST NOT** set `extra1=editor` on itself.
+The **`<Host>` module** **MUST NOT** set `extra1=editor` on itself.
 
 ---
 

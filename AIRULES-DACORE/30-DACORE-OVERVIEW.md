@@ -30,8 +30,10 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | **Active sidebar on subpages** | Edit/detail **MUST** pass `withMenu` 7th `$currentFile` = registered list URL when the path is not under that leaf (`/users/4` vs `/users-list`). [31](31-DACORE-MENU.md) |
 | Pack `dainstall.php` + `init/` + **`about.php`** **only** for a **DACore-bound** module and only when asked | While coding: **`install.php`**. **MUST** pack with [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → run → delete). Zip **MUST** rename it to `dainstall.php` (DACore **rejects** `install.php` / never runs Installation without `dainstall.php`) + **`init/`** + **`about.php`**. Non-DACore: copy the folder. [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §3b, §4–§5. **MUST NOT** pack `app/modules/DACore/` or invent a packer. |
 | **Search DACore first** before a new library or page chrome | The base already has many subpages and widgets — grep read-only, then reuse ([33](33-DACORE-PAGES-AND-UI.md)) |
+| **Button padding vs the parent** | Add/move a button → check left, right, **top**, and **bottom**. When buttons are the **last** piece of a card/`card-body`/modal, **almost always** pad **below**. Flush Save is a bug ([33](33-DACORE-PAGES-AND-UI.md) §6, [00](00-AGENT-CONTRACT.md) §2f) |
 | **Read `app/modules/DACore/.hooks` first** | Catalog of `module.dacore.*.hook` and `.veto` DACore already fires — subscribe in **your** module; do not invent names or patch DACore ([41](41-MODULE-HOOKS.md) §6) |
 | **Operator 2FA stays on**; a second prompt only when the plan named it | [32](32-DACORE-RIGHTS.md) §6 — **ASK** (default no). If yes: installer modal + `$dotapp().twoFactor` `{ autoSubmit: true }` ([EX-D10](examples/EX-D10-stepup-2fa-modal.md)); **PHP** verifies; never `Auth::confirmTwoFactor` while already logged in |
+| **Persist original request** | `$request->data(true)` into bound `:name` / QueryBuilder values. `protect()` is **not** the SQL wall — storing `$request->data()` rewrites `=` so `?q=` becomes `?&#61;` ([19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md), [33](33-DACORE-PAGES-AND-UI.md)) |
 
 Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` only (that module’s assets included). DACore: [00](00-AGENT-CONTRACT.md) §1.
 
@@ -54,8 +56,9 @@ Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` 
 | Delete stable user group | `DACore:Roles@deleteGroup!` | `bool` |
 | Delete right(s) by creator | `DACore:Rights@deleteRight!` | `bool` |
 | Delete group + its rights | `DACore:Rights@deleteGroup!` | `bool` |
-| Render admin page | `DACore:Page@withMenu!` | `string` HTML |
-| Render pagination | `DACore:Page@paginate!` | `string` HTML |
+| Render admin page | `DACore:Page@withMenu!` | `string` HTML; optional 8th `$assetModule` |
+| Render pagination | `DACore:Page@paginate!` | `string` HTML (Extender) |
+| Render sidebar `<li>` | `DACore:Menu@generate!` | `string` HTML (Extender) |
 | Register / update AI tool | `DACore:AITools@register` | `bool` |
 | Delete AI tool | `DACore:AITools@delete` (alias `@unregister`) | `bool` |
 | Push inbox notification | `DACore:Notifications@push` | `bool` |
@@ -90,7 +93,7 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_ai_tools` | AI tool registry: `toolid`, `creator`, `description`, `howtouse`, `controller`, `rights`, `helper`, `workflow`, `tool_type`, `risk_level`, `requires_confirmation`, `intent_tags`, `allowed_tools`, `forbidden_tools` |
 | `dacore_chat` | AI chat sessions |
 | `dacore_chat_messages` | AI chat messages |
-| `dacore_modules` | Installed package registry: normal plugins plus protected `DACore` / `DotApp` system rows, about/license/changelog HTML, and `extra1`…`extra5` discovery flags from `about.php` (DACore-owned — **never INSERT/UPDATE/DELETE** from your module; **READ** / `Plugins@listByContract!` / `@listByExtra!` is how a CMS finds `template` / `filemanager` packs — [46](46-DACORE-EXTRA-CONTRACTS.md)) |
+| `dacore_modules` | Installed package registry: normal plugins plus protected `DACore` / `DotApp` system rows, about/license/changelog HTML, and `extra1`…`extra5` discovery flags from `about.php` (DACore-owned — **never INSERT/UPDATE/DELETE** from your module; **READ** / `Plugins@listByContract!` / `@listByExtra!` is how a `<Host>` finds compatible `<Pack>` modules — [46](46-DACORE-EXTRA-CONTRACTS.md)) |
 | `dacore_plugin_logs` | Plugin installer audit (DACore-owned — **never write**) |
 | `dacore_backups` | Root-only metadata for server-generated framework, database, and module archives. Files remain under protected runtime storage; posted paths are never trusted. |
 | `dacore_settings` | DACore-wide settings (DACore-owned — **never write**) |

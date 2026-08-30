@@ -2,7 +2,7 @@
 
 Parent index: [46-DACORE-EXTRA-CONTRACTS.md](../46-DACORE-EXTRA-CONTRACTS.md). Universal peer rules: parent §6.
 
-This is the **v1 peer contract** for reserved role `print`. A host (CMS, Shop, ERP, POS) and a print-queue pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). Machine catalog: `DACore\Libraries\ExtraContracts` role `print`, controller `PrintContract`, methods `capabilities`, `submit`.
+This is the **v1 peer contract** for reserved role `print`. A `<Host>` and a print-queue pack must be able to interoperate from this page alone. Density matches [filemanager.md](filemanager.md). Machine catalog: `DACore\Libraries\ExtraContracts` role `print`, controller `PrintContract`, methods `capabilities`, `submit`.
 
 ---
 
@@ -205,7 +205,7 @@ Fire only after a useful persist — **not** on `capabilities()`, **not** on a f
 - `all()` on a growing job or printer table
 - Leak `getMessage()`, device secrets, or document bytes
 - Fire `print_submitted` without `job_id` and `copies`
-- Set `extra1=print` on the CMS / Shop / ERP / POS **host**
+- Set `extra1=print` on `<Host>`
 - PHP 8+ syntax unless the plan named a higher version
 
 ---
