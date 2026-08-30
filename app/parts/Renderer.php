@@ -78,9 +78,139 @@ class RendererSyntaxException extends \Exception
     }
 }
 
+/**
+ * REVIEW COPY — not autoloaded from the project root.
+ * Diff against app/parts/Renderer.php, then copy manually after review.
+ * Adds RendererLifecycleContext, LIFECYCLE_CONTRACT, and before/after events.
+ */
+class RendererLifecycleContext
+{
+    const CONTRACT = 1;
+
+    private $contractVersion;
+    private $phase;
+    private $operation;
+    private $moduleName;
+    private $source;
+    private $customKey;
+    private $sequence;
+    private $output;
+    private $outputSet;
+    private $hasReplacement;
+    private $replacement;
+
+    /**
+     * @param int $contractVersion Lifecycle contract version.
+     * @param string $phase before or after.
+     * @param string $operation layout, view, code, or custom.
+     * @param string $moduleName Renderer module name when known.
+     * @param string $source Relative layout/view identifier or code hash.
+     * @param string $customKey Custom renderer registration key.
+     * @param int $sequence Request-local sequence.
+     */
+    public function __construct($contractVersion, $phase, $operation, $moduleName, $source, $customKey, $sequence)
+    {
+        $this->contractVersion = (int) $contractVersion;
+        $this->phase = ((string) $phase === 'after') ? 'after' : 'before';
+        $allowed = ['layout', 'view', 'code', 'custom'];
+        $op = strtolower((string) $operation);
+        $this->operation = in_array($op, $allowed, true) ? $op : 'code';
+        $this->moduleName = (string) $moduleName;
+        $this->source = (string) $source;
+        $this->customKey = (string) $customKey;
+        $this->sequence = (int) $sequence;
+        $this->output = '';
+        $this->outputSet = false;
+        $this->hasReplacement = false;
+        $this->replacement = '';
+    }
+
+    public function contractVersion()
+    {
+        return $this->contractVersion;
+    }
+
+    public function phase()
+    {
+        return $this->phase;
+    }
+
+    public function operation()
+    {
+        return $this->operation;
+    }
+
+    public function module()
+    {
+        return $this->moduleName;
+    }
+
+    public function source()
+    {
+        return $this->source;
+    }
+
+    public function customKey()
+    {
+        return $this->customKey;
+    }
+
+    public function sequence()
+    {
+        return $this->sequence;
+    }
+
+    /**
+     * Request a cached substitution. Valid only during before.
+     *
+     * @param string $output Replacement markup. Empty string is a valid hit.
+     * @return void
+     */
+    public function useReplacement($output)
+    {
+        if ($this->phase !== 'before' || $this->operation === 'custom') {
+            return;
+        }
+        $this->hasReplacement = true;
+        $this->replacement = (string) $output;
+    }
+
+    public function hasReplacement()
+    {
+        return $this->hasReplacement === true;
+    }
+
+    public function replacement()
+    {
+        return $this->replacement;
+    }
+
+    /**
+     * Store the finished output before the after event. Core only.
+     *
+     * @param string $output Finished markup.
+     * @return void
+     */
+    public function complete($output)
+    {
+        $this->phase = 'after';
+        $this->output = (string) $output;
+        $this->outputSet = true;
+    }
+
+    public function output()
+    {
+        return $this->outputSet === true ? $this->output : '';
+    }
+}
+
 class Renderer
 {
+    const LIFECYCLE_CONTRACT = 1;
+
     private static $instancie = array();
+    private static $lifecycleSeq = 0;
+    private $lifecycleModule = '';
     /*
 		*
 		* @dotapp - Vybrany layout
@@ -495,9 +625,11 @@ class Renderer
     public function module($name)
     {
         if (strlen($name) > 1) {
+            $this->lifecycleModule = (string) $name;
             $this->dirl = __ROOTDIR__ . "/app/modules/" . $name . "/views/layouts/";
             $this->dirw = __ROOTDIR__ . "/app/modules/" . $name . "/views/";
         } else {
+            $this->lifecycleModule = '';
             $this->dirl = __ROOTDIR__ . "/app/parts/views/layouts/";
             $this->dirw = __ROOTDIR__ . "/app/parts/views/";
         }
@@ -1132,13 +1264,13 @@ class Renderer
             $this->renderedCode = $layoutcode;
             $this->renderedCode = $this->processPrivateBlocks($this->renderedCode);
             foreach ($this->custom_renderers() as $rkey => $custom_renderer) {
-                $this->renderedCode = $custom_renderer($this->renderedCode, $this->getLayoutVars());
+                $this->renderedCode = $this->runObservedCustomRenderer($rkey, $custom_renderer, $this->renderedCode, $this->getLayoutVars());
             }
         } else {
             $this->renderedCode = $renderer($layoutcode);
             $this->renderedCode = $this->processPrivateBlocks($this->renderedCode);
             foreach ($this->custom_renderers() as $rkey => $custom_renderer) {
-                $this->renderedCode = $custom_renderer($this->renderedCode, $this->getViewVars());
+                $this->renderedCode = $this->runObservedCustomRenderer($rkey, $custom_renderer, $this->renderedCode, $this->getViewVars());
             }
         }
 
@@ -1160,11 +1292,18 @@ class Renderer
 
     public function renderLayout()
     {
+        $ctx = $this->lifecycleBegin('layout', (string) $this->layout, '');
+        if ($ctx->hasReplacement()) {
+            $this->renderedCode = $ctx->replacement();
+            $this->lifecycleFinish($ctx, $this->renderedCode);
+            return $this->renderedCode;
+        }
         $this->renderLayoutCode();
         $this->updateLayoutContentData();
         $this->renderedCode = $this->dotApp->bridge->dotBridge($this->renderedCode);
         // Najprv ho prezenieme cez staticky call, cim strati $this pristup
         $this->renderedCode = Renderer::phprender_isolated($this->getLayoutVars(), $this->renderedCode);
+        $this->lifecycleFinish($ctx, $this->renderedCode);
         return $this->renderedCode;
     }
 
@@ -1185,7 +1324,7 @@ class Renderer
                 return ($this->renderedCode);
             } else {
                 foreach ($this->custom_renderers() as $rkey => $custom_renderer) {
-                    $loadedviewcode = $custom_renderer($loadedviewcode, $this->getViewVars());
+                    $loadedviewcode = $this->runObservedCustomRenderer($rkey, $custom_renderer, $loadedviewcode, $this->getViewVars());
                 }
                 $this->renderedCode = $loadedviewcode;
                 return ($this->renderedCode);
@@ -1195,24 +1334,100 @@ class Renderer
 
     public function renderView()
     {
+        $ctx = $this->lifecycleBegin('view', (string) $this->view, '');
+        if ($ctx->hasReplacement()) {
+            $this->renderedCode = $ctx->replacement();
+            $this->lifecycleFinish($ctx, $this->renderedCode);
+            return $this->renderedCode;
+        }
         $this->renderViewCode();
         $this->updateLayoutContentData();
         $this->renderedCode = $this->dotApp->bridge->dotBridge($this->renderedCode);
 
         // Najprv ho prezenieme cez staticky call, cim strati $this pristup
         $this->renderedCode = Renderer::phprender_isolated($this->getViewVars(), $this->renderedCode);
+        $this->lifecycleFinish($ctx, $this->renderedCode);
         return $this->renderedCode;
     }
 
     public function renderCode($code, $vars = [], $render = true)
     {
+        $source = 'code:' . substr(hash('sha256', (string) $code), 0, 16);
+        $ctx = $this->lifecycleBegin('code', $source, '');
+        if ($render === true && $ctx->hasReplacement()) {
+            $this->renderedCode = $ctx->replacement();
+            $this->lifecycleFinish($ctx, $this->renderedCode);
+            return $this->renderedCode;
+        }
         $this->renderedCode = $code;
         $this->updateLayoutContentData();
         $this->renderedCode = $this->dotApp->bridge->dotBridge($this->renderedCode);
-        if ($render === false) return $this->renderedCode;
+        if ($render === false) {
+            $this->lifecycleFinish($ctx, $this->renderedCode);
+            return $this->renderedCode;
+        }
         // Najprv ho prezenieme cez staticky call, cim strati $this pristup
         $this->renderedCode = Renderer::phprender_isolated($vars, $this->renderedCode);
+        $this->lifecycleFinish($ctx, $this->renderedCode);
         return $this->renderedCode;
+    }
+
+    /**
+     * Fire a Renderer before event and return the lifecycle context.
+     *
+     * @param string $operation layout, view, code, or custom.
+     * @param string $source Relative identifier or hash.
+     * @param string $customKey Custom renderer key.
+     * @return RendererLifecycleContext
+     */
+    private function lifecycleBegin($operation, $source, $customKey)
+    {
+        self::$lifecycleSeq++;
+        $ctx = new RendererLifecycleContext(
+            self::LIFECYCLE_CONTRACT,
+            'before',
+            $operation,
+            $this->lifecycleModule,
+            $source,
+            $customKey,
+            self::$lifecycleSeq
+        );
+        Events::trigger('dotapp.renderer.before', $ctx);
+        return $ctx;
+    }
+
+    /**
+     * Store output and fire the matching after event.
+     *
+     * @param RendererLifecycleContext $ctx Context from lifecycleBegin.
+     * @param string $output Finished markup.
+     * @return void
+     */
+    private function lifecycleFinish($ctx, $output)
+    {
+        $ctx->complete((string) $output);
+        Events::trigger('dotapp.renderer.after', $ctx);
+    }
+
+    /**
+     * Observe a custom renderer without allowing cached substitution.
+     *
+     * @param string $rkey Registration key.
+     * @param callable $custom_renderer Transformer.
+     * @param string $code Current template source.
+     * @param array $vars Renderer variables.
+     * @return string
+     */
+    private function runObservedCustomRenderer($rkey, $custom_renderer, $code, $vars)
+    {
+        $parent = (string) (($this->layout !== '') ? $this->layout : $this->view);
+        $ctx = $this->lifecycleBegin('custom', $parent, (string) $rkey);
+        $result = $custom_renderer($code, $vars);
+        if (!is_string($result)) {
+            $result = (string) $code;
+        }
+        $this->lifecycleFinish($ctx, $result);
+        return $result;
     }
 
     public function phprender_isolated($vars, $code)
