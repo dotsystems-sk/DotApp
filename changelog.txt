@@ -1,5 +1,5 @@
 {
   "2.0.0": "Initial release DotApp PHP Framework 2.0.0",
   "2.0.1": "Minor fix - Update testing",
-  "2.0.2": "Minor fix 2026-08-30",
+  "2.0.2": "Minor fix 2026-08-30"
 }
