@@ -42,7 +42,7 @@ Same path as `send!` with event `dacore.webhook.test` and payload `['ok' => true
 - `registerDriver!` / `unregisterDriver!` / `unregisterByCreator!` / `listDrivers!` / `setDriverEnabled!`
 - `registerEndpoint!` / `unregisterEndpoint!` / `unregisterEndpointsByCreator!` / `listEndpoints!`
 
-`listEndpoints!($page, $perPage)` returns a bounded pager envelope (`data`, `current_page`, `last_page`, `per_page`, `total`). Rows expose `has_secret` (0/1) and **never** `hmac_secret`.
+`listEndpoints!($page, $perPage, $search = '')` returns a bounded pager envelope (`data`, `current_page`, `last_page`, `per_page`, `total`). Two-arg callers (`$page`, `$perPage`) keep the same unfiltered page as before. Optional `$search` (also `search` / `q` on the compact map) is trimmed, capped at 80 characters, and ignored when shorter than 3 characters. Filtered `COUNT(*)` + `LIMIT`/`OFFSET` use bound `LIKE` on `endpoint_key` and `name` only — never `hmac_secret`, URL, headers, or payload. Rows expose `has_secret` (0/1) and **never** `hmac_secret`.
 
 ---
 

@@ -26,6 +26,7 @@ Never copy both into the same project — the agent would have two conflicting s
 | [31-DACORE-MENU.md](31-DACORE-MENU.md) | Menu item registration |
 | [32-DACORE-RIGHTS.md](32-DACORE-RIGHTS.md) | Permissions + `{prefixUrl}/{Module}/…` + `Gate@login` 403 |
 | [33-DACORE-PAGES-AND-UI.md](33-DACORE-PAGES-AND-UI.md) | `Page@withMenu`, dotgrid, UI contract |
+| [33-DACORE-COMPONENT-USAGE.md](33-DACORE-COMPONENT-USAGE.md) | `core.css` vs feature bundles; `.dacore-tabs` / pager / file manager |
 | [34-DACORE-AI-TOOLS.md](34-DACORE-AI-TOOLS.md) | AI tools for the DACore chat |
 | [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | Develop with `install.php`; zip **MUST** use [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`dainstall.php` + `init/`); `installer()` keys **MUST** be quoted `'1.0.0' =>` text; **§3c** extras → [46](46-DACORE-EXTRA-CONTRACTS.md) |
 | [36-DACORE-KNOWN-ISSUES.md](36-DACORE-KNOWN-ISSUES.md) | DACore bugs and traps |
@@ -78,16 +79,13 @@ Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [E
 23. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** and implement **from that folder**. Chat-only / one-file plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2o, §2p, [45](45-MODULE-PLANNING.md).
 24. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. Canonical: [00](00-AGENT-CONTRACT.md) §2p.
 25. **No unsolicited browser (LAW):** **MUST NOT** live-click admin/public pages (MCP browser / CDP) to prove Save/Delete. Finish-gate grep + source UX + a short click list for the operator. Browser only if they asked or said yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r.
+26. **Planning happens in files (LAW):** the user asks to plan → **MUST** leave the read-only planner, say once that the plan is written as files so it is portable and complete for the client, then write `app/modules/<This>/PLAN/` and keep its dated **log** ticked in the same chunk as the code. A plan parked in chat, plan mode, a temp folder, or `.cursor/` is lost work. Canonical: [00](00-AGENT-CONTRACT.md) §2s, [45](45-MODULE-PLANNING.md) §0b–§0c.
 
 ## What's New (2026-08-30)
 
 ### No unsolicited browser
 
 Agents **MUST NOT** drive a live browser to prove admin/public Save/Delete. Finish-gate grep + source UX. Give the operator a click list. Browser only if they asked or said yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r, [33](33-DACORE-PAGES-AND-UI.md) §12, compact `25-no-unsolicited-browser.mdc`.
-
-### Renderer lifecycle events
-
-Core `dotapp.renderer.before` / `dotapp.renderer.after` events carry `RendererLifecycleContext` contract 1. A before-listener substitutes layout/view/rendered-code output only with `useReplacement()`; listener returns are ignored, and custom/after events are observe-only. Canonical: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5, [EX-18](examples/EX-18-renderer-lifecycle.md).
 
 ## What's New (2026-08-26)
 
@@ -170,7 +168,7 @@ Theory lives in `00`–`25` (framework), `30`–`40` (DACore), and **[41](41-MOD
 | **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost (reuse DACore assets), **PHPDoc purpose sentence** + Why/About/Section, §8 perf pass |
 | **[41-MODULE-HOOKS.md](41-MODULE-HOOKS.md)** | **Module hooks (LAW)** — `module.{mod}.{name}.hook` when useful (not every save); `.hooks` file; listen, do not patch; DACore-bound modules **MUST** read `app/modules/DACore/.hooks` first |
 | **[42-DACORE-USER-ORIGIN.md](42-DACORE-USER-ORIGIN.md)** | **User origin (LAW)** — global identity/session trust model; checked register/create/stamp/read; exact-origin login+2FA+every gate/list/write; generic failures; ASK before DACore-replacement admin; no RCE/IDOR/escalation |
-| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth + PLAN folder (LAW)** — write `app/modules/<This>/PLAN/` (split files) then implement from it. Packs read host `AIRULES/`, not host `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p) |
+| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth + PLAN folder (LAW)** — plan **in files, not in a planner** (§0b), dated log (§0c); write `app/modules/<This>/PLAN/` (split files) then implement from it. Packs read host `AIRULES/`, not host `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p, §2s) |
 | **[46-DACORE-EXTRA-CONTRACTS.md](46-DACORE-EXTRA-CONTRACTS.md)** | **Reserved `extra1`…`extra5` index (LAW)** — slot grammar, `listByContract!`; deep I/O in **[46-contracts/](46-contracts/README.md)** (template: [filemanager.md](46-contracts/filemanager.md)); hosts MUST NOT invent tokens |
 | [cursor/](cursor/) | Cursor IDE: **source** `AGENTS.md` + `.mdc` rules. Agent **MUST** copy them into `.cursor/rules/` ([00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md)) |
 

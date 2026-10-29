@@ -28,6 +28,8 @@ The admin shell is **DotApp + DACore** (`$dotapp`, `Page@withMenu!`, `core.css`,
 
 Every module that uses the DACore admin shell **MUST** follow this law. Canonical compact rule: `AIRULES/cursor/rules/22-dacore-not-bootstrap.mdc`.
 
+Reusable `dacore-` classes, what belongs in `core.css`, and feature bundles: [33-DACORE-COMPONENT-USAGE.md](33-DACORE-COMPONENT-USAGE.md).
+
 ---
 
 ## 1. The rendering pattern
@@ -176,7 +178,7 @@ Loaded by DACore in this order — **never duplicate them**:
 2. `/assets/modules/DACore/css/iconify/iconify-icons.css`
 3. `/assets/modules/DACore/dotgrid/dotgrid.css`
 4. `/assets/modules/DACore/colors.css`
-5. `/assets/modules/DACore/css/core.css`
+5. `/assets/modules/DACore/css/core.css` — universal production CSS (legacy freeze + v2 `dacore-` append). Do not add a second global `components-v2.css`. Feature CSS (file manager) is loaded only where needed. [33-DACORE-COMPONENT-USAGE.md](33-DACORE-COMPONENT-USAGE.md)
 6. *(your `$css` here)*
 
 JS already present before your `$js`:

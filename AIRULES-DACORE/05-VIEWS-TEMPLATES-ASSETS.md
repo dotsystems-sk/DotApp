@@ -360,23 +360,6 @@ $row->set('sort', 'name')          // PrivateBlock::set — same drop
 
 **MUST NOT** “fix” an empty foreach by editing the Renderer. If a heading without rows appears after a `foreach` of controller data, grep the bag for `time` / `copy` / `count` / `key` / `header` first.
 
-### Renderer lifecycle events (contract v1)
-
-Every `renderLayout()`, `renderView()`, and `renderCode()` fires:
-
-| Event | Context phase | Purpose |
-|-------|---------------|---------|
-| `dotapp.renderer.before` | `before` | Observe a render or supply a cached replacement |
-| `dotapp.renderer.after` | `after` | Observe the final output |
-
-The one listener argument is `Dotsystems\App\Parts\RendererLifecycleContext`. Read `contractVersion()` before depending on fields. Contract 1 exposes `phase()`, `operation()` (`layout`, `view`, `code`, `custom`), `module()`, `source()`, `customKey()`, `sequence()`, and `output()` after completion.
-
-For `layout`, `view`, or rendered `code`, a `before` listener may call `$ctx->useReplacement($html)`. Empty string is a valid replacement. This skips the normal compile/eval pipeline, then still fires the matching `after` event. A listener **return value is ignored**. `custom` renderer events are observe-only; `useReplacement()` has no effect. The `after` phase is observe-only through `$ctx->output()`.
-
-**MUST:** register lifecycle listeners cheaply in your module’s `Listeners::register()` and give them explicit listener routes. Wrap risky listener work in `try/catch`; exceptions propagate. **MUST NOT** log template output or variable bags that may contain secrets, patch Renderer to add hooks, treat these events as business `.hooks`, or use them where a named owner method should opt into Extender.
-
-Mechanism choice: Renderer lifecycle substitutes/observes the template pipeline; Extender replaces a named owner method; `triggerWithVeto()` stops a pre-action; `module.*.hook` reports a useful business side-effect.
-
 ### Debugging templates
 
 ```php

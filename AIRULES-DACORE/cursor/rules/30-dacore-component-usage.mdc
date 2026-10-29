@@ -1,0 +1,26 @@
+---
+description: DACore component CSS — dacore- API, core.css, feature bundles
+globs: app/modules/**/views/**,app/modules/**/assets/css/**
+alwaysApply: false
+---
+
+# DACore component classes
+
+Canonical: `AIRULES/33-DACORE-COMPONENT-USAGE.md`. Tabs-as-GET: `22-dacore-not-bootstrap.mdc`. Pager: `13-dacore-list-pager.mdc` / `AIRULES/40`.
+
+## MUST
+
+- Shared look comes from globally loaded `core.css` (legacy freeze + v2 append). Do not add a globally linked `components-v2.css`.
+- New reusable classes use a direct `dacore-` prefix (`.dacore-tabs`, `.dacore-tab`, `.dacore-list-pager`, `.dacore-toolbar`).
+- Admin tabs = real GET `<a class="dacore-tab">` (or an existing module-prefixed tab).
+- Specialized CSS (file manager) is a feature bundle. JS injects `/css/features/file-manager.css` only where needed. Historical `css/pages/file-manager/` sources are build inputs, not runtime.
+
+## MUST NOT
+
+- Wrap new screens in `.ui-*-page` / `.extended-ui-*-page` to unlock components.
+- Unprefix `.nav-link` or add a global `.d-none`.
+- Restyle `.btn`, `.card`, `.form-control`, `.pagination` as a “v2” change.
+- Use `data-bs-toggle="tab"` / `.tab-pane.fade` / `bootstrap.bundle.js`.
+- Fold file-manager rules into `core.css`.
+- Hand-edit the legacy payload of `core.css`; rebuild with `php app/modules/DACore/tools/css-build.php --check|--write`.
+- Copy the whole `assets/css/components/` tree into a production ZIP. Ship only `tabs-pills.css` and `vendor-select2.css` from that folder.

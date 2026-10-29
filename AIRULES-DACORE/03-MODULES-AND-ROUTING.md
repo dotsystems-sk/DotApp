@@ -323,6 +323,43 @@ Router::before(['GET', 'POST'], $area . '/*', '#Shop:Gate@login!');
 
 Returning a `Response` instance from a before-hook **short-circuits** the pipeline. Login covering: **MUST** return `new Response(403, …)` from `#Shop:Gate@login!` — see above. **MUST NOT** put `crcCheck()` on a catch-all login `before`.
 
+### Shared public files when another module may already own GET (MUST)
+
+Use this when you need to listen to a well-known public path (`/sitemap.xml`, `/robots.txt`, `/rss.xml`, similar) and you **do not know** whether another module already registered `Router::get` for it.
+
+**Why a second `Router::get` fails:** the first matching GET wins. If CMS (or anyone) already occupied `/sitemap.xml`, your later `Router::get('/sitemap.xml', …)` is a no-op for this request (`route_matched` / occupied). Your controller never runs. Silent miss.
+
+**MUST:**
+
+1. Register **GET + empty/passthrough handler** so that **if nobody claimed the path yet**, this module owns it. The GET handler **MUST** return a string body (empty string is OK), **MUST NOT** return a `Response` instance (that skips after hooks — see RouterObj `resolve_with_hooks`). Do **not** skip this GET because another host “might” exist — after is the merge; GET empty is the fallback when the path is still free. Template packs: `app/modules/CMS/AIRULES/10-SHARED-PUBLIC-FEEDS.md`.
+2. Put **all merge logic in `->after(...)`** (controller string preferred). Unlimited modules can attach after. After runs after the owner’s GET.
+3. Also register the **same** after with the global hook so it still binds when GET was already occupied by someone else on this request:
+
+```php
+// Why: if the path is free, we claim GET; passthrough returns '' so after builds the file.
+Router::get('/sitemap.xml', 'Shop:Feeds@passthrough!', Router::STATIC_ROUTE)
+    ->after('Shop:Feeds@sitemapAfter!');
+// Why: if CMS already matched GET, chained after on emptyChain is skipped; global after still attaches.
+Router::after(['GET'], '/sitemap.xml', 'Shop:Feeds@sitemapAfter!');
+```
+
+Make the after handler **idempotent** (running twice MUST NOT duplicate URLs / rules). Guard with a static flag or “already have our loc” check.
+
+4. After receives `$request` only. Previous body is `$request->response->body` (string). **If that body is valid** for the format (well-formed sitemap XML / robots text / rss XML / llms plain text), **append** this module’s rows. **If it is empty or invalid**, **generate the whole file** in this module. CMS template packs: `app/modules/CMS/AIRULES/10-SHARED-PUBLIC-FEEDS.md`.
+5. Wake `initializeRoutes()` **MUST** include those public paths (`/sitemap.xml`, `/robots.txt`, …) or this module never initializes on that request.
+6. After handler PHPDoc: `CRCchecking — none` (GET). Return the new body **string**. Set `Content-Type` when you generate the full file (and when the owner did not).
+7. Document the files in this module’s PLAN. **MUST NOT** Extender-replace the host sitemap/robots just to append — after-merge is the append pattern. Extender remains for **full replacement** of public HTML (CMS AIRULES 03).
+
+**MUST NOT:**
+
+- `Router::get` alone on a path another module may own and assume you will run.
+- `Events::trigger` to append XML (`trigger()` ignores listener returns).
+- Return `Response` from the GET owner or from after if other modules still need after (Response short-circuits the remaining after list).
+- `Router::reset(true)` to steal `/sitemap.xml` from CMS.
+- Patch DACore for this.
+
+Same pattern for `/robots.txt`, `/rss.xml`, and `/llms.txt`.
+
 ### No Laravel groups / named routes
 
 There is **no** `Route::prefix()->name()->group()`. Cover a module area with `Router::before([$prefix, $prefix . '/*'], '#Shop:Gate@login!')` plus routes registered inside `Auth::isLogged()`.
@@ -352,9 +389,29 @@ Dispatch via `Controller::apiDispatch` → methods like `getUsers`, `postUsers`.
 
 Once a dynamic route matches for the current request during registration/resolution, later registrations may be dropped for that request. Keep route lists ordered intentionally.
 
-`Router::reset(false)` performs a soft reset: it unlocks route comparison but keeps the current matched route and its hooks as a fallback. If a later route matches, the router atomically performs a hard reset before registering that new route, so only the new controller and its newly attached hooks remain. If no later route matches, the original controller still resolves.
+### `Router::reset` semantics (**MUST**)
 
-`Router::reset(true)` performs an immediate hard reset: it removes all registered routes, resources, error handlers, occupied-route records, before/after hooks, reserved paths and route-specific limiter configuration. If no route is registered and matched afterwards, resolution falls through to a plain 404.
+Signature: `Router::reset($force = false, $resetHooks = false)`. Matching happens during module `initialize()` registration, **before** final `resolve()`.
+
+| Call | What it does |
+|------|----------------|
+| `Router::reset()` / `reset(false)` | **Soft ownership handoff.** Sets reset-on-next-match. The old route remains fallback until a later matching route registers; that match then calls hard reset (hooks still preserved) before storing the replacement. |
+| `Router::reset(true)` | **Hard reset, one argument.** Clears registered routes, occupied routes, resources, error handlers, reserved paths, route/match caches, builder state, and limiter **definitions**. Preserves limiter **counters**. **Preserves** global `before` / `after` hook arrays because `$resetHooks` defaults false. If nothing matches afterwards, resolve is a clean 404. |
+| `Router::reset(true, true)` | Same hard clear **and** empties all before/after hooks. Catastrophic in a normal multi-module app (login gates, CRC prefixes, feed after-hooks disappear). |
+
+**MUST:**
+
+- Exact ownership handoff only, with load-order proof: no route matched immediately before **this** registration, **this** registration changed matched false→true for the current exact path, and that path is the thing being handed off.
+- Call `Router::reset(true)` with **exactly one argument** when a hard reset is required so hooks stay.
+- Do the decision during `initialize()` at the registration that claimed the path — never inside a controller callback expecting already-initialized modules to register again.
+
+**MUST NEVER:**
+
+- Call `Router::reset(..., true)` (second argument true) in project or module work. That form exists only for a consciously isolated / single-module teardown. Agents **MUST NOT** use it.
+- Reset broad or shared routes (`/{path*}`, `/`, `/search`, `/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt`, admin/API prefixes) except the proven **exact-path** handoff above.
+- Use `Router::reset(true)` to steal `/sitemap.xml` (or other shared feeds) from CMS. Append/merge stays GET passthrough + after ([Shared public files](#shared-public-files-when-another-module-may-already-own-get-must)).
+
+Soft reset (`Router::reset(false)`) still unlocks matching while retaining the old match as fallback; the first subsequent successful match replaces the old routing state.
 
 ---
 
@@ -438,7 +495,7 @@ Lifecycle events: `dotapp.module.{name}.init.start`, `.init.condition`, `.init.e
 
 - Verb methods return a **route chain object** only when the route matches the current request; otherwise an inert chain (calls are no-ops).
 - After the first dynamic match, `route_matched` is set and later registrations get the inert chain for that request.
-- `Router::reset(false)` unlocks matching while retaining the old match as fallback; the first subsequent successful match replaces the old routing state. `Router::reset(true)` clears routing state immediately.
+- `Router::reset(false)` unlocks matching while retaining the old match as fallback; the first subsequent successful match replaces the old routing state. `Router::reset(true)` hard-clears route tables but **preserves** before/after hooks. `Router::reset(true, true)` also clears hooks — **MUST NEVER** in module work. Full contract: [`Router::reset` semantics](#routerreset-semantics-must).
 - `Router::hasRoute(...)` is **inverted**: it returns `false` when the route *would* match. Prefer `php dotapper.php --list-routes` to inspect routes.
 - 404: the `dotapp.router.resolve.404` listener wins, else `Router::errorHandle(404, $view)`, else an empty 404 and `die()`. **HTTP 405 is not implemented.**
 - `->throttle([...])` without `->limitExceeded($fn)` sends a 429 JSON response and **exits**.

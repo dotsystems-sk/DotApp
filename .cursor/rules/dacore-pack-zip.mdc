@@ -19,6 +19,8 @@ When the user asks to zip / pack a **DACore-bound** module:
 2. Run `php dacore-pack-zip.php {Module} {version}` (`{version}` = highest quoted `'1.2.0' =>` key in `Installation.php`).
 3. **Delete** `dacore-pack-zip.php`. Leave the `.txt` in AIRULES untouched.
 
+**Update compatibility (MUST):** DACore can load old module classes, copy new files, then run the new `Installation.php` in the same request. PHP keeps the old in-memory class. A new installer **MUST NOT** unconditionally call a newly added method on another module class; guard with `method_exists` / `defined`, keep the helper in `Installation.php`, or defer it. Before packing, test old-class-preloaded and new-class-loaded paths. Canonical: `AIRULES/35-DACORE-INSTALL.md` “Update request keeps old PHP classes in memory”.
+
 ```powershell
 Copy-Item AIRULES\examples\EX-D09-dacore-pack-zip.php.txt .\dacore-pack-zip.php
 php dacore-pack-zip.php ExampleModule 1.2.0

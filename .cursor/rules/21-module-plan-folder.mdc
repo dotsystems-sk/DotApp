@@ -9,6 +9,8 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o, §2p, `AIRULES/45-MODULE-PLANNIN
 
 The required path: scaffold the module → write **`app/modules/<ThisModule>/PLAN/`** (split files) → implement from that folder. A chat-only plan or one mega-file is not portable.
 
+Where planning happens (plan mode vs files) + the dated log: `28-planning-in-files.mdc`, `AIRULES/00` §2s.
+
 `PLAN/` is **this** module’s development plan. It is **not** the host contract (`app/modules/<Host>/AIRULES/`).
 
 ## MUST

@@ -224,6 +224,19 @@ function transformPackageCopy($work, $module, $sourceInit, $sourceListeners, $so
 
     $dainstall = $work . DIRECTORY_SEPARATOR . 'dainstall.php';
     copy($sourceInstall, $dainstall);
+    $versionPhp = $work . DIRECTORY_SEPARATOR . 'Version.php';
+    if (is_file($versionPhp)) {
+        $versionSrc = (string) file_get_contents($versionPhp);
+        $release = '';
+        if (preg_match("/function\\s+get\\s*\\(\\s*\\)[\\s\\S]{0,400}?return\\s+'([0-9]+\\.[0-9]+\\.[0-9]+)'/", $versionSrc, $rel) === 1) {
+            $release = $rel[1];
+        }
+        $daSrc = (string) file_get_contents($dainstall);
+        if ($release !== '' && strpos($daSrc, 'DAINSTALL_RELEASE:') === false) {
+            $daSrc = preg_replace('/^<\\?php\\s*/', "<?php\n/* DAINSTALL_RELEASE: " . $release . " */\n", $daSrc, 1);
+            file_put_contents($dainstall, $daSrc);
+        }
+    }
     $installName = basename($sourceInstall);
     if (is_file($work . DIRECTORY_SEPARATOR . $installName)) {
         unlink($work . DIRECTORY_SEPARATOR . $installName);
@@ -353,6 +366,9 @@ function writeZip($work, $zipPath)
         if ($relative === 'install.php' || preg_match('#(^|/)installed_[a-f0-9]+_install\\.php$#', $relative) === 1) {
             fail('Forbidden installer file reached the package copy.');
         }
+        if (isRecordingFile($relative)) {
+            fail('Recordings stay in app/runtime and must not enter the install zip: ' . $relative);
+        }
         $zip->addFile($file->getPathname(), $relative);
     }
     addZipAlias($zip, $work . DIRECTORY_SEPARATOR . 'init' . DIRECTORY_SEPARATOR . 'module.init.php', 'init/module.init.php');
@@ -467,6 +483,9 @@ function copyTree($source, $destination)
             }
             continue;
         }
+        if (isRecordingFile($file->getPathname())) {
+            fail('Recordings stay in app/runtime and must not enter the install zip: ' . $rel);
+        }
         if (!copy($file->getPathname(), $target)) {
             fail('Package file copy failed.');
         }
@@ -501,6 +520,18 @@ function removeTree($path)
 function zipHas(array $names, $a, $b)
 {
     return in_array($a, $names, true) || in_array($b, $names, true);
+}
+
+/**
+ * Meeting audio lives in app/runtime, never in the module zip.
+ *
+ * @param string $path
+ * @return bool
+ */
+function isRecordingFile($path)
+{
+    $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+    return in_array($ext, array('mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac', 'opus', 'webm', 'mp4'), true);
 }
 
 /**

@@ -29,9 +29,64 @@ app/modules/<ThisModule>/PLAN/
 
 Filenames may vary; the **split** (index + laws + rules + inventories + positions) **MUST** exist. English.
 
+A module that is already being built **MUST** also keep a **log** file (`11-LOG.md` / `LOG.md`) — see §0b.
+
 **MUST** read **this** module’s `PLAN/` before further coding when it exists. Stack: project AIRULES (wins) → host `AIRULES/` if this is a pack → **this** `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p).
 
 **MUST NOT** skip `PLAN/` because a chat plan exists. **MUST NOT** dump the plan into one file. **MUST NOT** invent a screen that is not in PLAN. **MUST NOT** read a host’s `PLAN/` when writing a pack.
+
+---
+
+## 0b. Plan in files, not in a planner (**MUST** — law)
+
+Canonical: [00](00-AGENT-CONTRACT.md) [§2s](00-AGENT-CONTRACT.md#2s-planning-happens-in-files-not-in-a-planner-must--law). Compact: `AIRULES/cursor/rules/28-planning-in-files.mdc`.
+
+The assistant’s **plan mode** (and any chat-only plan) is a **draft workspace**, never the deliverable:
+
+| Chat / plan mode | `app/modules/<This>/PLAN/` |
+|------------------|-----------------------------|
+| One machine, one account, one chat | Travels with the module folder, the repo, and the handover |
+| Scrolls away; the next agent starts blind | Read before every chunk ([§2p](00-AGENT-CONTRACT.md#2p-rule-stack-where-to-look-must--law)) |
+| The client never sees it | The client receives the whole module **including** its plan and history |
+| Cannot be diffed or reviewed | Plain Markdown, versioned with the code |
+| Usually shallow — “Settings + list + edit” | Forces the §3–§7 density |
+
+**MUST**
+
+1. **Leave the read-only planner.** When the user asks for a plan and the session is in plan / ask / read-only mode, request the switch to the writing mode (`SwitchMode` → agent) **before** writing the plan.
+2. **Explain once, in one or two sentences** — the plan is written as files in the module so it is portable, reviewable, and handed over complete. Do not paste this law into chat.
+3. **Write it into `app/modules/<This>/PLAN/`** as the split above.
+4. **Keep a log** (see §0c) and **record every ASK answer** (model budget, PHP version, menu shape, identity/logo, step-up 2FA, extras) in a PLAN file so nobody re-asks on the next machine.
+5. **Chat = summary + open questions. PLAN = the plan.**
+
+**MUST NOT** ship the plan only as chat text, only as a planner artefact, as root `PLAN.md`, in a temp/desktop folder, in a gist, or under `.cursor/`.
+
+---
+
+## 0c. Log file (**MUST** once building starts)
+
+`PLAN/11-LOG.md` (or `LOG.md`) is the module’s **changelog for decisions and work**, not a git log substitute for code diffs.
+
+One dated heading per work session, in plain English:
+
+```
+## 2026-08-29 — category Foto Save rejected
+
+- User: uploaded WebP, preview OK, Save → “Request rejected”.
+- Cause: form() action ≠ getPath() → the handler treated it as a rejected request.
+- Fix: row actions first, then postedForm() + rewriteAction; unique slug from a non-default tab.
+- Installer '1.0.5'. Not done: orders export.
+```
+
+**MUST**
+
+- Tick the log **in the same chunk** as the code — never “at the end”
+- Record: what the user asked, the decision or cause, what shipped, the `Installation.php` version if one landed, and what is **still open**
+- Keep it readable by a human who was not in the chat
+
+**MUST NOT** write secrets, tokens, passwords, or customer personal data into PLAN files.
+
+Reference shape: `app/modules/CakeByKristina/PLAN/` (index + status, laws, screens, admin density, schema, ASK answers, `11-LOG.md`).
 
 ---
 
@@ -168,6 +223,8 @@ State, in writing:
 - “We will decide the fields while coding”
 - Inventing a second 2FA prompt on every settings Save without asking. **ASK** once; no answer → none. When the user says yes, the chrome is [EX-D10](examples/EX-D10-stepup-2fa-modal.md) — not a 6-digit field on the card
 - Chat-only plan / one mega-file / no `app/modules/<This>/PLAN/` on a new module or rewrite ([00](00-AGENT-CONTRACT.md) §2o)
+- Planning inside the read-only planner and never writing the files; a plan parked in a temp folder, root `PLAN.md`, or `.cursor/` ([00](00-AGENT-CONTRACT.md) §2s)
+- Shipping a chunk without ticking the PLAN log (§0c)
 - Opening the host’s `PLAN/` while planning a pack for that host ([00](00-AGENT-CONTRACT.md) §2p)
 
 ---

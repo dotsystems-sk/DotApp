@@ -38,11 +38,14 @@ CLI-only: non-CLI HTTP requests get 403.
 | Prepare DB SQL | `--prepare-database[=prefix]` | Export prefixed SQL file (interactive) |
 | Install module | `--install-module=<git_url\|name>[:version]` | External module install |
 
+HTTPS downloads for `--install`, `--update`, and `--install-module` **verify the SSL peer by default** (`CURLOPT_SSL_VERIFYPEER` + `VERIFYHOST` 2). The operator may turn verification off **for that download only**: answer `y` to the `[y/N]` prompt (Enter keeps SSL on) or pass `--insecure`. Both paths print a warning. Piped `"y"` for the install confirm does **not** disable SSL.
+
 ### Hidden / companion flags
 
 | Flag | Purpose |
 |------|---------|
 | `--force` | Overwrite existing module dir on `--install-module` |
+| `--insecure` | Skip SSL certificate verification for the install/update download (prints a warning) |
 | `--github-token=<token>` | Private GitHub installs |
 | `--install777` | Hidden install path (avoid) |
 | `--create-modules` | Parsed but **no-op** |
@@ -93,6 +96,8 @@ Libraries, views (beyond scaffold), translations JSON, assets, tests PHP classes
 ## Interactive prompts
 
 Commands that ask `[Y/n]:` (Enter = yes): `--install`, `--update`, `--prepare-database`, `--install-module`.
+
+After confirming `--install` / `--update` / `--install-module`, DotApper asks `Disable SSL verification for this download? [y/N]:` (Enter = **no**, keep SSL on). `--insecure` skips that question and prints the warning.
 
 **No `--yes` flag.** Pipe confirmation:
 

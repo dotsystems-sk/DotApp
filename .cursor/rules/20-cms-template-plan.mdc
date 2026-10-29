@@ -1,29 +1,41 @@
 ---
-description: LAW — after approved PLAN/html/, production CMS pack views MAY place CMS-prepared inspector attributes; never IDs/URLs/routes; empty when off
+description: LAW — CMS template pack: HTML-first PLAN, content placement ladder (no JSON dumping, no per-slug views), DotApp+DACore+CMS only, inspector markers after approval
 alwaysApply: true
 ---
 
-# CMS template plan + inspectable markers (LAW)
+# CMS template pack (LAW)
 
-Canonical: `app/modules/CMS/AIRULES/01-TEMPLATE-PACKS.md`, `app/modules/CMS/AIRULES/02-TEMPLATE-PLAN-FOLDER.md`, `app/modules/CMS/AIRULES/08-EDITOR-COMPONENTS.md`.
+Canonical: `app/modules/CMS/AIRULES/` — `02-TEMPLATE-PLAN-FOLDER.md` (PLAN + HTML-first), `07-PACK-COMPOSITION.md` (page classification), **`11-CONTENT-PLACEMENT.md`** (where content lives), **`12-PACK-DEPENDENCIES.md`** (clean install), `01-TEMPLATE-PACKS.md`, `08-EDITOR-COMPONENTS.md`.
 
-New or rewrite CMS template pack: **HTML-first**. Standalone `PLAN/html/` (filled texts, vanilla CSS/JS) until the user **approves**. **MUST NOT** open CMS PHP or host AIRULES 01/07/08 to design that HTML.
+New or rewrite CMS template pack: **HTML-first**. Standalone `PLAN/html/` (filled texts, vanilla CSS/JS) until the user **approves**. **MUST NOT** open CMS PHP or host AIRULES 01/07/08/11 to design that HTML. A user-supplied vanilla site is copied into `PLAN/html/` **unchanged** and confirmed first (`02` §1a).
 
-## After approval (production views only)
+## Dependencies (MUST)
 
-Production pack views **MAY** place **CMS-prepared** inspector attribute variables on real visible elements (for example `{{ var: $cms_inspect_body_attr }}`).
+Clean install = **DotApp core + DACore + CMS**. **MUST NOT** call, read, configure, or `include` any other module (no DAFiles, no sibling pack, no CDN/Google Fonts). Optional peers (search, consent, captcha, comments, form builder, file manager) are **CMS’s** calls — the pack reads host slots (`$chrome_cookie`, `$form_html`, `$comments_html`, search bags) and works with none installed.
 
-**MUST**
+## Where content lives (MUST — first level that fits)
 
-- Use only attribute strings CMS already built and escaped
-- Leave the value **empty** when inspector mode is off or the visitor is anonymous
-- Keep markers out of standalone `PLAN/html/`
-- Follow `app/modules/CMS/AIRULES/01-TEMPLATE-PACKS.md` and `08-EDITOR-COMPONENTS.md`
+L1 chrome (menus/site settings) → L2 **document body** (unique prose) → L3 **section / block template** (designed band) → L4 **block + `block_vars` JSON rows** (uniform short repeating rows) → L5 **custom field** (named single value) → L6 site settings / `$site_vars` → L7 JSON presentation switch → L8 extra stem / Extender (justified).
 
 **MUST NOT**
 
-- Concatenate IDs, admin URLs, routes, controllers, or rights into markup
-- Emit `data-cms-inspect-*` by hand
-- Treat packs without markers as invalid
+- Dump headings, paragraphs, band lists, image lists, or labels into `$site_vars` / `$page_vars` / `block_vars` (bags cap at 100 nodes / 32 KiB / depth 8)
+- `views/public/{page-slug}.view.php`, or a band layout only `home` can use — designed bands are **registered block templates**
+- Design bands around a pack **editor component** `render_batch` (CMS renders only its own provider today → `_component_missing`) or around section **repeater** rows (admin-only)
+- Ship a pack table/admin for what CMS documents, sections, fields, or menus already model
+
+**MUST**: three questions before any JSON (novice-understandable? identical short rows? one template renders every row?); band inventory + band catalogue with a ladder **Level** in `PLAN/04-PAGES.md`; block JSON rows stay plain text (the host escapes every bag, so markup in JSON prints as tags).
+
+## Cache (MUST)
+
+CMS owns the **page** cache for public URLs (`public_cache_*` in CMS admin). A pack **MUST NOT** build a second page cache, touch host entries, `Cache::use('CMS')`, or purge on a read path. Views **MUST** be cache-correct: no cookie / session / `$_SERVER` / time / random varying the HTML, no CSRF token or single-use bag in a host-cacheable page (use the host bypass call, or do not vary). A host hit **never runs the pack**, so **MUST NOT** count views, log, clean up, or lazily generate while rendering. The pack's own expensive answers **MUST** use `Cache::use('<Pack>')` + TTL + invalidation on pack writes + an **on/off switch in pack settings**. Canonical: `app/modules/CMS/AIRULES/14-PUBLIC-CACHE.md`, project `AIRULES/00` §2t.
+
+## Tests before done (MUST)
+
+Unknown page → nav → publish, no code change · move a band to another page, no code change · delete the seed and the site still looks like the pack. Record in pack `PLAN/00-README.md`.
+
+## Inspector markers (after approval, optional)
+
+Production views **MAY** place CMS-prepared attribute vars on real elements (`{{ var: $cms_inspect_body_attr }}`); empty when inspector is off. **MUST NOT** concatenate IDs, admin URLs, routes, controllers, or rights, or emit `data-cms-inspect-*` by hand. Packs without markers stay valid.
 
 Source of this compact rule is **this file**. Mirror to `.cursor/rules/` — **MUST NOT** author the law only under `.cursor/`.

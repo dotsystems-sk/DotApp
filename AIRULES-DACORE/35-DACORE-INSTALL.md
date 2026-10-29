@@ -573,6 +573,15 @@ The framework **never** executes `dainstall.php`. That is why the zip **MUST NOT
 
 DACore’s own plugin installer (ZIP upload, installer logs, `dacore_modules` / …) is **DACore-owned**. **MUST NOT** write those tables or reimplement that UI.
 
+### Update request keeps old PHP classes in memory (MUST)
+
+During an update, DACore may load the installed module, copy replacement files, and then execute the **new** `Installation.php` in the same PHP request. PHP does not replace a class that was already loaded before the copy.
+
+- A new `Installation.php` **MUST NOT** unconditionally call a newly added method on another module class that may already be loaded (`Schema::newMethod()`, a new constants API, etc.).
+- **MUST** use an update-safe seam: `method_exists` / `defined` fallback, keep the migration helper inside `Installation.php`, or defer use of the new API until the next request.
+- The fallback must preserve old-version behavior during that one transition request. The next request loads the replacement class normally.
+- **MUST** test both states before packing: old dependency class preloaded with no new method, and new class loaded. A failure after “Files copied” leaves new files on disk but migration markers pending, so the fixed higher version must support a forward retry.
+
 ---
 
 ## 5. Pack an installable zip (**DACore modules only**, and only when the user asks)
@@ -600,7 +609,7 @@ On the copy / before zip (what the packer already does — do not reimplement by
 
 1. Copy live `module.init.php` → `init/module.init.php` and live `module.listeners.php` → `init/module.listeners.php` (create `init/` if needed).
 2. Replace the **root** `module.init.php` and `module.listeners.php` with **inert stubs** (below).
-3. Rename `install.php` **or** `installed_*_install.php` to **`dainstall.php`**. Same PHP body (`Installation::module('Shop')->install();`).
+3. Rename `install.php` **or** `installed_*_install.php` to **`dainstall.php`**. Same PHP body (`Installation::module('Shop')->install();`). The file must also contain the comment `/* DAINSTALL_RELEASE: 1.2.0 */`. That string is `Version::get()` in the module's `Version.php` and the newest quoted `installer()` key. At install time DACore does not run it in the request that copied the files. The installer page polls; each poll reads `Version.php` as text, and once it matches, that request loads `Installation.php` and this file (copied to `dainstall` + 32 hex characters + `.php`) from new file names. If the release does not match, polling continues for up to 5 minutes and the page shows the attempt. That is what keeps a DACore self-update from running the installer class OPcache still has for the old path. `module.init.php`, `module.listeners.php`, and other ordinary-request code **MUST NOT** reference the `Installation` class. A package with neither marker still installs.
 4. Zip so unpack lands in `app/modules/Shop/` with `dainstall.php`, `Installation.php`, **`about.php`**, **`.hooks`** (when the module fires `module.shop.*.hook` events — [41](41-MODULE-HOOKS.md)), `init/`, inert root init files, and the rest of the module. **MUST NOT** include `install.php` or `installed_*_install.php`. **MUST NOT** omit `about.php` (DACore rejects it). **MUST NOT** put `.hooks` under `assets/`.
 5. Restore the working tree: live init files from `init/`, `dainstall.php` → `install.php`.
 

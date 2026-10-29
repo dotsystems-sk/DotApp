@@ -1,5 +1,5 @@
 ---
-description: Installer DDL must probe first — never CREATE/ALTER IF NOT EXISTS
+description: LAW — schema probes and DDL exist only inside install/uninstall callbacks
 alwaysApply: true
 ---
 
@@ -7,6 +7,11 @@ alwaysApply: true
 
 Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0, `AIRULES/00-AGENT-CONTRACT.md` §5 item 30.
 
+- **STRICT BAN:** `SHOW TABLES`, `information_schema`, `DESCRIBE`, `SHOW COLUMNS`, `SHOW INDEX`, `tableExists()`, `columnExists()`, `indexExists()` and equivalent physical schema probes **MUST run only inside an `Installation.php` install/uninstall migration callback**.
+- **MUST NOT** probe schema from a public/admin request, route, controller, middleware, store/repository, model, view, listener, module initialization, cron, queue job, API handler, or ordinary service.
+- **MUST NOT** create `ensureTable()`, `ensureColumn()`, `ensureSchema()`, `columnsReady()` or lazy `ALTER TABLE` runtime repair. Existing compatibility-named runtime guards may only answer from a declared installed-schema contract, with **zero database I/O**.
+- An installed module and its migrated schema are one contract. Missing required schema = failed/incomplete installation; report the real operation failure. **MUST NOT** charge every healthy request to rediscover it.
+- Runtime caching or “probe once per request/process” does **not** make a metadata probe legal.
 - **MUST** probe, then `CREATE TABLE` / `ALTER TABLE`. Older MySQL errors on `IF NOT EXISTS` create/alter forms.
 - **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`.
 - Table: `SHOW TABLES LIKE 'name'` after `/^[A-Za-z0-9_]+$/`. Column/index: `information_schema` + `DATABASE()` + bindings.

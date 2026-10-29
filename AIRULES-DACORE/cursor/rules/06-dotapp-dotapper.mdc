@@ -28,7 +28,8 @@ php .\dotapper.php --optimize-modules
 ## Interactive
 
 `--install`, `--update`, `--prepare-database`, `--install-module` ask `[Y/n]`.  
-Pipe `"y" | php ...` when automating. No `--yes` flag.
+Pipe `"y" | php ...` when automating. No `--yes` flag.  
+HTTPS downloads verify SSL by default. `--insecure` or a `y` on the `[y/N]` SSL prompt turns it off for that download only (warning printed).
 
 ## Cannot generate
 

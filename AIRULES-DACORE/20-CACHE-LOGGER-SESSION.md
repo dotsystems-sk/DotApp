@@ -56,6 +56,38 @@ Config::cache('lifetime', 36000);
 
 Custom driver must supply callables: `save, load, exists, delete, clear, gc` (each receives the `Cache` instance as last arg). Missing/non-callable → `\Exception`.
 
+### 1a. Cache the public surface — and let the operator switch it off (MUST — law)
+
+Canonical law: [00](00-AGENT-CONTRACT.md) §2t. Compact: `AIRULES/cursor/rules/29-cache-required.mdc`.
+
+Caching a public interface is **not** an optional optimisation an agent may skip because nobody asked. Any module that renders a **public, anonymous, read-mostly** surface — a CMS site, a catalogue, a price list, a public API answer, a landing page, a public detail page, a widget another page embeds — **MUST** ship caching in the same work as the surface itself, and **MUST** ship an operator switch for it.
+
+**MUST**
+
+1. **Use the built-in `Cache` class** — `Cache::use('<Module>')->save() / load() / exists() / delete() / gc()`. That is the only way a project-level driver change (file → Redis → Memcached, registered with `Config::cacheDriver()`) reaches your module for free.
+2. **One cache instance name per module** (`Cache::use('Shop')`), so the operator can reason about it and so a purge has a scope.
+3. **An admin switch in this module's settings** — at minimum an on/off checkbox, normally also a TTL choice. Default the switch **off** on an update of a live site; a new install may default it on only when the surface is genuinely static. The switch is the reason a bigger cache in front (a page-cache module such as DAUCache, a CDN, a reverse proxy) can take over without fighting this one.
+4. **Respect the switch on both paths** — a disabled cache stores nothing **and** serves nothing.
+5. **Invalidate on write.** Every save/delete that changes what a cached answer contains either deletes the affected keys or bumps a generation value that is part of the key. A TTL alone is not invalidation.
+6. **Decide per surface, and say why.** Anonymous list/detail HTML, rendered menus, computed navigation, expensive aggregate boxes: cache. A form with a one-time CSRF token, a logged-in page, a cart, a checkout step, a per-visitor personalised block, a search over unbounded user text: **do not** cache the response — cache the expensive **fragments** behind it instead, or nothing.
+7. **Never cache anything a session or a right varies** unless the varying value is part of the key (`$context`), and never store personal data, tokens, passwords, or 2FA codes in a cache entry.
+8. **Write the decision into the module `PLAN/`** ([00](00-AGENT-CONTRACT.md) §2o): which surfaces are cached, TTL, what invalidates them, which settings key switches them.
+
+**MAY** cache inside the administration too (an expensive dashboard aggregate, an external API answer, a report) when the same rules hold — a stale admin list is annoying, a stale admin write is a bug, so admin caching is fragments and reports, never the write path.
+
+**MUST NOT**
+
+- Ship a public surface with no caching and no note, then call it done
+- Hand-roll a cache: `file_put_contents()` into your own folder, an APCu call, a static array pretending to be persistent storage, `$_SESSION` as a cache, or a `cache_*` table of your own. Driver changes then bypass you and the operator has nothing to purge
+- Cache with no operator switch, or a switch that only stops storing while old entries keep being served
+- Cache a page carrying a CSRF token, a logged-in view, or a per-visitor value on a shared key
+- Cache a `WHERE id = ?` lookup, a `COUNT(*)`, or anything an index already answers ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2) — a stale row costs more than the query saved
+- Enable `Renderer::useCache(true)` or `Config::db('cache')` (both broken — see the warnings below)
+- Call `Cache::use(...)->clear()` for your own invalidation: `clear()` is folder-wide on the file driver and **flushes the whole server** on Memcached. Delete your keys, or bump your generation
+- Assume the page-cache module (DAUCache) makes module-level caching unnecessary. It is the outer layer; it can be uninstalled, and the operator may cache one module and not another
+
+A page-cache module in front (DAUCache) and module-level caching are **layers**, not alternatives: the outer one skips your code entirely on a hit, the inner one still pays off on a miss, on a partially dynamic page, and when the outer layer is off.
+
 ### Two important warnings
 
 1. **`Renderer::useCache(true)` is broken** — it calls `cachePageExists`/`cachePageSave`, which exist only on the legacy `Cache_OLD` class. Do not enable it.

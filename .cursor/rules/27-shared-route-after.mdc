@@ -1,0 +1,27 @@
+---
+description: LAW — Occupied public GET (sitemap/robots/rss/llms) uses empty GET + after, not a second Router::get alone.
+alwaysApply: true
+---
+
+# Shared public GET + after (LAW)
+
+Canonical: `AIRULES/03-MODULES-AND-ROUTING.md` “Shared public files when another module may already own GET”. CMS packs: `app/modules/CMS/AIRULES/10-SHARED-PUBLIC-FEEDS.md`.
+
+The first matching `Router::get` wins. A later GET on `/sitemap.xml` is a silent no-op if CMS (or anyone) already claimed it.
+
+## MUST
+
+- Claim GET with a **passthrough** that returns a **string** (`''` is OK) — never a `Response` (that skips after). This is the fallback when the path is still free.
+- Put merge logic in `->after(...)` **and** the same handler on global `Router::after(['GET'], '/sitemap.xml', ...)`. After is the foolproof layer: valid body → append; empty/invalid → generate the whole file.
+- Same for `/robots.txt`, `/rss.xml`, `/llms.txt`.
+- Wake `initializeRoutes()` with those paths. After is **idempotent**.
+- After PHPDoc: `CRCchecking — none`. Return a string. Set Content-Type when you generate.
+
+## MUST NOT
+
+- `Router::get` alone on a path another module may own
+- Skip GET passthrough because a host “might” be installed (after still needs GET empty when the path is free)
+- `Events::trigger` to append XML
+- `Response` from GET or after if others still need after
+- `Router::reset(true)` to steal the path
+- Extender-replace the host feed just to append (Extender = full replace)

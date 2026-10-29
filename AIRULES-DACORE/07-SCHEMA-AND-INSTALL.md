@@ -27,6 +27,30 @@
 
 ## 0. MySQL-safe installer DDL (MUST — law)
 
+### 0a. Physical schema probes are installer/uninstaller only (STRICT LAW)
+
+`SHOW TABLES`, `information_schema`, `DESCRIBE`, `SHOW COLUMNS`, `SHOW INDEX`, framework `tableExists()` / `columnExists()` / `indexExists()`, and every equivalent physical schema discovery query **MUST run only while an `Installation.php` install or uninstall migration callback is actually executing**.
+
+**MUST NOT** run a physical schema probe from:
+
+- a public or admin request;
+- a route, controller, middleware, API action, model, store/repository, service, listener, view, module `initialize()` / `initializeRoutes()`;
+- cron, queue, feed, webhook, CLI business command, cache warmup, or any other ordinary runtime path.
+
+**MUST NOT**:
+
+- add runtime `ensureTable()`, `ensureColumn()`, `ensureSchema()`, `columnsReady()` or lazy `ALTER TABLE` repair;
+- probe “once per request”, memoize a probe, preload all `information_schema` rows, or use a process cache — caching does not make a forbidden runtime probe legal;
+- silently treat missing required schema as an optional feature on the current package version.
+
+An installed module and the schema produced by its ordered migrations are **one contract**. Missing required schema means the installation/update is incomplete. The real operation reports through the module catch bus; healthy requests **MUST NOT** pay metadata queries to rediscover installation state.
+
+Compatibility-named runtime guards may remain only when existing callers require their signature. They **MUST** validate identifiers and answer from an explicit installed-schema/capability contract with **zero database I/O**. The physical probe implementation must be reachable only inside an executing migration callback. Merely calling `installer()` to list version keys **MUST NOT** enable probes; wrap each callback and restore runtime mode in `finally`.
+
+The only runtime exception is a framework-level database administration product whose explicit purpose is to inspect arbitrary schemas. A normal module, CMS, plugin, theme, pack, installer status page, or health check is **not** that exception.
+
+### 0b. Probe, then portable CREATE/ALTER inside migrations
+
 Idempotency is a **PHP probe**, not an `IF NOT EXISTS` clause. DACore’s installer does the same: `SHOW TABLES LIKE` / `information_schema` first, then `CREATE TABLE` / `ALTER TABLE` only when the object is missing (`SetupGuard::mysqlTableExists` / `mysqlColumnExists`, `addColumnIfMissing`, `addIndexIfMissing`). Copy that **shape** into **your** `Installation.php`. **MUST NOT** call DACore `SetupGuard` / `SchemaCompat` from another module.
 
 | Object | Probe (MUST) | Then |
@@ -312,7 +336,7 @@ The framework runs `install.php` once (event `dotapp.module.Shop.install`) then 
 
 **DACore zip is only for modules built for DACore.** If this module is **not** for DACore: **MUST NOT** create `dainstall.php`, `init/`, or a pack zip. To take it to another project: rename `installed_*_install.php` → `install.php` and copy the module folder. The other project’s next page load runs it.
 
-If the module **is** for DACore: pack **only** when the user asks for an installable zip, using the handbook packer [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → `dacore-pack-zip.php` → run → delete). **MUST NOT** invent a packer. **MUST** rename `install.php` → `dainstall.php` in that zip and put live init in `init/` — a zip that still has `install.php` is **rejected** and Installation **never runs**. **MUST NOT** apply that pack step to `app/modules/DACore/` itself. Canonical: [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5.
+If the module **is** for DACore: pack **only** when the user asks for an installable zip, using the handbook packer [EX-D09](examples/EX-D09-dacore-pack-zip.md) (copy `.txt` → `dacore-pack-zip.php` → run → delete). **MUST NOT** invent a packer. **MUST** rename `install.php` → `dainstall.php` in that zip and put live init in `init/` — a zip that still has `install.php` is **rejected** and Installation **never runs**. **MUST NOT** apply that pack step to `app/modules/DACore/` itself. `dainstall.php` must contain `/* DAINSTALL_RELEASE: 1.2.0 */`, the same string as `Version::get()` in `Version.php` and the newest quoted installer key. DACore runs it from the installer page's status requests: it waits up to 5 minutes until `Version.php` matches, then loads `Installation.php` and a `dainstall` + 32 hex characters copy from new file names, so a DACore self-update is not stuck on the OPcache copy of the previous installer. Ordinary requests **MUST NOT** reference the `Installation` class. Canonical: [00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §4–§5.
 
 **MUST (new version / migration):** after you add or change a version in `Installation.php`, **rename** `installed_*_install.php` back to `install.php`. The agent does this — **MUST NOT** leave it for the user. If `install.php` is already in the root, leave it.
 

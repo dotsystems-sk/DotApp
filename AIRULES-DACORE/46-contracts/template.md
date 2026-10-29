@@ -6,6 +6,8 @@ This is a **pack** contract (files only). A named `<Host>` and a template pack m
 
 When the named host is installed, the pack author **MUST** read `app/modules/<Host>/AIRULES/` and follow **project AIRULES + host AIRULES together** ([00](../00-AGENT-CONTRACT.md) §2n). The host handbook defines its supported routes, view names, slots, and variables. This generic contract does not assume any optional host or host-specific route catalogue.
 
+**A pack runs on a clean install.** Its runtime dependencies are the framework core, DACore, and the named host — nothing else. Content belongs at the lowest level the host already models (host body / sections / blocks / fields before any JSON bag), and the number of public views follows the host’s view archetypes, not the number of pages. For the CMS host those laws are `app/modules/CMS/AIRULES/12-PACK-DEPENDENCIES.md` and `11-CONTENT-PLACEMENT.md`.
+
 ---
 
 ## 1. Role

@@ -34,6 +34,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Middleware string without `#` for Middleware class | `#Shop:Gate@login!` |
 | Register all admin/member routes, then login middleware only | Prefix login `before` **and** `if (Auth::isLogged() === true)` — page **MUST NEVER** show ([03](03-MODULES-AND-ROUTING.md)) |
 | Prompt-echo / every-line comments | English **why** at traps only ([03](03-MODULES-AND-ROUTING.md)) |
+| Second `Router::get('/sitemap.xml')` (or robots/rss/llms) when CMS or another module may already own that GET | GET empty controller (string, never `Response`) + `->after` **and** global `Router::after`; valid format → append, else generate ([03](03-MODULES-AND-ROUTING.md); CMS packs: `app/modules/CMS/AIRULES/10-SHARED-PUBLIC-FEEDS.md`) |
 
 ## Templates
 
@@ -84,6 +85,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
 | `CREATE TABLE items` / `dotapp_items` / `dacore_*` for a module | `{lowercase_modulename}_items` (Shop → `shop_items`) |
 | `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` | Probe `SHOW TABLES LIKE` / `information_schema` (`DATABASE()` + bindings), then `CREATE`/`ALTER` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0) |
+| `information_schema` / `SHOW TABLES` / `tableExists()` / `columnExists()` in a controller, store, route, listener, cron, admin/public render, or runtime `ensure*` | **Forbidden.** Physical schema discovery belongs only inside an executing `Installation.php` install/uninstall callback. Installed code trusts its migrated schema contract ([07](07-SCHEMA-AND-INSTALL.md) §0a) |
 
 ## Return values / error handling
 
@@ -91,6 +93,11 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 |-------|-------|
 | `if ($plain = Crypto::decrypt(...))` | `if (Crypto::decrypt(...) === false)` |
 | `if (Cache::load($k))` | `if (Cache::load($k) !== null)` |
+| Public page rebuilt on every request, “caching was not asked for” | Cache is **required** on a public anonymous surface — [00](00-AGENT-CONTRACT.md) §2t, [20](20-CACHE-LOGGER-SESSION.md) §1a |
+| `file_put_contents(__DIR__ . '/cache/page.html', …)` / APCu / own `cache_*` table | `Cache::use('<Module>')` — otherwise a driver change (file → Redis → Memcached) bypasses the module |
+| Cache with no admin on/off switch | Switch in **this** module's settings; off stores nothing **and** serves nothing (that is how DAUCache / CDN can take over) |
+| `Cache::use(...)->clear()` to invalidate one thing | Delete your keys or bump a generation inside the key (`clear()` is folder-wide on file, whole-server flush on Memcached) |
+| Cached response containing a one-time CSRF token or a logged-in view | Do not cache that response; cache the expensive fragments behind it |
 | `if (Validator::validate(...))` | `if (Validator::validate(...) === true)` |
 | `if (!Email::send(...))` | `if (Email::send(...) !== true)` (returns an array) |
 | `$r = Auth::login(...); $r['error']` | check `$r === false` first |
