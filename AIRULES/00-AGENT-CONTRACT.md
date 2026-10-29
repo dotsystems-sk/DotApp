@@ -70,6 +70,9 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 22. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. See [§2p](#2p-rule-stack-where-to-look-must--law).
 23. **Same class of bug (LAW):** one broken `load()` / `form()` handler means grep this module for siblings; unwrap nested `data`, and use HTTP 200 + `status` for handled product outcomes. See [§2q](#2q-same-class-of-bug--hunt-the-module-must--law).
 24. **No unsolicited browser (LAW):** finish gate + source UX + tests + click list by default. Browser only when the user explicitly asks or says yes. See [§2r](#2r-no-unsolicited-browser--click-through-must--law).
+25. **Planning happens in files (LAW):** a plan in plan mode, chat, or a temp file is lost work. Write it into `app/modules/<This>/PLAN/`, record ASK answers, and tick a dated log in the same chunk as the code. See [§2s](#2s-planning-happens-in-files-not-in-a-planner-must--law).
+26. **Public cache with a switch (LAW):** a public anonymous read-mostly surface uses `Cache::use('<Module>')` and an on/off switch in this module’s settings. Off stores nothing and serves nothing. See [§2t](#2t-cache-the-public-surface-and-give-the-operator-a-switch-must--law).
+27. **Final control (LAW):** `/finalcontrol` walks every control of the module and fixes every finding. See [§2u](#2u-final-control-on-request--finalcontrol-must--law).
 
 ### Dotapper-first rule
 
@@ -137,7 +140,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Hooks** | Grep `Events::trigger(` vs `app/modules/<ThisModule>/.hooks` | Useful side-effect (SMS/mail/paid/lockout) with no `module.{mod}.{name}.hook`; old `shop.item.saved` shape; trigger without `Hook:`/`Why:`/`Params:`/`Use:`; hook on a trivial save with no named `Use:`; secrets; `trigger()` inside a growing `foreach`; `.hooks` in `assets/`; `return false` treated as a veto instead of `triggerWithVeto()` + `Veto` ([41](41-MODULE-HOOKS.md)) |
 | **Extender** | New page/cart/export renderer **or** `Extender::` in the chunk | Spray on every persist/helper; skipped opt-in on a judged swap; `extend()` delayed to Module `initialize()`; target URLs placed in the Module map; listener-only Module `[]` with omitted/`null` listener routes; `.loaded` used although the point may run during target `initialize()`; `call()` without owner `exists()`; ordinary result does not return immediately; `original()` marker returned/serialized instead of checked with `isOriginal()`; fake `NEXT`; `$request` / secrets in args; Events used to replace a method; `['*']` just to attach; patch of another module to insert `call()` ([12](12-SERVICES.md) §10, [§2h](#2h-extender-judge--not-every-method)) |
 | **PHP 7.4+** | Diff of new PHP | PHP 8+ syntax on a 7.4+ module: `match`, `?->`, union/`mixed` types, named args, constructor promotion, `#[…]`, `enum`, `readonly`, `never`, `str_contains` / `str_starts_with` / `str_ends_with` — unless the plan named a higher version ([§2i](#2i-php-version-must)) |
-| **MySQL-safe DDL** | `Installation.php` / store `ensureTable` SQL in the chunk | Raw `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`. Missing `SHOW TABLES LIKE` / `information_schema` probe before CREATE/ALTER ([07](07-SCHEMA-AND-INSTALL.md) §0, [§5](#5-security-non-negotiables) item 24) |
+| **MySQL-safe DDL** | `Installation.php` / store `ensureTable` SQL in the chunk | Raw `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`. Missing `SHOW TABLES LIKE` / `information_schema` probe before CREATE/ALTER. A schema probe, `ensureTable`, or DDL reachable outside an executing install/uninstall callback ([07](07-SCHEMA-AND-INSTALL.md) §0, [§5](#5-security-non-negotiables) item 24) |
 | **Installer order** | `Installation.php` / installer maps | `ksort`, `uksort`, `krsort`, or `usort` on installer/uninstaller keys; new version inserted before an older dependency instead of appended in written order ([07](07-SCHEMA-AND-INSTALL.md)) |
 | **HTML via Renderer** | Diff of Controllers / Libraries vs `views/` | A screen or fragment (table, grid, empty state, pager chrome, tree, crumbs, card) built with `$html .=` / `'<table` / `'<tr` / `'<div class=` / `'<ul class=` / a `*Html()` factory in PHP. Fail unless that **one piece** has `// Why:` naming a real exception (sandbox callable drop, pager `<li>` / button, one tiny chip) — never a whole list ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
@@ -148,6 +151,10 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **PLAN folder** | New module / first surface / rewrite + `app/modules/<This>/PLAN/` | No `PLAN/`; chat-only plan; one mega-file instead of a split folder; implement a screen/position not in PLAN; PLAN used to skip project law ([§2o](#2o-module-plan-folder-must--law), [45](45-MODULE-PLANNING.md)) |
 | **Rule stack** | Paths opened this session | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` ([§2p](#2p-rule-stack-where-to-look-must--law)) |
 | **Browser discipline** | Verification actions | Browser/CDP/screenshot click-through used without the user explicitly asking or saying yes ([§2r](#2r-no-unsolicited-browser--click-through-must--law)) |
+| **Planning in files** | Plan / new module / rewrite | Plan left in chat, plan mode, or a temp file; ASK answers not recorded; dated `PLAN` log not ticked in this chunk ([§2s](#2s-planning-happens-in-files-not-in-a-planner-must--law)) |
+| **Public cache** | New public anonymous surface | No `Cache::use('<Module>')` and no PLAN note; cache with no settings switch; off still serves old entries; hand-rolled storage; CSRF, cart, or logged-in HTML on a shared key; `clear()` used as invalidation ([§2t](#2t-cache-the-public-surface-and-give-the-operator-a-switch-must--law), [20](20-CACHE-LOGGER-SESSION.md) §1a) |
+| **Shared public GET** | `/sitemap.xml`, `/robots.txt`, `/rss.xml`, or any path another module may already own | A second `Router::get` alone; GET or after returns `Response` while others still need after; `Router::reset(true)` to steal the path ([03](03-MODULES-AND-ROUTING.md)) |
+| **Installer failure** | `Installation.php` callback | Critical failure only `return` / `return false` — `Installer::install()` ignores the return and continues. Throw after reporting ([07](07-SCHEMA-AND-INSTALL.md)) |
 | **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
@@ -377,6 +384,82 @@ Default verification is source inspection, the finish gate, tests, and a short o
 
 When the user reports a live failure, follow [23](23-DEBUG-PLAYBOOK.md) and grep first. Browser access is still opt-in. Compact: `AIRULES/cursor/rules/25-no-unsolicited-browser.mdc`.
 
+### 2s. Planning happens in files, not in a planner (MUST — law)
+
+A plan that lives in plan mode, in chat history, in a scratch file, or only on the agent’s machine is **lost work**. It cannot move to another computer, and the next agent starts blind. The deliverable of planning is **`app/modules/<This>/PLAN/`** ([§2o](#2o-module-plan-folder-must--law)) — split Markdown inside the module.
+
+**Applies** whenever [§2k](#2k-module-planning-depth-must) applies (new module, first major surface, rewrite) **and** whenever the user says “plan”, “naplánuj”, “urob plán”, “navrhni”, or asks for an approach before code.
+
+**MUST**
+
+1. **Leave the read-only planner.** If the session cannot write files, switch to the mode that can **before** producing the plan.
+2. **Say why, in one or two sentences** — the plan is written as files in the module so it is versioned and portable. Do not paste this law into chat.
+3. **Write `app/modules/<This>/PLAN/`** as split files ([45](45-MODULE-PLANNING.md) §0): index, laws, rules, navigation, screens, positions, schema, ASK answers.
+4. **Keep a dated log** (`11-LOG.md` or `LOG.md`): what was asked, what was decided, what shipped, the `Installation.php` version if one landed, and what is still open. Tick it **in the same chunk** as the code.
+5. **Record every ASK answer** (model budget, PHP version, navigation, identity, and any extra the plan asked) so nobody re-asks on the next machine.
+6. **Chat gets the summary; PLAN gets the plan.**
+
+**MUST NOT**
+
+- Deliver the plan only as chat text or a planner artefact and then start coding
+- Park the plan in root `PLAN.md`, a temp/desktop folder, a gist, or `.cursor/`
+- One mega-file instead of the split folder
+- Skip `PLAN/` because the chat already has it, the module is small, or the user is reading along
+- Continue coding from memory when this module’s `PLAN/` was never updated after the last chunk
+- Open `app/modules/<Host>/PLAN/` while writing a pack ([§2p](#2p-rule-stack-where-to-look-must--law))
+- Put secrets, tokens, or customer personal data into PLAN files
+
+Canonical: [45](45-MODULE-PLANNING.md) §0b, compact `AIRULES/cursor/rules/28-planning-in-files.mdc`.
+
+### 2t. Cache the public surface, and give the operator a switch (MUST — law)
+
+A public, anonymous, read-mostly surface that recomputes itself on every request is **unfinished**. Caching it is part of the same work as the surface. This covers a catalogue, a price list, a public detail page, a public API answer, and an embedded widget — any application with a public face.
+
+**MUST**
+
+1. **Cache what makes sense outside authenticated pages**, in the same work as the surface. A form with a one-time CSRF token, a cart, a logged-in page, or a per-visitor block **MUST NOT** be response-cached. Cache the expensive fragments behind them.
+2. **Use `Cache::use('<Module>')`.** A project driver change (`Config::cacheDriver()`: file → Redis → Memcached) then reaches this module. A hand-rolled `file_put_contents()` folder, APCu, a private `cache_*` table, or `$_SESSION` as cache **MUST NOT** be used ([20](20-CACHE-LOGGER-SESSION.md) §1a).
+3. **Ship an on/off switch in this module’s own settings** (normally also a TTL). Off means it **stores nothing and serves nothing**.
+4. **Invalidate on write** — delete the affected keys or bump a generation inside the key. A TTL alone is not invalidation. **MUST NOT** use `Cache::use(...)->clear()` as invalidation (folder-wide on file, whole-server flush on Memcached).
+5. **Record it in `PLAN/`:** cached surfaces, TTL, what invalidates them, and the settings key that switches them.
+
+Caching inside an authenticated area is allowed for expensive aggregates, reports, and external API answers. A write path, and a per-user value on a shared key, stay uncached.
+
+**MUST NOT**
+
+- Ship a public surface with no cache and no PLAN note
+- Cache without an operator switch, or a switch that only stops storing while old entries keep being served
+- Cache a CSRF-carrying page, a logged-in view, a cart, or personalised markup on a shared key; store personal data, tokens, or one-time codes in an entry
+- Cache a `WHERE id = ?`, a `COUNT(*)`, or anything an index already answers ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2)
+- Enable `Renderer::useCache(true)` or `Config::db('cache')`
+- Skip module caching because a CDN, a reverse proxy, or another page-cache module might sit in front — those layers can be off or absent
+
+Canonical: [20](20-CACHE-LOGGER-SESSION.md) §1a, compact `AIRULES/cursor/rules/29-cache-required.mdc`.
+
+### 2u. Final control on request — `/finalcontrol` (MUST — law)
+
+The finish gate ([§2c](#2c-finish-gate-must--law)) runs after every chunk. **Final control** is the full sweep of one module before hand-off: every button, its listener, its route, its rights check, its spacing, and its comments.
+
+**Trigger:** `/finalcontrol [Module]`, or “final control”, “záverečná kontrola”, “finálna kontrola”, or a pre-release check of a module.
+
+**MUST**
+
+1. Read and follow `AIRULES/cursor/skills/finalcontrol/SKILL.md`. Every step, every control — not a sample.
+2. Inventory every button, link-action, form, and row action: view file:line → JS handler → URL → route → `Controller@method` → rights. A missing link in that chain is a finding.
+3. Check layout in source: padding on all four sides, space below the last buttons of a block, spacing between consecutive blocks, mobile wrap ([§2f](#2f-layout-and-uxui-must--law)).
+4. Check every route for a login gate where the page is private, an explicit rights check, the **write** right on writes, encrypted ids plus owner-scoped SQL, and no privilege escalation ([11](11-AUTH-AND-CRYPTO.md) §11, [24](24-ATTACK-VECTORS.md)).
+5. Add missing `CRCchecking —` PHPDoc, purpose sentences, and `// Why:` / `// About:` / `// Section:` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7).
+6. Confirm schema probes and DDL exist only inside an executing `Installation.php` callback ([07](07-SCHEMA-AND-INSTALL.md) §0a).
+7. **Fix** every finding in the same run, re-grep, run the module tests, log it in `PLAN/11-LOG.md`, and answer with a findings/fixes table plus an operator click list. No browser ([§2r](#2r-no-unsolicited-browser--click-through-must--law)).
+
+**MUST NOT**
+
+- Report “OK” for a step whose grep was not run, or check a sample of buttons
+- Only list findings without fixing them, unless the user asked for report-only
+- Skip the comment pass because the code looks clear
+
+Compact: `AIRULES/cursor/rules/31-final-control.mdc`.
+
 ---
 
 ## 3. No-invention rule
@@ -487,7 +570,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 21. **Module hooks (MUST):** useful side-effects **MUST** `Events::trigger('module.{mod}.{hook_name}.hook', …)` with the comment block and a `.hooks` row. **MUST NOT** fire on every save. Listen in **your** module; do not patch the owner. No secrets on the bus. Canonical: [41](41-MODULE-HOOKS.md).
 22. **Extender (judge — not every method):** opt in when another module would reasonably replace this **output** (page/block, cart, export). Owner: `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender: `extend()` in `Listeners::register()`, target URLs in `Listeners::initializeRoutes()`, own Module routes only (or `[]`), controller string preferred. **MUST NOT** use `.loaded` for an initialize-time point, spray on every method, invent `next()`, return the marker, use Events to replace a method, pass `$request`/secrets, or patch the owner. Canonical: [§2h](#2h-extender-judge--not-every-method), [12](12-SERVICES.md) §10.
 23. **PHP version (MUST):** default **PHP 7.4+**. When **planning**, **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, promotion, attributes, `enum`, `readonly`, `str_contains`, …) unless they named a higher version. Canonical: [§2i](#2i-php-version-must).
-24. **MySQL-safe installer DDL (MUST):** probe first, then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, or `CREATE INDEX IF NOT EXISTS` — older MySQL errors; `ADD COLUMN IF NOT EXISTS` is MariaDB-only. Table probe = `SHOW TABLES LIKE` after `[A-Za-z0-9_]+` whitelist. Column/index probe = `information_schema` scoped to `DATABASE()` with bindings. Helpers live in **your** module. `DROP TABLE IF EXISTS` on uninstall is allowed. `$qb->createTableIfNotExist()` is allowed (it already probes and emits `CREATE TABLE` without `IF NOT EXISTS`). Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
+24. **MySQL-safe installer DDL (MUST):** probe first, then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, or `CREATE INDEX IF NOT EXISTS` — older MySQL errors; `ADD COLUMN IF NOT EXISTS` is MariaDB-only. Table probe = `SHOW TABLES LIKE` after `[A-Za-z0-9_]+` whitelist. Column/index probe = `information_schema` scoped to `DATABASE()` with bindings. Helpers live in **your** module. `DROP TABLE IF EXISTS` on uninstall is allowed. `$qb->createTableIfNotExist()` is allowed (it already probes and emits `CREATE TABLE` without `IF NOT EXISTS`). Those probes, and any `ensureTable` / lazy `ALTER`, **MUST** run only inside an executing install/uninstall callback. A healthy request **MUST NOT** rediscover schema. `Installer::install()` ignores a callback’s `return` / `false`; a critical failure **MUST** throw. Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
 25. **HTML via Renderer (MUST):** when markup can be a template, it **MUST** be a template. PHP prepares data; `Renderer` + `.view.php` / `.layout.php` produce HTML. **MUST NOT** concatenate tables, grids, empty states, pager chrome, trees, or crumbs in Controllers/Libraries. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / pager `<li>` or button / one tiny chip). Canonical: [§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
 26. **Planning depth (MUST):** a plan for a new module / first major surface / rewrite **MUST** list every nav item (or `No menu`), every page, every tab, and every control (what it does, default, persist). Length is not a defect. Canonical: [§2k](#2k-module-planning-depth-must), [45](45-MODULE-PLANNING.md).
 27. **Cursor rules live in AIRULES (MUST):** compact `.mdc` files live in `AIRULES/cursor/rules/`. The agent **MUST** copy them into `.cursor/rules/` and `AGENTS.md` to the project root. **MUST NOT** invent a law only under `.cursor/`. Canonical: [§2l](#2l-cursor-rules-live-in-airules-must--law), [INSTALL.md](INSTALL.md).
@@ -497,6 +580,10 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 31. **Rule stack (MUST):** project `AIRULES/` always; then named-host `AIRULES/`; then **this** module’s `PLAN/`. Priority 1 wins. Canonical: [§2p](#2p-rule-stack-where-to-look-must--law).
 32. **Installer key order (MUST):** `installer()` / `uninstaller()` keys run in written PHP array order. **MUST NOT** sort the maps with `ksort`, `uksort`, `krsort`, or `usort`; uninstall reverses written order. Canonical: [07](07-SCHEMA-AND-INSTALL.md).
 33. **AJAX product outcomes (MUST):** unwrap `load()` / `form()` fields from nested `data`; handled product success/failure returns HTTP 200 + `status` 1|0 + `message`. Transport/auth failures retain their real status. One hit requires a same-class hunt in this module. Canonical: [§2q](#2q-same-class-of-bug--hunt-the-module-must--law), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+34. **Planning in files (MUST):** leave a read-only planner before writing the plan; the plan lives in `PLAN/`; ASK answers and a dated log are part of the same chunk as the code. Canonical: [§2s](#2s-planning-happens-in-files-not-in-a-planner-must--law), [45](45-MODULE-PLANNING.md) §0b.
+35. **Public cache with a switch (MUST):** a public anonymous read-mostly surface uses `Cache::use('<Module>')` plus an on/off switch in this module’s settings. Off stores nothing and serves nothing. Invalidate on write. Canonical: [§2t](#2t-cache-the-public-surface-and-give-the-operator-a-switch-must--law), [20](20-CACHE-LOGGER-SESSION.md) §1a.
+36. **Shared public GET (MUST):** a well-known path another module may already own (`/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt`) is claimed with a string passthrough GET **and** `Router::after`. A second `Router::get` alone is a silent miss. Canonical: [03](03-MODULES-AND-ROUTING.md).
+37. **Final control (MUST on request):** `/finalcontrol` inventories every control and fixes every finding in the same run. Canonical: [§2u](#2u-final-control-on-request--finalcontrol-must--law).
 
 ---
 

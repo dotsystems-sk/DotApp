@@ -351,6 +351,40 @@ Once a dynamic route matches for the current request during registration/resolut
 
 `Router::reset(true)` performs an **immediate hard reset**: it removes routes, resources, error handlers, occupied-route records, before/after hooks, reserved paths, and route-specific limiter configuration. With no later match, resolution falls through to a plain 404.
 
+### Shared public files when another module may already own GET (MUST)
+
+Use this when you need a well-known public path (`/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt`, or any similar file) and you **do not know** whether another module already registered `Router::get` for it.
+
+The first matching GET wins. A later `Router::get` on an occupied path is a silent no-op for this request. Your controller never runs.
+
+**MUST**
+
+1. Register a **GET passthrough** so that, when the path is still free, this module owns it. The handler **MUST** return a string (`''` is OK). It **MUST NOT** return a `Response` — that skips after hooks. Do not skip this GET because another module “might” exist.
+2. Put the merge in `->after(...)` (controller string preferred). Any number of modules can attach after.
+3. Register the **same** after on the global hook, so it still binds when GET was already occupied:
+
+```php
+// Why: if the path is free, we claim GET; passthrough returns '' so after builds the file.
+Router::get('/sitemap.xml', 'Shop:Feeds@passthrough!', Router::STATIC_ROUTE)
+    ->after('Shop:Feeds@sitemapAfter!');
+// Why: if another module already matched GET, a chained after on the empty chain is skipped.
+Router::after(['GET'], '/sitemap.xml', 'Shop:Feeds@sitemapAfter!');
+```
+
+4. The after handler is **idempotent** (running twice does not duplicate rows). Previous body is `$request->response->body`. A valid body is appended. An empty or invalid body means this module generates the whole file and sets `Content-Type`.
+5. `initializeRoutes()` **MUST** list those paths, or this module never wakes on that request.
+6. After PHPDoc: `CRCchecking — none`. Return a string.
+7. **MUST NOT** Extender-replace the owner’s feed just to append a few rows. Extender is a full replacement. After is the append.
+
+**MUST NOT**
+
+- `Router::get` alone on a path another module may own
+- `Events::trigger` to append XML (`trigger()` ignores listener returns)
+- `Response` from GET or after while other modules still need after
+- `Router::reset(true)` to steal the path
+
+Compact: `AIRULES/cursor/rules/27-shared-route-after.mdc`.
+
 ---
 
 ## Middleware systems

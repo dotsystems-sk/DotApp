@@ -26,10 +26,16 @@ app/modules/<ThisModule>/PLAN/
   02-menu.md         — every nav item or No menu
   03-screens.md      — every page / tab / control (what it does, default, persist)
   04-positions.md    — desktop + mobile regions, padding, where each control sits
+  05-asks.md         — every ASK answer (model budget, PHP version, navigation, identity)
+  11-LOG.md          — dated log: asked, decided, shipped, installer version, still open
   assets/            — optional rasters / mockups
 ```
 
-Filenames may vary; the **split** (index + laws + rules + inventories + positions) **MUST** exist. English.
+Filenames may vary; the **split** (index + laws + rules + inventories + positions + ASK answers + dated log) **MUST** exist. English.
+
+### 0b. The plan is the files (MUST)
+
+A plan in plan mode, in chat, or in a temp file is lost work ([00](00-AGENT-CONTRACT.md) §2s). When the user asks to plan, leave the read-only planner, say in one or two sentences that the plan is written into the module so it can move to another machine, then write these files. Chat carries the summary and the open questions. Tick `11-LOG.md` in the **same chunk** as the code. **MUST NOT** put secrets, tokens, or customer personal data in PLAN files.
 
 **MUST** read **this** module’s `PLAN/` before further coding when it exists. Stack: project AIRULES (wins) → host `AIRULES/` if this is a pack → **this** `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p).
 

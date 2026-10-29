@@ -49,6 +49,32 @@ Compatibility-named runtime guards may remain only when existing callers require
 
 The only runtime exception is a framework-level database administration product whose explicit purpose is to inspect arbitrary schemas. A normal module, CMS, plugin, theme, pack, installer status page, or health check is **not** that exception.
 
+### 0a1. No runtime verification — only the installer verifies (HARD LAW)
+
+The installer runs **once per version**, verifies, creates, and records the result. After that the schema is a fact. Code that runs during ordinary operation **MUST NOT** verify it again — not on every request, not on the first request, not on the first write, not “just on this admin page”. Every such check is an extra query on a healthy system with zero value.
+
+**MUST NOT** ship any of these outside an executing `Installation.php` callback (each was found in real modules and removed):
+
+| Forbidden pattern | Example |
+|---|---|
+| Lazy create on first use | `ensureTables()` / `ensureTable()` running `CREATE TABLE` (with or without `IF NOT EXISTS`) before an insert, on a settings GET, or on a lookup |
+| Any DDL at runtime | `CREATE TABLE`, `ALTER TABLE`, `CREATE INDEX`, `DROP TABLE` executed from a controller, store, library, listener, middleware, cron, or AI tool |
+| Column filter by probe | `SHOW COLUMNS FROM t` (or `information_schema.COLUMNS`) to drop INSERT/SELECT keys the table “might not have” |
+| Optional-column branches | `if (columnExists('t','x')) { select x }` / `SchemaCompat::hasColumn` that queries at runtime |
+| Fail-open on missing schema | “table missing → allow login / skip the check / hide the feature” |
+| Catch-then-repair | `catch` a “table doesn’t exist” error, then create or alter it |
+| Installation-state checks per request | querying installed versions, registry rows, or table existence to decide whether the module “is ready” on every page |
+
+**MUST instead:**
+
+- Keep the column list as a **PHP constant / static list** in the module (zero I/O). Filter rows against that list, never against the database.
+- A new table, column, or index **MUST** be a new `Installation.php` version key that probes and creates it **there**. Runtime code written for that version assumes it exists.
+- Missing schema is a failed installation. The operation fails visibly (catch bus + toast); it **MUST NOT** silently degrade, fail open, or self-repair.
+- Legacy tables the module uses but never created **MUST** get an installer version that creates or completes them, before the runtime probe is removed.
+- A compatibility helper that must keep its signature (for example DACore `SchemaCompat`) answers `true` with **zero database I/O** unless an installer flag is on. The installer sets that flag right before running its callbacks and clears it in `finally`. Listing `installer()` keys **MUST NOT** turn it on.
+
+**Allowed exceptions (exhaustive):** the `Installation.php` install/uninstall callbacks and helpers called only from them; DACore’s first-boot setup wizard (before any schema exists); a backup/export feature that reads `information_schema` to dump the tables the operator chose. Nothing else.
+
 ### 0b. Probe, then portable CREATE/ALTER inside migrations
 
 Idempotency is a **PHP probe**, not an `IF NOT EXISTS` clause. DACore’s installer does the same: `SHOW TABLES LIKE` / `information_schema` first, then `CREATE TABLE` / `ALTER TABLE` only when the object is missing (`SetupGuard::mysqlTableExists` / `mysqlColumnExists`, `addColumnIfMissing`, `addIndexIfMissing`). Copy that **shape** into **your** `Installation.php`. **MUST NOT** call DACore `SetupGuard` / `SchemaCompat` from another module.

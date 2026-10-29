@@ -45,6 +45,22 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 27. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. Canonical: [00](00-AGENT-CONTRACT.md) §2p.
 28. **AJAX same-class law:** `load()` / secure-form fields are nested under `data`; handled product outcomes use HTTP 200 + `status` + `message`. One broken handler requires a sibling hunt in that module. Canonical: [00](00-AGENT-CONTRACT.md) §2q.
 29. **No unsolicited browser:** source + tests + finish gate + click list by default. Browser only when the user explicitly asks or says yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r.
+30. **Planning in files:** the plan is `app/modules/<This>/PLAN/` (ASK answers + dated log), not chat or plan mode. Canonical: [00](00-AGENT-CONTRACT.md) §2s, [45](45-MODULE-PLANNING.md) §0b.
+31. **Public cache with a switch:** a public anonymous surface uses `Cache::use('<Module>')` and an on/off switch in this module’s settings. Canonical: [00](00-AGENT-CONTRACT.md) §2t, [20](20-CACHE-LOGGER-SESSION.md) §1a.
+32. **Shared public GET:** `/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt` use a string passthrough plus `Router::after`. Canonical: [03](03-MODULES-AND-ROUTING.md).
+33. **Schema probes stay in the installer.** A request must not `SHOW TABLES` / `ensureTable` / `ALTER`. An installer callback that only `return false` does not fail the install — throw. Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
+
+## What's New (2026-10-29)
+
+### Procedures that stay correct without DACore
+
+- Occupied public files are claimed with an empty GET string plus `->after` and a global `Router::after`. A second GET alone never runs.
+- Planning is written into `PLAN/` and logged in the same chunk as the code.
+- A public anonymous surface caches through `Cache::use('<Module>')` and can be switched off in that module’s settings. Off stores nothing and serves nothing.
+- Physical schema probes and DDL run only inside an executing install/uninstall callback. `Installer::install()` ignores `return false`; a critical failure throws.
+- `/finalcontrol` is the full-module sweep: every control, its route, its rights check, its spacing, and its comments.
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2s–§2u, [03](03-MODULES-AND-ROUTING.md), [07](07-SCHEMA-AND-INSTALL.md) §0a, [20](20-CACHE-LOGGER-SESSION.md) §1a.
 
 ## What's New (2026-08-30)
 

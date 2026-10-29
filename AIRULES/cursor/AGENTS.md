@@ -34,6 +34,14 @@ When they asked to **plan** a **new module**, a **first** major surface, or a **
 
 A new module / first major surface / rewrite **MUST** write **`app/modules/<This>/PLAN/`** as a **split folder** (not one chat file) and implement **from that folder**. Chat-only plans fail. Read **this** module’s `PLAN/` first. **MUST NOT** open a host’s `PLAN/` when writing a pack. Stack: project AIRULES (always) → host `AIRULES/` → this PLAN. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2o, §2p.
 
+## Planning happens in files (**MUST** — law)
+
+A plan in plan mode, in chat, or in a temp file is lost work. When the user asks to plan: leave the read-only planner, say in one or two sentences that the plan is written as files in the module, then write `app/modules/<This>/PLAN/`. Record every ASK answer and tick a dated log (`11-LOG.md`) in the **same chunk** as the code. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2s, `AIRULES/45-MODULE-PLANNING.md` §0b.
+
+## Public cache with a switch (**MUST** — law)
+
+A public, anonymous, read-mostly surface uses `Cache::use('<Module>')` in the same work as the surface, plus an on/off switch in **this** module’s settings. Off stores nothing and serves nothing. Invalidate on write (delete keys or bump a generation). A CSRF form, a cart, a logged-in page, and a per-visitor block are not response-cached. Do not hand-roll a cache folder, APCu, or a `cache_*` table, and do not use `clear()` as invalidation. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2t, `AIRULES/20-CACHE-LOGGER-SESSION.md` §1a.
+
 ## Finish gate (**MUST** — law)
 
 After **every** code chunk (route, middleware, controller, query, form, view, JS) **and** before saying done: **MUST** grep this module — do not imagine the result. **MUST NOT** claim done if any row fails.
@@ -62,6 +70,10 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 22. **AJAX class** — `load()`/form fields unwrapped from nested `data`; handled outcomes HTTP 200 + `status`; all siblings checked. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2q.
 23. **Layout / UX** — action controls have parent padding, especially below when last in a block; mobile wrap/touch/overflow checked. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f.
 24. **No unsolicited browser** — no browser/CDP/screenshot click-through unless the user asked or said yes. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2r.
+25. **Planning in files** — the plan is in `PLAN/`; ASK answers recorded; the dated log ticked in this chunk. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2s.
+26. **Public cache** — `Cache::use('<Module>')` plus a settings switch, or a PLAN note that this surface must not be cached. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2t.
+27. **Shared public GET** — string passthrough + `Router::after` for a path another module may own. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`.
+28. **Installer-only schema probes** — no `SHOW TABLES` / `information_schema` / `ensureTable` / DDL outside an executing install/uninstall callback. A critical installer failure throws. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0a.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 
@@ -95,8 +107,10 @@ When markup **can** be a template, it **MUST** be a template. PHP prepares data.
 - **Catch bus MUST:** every `catch` and every `execute()` `$err` reports `dotapp.catch` + `dotapp.catch.error|info` through **one** helper per module (listener exceptions propagate, so the helper wraps its own `trigger()` calls). Payload keys are fixed; secrets, tokens and request bodies **MUST NOT** be in it. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
 - DB: `DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute()`. **MUST** `execute($ok, $err)` — both callbacks. Persist in `try/catch`. **MUST NOT** put `?` in `$qb->raw()` unless it is a real binding — comments count (`COMMENT 'SMS?'` throws). Canonical: `AIRULES/06-DATABASE.md`, `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md`.
 - **Tables MUST** be `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never unprefixed names or `dotapp_*` for module data.
-- **Installer DDL MUST be MySQL-safe:** probe first (`SHOW TABLES LIKE` / `information_schema` + `DATABASE()`), then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`. Helpers in **this** module. `$qb->createTableIfNotExist()` is OK. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0, `AIRULES/00-AGENT-CONTRACT.md` §5 item 24.
-- **Installer order MUST stay written:** append versions in dependency order; never sort installer/uninstaller maps. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md`.
+- **Installer DDL MUST be MySQL-safe:** probe first (`SHOW TABLES LIKE` / `information_schema` + `DATABASE()`), then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`. Those probes run **only** inside an executing install/uninstall callback. Helpers in **this** module. `$qb->createTableIfNotExist()` is OK. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0, `AIRULES/00-AGENT-CONTRACT.md` §5 item 24.
+- **Installer order MUST stay written:** append versions in dependency order; never sort installer/uninstaller maps. A callback `return false` does not fail the install — throw. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md`.
+- **Shared public GET:** a path another module may own uses a string passthrough plus `Router::after`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`.
+- **Public cache:** `Cache::use('<Module>')` and a settings switch for a public anonymous surface. Canonical: `AIRULES/20-CACHE-LOGGER-SESSION.md` §1a.
 - Templates: `{{ var: $x }}`, `{{ if }}...{{ /if }}`, `{{ foreach }}...{{ /foreach }}` — **not** Blade `{{ $x }}` / `endif`. **VIEW = outer file:** `setView` + `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view (or `renderLayout()` / inject a string). **HTML via Renderer (LAW):** when it can be a template it **MUST** be; **MUST NOT** `$html .= '<table'` factories. PHP markup **only** for a named one-piece exception. User-visible strings **MUST** be product copy — never prompt-echo / “this user can…”. Canonical: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b, §1c, §8.
 - Forms: `<fo-rm>` + `{{ formName(handler) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** for real multi-field submit. Row actions (toggle, delete, reorder, drag-and-drop, paginate) **MUST** be `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. + **`/assets/dotapp/dotapp.js`** + PHP `crcCheck()` **once** (API prefix **or** action — never both) + `form()` for real forms. Sample: `AIRULES/examples/EX-01-secure-form-complete.md`. Row-action sample: `AIRULES/examples/EX-06-dotapp-js-boot.md`.
 - **Request MUST:** `$request->data(true)` / `$request->query(true)` = original. `$request->data()` is protected and **MUST NOT** be persisted. Use original for URLs/settings/titles/tokens/passwords/HTML/hashes, then bind SQL. Canonical: `AIRULES/19-VALIDATION-AND-INPUT.md`.
@@ -127,11 +141,15 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | Controllers | `AIRULES/04-CONTROLLERS-AND-RESPONSES.md` |
 | Views | `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` (§1c = HTML via Renderer law) |
 | Database | `AIRULES/06-DATABASE.md` |
-| Schema / installer DDL | `AIRULES/07-SCHEMA-AND-INSTALL.md` (§0 = probe-then-CREATE, no `CREATE TABLE IF NOT EXISTS`) |
+| Schema / installer DDL | `AIRULES/07-SCHEMA-AND-INSTALL.md` (§0 = probe-then-CREATE, probes only inside the installer callback) |
+| **Planning in files** | `AIRULES/00-AGENT-CONTRACT.md` §2s, `AIRULES/45-MODULE-PLANNING.md` §0b |
+| **Public cache + switch** | `AIRULES/00-AGENT-CONTRACT.md` §2t, `AIRULES/20-CACHE-LOGGER-SESSION.md` §1a |
+| **Shared public GET + after** | `AIRULES/03-MODULES-AND-ROUTING.md` |
+| **Final control (`/finalcontrol`)** | `AIRULES/00-AGENT-CONTRACT.md` §2u, `AIRULES/cursor/skills/finalcontrol/SKILL.md` |
 | Forms | `AIRULES/08-FORMS-AND-SECURITY.md` |
 | Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays + **AJAX pagination**; §4 = `$dotapp().fn`; §4.C = jQuery ports) |
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
-| Cache / session | `AIRULES/20-CACHE-LOGGER-SESSION.md` (DSM — never `$_SESSION`) |
+| Cache / session | `AIRULES/20-CACHE-LOGGER-SESSION.md` (§1a = public cache + settings switch; DSM — never `$_SESSION`) |
 | Antipatterns | `AIRULES/14-ANTIPATTERNS.md` |
 | Checklists | `AIRULES/17-CHECKLISTS.md` (**Finish gate** = 00 §2c) |
 | **Finish gate (after every chunk)** | `AIRULES/00-AGENT-CONTRACT.md` §2c |

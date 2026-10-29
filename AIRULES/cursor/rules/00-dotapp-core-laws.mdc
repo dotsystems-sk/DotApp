@@ -74,8 +74,12 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Module hooks (LAW): useful side-effects MUST `Events::trigger('module.{mod}.{name}.hook')` + Hook/Why/About/Params/Use block + `app/modules/<M>/.hooks` — NOT every save; NOT secrets; NOT patch the other module; pre-action stop = `triggerWithVeto()` + `Veto` (`AIRULES/41`, EX-16)
 - Extender (judge — not every method): owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; `extend()` in `Listeners::register()`; target listener routes; own Module routes or `[]`; controller string preferred — NOT `next()`, marker response, `.loaded` for initialize-time, global `['*']` just to attach, Events, `$request`/secrets, duplicate (`AIRULES/12` §10, EX-17)
 - PHP 7.4+ (ASK in the plan): default floor; no `match` / `?->` / union `mixed` / named args / promotion / attributes / `enum` / `readonly` / `str_contains` unless they named a higher version (`AIRULES/00` §2i)
-- Installer DDL: probe `SHOW TABLES LIKE` / `information_schema` then `CREATE`/`ALTER` — NOT `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` (`AIRULES/07` §0)
-- Installer order: append version keys in written dependency order; **MUST NOT** `ksort`/`krsort`/`usort` installer maps (`1.0.10` sorts before `1.0.9`). `AIRULES/07`
+- Installer DDL: probe `SHOW TABLES LIKE` / `information_schema` then `CREATE`/`ALTER` — NOT `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`. Probes and `ensureTable` run only inside an executing install/uninstall callback (`AIRULES/07` §0)
+- Installer order: append version keys in written dependency order; **MUST NOT** `ksort`/`krsort`/`usort` installer maps (`1.0.10` sorts before `1.0.9`). A callback `return false` is ignored — throw. `AIRULES/07`
+- Planning in files: plan lives in `app/modules/<This>/PLAN/` with ASK answers and a dated log (`AIRULES/00` §2s)
+- Public cache: `Cache::use('<Module>')` plus an on/off switch in this module’s settings for a public anonymous surface (`AIRULES/00` §2t, `AIRULES/20` §1a)
+- Shared public GET: passthrough string + `Router::after`, not a second GET alone (`AIRULES/03`)
+- Final control: `/finalcontrol` fixes every control in the module (`AIRULES/00` §2u)
 
 ## Never ignore return values (AIRULES/18)
 

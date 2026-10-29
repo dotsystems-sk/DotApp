@@ -1,0 +1,28 @@
+---
+description: LAW — /finalcontrol runs the full module sweep (buttons, spacing, JS, endpoints, rights, comments) and fixes every finding
+alwaysApply: true
+---
+
+# Final control — `/finalcontrol` (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2u. Procedure: `AIRULES/cursor/skills/finalcontrol/SKILL.md`.
+
+**Trigger:** `/finalcontrol [Module]`, or “final control”, “záverečná kontrola”, “finálna kontrola”, pre-release check.
+
+## MUST
+
+- Read the skill and run **every** step on **every** control of the module — not a sample.
+- Per control: view file:line → JS listener (`live(..., function (el, e))`, `<fo-rm>` + `formName` inside, or `<a href>` to a registered GET) → URL → `Router` entry → existing `Controller@method` → rights. A broken link in the chain = finding.
+- Layout in source: padding left/right/top/bottom, space **below** the last buttons of a block, gap **between** consecutive blocks, mobile wrap.
+- Backend: unwrap nested `data`, `data(true)` for persist, HTTP 200 + `status`, CRC once, catch bus.
+- Rights: login gate + `Auth::isLogged()` registration where the page is private, explicit rights check on **every** private GET and POST, write/delete right for writes, encrypted IDs + owner-scoped SQL, no acting on a more privileged account, no rights/owner/role from the request, PHP re-checks JS-only gates, `throttle()` on public POST.
+- Comments are part of done: `CRCchecking —` first line on public Controller/Middleware PHPDoc, purpose sentence, `// Why:` on non-obvious steps, `// About:` / `// Section:` on route blocks and handlers. Add what is missing.
+- Runtime schema probes outside `Installation.php` = zero (`AIRULES/07` §0a).
+- **Fix** every finding in the same run, re-grep, `php -l`, module tests, `PLAN/11-LOG.md` entry, reply with findings/fixes table + operator click list.
+
+## MUST NOT
+
+- “OK” for a step whose grep did not run
+- Report-only (unless the user asked for that)
+- Skip comments because “the code is clear”
+- Open a browser (`25-no-unsolicited-browser.mdc`)

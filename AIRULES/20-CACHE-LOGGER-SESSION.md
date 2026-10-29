@@ -56,6 +56,32 @@ Config::cache('lifetime', 36000);
 
 Custom driver must supply callables: `save, load, exists, delete, clear, gc` (each receives the `Cache` instance as last arg). Missing/non-callable → `\Exception`.
 
+### 1a. Cache the public surface — and let the operator switch it off (MUST — law)
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2t. Compact: `AIRULES/cursor/rules/29-cache-required.mdc`.
+
+Any module that renders a **public, anonymous, read-mostly** surface — a catalogue, a price list, a public API answer, a landing page, a public detail page, a widget another page embeds — **MUST** ship caching in the same work as the surface, and **MUST** ship an operator switch for it.
+
+**MUST**
+
+1. **`Cache::use('<Module>')->save() / load() / exists() / delete() / gc()`.** One instance name per module. A project-level driver change then reaches this module for free.
+2. **An on/off switch in this module’s settings**, normally also a TTL. Default the switch **off** when updating a live site. A new install may default it on only when the surface is genuinely static.
+3. **Respect the switch on both paths.** Disabled means stores nothing **and** serves nothing.
+4. **Invalidate on write.** Delete the affected keys or bump a generation that is part of the key. A TTL alone is not invalidation.
+5. **Decide per surface.** Anonymous list/detail HTML, rendered menus, and expensive aggregate boxes: cache. A CSRF form, a logged-in page, a cart, a checkout step, a per-visitor block, or a search over unbounded text: do not cache the response. Cache the expensive fragments behind it, or cache nothing.
+6. **Never** cache a value that a session or a right varies, unless that value is part of `$context`. Never store personal data, tokens, passwords, or one-time codes.
+7. **Write the decision into `PLAN/`:** surfaces, TTL, invalidation, settings key.
+
+**MAY** cache an authenticated aggregate, report, or external API answer under the same rules. Never a write path.
+
+**MUST NOT**
+
+- Hand-roll storage (`file_put_contents` folder, APCu, own `cache_*` table, static array as persistence, `$_SESSION` as cache)
+- Use `clear()` as invalidation — folder-wide on file, **whole-server flush** on Memcached
+- Cache a `WHERE id = ?`, a `COUNT(*)`, or anything an index already answers
+- Enable `Renderer::useCache(true)` or `Config::db('cache')`
+- Skip this layer because a CDN, a reverse proxy, or another page cache might sit in front. Those can be off or absent. On a miss, and on a partly dynamic page, this layer is what still pays off
+
 ### Two important warnings
 
 1. **`Renderer::useCache(true)` is broken** — it calls `cachePageExists`/`cachePageSave`, which exist only on the legacy `Cache_OLD` class. Do not enable it.

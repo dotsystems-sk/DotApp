@@ -82,6 +82,10 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | `whereHas` / `withCount` on Databaser | Stubs — never reach SQL |
 | `CREATE TABLE items` / `dotapp_items` for a module | `{lowercase_modulename}_items` (Shop → `shop_items`) |
 | `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` | Probe `SHOW TABLES LIKE` / `information_schema` (`DATABASE()` + bindings), then `CREATE`/`ALTER` without `IF NOT EXISTS` ([07](07-SCHEMA-AND-INSTALL.md) §0) |
+| Runtime `ensureTable()` / `SHOW COLUMNS` / `information_schema` on a request | Probes and DDL only inside an executing install/uninstall callback ([07](07-SCHEMA-AND-INSTALL.md) §0a) |
+| `return false` from an installer callback | `Installer::install()` ignores the return. Throw after reporting ([07](07-SCHEMA-AND-INSTALL.md)) |
+| Second `Router::get('/sitemap.xml')` to append | GET passthrough (string) + `->after` and global `Router::after` ([03](03-MODULES-AND-ROUTING.md)) |
+| Public catalogue recomputed on every hit, or a private `cache_*` table | `Cache::use('<Module>')` + settings on/off switch; invalidate by key delete or generation bump ([20](20-CACHE-LOGGER-SESSION.md) §1a) |
 
 ## Return values / error handling
 

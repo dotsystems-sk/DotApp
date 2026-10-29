@@ -16,6 +16,7 @@ The required path: scaffold the module → write **`app/modules/<ThisModule>/PLA
 - New module / first major surface / rewrite: create `PLAN/` in the same work as `dotapper --create-module`.
 - Split **laws**, **rules**, inventories, **positions**. Optional `PLAN/assets/`. **MUST NOT** dump everything into one file.
 - Read **this** module’s `PLAN/` before coding when it exists.
+- Dated log (`11-LOG.md`) and ASK answers live in that folder. Tick the log in the same chunk as the code (`28-planning-in-files.mdc`, `AIRULES/00` §2s).
 - Implement only what PLAN names. Missing screen → add to PLAN first.
 - A host that others will extend **MUST** also write `AIRULES/` in the same work.
 

@@ -12,6 +12,24 @@ Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0, `AIRULES/00-AGENT-CONTRACT.md
 - **MUST NOT** create `ensureTable()`, `ensureColumn()`, `ensureSchema()`, `columnsReady()` or lazy `ALTER TABLE` runtime repair. Existing compatibility-named runtime guards may only answer from a declared installed-schema contract, with **zero database I/O**.
 - An installed module and its migrated schema are one contract. Missing required schema = failed/incomplete installation; report the real operation failure. **MUST NOT** charge every healthy request to rediscover it.
 - Runtime caching or “probe once per request/process” does **not** make a metadata probe legal.
+
+## HARD LAW — only the installer verifies (`AIRULES/07` §0a1)
+
+The installer verifies and creates **once per version**. After that the schema is a fact. Runtime code **MUST NOT** check it again — not per request, not on first use, not “only on this page”.
+
+**MUST NOT** outside an executing `Installation.php` callback:
+
+- Lazy create: `ensureTable(s)()` / `CREATE TABLE [IF NOT EXISTS]` before an insert, on a settings GET, on a lookup
+- Any executed `CREATE TABLE` / `ALTER TABLE` / `CREATE INDEX` / `DROP TABLE` in a controller, store, library, listener, middleware, cron, AI tool
+- `SHOW COLUMNS` / `information_schema.COLUMNS` to filter INSERT/SELECT keys
+- `if (columnExists(...))` / `hasColumn` / `hasTable` that touch the database
+- Fail-open on missing schema (table missing → allow login, skip the check, hide the feature)
+- Catch “table doesn’t exist” → create/alter
+- Per-request queries of installed version / registry / table existence to decide “is the module ready”
+
+**MUST:** column lists are PHP constants (zero I/O). New table/column/index = new installer version that probes + creates it there. Missing schema = failed install → visible failure, never self-repair. Legacy tables the module never created get an installer version first, then the runtime probe goes. A kept compatibility helper answers `true` with zero I/O unless the installer flag is on (set before the callbacks, cleared in `finally`).
+
+**Only exceptions:** `Installation.php` callbacks (+ helpers only they call), DACore first-boot wizard, backup/export dumping operator-chosen tables.
 - **MUST** probe, then `CREATE TABLE` / `ALTER TABLE`. Older MySQL errors on `IF NOT EXISTS` create/alter forms.
 - **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`.
 - Table: `SHOW TABLES LIKE 'name'` after `/^[A-Za-z0-9_]+$/`. Column/index: `information_schema` + `DATABASE()` + bindings.

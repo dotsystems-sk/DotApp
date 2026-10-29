@@ -65,7 +65,11 @@ From the project root:
 New-Item -ItemType Directory -Force -Path ".cursor\rules" | Out-Null
 Copy-Item -Force "AIRULES\cursor\rules\*.mdc" ".cursor\rules\"
 Copy-Item -Force "AIRULES\cursor\AGENTS.md" "AGENTS.md"
+New-Item -ItemType Directory -Force -Path ".cursor\skills" | Out-Null
+Copy-Item -Recurse -Force "AIRULES\cursor\skills\*" ".cursor\skills\"
 ```
+
+Skills (for example `/finalcontrol`) live in `AIRULES/cursor/skills/<name>/SKILL.md` and are mirrored to `.cursor/skills/` the same way.
 
 Result: project-root `AGENTS.md` plus `.cursor/rules/` containing **every** `AIRULES/cursor/rules/*.mdc` (numbered `00`–`25` and the named law files: layout, choice controls, pack zip, read scope, MySQL DDL, Renderer, step-up 2FA, module AIRULES, module PLAN, DACore is not Bootstrap, **no unsolicited browser**). **MUST NOT** invent extra `.mdc` files only in `.cursor/`.
 

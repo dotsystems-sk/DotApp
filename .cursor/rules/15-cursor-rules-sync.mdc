@@ -18,6 +18,7 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2l, `AIRULES/INSTALL.md`.
 1. Ensure `.cursor/rules/` exists.
 2. Copy `AIRULES/cursor/rules/*.mdc` → `.cursor/rules/`.
 3. Copy `AIRULES/cursor/AGENTS.md` → project-root `AGENTS.md`.
-4. A new compact rule: write it in `AIRULES/cursor/rules/` **first**, then copy.
+4. Copy every `AIRULES/cursor/skills/<name>/` → `.cursor/skills/<name>/` (e.g. `/finalcontrol`).
+5. A new compact rule or skill: write it in `AIRULES/cursor/rules/` or `AIRULES/cursor/skills/` **first**, then copy.
 
-This mirror copy is the **only** allowed write to `.cursor/rules/` and root `AGENTS.md`.
+This mirror copy is the **only** allowed write to `.cursor/rules/`, `.cursor/skills/` and root `AGENTS.md`.

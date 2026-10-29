@@ -22,6 +22,35 @@
 
 ## 0. MySQL-safe installer DDL (MUST — law)
 
+### 0a. Physical schema probes are installer/uninstaller only (STRICT LAW)
+
+`SHOW TABLES`, `information_schema`, `DESCRIBE`, `SHOW COLUMNS`, `SHOW INDEX`, `tableExists()` / `columnExists()` / `indexExists()`, and every equivalent physical schema query **MUST** run only while an `Installation.php` install or uninstall callback is actually executing.
+
+**MUST NOT** run that probe from a public or private request, a route, controller, middleware, model, store, service, listener, view, `initialize()` / `initializeRoutes()`, cron, queue, or any other ordinary path.
+
+**MUST NOT** add runtime `ensureTable()`, `ensureColumn()`, `ensureSchema()`, `columnsReady()`, or lazy `ALTER TABLE`. Caching a probe, or running it once per request or process, does not make it legal. Listing `installer()` keys **MUST NOT** turn probes on; the probe helper is reachable only from the migration callback.
+
+An installed module and its migrated schema are **one contract**. Missing required schema is a failed installation. The operation fails through the catch bus. A healthy request **MUST NOT** pay metadata queries to rediscover it.
+
+The only exception is a product whose job is to inspect arbitrary schemas (a database admin tool, or a backup that dumps tables the operator chose). A normal module, a status page, and a health check are not that exception.
+
+### 0a1. No runtime verification (HARD LAW)
+
+The installer runs once per version. Ordinary code **MUST NOT** verify the schema again — not on every request, not on the first request, and not on the first write.
+
+| Forbidden outside the migration callback | Example |
+|---|---|
+| Lazy create | `ensureTable()` running `CREATE TABLE` before an insert or on a settings GET |
+| Any DDL at runtime | `CREATE` / `ALTER` / `DROP` from a controller, store, library, listener, or cron |
+| Column filter by probe | `SHOW COLUMNS` or `information_schema.COLUMNS` to drop keys the table “might not have” |
+| Optional-column branch | `if (columnExists('t','x')) { select x }` that queries at runtime |
+| Fail-open | “table missing → allow the action / hide the feature” |
+| Catch-then-repair | catch “table doesn’t exist”, then create or alter it |
+
+**MUST** keep the column list as a PHP constant (zero I/O). A new table, column, or index is a new `Installation.php` version. Runtime written for that version assumes the object exists. Missing schema fails visibly. It does not self-repair.
+
+### 0b. Probe, then portable CREATE/ALTER inside migrations
+
 Idempotency is a **PHP probe**, not an `IF NOT EXISTS` clause. `SHOW TABLES LIKE` / `information_schema` first, then `CREATE TABLE` / `ALTER TABLE` only when the object is missing. Copy that **shape** into **your** `Installation.php`.
 
 | Object | Probe (MUST) | Then |
@@ -37,6 +66,8 @@ Idempotency is a **PHP probe**, not an `IF NOT EXISTS` clause. `SHOW TABLES LIKE
 - `ADD INDEX IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`
 
 **Allowed:** `DROP TABLE IF EXISTS` on uninstall (widely supported). SchemaBuilder `$qb->createTableIfNotExist()` is allowed — it already probes `tableExists()` and emits `CREATE TABLE` **without** `IF NOT EXISTS`.
+
+The probe helper is **private to the migration callback**. A store, controller, listener, or request must not call it ([§0a](#0a-physical-schema-probes-are-installeruninstaller-only-strict-law)).
 
 **MUST:** helpers live in **your** module. Table/column/index names are whitelist-only (`/^[A-Za-z0-9_]+$/`); refuse anything else. Catch-bus every probe/`execute` failure ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9).
 
@@ -110,6 +141,10 @@ if (self::mysqlTableExists('shop_items') !== true) {
 ```
 
 Sample: [EX-13](examples/EX-13-schema-migrations.md).
+
+### Installer callback return is ignored
+
+`Installer::install()` and `uninstall()` call each migration and **discard its return value**. `return` and `return false` do not stop the run and do not mark the step failed. A critical failure **MUST** report through the catch bus and then `throw new \RuntimeException('…')` with a generic message (no SQL, no paths, no secrets). An exception is what stops a half-applied schema from being treated as success.
 
 ---
 

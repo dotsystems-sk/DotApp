@@ -7,7 +7,10 @@ alwaysApply: true
 
 Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0, `AIRULES/00-AGENT-CONTRACT.md` §5 item 24.
 
-- **MUST** probe, then `CREATE TABLE` / `ALTER TABLE`. Older MySQL errors on `IF NOT EXISTS` create/alter forms.
+- **STRICT BAN:** `SHOW TABLES`, `information_schema`, `DESCRIBE`, `SHOW COLUMNS`, `SHOW INDEX`, `tableExists()`, `columnExists()`, `indexExists()`, and equivalent probes **MUST** run only inside an `Installation.php` install/uninstall callback.
+- **MUST NOT** probe schema, or run `ensureTable()` / `ensureColumn()` / lazy `ALTER TABLE`, from a request, controller, store, listener, cron, or module init. A cached or once-per-request probe is still forbidden.
+- **MUST** probe, then `CREATE TABLE` / `ALTER TABLE`, **inside that callback**. Older MySQL errors on `IF NOT EXISTS` create/alter forms.
+- A callback `return` / `return false` is ignored by `Installer::install()`. A critical failure throws `RuntimeException` after the catch-bus report.
 - **MUST NOT** emit `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`.
 - Table: `SHOW TABLES LIKE 'name'` after `/^[A-Za-z0-9_]+$/`. Column/index: `information_schema` + `DATABASE()` + bindings.
 - Helpers live in **your** module. Do not invent a core/DACore DDL helper.
