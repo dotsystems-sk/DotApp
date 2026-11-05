@@ -251,7 +251,7 @@ Space required after `{{` before `if`. Closing tag is `{{ /if }}`.
 {{ enc(mykey): "literal" }}
 ```
 
-`{{ formName(x) }}` **MUST** sit **between** `<fo-rm …>` and `</fo-rm>` (or `<form>`), and that tag **MUST** have a `method` attribute. After `</fo-rm>` / before `<fo-rm>` / missing `method` → the tag is left **unchanged** in the output (silent failure — check your HTML).
+`{{ formName(x) }}` **MUST** sit **between** `<fo-rm …>` and `</fo-rm>` (or `<form>`). `method` and `action` on that **opening** tag **MUST** be literal HTML. **MUST NOT** put any `{{ }}` inside the opening tag. Renderer compiles `{{ var: }}` to `<?php … ?>` before `formName` runs; the `>` in `?>` ends the attribute scan, so `method` after the tag is invisible and `{{ formName }}` is left **unchanged** (the page shows the tag as text). `method` written before `{{ var: $action }}` still cuts `action`, and the form posts to the current page. Field `{{ var }}` / `{{ enc }}` in the **body** are fine. Write the path as text, for example `action="/shop/contact"`.
 
 `{{ enc(key): $x }}` encrypts at runtime; `{{ enc: "literal" }}` encrypts at **compile time**. Decrypt with the same context key via `Crypto::decrypt($v, 'key')` — remember it returns **`false`** on failure.
 

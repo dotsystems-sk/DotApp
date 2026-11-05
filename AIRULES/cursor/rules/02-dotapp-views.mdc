@@ -17,7 +17,7 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 {{ foreach $items as $item }} ... {{ /foreach }}
 {{ layout:partials/header }}
 {{ content }}
-<fo-rm method="POST">
+<fo-rm method="post" action="/shop/contact">
   {{ formName(saveItem) }}
 </fo-rm>
 {{ CSRF }}
@@ -30,6 +30,7 @@ Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
 - `{{ include 'x' }}` in PHP templates (JS-only)
 - Assuming auto-escaping on `var:`
 - Prompt-echo UI copy (“this user can hide the icon…”) — product language only (`AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8)
+- `{{ }}` inside the opening `<fo-rm …>` tag (`action="{{ var: $postAction }}"`). `method` and `action` are literal. Body `{{ var }}` is fine (`AIRULES/08-FORMS-AND-SECURITY.md`)
 
 ## Files
 

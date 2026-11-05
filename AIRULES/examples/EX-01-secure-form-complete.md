@@ -32,7 +32,7 @@ Always include **before** your module script:
 <body>
   <div id="error-message" hide="hide"></div>
 
-  <fo-rm method="POST" id="contactForm" action="{{ var: $postAction }}">
+  <fo-rm method="post" id="contactForm" action="/shop/contact">
     <input type="text" name="email" autocomplete="username" required />
     <input type="text" name="message" required />
 
@@ -51,7 +51,7 @@ Always include **before** your module script:
 Notes:
 
 - Prefer **`<fo-rm>`** over `<form>` (bots/scanners target `<form>`; DotApp converts at runtime).
-- **MUST:** `{{ formName(saveContact) }}` sits **between** `<fo-rm …>` and `</fo-rm>` — never after `</fo-rm>`, never before `<fo-rm>`. The tag must have `method`. Outside the pair the renderer leaves `{{ formName }}` unchanged (silent failure).
+- **MUST:** `{{ formName(saveContact) }}` sits **between** `<fo-rm …>` and `</fo-rm>` — never after `</fo-rm>`, never before `<fo-rm>`. `method` and `action` on the opening tag are **literal**. **MUST NOT** put `{{ var: $postAction }}` (or any `{{ }}`) inside `<fo-rm …>`. That compiles to `<?php … ?>`; the `>` hides `method` and the page shows `{{ formName }}` as text. `method` before the variable still posts to the current page. Outside the pair, or with `method` hidden, the renderer leaves `{{ formName }}` unchanged (silent failure).
 - Renderer emits encrypted hidden fields binding **handler name + action URL + HTTP method** to a per-form key. Forging or swapping handlers from HTML is not practical.
 
 ## 2) Module JS — hooks + loader + parseReply
@@ -134,7 +134,6 @@ class Contact extends \Dotsystems\App\Parts\Controller
         return Renderer::new()->module('Shop')
             ->setView('contact')
             ->setViewVar('title', 'Contact')
-            ->setViewVar('postAction', '/shop/contact')
             ->renderView();
     }
 
@@ -215,4 +214,8 @@ class Contact extends \Dotsystems\App\Parts\Controller
 <!-- WRONG: formName after </fo-rm> -->
 <fo-rm>...</fo-rm>
 {{ formName(saveContact) }}
+
+<!-- WRONG: {{ }} inside the opening tag — method after the var is invisible; method first still cuts action -->
+<fo-rm action="{{ var: $apiAuth }}/contact" method="post" id="contactForm">
+<fo-rm method="post" id="contactForm" action="{{ var: $postAction }}">
 ```

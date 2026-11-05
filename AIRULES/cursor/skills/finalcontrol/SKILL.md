@@ -23,7 +23,7 @@ Copy this checklist into the reply and tick it:
 Final control <Module>:
 - [ ] 1. Control inventory (every button / link-action / form / row action)
 - [ ] 2. Layout: padding on all sides, space below last buttons, spacing between blocks, mobile
-- [ ] 3. JS: every control has a working listener / form / GET route
+- [ ] 3. JS: every control has a working listener / form / GET route; opening `<fo-rm>` has literal method and action
 - [ ] 4. Backend: every JS URL hits a registered route + existing method, HTTP 200 + status
 - [ ] 5. Rights: login gate, rights check per private route, write right ≠ view right, ownership, no escalation
 - [ ] 6. Input / IDs / CRC / SQL (finish gate rows)
@@ -58,7 +58,7 @@ For each control and its parent, read the markup and the CSS that applies:
 
 Every actionable control has exactly one working path:
 
-- `<fo-rm>` with `{{ formName(handler) }}` **inside** it and a submit button, or
+- `<fo-rm>` with `{{ formName(handler) }}` **inside** it and a submit button. The opening tag (`<fo-rm` through its `>`) has **literal** `method` and `action`. Any `{{ }}` in that opening tag is a **finding**: rewrite the attributes as plain text (`action="/shop/contact"` or the real POST path). Do not leave `action="{{ var: $postAction }}"` even when `method` is written first — compiled `?>` hides `method` (the page shows `{{ formName }}` as text) or cuts `action` (the form posts to the current page). `{{ }}` in the form **body** (field values, labels, `formName`) is correct.
 - `$dotapp().live("click", selector, function (el, e) { … })` — first argument is the **element** (`function (e)` with `e.currentTarget` = dead button), or
 - a plain `<a href>` to a **registered GET** route.
 

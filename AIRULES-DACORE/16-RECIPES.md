@@ -69,7 +69,7 @@ if (\Dotsystems\App\Parts\Auth::isLogged() === true) {
 
 Copy [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md).
 
-Must include `/assets/dotapp/dotapp.js` (random keys). Prefer this over plain CSRF. **MUST:** `{{ formName }}` between `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. After success while staying on the page: patch `reply.html` + toast — not `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md)). Row **delete:** graphical confirm first (`Notiflix.Confirm` on admin — never `alert()` / `window.confirm()`), then `load()`. Theory: [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md).
+Must include `/assets/dotapp/dotapp.js` (random keys). Prefer this over plain CSRF. **MUST:** `{{ formName }}` between `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST:** literal `method` and `action` on the opening tag — no `{{ }}` there. After success while staying on the page: patch `reply.html` + toast — not `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md)). Row **delete:** graphical confirm first (`Notiflix.Confirm` on admin — never `alert()` / `window.confirm()`), then `load()`. Theory: [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md).
 
 ---
 

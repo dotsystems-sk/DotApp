@@ -115,7 +115,7 @@ Canonical: [08](08-FORMS-AND-SECURITY.md) “`crcCheck()` burns the token”.
 Work top-down. Stop when you find a match.
 
 1. **`crcCheck()` count** (section 2). Middleware + controller is guilty until proven otherwise.
-2. **`formName` placement** — must sit **between** `<fo-rm>` and `</fo-rm>`. Outside the pair the tag is left unchanged (silent fail).
+2. **`formName` placement** — must sit **between** `<fo-rm>` and `</fo-rm>`, and the **opening** tag’s `method` and `action` must be literal text. Any `{{ }}` on that opening tag compiles to `<?php … ?>`; the `>` in `?>` hides `method` (tag left as text) or, if `method` is first, cuts `action` (form posts to the current page).
 3. **`/assets/dotapp/dotapp.js`** loaded **before** module JS (session keys). Missing → CRC/CSRF fields wrong.
 4. **`$request->form(...)`** — missing error callback throws; method mismatch → `false`; wrong handler name → `null`. Guard all three and **show** `reply.message`.
 5. **Original vs protected input** — persist / passwords / HTML / URLs / hashes **MUST** be `$request->data(true)` (secure fields: `['data']`). `$request->data()` runs `protect()` (`)`, `=`, `%`, … become a different string — `?q=` → `?&#61;`). SQL protection is named / `?` bindings, not `protect()`. Login/installer then “never matches”; settings Save stores a broken href. [19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md).
@@ -138,7 +138,7 @@ Work top-down. Stop when you find a match.
 | CREATE TABLE never appears | `?` in `$qb->raw()` comments |
 | Blank page / empty body | missing view → `""`; check Renderer fallback |
 | Card/title shows, `foreach` empty / one var missing | Renderer sandbox **dropped** the bag: a string value or var name is `is_callable` (`time`, `copy`, `count`, `key`, `header`, …). Prefix keys or pass escaped HTML. **MUST NOT** patch Renderer ([05](05-VIEWS-TEMPLATES-ASSETS.md) §5) |
-| `formName` visible as text | tag **outside** `<fo-rm>…</fo-rm>` |
+| `formName` visible as text | tag **outside** `<fo-rm>…</fo-rm>`, **or** `{{ }}` inside the opening `<fo-rm …>` tag (the `>` in compiled `?>` hides `method`) |
 | Admin 403 / rights ignored | `#DACore:AuthTest@check!` used as the guard ([36](36-DACORE-KNOWN-ISSUES.md) §1) |
 | “Fix it in DACore” | Implement in **this** module. Do not patch DACore ([00](00-AGENT-CONTRACT.md) §1) |
 | Apache **Not Found** on `/admin/…/{long-token}` | Path token is raw `Crypto::encrypt` (`%2F` = slash). Seal to `[A-Za-z0-9_-]+` in **this** module ([11](11-AUTH-AND-CRYPTO.md) §8, [36](36-DACORE-KNOWN-ISSUES.md) §16) |

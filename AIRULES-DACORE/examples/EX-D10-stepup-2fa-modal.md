@@ -50,7 +50,7 @@ $css = [
 <div class="modal fade" id="shopStepupModal" tabindex="-1" aria-hidden="true" aria-labelledby="shopStepupTitle" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
-      <fo-rm method="POST" id="shopStepupForm" action="{{ var: $postAction }}">
+      <fo-rm method="post" id="shopStepupForm" action="/api/v1/auth/Shop/confirm-dangerous">
         <div class="modal-header">
           <h5 class="modal-title" id="shopStepupTitle">{{_ "Confirm this action" }}</h5>
         </div>

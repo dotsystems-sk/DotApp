@@ -6,6 +6,7 @@ When building a **real HTML form** (user fills fields and submits — CMS name/s
 
 1. **Prefer** `<fo-rm>` + `{{ formName(handler) }}` + `/assets/dotapp/dotapp.js` + `crcCheck()` **once** (API prefix **or** action) + `$request->form(...)`.
 2. **MUST:** `{{ formName(handler) }}` is a child **between** `<fo-rm …>` and `</fo-rm>`. Never before `<fo-rm>`, never after `</fo-rm>`. Outside that pair the renderer leaves the tag unchanged (silent failure).
+   **Opening tag (MUST):** `method` and `action` are **literal** attributes on `<fo-rm …>`. **MUST NOT** put any `{{ }}` in that opening tag (`{{ var: }}`, `{{ enc }}`, `{{ if }}`, `{{_ }}`). Renderer compiles those to `<?php … ?>` **before** `formName` runs. The `>` inside `?>` ends the attribute scan, so a `method` written after the tag is invisible and `{{ formName }}` is printed as text. Writing `method` first still cuts `action`, and the form binds to the current page path. Field tags and `{{ formName(handler) }}` belong in the **body**. Write the POST URL in full: `action="/shop/contact"`.
 3. Treat this as the **default** security path for those forms — not optional polish.
 4. Plain CSRF (`{{ CSRF }}` alone), Laravel-style `_token`, or raw `fetch`/`$_POST` are **inferior** and must not replace formName for app forms.
 5. Always load **`/assets/dotapp/dotapp.js`** before module scripts that use forms/bridge/load. That URL injects **per-session random encryption keys**. Without it, secure forms and `load()` do not work.
@@ -158,7 +159,7 @@ If you omit this script, do not claim the form is DotApp-secure.
 ### Template
 
 ```html
-<fo-rm method="POST" id="saveForm" action="{{ var: $postAction }}">
+<fo-rm method="post" id="saveForm" action="/shop/contact">
   <input type="text" name="title" />
   {{ formName(saveItem) }}
   <button type="submit" id="saveBtn">Save</button>
@@ -244,7 +245,7 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 
 ## Must-dos
 
-1. `<fo-rm>` + `{{ formName(...) }}` **only** for real HTML forms (several fields + submit). **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>`. One-shot row actions (toggle, delete, reorder, drag-and-drop, paginate): `$dotapp().load()` — **MUST NOT** wrap them in `<fo-rm>`.
+1. `<fo-rm>` + `{{ formName(...) }}` **only** for real HTML forms (several fields + submit). **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>`. **MUST** write `method` and `action` as literal attributes on the opening tag — **MUST NOT** put `{{ }}` there. One-shot row actions (toggle, delete, reorder, drag-and-drop, paginate): `$dotapp().load()` — **MUST NOT** wrap them in `<fo-rm>`.
 2. `/assets/dotapp/dotapp.js` on every page that uses secure forms/bridge/load.
 3. `crcCheck()` **once** — API prefix **or** action, never both. File uploads: `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint ([09](09-DOTAPP-JS-AND-BRIDGE.md) file uploads).
 4. Encrypt every FE identifier with a **unique `$key2` per field**; decrypt with the same key; reject `false`. **MUST still** `Auth::can()` / ownership.
@@ -274,3 +275,4 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 15. Use a JS overlay/modal as the only 2FA or save gate — PHP **MUST** refuse without valid proof.
 16. Put a file/ZIP in `FormData` on `load()` / `<fo-rm>` — **MUST** `$dotapp().uploadFile` ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
 17. Accept `.php` / trust client MIME / skip `finfo` on upload — **MUST** reject scripts in PHP.
+18. Put `{{ }}` inside the opening `<fo-rm …>` tag (`action="{{ var: $apiAuth }}/save"`, or `method` first and `action="{{ var: $postAction }}"`).

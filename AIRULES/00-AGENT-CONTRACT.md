@@ -143,6 +143,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **MySQL-safe DDL** | `Installation.php` / store `ensureTable` SQL in the chunk | Raw `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`. Missing `SHOW TABLES LIKE` / `information_schema` probe before CREATE/ALTER. A schema probe, `ensureTable`, or DDL reachable outside an executing install/uninstall callback ([07](07-SCHEMA-AND-INSTALL.md) §0, [§5](#5-security-non-negotiables) item 24) |
 | **Installer order** | `Installation.php` / installer maps | `ksort`, `uksort`, `krsort`, or `usort` on installer/uninstaller keys; new version inserted before an older dependency instead of appended in written order ([07](07-SCHEMA-AND-INSTALL.md)) |
 | **HTML via Renderer** | Diff of Controllers / Libraries vs `views/` | A screen or fragment (table, grid, empty state, pager chrome, tree, crumbs, card) built with `$html .=` / `'<table` / `'<tr` / `'<div class=` / `'<ul class=` / a `*Html()` factory in PHP. Fail unless that **one piece** has `// Why:` naming a real exception (sandbox callable drop, pager `<li>` / button, one tiny chip) — never a whole list ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
+| **Opening `<fo-rm>`** | Every `<fo-rm` in views / layouts of this chunk | `{{ }}` anywhere from `<fo-rm` to that tag’s `>` (`action="{{ var: $postAction }}"`, even with `method` first). `method` and `action` **MUST** be literal. Fix the tag; do not leave `{{ formName }}` as text ([08](08-FORMS-AND-SECURITY.md)) |
 | **Comments** | Diff of PHP/JS | Logical step without `// Why:`; new page action without `// About:` / `// Section:`; PHPDoc with no purpose sentence; `Controllers/` / `Middleware/` public method whose PHPDoc does not start with `CRCchecking —` ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **Cursor rules mirror** | `.cursor/rules/` vs `AIRULES/cursor/rules/` | A new `.mdc` exists only under `.cursor/`; AIRULES cursor rules were not copied into `.cursor/rules/` this session / after an AIRULES rule change ([§2l](#2l-cursor-rules-live-in-airules-must--law)) |
 | **defaultSettings / routes** | `initializeRoutes()` + `initialize()` + RouteMap wake lists | Config used to build a wake prefix or `Router` path without `defaultSettings()` first; URL composed from another module’s Config that is filled only later; hardcoded foreign fallback that skips their `defaultSettings()` ([§2m](#2m-module-defaultsettings-before-routes-must--law), [03](03-MODULES-AND-ROUTING.md)) |
@@ -155,7 +156,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Public cache** | New public anonymous surface | No `Cache::use('<Module>')` and no PLAN note; cache with no settings switch; off still serves old entries; hand-rolled storage; CSRF, cart, or logged-in HTML on a shared key; `clear()` used as invalidation ([§2t](#2t-cache-the-public-surface-and-give-the-operator-a-switch-must--law), [20](20-CACHE-LOGGER-SESSION.md) §1a) |
 | **Shared public GET** | `/sitemap.xml`, `/robots.txt`, `/rss.xml`, or any path another module may already own | A second `Router::get` alone; GET or after returns `Response` while others still need after; `Router::reset(true)` to steal the path ([03](03-MODULES-AND-ROUTING.md)) |
 | **Installer failure** | `Installation.php` callback | Critical failure only `return` / `return false` — `Installer::install()` ignores the return and continues. Throw after reporting ([07](07-SCHEMA-AND-INSTALL.md)) |
-| **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, … |
+| **Rest of AIRULES** | Touched files vs [§4](#4-no-foreign-framework-patterns) / [§5](#5-security-non-negotiables) / [17](17-CHECKLISTS.md) | Lists without AJAX pager, `$_SESSION`, Blade, `$.ajax`, `formName` outside `<fo-rm>`, `{{ }}` on the opening `<fo-rm>` tag, … |
 
 **Pass →** continue or say done. **Fail →** fix **now**. Do not start the next chunk.
 
@@ -502,6 +503,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | `$`, `jQuery`, `$.ajax` | `$dotapp`, `$dotapp().load(...)` |
 | `<form>` + manual CSRF only | Prefer `<fo-rm>` + `{{ formName(handler) }}` |
 | `{{ formName }}` after `</fo-rm>` | **MUST** between `<fo-rm>` and `</fo-rm>` |
+| `{{ }}` inside the opening `<fo-rm …>` (`action="{{ var: $postAction }}"`) | Literal `method` and `action`. The `>` in compiled `?>` hides `method` or cuts `action` ([08](08-FORMS-AND-SECURITY.md)) |
 | Plain IDs in HTML/JSON (`value="7"`, `data-id="7"`) | **MUST** `{{ enc(Shop.item.id): $id }}` — unique `$key2` per field |
 | `<fo-rm>` around every row button / D&D | `$dotapp().load()` + encrypted `data-*` ([08](08-FORMS-AND-SECURITY.md)) |
 | List/form still clickable during `load()` | Cover the region with **your module preloaders** until done — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
@@ -543,6 +545,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 1. **Preferred form stack (default for all interactive forms):**
    - Markup: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`, not Laravel `_token` alone)
    - **MUST:** `{{ formName(handler) }}` sits **between** `<fo-rm …>` and `</fo-rm>` — never before `<fo-rm>`, never after `</fo-rm>` (outside the pair the tag is left unchanged: silent failure)
+   - **MUST:** `method` and `action` on the opening `<fo-rm>` are literal text. **MUST NOT** put `{{ }}` in that opening tag. Compiled `<?php … ?>` contains `>`; that `>` hides `method` (`{{ formName }}` prints as text) or, if `method` is first, cuts `action` (form posts to the current page). Body `{{ var }}` / `{{ enc }}` stay in the body ([08](08-FORMS-AND-SECURITY.md))
    - Script: **`/assets/dotapp/dotapp.js` first** (injects random per-session keys — without it secure forms fail)
    - JS: `$dotapp().form(...).before().after()` + `parseReply` + **MUST** block while in flight (**your module preloaders** — desktop **and** mobile)
    - **MUST:** after success, patch the DOM (`reply.html` / data) and a short toast. `<fo-rm>` does **not** reload. No `location.reload()`. `redirectTo` only when leaving the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)

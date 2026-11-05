@@ -94,6 +94,7 @@
 
 - [ ] Markup uses `<fo-rm>` (not `f-form`, prefer over plain `<form>`+CSRF alone)
 - [ ] `{{ formName(handler) }}` **MUST** sit **between** `<fo-rm>` and `</fo-rm>` (never after `</fo-rm>`)
+- [ ] Opening `<fo-rm>` has literal `method` and `action` — no `{{ }}` between `<fo-rm` and its `>` ([08](08-FORMS-AND-SECURITY.md))
 - [ ] Page loads **`/assets/dotapp/dotapp.js`** before module JS (session keys!)
 - [ ] JS: `$dotapp().form` + `parseReply` + **MUST** block while in flight (**module preloaders**; desktop **and** mobile; remove overlay on success **and** error)
 - [ ] Success **MUST** patch the DOM (`reply.html` / data) + short toast — no `location.reload()` while staying on the page ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md))
@@ -216,6 +217,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md).
 - Frontend wraps `$.fn.plugin` instead of rewriting as `$dotapp().fn`
 - Form uses invented `f-form`
 - `{{ formName }}` placed after `</fo-rm>` or before `<fo-rm>`
+- `{{ }}` inside the opening `<fo-rm …>` tag (`action="{{ var: … }}"`) — `method`/`action` must be literal ([08](08-FORMS-AND-SECURITY.md))
 - Handler skips `crcCheck` for DotApp JS POST, **or** calls `crcCheck()` twice (middleware + controller)
 - Login-only / admin page reachable while anonymous (route registered outside `Auth::isLogged()`, or no prefix `Gate@login` 403)
 - `crcCheck()` on a **GET**/HTML `Gate@login` `before` (GET has no CRC); **or** `crcCheck()` **again** after a POST API CRC prefix

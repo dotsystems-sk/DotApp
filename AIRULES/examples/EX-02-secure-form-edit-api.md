@@ -22,7 +22,7 @@ Page UI posts to an API path. The handler name is a stable string like `saveItem
 <script src="/assets/modules/Shop/js/item-edit.js"></script>
 ```
 
-**MUST:** `{{ formName(saveItem) }}` is between `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.
+**MUST:** `{{ formName(saveItem) }}` is between `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. `method` and `action` on the opening tag are literal, as in this sample. **MUST NOT** put `{{ }}` inside `<fo-rm …>`.
 
 Use `{{ enc(context): $id }}` when IDs must not be forgeable in plain HTML. Decrypt in PHP with the **same** context string.
 

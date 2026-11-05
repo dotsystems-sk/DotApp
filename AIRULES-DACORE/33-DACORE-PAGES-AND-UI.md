@@ -394,7 +394,7 @@ Use the framework secure-form stack — it is unchanged by DACore ([08](08-FORMS
 </fo-rm>
 ```
 
-**MUST:** `{{ formName(saveItem) }}` sits **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.
+**MUST:** `{{ formName(saveItem) }}` sits **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST** keep `method` and `action` as literal text on the opening tag, as in the sample. **MUST NOT** write `action="{{ var: $apiAuth }}/items/save"` (or any other `{{ }}`) on `<fo-rm …>` — the compiled `?>` hides `method` and the page shows `{{ formName }}` as text ([08](08-FORMS-AND-SECURITY.md)).
 
 PHP handler: prefix `LoginAndCRC` already burned the token — only `form(['POST'], 'saveItem', $ok, $err)` → `ajaxReply()`. Because `dotapp.js` is already loaded by the shell, your page script only registers the hooks.
 

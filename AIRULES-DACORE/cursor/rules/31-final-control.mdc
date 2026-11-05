@@ -12,7 +12,7 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2u. Procedure: `AIRULES/cursor/skill
 ## MUST
 
 - Read the skill and run **every** step on **every** control of the module — not a sample.
-- Per control: view file:line → JS listener (`live(..., function (el, e))`, `<fo-rm>` + `formName` inside, or `<a href>` to a registered GET) → URL → `Router` entry → existing `Controller@method` → rights. A broken link in the chain = finding.
+- Per control: view file:line → JS listener (`live(..., function (el, e))`, `<fo-rm>` + `formName` inside with **literal** `method` and `action` on the opening tag (any `{{ }}` before that tag’s `>` is a finding — fix it), or `<a href>` to a registered GET) → URL → `Router` entry → existing `Controller@method` → rights. A broken link in the chain = finding.
 - Layout in source: padding left/right/top/bottom, space **below** the last buttons of a block, gap **between** consecutive blocks (cards, sections, alerts, tables, pagers, label ↔ input ↔ help), mobile wrap.
 - Backend: unwrap nested `data`, `data(true)` for persist, HTTP 200 + `status`, CRC once, catch bus.
 - Rights: login gate + `Auth::isLogged()` registration, explicit `Rights@check` (`dotapp.root` + module right) on **every** GET and POST, write/delete right for writes, encrypted IDs + owner-scoped SQL, no acting on a more privileged operator, no rights/owner/role from the request, PHP re-checks JS-only gates, `throttle()` on public POST.

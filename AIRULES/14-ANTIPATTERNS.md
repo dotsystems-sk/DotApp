@@ -141,6 +141,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | jQuery `$` / `$.ajax` | `$dotapp` / `$dotapp().load` |
 | Plain `<form>` without formName for DotApp JS | `<fo-rm>` + `{{ formName(x) }}` |
 | `{{ formName }}` after `</fo-rm>` or before `<fo-rm>` | **MUST** put it **between** `<fo-rm>` and `</fo-rm>` |
+| `{{ }}` inside the opening `<fo-rm …>` tag | Literal `method` and `action`. Compiled `?>` hides `method` (`{{ formName }}` shows as text) or cuts `action` (posts to the current page) ([08](08-FORMS-AND-SECURITY.md)) |
 | Skip `crcCheck` | Always for DotApp transport — **once** (API prefix **or** action) ([08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md)) |
 | `crcCheck()` in prefix **and** again in the controller | First call **burns** the token; second returns `false` |
 | Static `/app/parts/js/dotapp.js` on pages | `/assets/dotapp/dotapp.js` |

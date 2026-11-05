@@ -40,7 +40,7 @@ jQuery `$` may coexist **for UI widgets** (ported datepickers, etc.). It must **
 
 ## Forms (preferred security — always for user POSTs)
 
-HTML: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`). **MUST** put `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`.  
+HTML: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`). **MUST** put `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST** write `method` and `action` as literal attributes on the opening tag. **MUST NOT** put `{{ }}` inside `<fo-rm …>` — compiled `?>` hides `method` (`{{ formName }}` shows as text) or cuts `action` (posts to the current page).  
 Must load `/assets/dotapp/dotapp.js` first (injects random keys).  
 Full sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
 

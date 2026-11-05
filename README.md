@@ -121,7 +121,7 @@ This is not a coat of paint. 2.0 is the result of **heavy production use** plus 
 - **Fully AI READY**: First-class support for AI agents. `AIRULES/` (framework) and `AIRULES-DACORE/` (with DACore) tell Cursor / Grok exactly how to write DotApp.
 - **`!` skips DI**: `'Shop:Home@index!'` turns the container off for that controller method. Fast, explicit, no mystery injection on hot paths.
 - **Callable prefixes**: `#Shop:Gate@check!` = middleware, `*Shop:Item@find!` = model, `Shop:Home@index!` = controller. Same string form on routes, `->before()`, and `DotApp::call()`.
-- **Secure forms by default**: `<fo-rm>` + `{{ formName(handler) }}` + CRC — stronger than a plain CSRF token. Row actions (toggle, delete, paginate) use `$dotapp().load()`, not a `<fo-rm>` per button.
+- **Secure forms by default**: `<fo-rm>` + `{{ formName(handler) }}` + CRC — stronger than a plain CSRF token. `method` and `action` on the opening tag are plain text. A `{{ }}` inside `<fo-rm …>` compiles to `<?php … ?>`, the `>` hides `method`, and the page shows `{{ formName }}` as text. Row actions (toggle, delete, paginate) use `$dotapp().load()`, not a `<fo-rm>` per button.
 - **Encrypted IDs in the browser**: no raw `data-id="7"`. `{{ enc(Shop.item.id): $id }}` on the way out, decrypt + rights check on the way in.
 - **Lists that can grow must paginate**: `paginate()` + **AJAX** pager on first ship. No `->all()` dumps, no `?page=` full reload of the admin shell.
 - **DSM, not `$_SESSION`**: `DSM::use('Shop')->set/get/delete` for app session state.
@@ -136,6 +136,34 @@ This is not a coat of paint. 2.0 is the result of **heavy production use** plus 
 - **Cursor + Grok 4.5 / 4.6**: stress-tested until generated admin and public UI stayed secure and fast.
 - **Cheap models, serious apps**: you do not need the most expensive model in the catalog. Affordable agents follow the rules and still emit real DotApp code.
 - **Hard boundaries for agents**: they may edit `app/config.php` and `app/modules/<YourModule>/` — not the kernel, not DACore. That is why the output stays maintainable.
+
+## Which rulebook to use
+
+This repository ships **two** agent rulebooks. An application keeps **one** of them, and that folder must be named `AIRULES/`.
+
+| Folder | When |
+| --- | --- |
+| `AIRULES/` | Bare DotApp. No DACore admin. |
+| `AIRULES-DACORE/` | DACore is installed. Copy this folder **over** the project's `AIRULES/`. Do not leave both names side by side in the app — the agent would follow two contracts. |
+
+Cursor loads the compact laws from `.cursor/rules/*.mdc`, root `AGENTS.md`, and `.cursor/skills/`. Those are a mirror, not a second source. After choosing a pack:
+
+```powershell
+New-Item -ItemType Directory -Force -Path ".cursor\rules", ".cursor\skills" | Out-Null
+Copy-Item -Force "AIRULES\cursor\rules\*.mdc" ".cursor\rules\"
+Copy-Item -Force "AIRULES\cursor\AGENTS.md" "AGENTS.md"
+Copy-Item -Recurse -Force "AIRULES\cursor\skills\*" ".cursor\skills\"
+```
+
+In **this** checkout, `.cursor/` already mirrors `AIRULES-DACORE/`, so work done here follows the admin rules. The framework-only compact rules stay in `AIRULES/cursor/` for a project that has no DACore.
+
+Deep pages (`AIRULES/00-AGENT-CONTRACT.md`, `08-FORMS-AND-SECURITY.md`, and for DACore also `30`–`46`) are what the agent opens when a task needs the full text. The `.mdc` files are the short laws present on every turn.
+
+### `/finalcontrol`
+
+In Cursor, type `/finalcontrol ModuleName` (or ask for a final control) before handing a module over. The skill is `AIRULES/cursor/skills/finalcontrol/SKILL.md`, mirrored to `.cursor/skills/finalcontrol/`.
+
+It walks every button and form in that module: padding, the JS listener, the route, the rights check, and the opening `<fo-rm>` tag. `method` and `action` on that tag must be literal. If `{{ }}` sits inside the opening tag, the skill treats it as a bug and rewrites the tag, because otherwise the page prints `{{ formName(...) }}` instead of the form.
 
 ## 👥 Installation
 

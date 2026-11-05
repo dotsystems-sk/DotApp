@@ -119,6 +119,8 @@ DotApper no longer generates these. If an older module still has one, ignore it 
 
 Docs/users sometimes say `f-form`. The real tag is **`<fo-rm>`**.
 
+`{{ formName }}` left as text almost always means the opening `<fo-rm>` contains `{{ var: }}` (or any `{{ }}`). That compiles to `<?php … ?>` before the form pass; the `>` in `?>` hides `method`. Putting `method` before the variable still drops `action` onto the current page. Write both attributes as literal text. Body tags are unaffected. [08](08-FORMS-AND-SECURITY.md).
+
 ---
 
 ## 6. Conflict resolution order

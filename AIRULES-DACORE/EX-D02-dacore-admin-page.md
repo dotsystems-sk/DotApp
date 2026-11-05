@@ -64,7 +64,7 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
 </div>
 ```
 
-Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. `$baseUrl` is the HTML page prefix (`/dacore/Shop`). `$apiAuth` is `/api/v1/auth/Shop` — **MUST** pass it from the controller for `fo-rm` / list `load()`. Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md). `#listInner` is the fragment AJAX replaces (rows **and** pager).
+Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. `$baseUrl` is the HTML page prefix (`/dacore/Shop`). `$apiAuth` is `/api/v1/auth/Shop` — pass it from the controller for list `load()` URLs. The `<fo-rm action>` is a **literal** path; **MUST NOT** write `action="{{ var: $apiAuth }}/items/save"` on the opening tag ([08](08-FORMS-AND-SECURITY.md)). Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md). `#listInner` is the fragment AJAX replaces (rows **and** pager).
 
 ## Edit form with dotgrid + secure form
 
@@ -73,7 +73,7 @@ Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplie
   <h5 class="card-header">{{_ "Edit item" }}</h5>
   <div class="card-body">
 
-    <fo-rm action="{{ var: $apiAuth }}/items/save" method="post" id="itemForm">
+    <fo-rm action="/api/v1/auth/Shop/items/save" method="post" id="itemForm">
       <input type="hidden" name="id" value="{{ enc(Shop.item.id): $itemId }}" />
 
       <dot-grid dg-marginb20="any" wrapped="any" stretch="any" any="12" class="mb-4">

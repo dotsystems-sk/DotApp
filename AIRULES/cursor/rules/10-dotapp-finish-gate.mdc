@@ -17,6 +17,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Inputs** | Password/HTML/URL/setting/token/hash from `$request->data()` not `data(true)`; protected copy persisted; persist only gated in JS |
 | **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers |
 | **Visible outcome** | Silent `.after()`; success with no toast/status; field errors without marking the input (`AIRULES/00` §2d) |
+| **Opening `<fo-rm>`** | `{{ }}` anywhere from `<fo-rm` to that tag’s `>` (`action="{{ var: $postAction }}"`, even with `method` first). `method` and `action` must be literal. Fix the tag (`AIRULES/08`) |
 | **Layout / UX** | Action flush to parent; final button row has no bottom padding; accidental cramped alignment; mobile overflow/hover-only (`AIRULES/00` §2f) |
 | **AJAX / same class** | Flat `$request->data()['id']` read for nested `load()`/form data; handled product failure uses HTTP 400/500; only one sibling fixed (`AIRULES/00` §2q) |
 | **Privilege / records** | Secret (TOTP/QR/key) in a read-only view; mutate a more privileged target; `WHERE id` only after decrypt; own password with no current-password check (`AIRULES/11` §11) |
