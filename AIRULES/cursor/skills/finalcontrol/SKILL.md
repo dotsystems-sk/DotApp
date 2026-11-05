@@ -1,6 +1,6 @@
 ---
 name: finalcontrol
-description: Final control of one DotApp module before hand-off. Walks every button and control, checks padding and spacing between blocks, JS listeners, backend endpoints, rights and privilege escalation, Why/About comments and runtime schema probes, then fixes every failure. Use when the user types /finalcontrol, asks for a final control, záverečná kontrola, finálna kontrola, or a pre-release check of a module.
+description: Final control of one DotApp module before hand-off. Walks every button and control, checks padding and spacing between blocks, JS listeners, backend endpoints, rights and privilege escalation, Why/About comments, runtime schema probes, and leftover agent helper files whose names start with _, then fixes every failure. Use when the user types /finalcontrol, asks for a final control, záverečná kontrola, finálna kontrola, or a pre-release check of a module.
 disable-model-invocation: true
 ---
 
@@ -29,6 +29,7 @@ Final control <Module>:
 - [ ] 6. Input / IDs / CRC / SQL (finish gate rows)
 - [ ] 7. Comments: CRCchecking — PHPDoc, Why / About / Section
 - [ ] 8. Runtime schema probes = zero (AIRULES/07 §0a)
+- [ ] 8b. No leftover agent helpers (no file or folder whose name starts with _)
 - [ ] 9. Fix all, re-grep, tests, PLAN log, click list
 ```
 
@@ -102,10 +103,22 @@ Run the table in `10-dotapp-finish-gate.mdc` on the module. Grep, do not imagine
 
 Outside `Installation.php`: zero `SHOW TABLES|COLUMNS|INDEX`, `information_schema`, `DESCRIBE`, `tableExists`, `columnExists`, `indexExists`, `ensureTable`, executed `CREATE`/`ALTER`. See `AIRULES/07` §0a.
 
+## 8b. Leftover agent helpers
+
+Scratch files from a stuck agent run usually have a name that starts with `_` (`_probe.php`, `Libraries/_dump.php`, `_scratch/note.txt`). Glob the whole module. Any **file or folder** under `app/modules/<Target>/` whose name starts with `_` is a **finding**.
+
+They must not stay in the tree. A leftover script or dump is a security hole if it ships.
+
+Fix in this run:
+
+- If the code is still used, move it to a normal path with no leading `_` and update every caller.
+- Otherwise delete the file and remove the empty folder.
+- Glob again. Zero matches before the control is done.
+
 ## 9. Fix, verify, report
 
 1. Fix every finding in `app/modules/<Target>/` only.
-2. Re-run the greps of steps 1–8; `php -l` changed files; `php dotapper.php --module=<Target> --test`.
+2. Re-run the greps of steps 1–8b; `php -l` changed files; `php dotapper.php --module=<Target> --test`.
 3. Append a dated entry to `app/modules/<Target>/PLAN/11-LOG.md`.
 4. Reply in the user’s language: one-line verdict; table area | checked | found | fixed | open; fixes with `file:line`; a **click list** for the operator.
 

@@ -163,7 +163,7 @@ Deep pages (`AIRULES/00-AGENT-CONTRACT.md`, `08-FORMS-AND-SECURITY.md`, and for 
 
 In Cursor, type `/finalcontrol ModuleName` (or ask for a final control) before handing a module over. The skill is `AIRULES/cursor/skills/finalcontrol/SKILL.md`, mirrored to `.cursor/skills/finalcontrol/`.
 
-It walks every button and form in that module: padding, the JS listener, the route, the rights check, and the opening `<fo-rm>` tag. `method` and `action` on that tag must be literal. If `{{ }}` sits inside the opening tag, the skill treats it as a bug and rewrites the tag, because otherwise the page prints `{{ formName(...) }}` instead of the form.
+It walks every button and form in that module: padding, the JS listener, the route, the rights check, and the opening `<fo-rm>` tag. `method` and `action` on that tag must be literal. If `{{ }}` sits inside the opening tag, the skill treats it as a bug and rewrites the tag, because otherwise the page prints `{{ formName(...) }}` instead of the form. It also deletes leftover agent scratch files: any file or folder under the module whose name starts with `_`. Those must not ship. The DACore packer refuses the install zip while any remain.
 
 ## 👥 Installation
 

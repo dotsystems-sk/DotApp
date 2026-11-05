@@ -27,4 +27,4 @@ php dacore-pack-zip.php ExampleModule 1.2.0
 Remove-Item .\dacore-pack-zip.php
 ```
 
-**MUST NOT** pack `app/modules/DACore/`. **MUST NOT** leave `dacore-pack-zip.php` in the repo.
+**MUST NOT** pack `app/modules/DACore/`. **MUST NOT** leave `dacore-pack-zip.php` in the repo. **MUST NOT** pack a file or folder whose name starts with `_` (agent scratch helpers). The packer exits with an error until those files are deleted or renamed.

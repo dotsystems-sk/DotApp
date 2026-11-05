@@ -50,6 +50,7 @@ On the copy it:
 4. Refuses `self::… =>` / `static::… =>` keys and requires quoted `'1.0.0' =>` keys.
 5. Writes `{Module}-{version}.zip` to the project root (or `--out=`).
 6. Deletes the temp copy.
+7. Refuses the zip when any file or folder name starts with `_` (leftover agent helpers). Delete or rename them, then run this same script again.
 
 **MUST NOT** pack `DACore`. **MUST NOT** leave `dacore-pack-zip.php` in the repo.
 

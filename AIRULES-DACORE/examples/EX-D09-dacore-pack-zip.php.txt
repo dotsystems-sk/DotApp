@@ -369,6 +369,9 @@ function writeZip($work, $zipPath)
         if (isRecordingFile($relative)) {
             fail('Recordings stay in app/runtime and must not enter the install zip: ' . $relative);
         }
+        if (isAgentHelperPath($relative)) {
+            fail('Agent helper files (a name starting with _) must be deleted or renamed before packing: ' . $relative);
+        }
         $zip->addFile($file->getPathname(), $relative);
     }
     addZipAlias($zip, $work . DIRECTORY_SEPARATOR . 'init' . DIRECTORY_SEPARATOR . 'module.init.php', 'init/module.init.php');
@@ -433,6 +436,11 @@ function verifyZip($zipPath, $version)
     if (in_array('install.php', $names, true)) {
         fail('Zip still contains install.php.');
     }
+    foreach ($names as $entry) {
+        if (isAgentHelperPath($entry)) {
+            fail('Zip contains an agent helper (a name starting with _): ' . $entry);
+        }
+    }
     foreach (array('dainstall.php', 'Installation.php', 'about.php') as $entry) {
         if (!in_array($entry, $names, true)) {
             fail('Zip is missing ' . $entry);
@@ -486,6 +494,9 @@ function copyTree($source, $destination)
         if (isRecordingFile($file->getPathname())) {
             fail('Recordings stay in app/runtime and must not enter the install zip: ' . $rel);
         }
+        if (isAgentHelperPath($rel)) {
+            fail('Agent helper files (a name starting with _) must be deleted or renamed before packing: ' . str_replace('\\', '/', $rel));
+        }
         if (!copy($file->getPathname(), $target)) {
             fail('Package file copy failed.');
         }
@@ -532,6 +543,25 @@ function isRecordingFile($path)
 {
     $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
     return in_array($ext, array('mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac', 'opus', 'webm', 'mp4'), true);
+}
+
+/**
+ * Scratch files agents leave behind. A leading _ on any path segment
+ * must not ship: the file can be a dump, a probe, or an extra entry point.
+ *
+ * @param string $path
+ * @return bool
+ */
+function isAgentHelperPath($path)
+{
+    $normalized = str_replace('\\', '/', (string) $path);
+    $parts = explode('/', $normalized);
+    foreach ($parts as $part) {
+        if ($part !== '' && isset($part[0]) && $part[0] === '_') {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**

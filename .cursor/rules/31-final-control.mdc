@@ -18,6 +18,7 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2u. Procedure: `AIRULES/cursor/skill
 - Rights: login gate + `Auth::isLogged()` registration, explicit `Rights@check` (`dotapp.root` + module right) on **every** GET and POST, write/delete right for writes, encrypted IDs + owner-scoped SQL, no acting on a more privileged operator, no rights/owner/role from the request, PHP re-checks JS-only gates, `throttle()` on public POST.
 - Comments are part of done: `CRCchecking —` first line on public Controller/Middleware PHPDoc, purpose sentence, `// Why:` on non-obvious steps, `// About:` / `// Section:` on route blocks and handlers. Add what is missing.
 - Runtime schema probes outside `Installation.php` = zero (`AIRULES/07` §0a1).
+- Leftover agent helpers: any file or folder under the module whose name starts with `_` is deleted, or moved to a normal path with no leading `_`, in this run. A DACore install zip must not contain them (`EX-D09` refuses the pack).
 - **Fix** every finding in the same run, re-grep, `php -l`, module tests, `PLAN/11-LOG.md` entry, reply with findings/fixes table + operator click list.
 
 ## MUST NOT
