@@ -107,19 +107,18 @@ Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `
 
 ## Client side
 
-**MUST** show the outcome ([00](../00-AGENT-CONTRACT.md) §2d). **Public:** mark the **wrong field** (where + what). Success uses **your** module toast/status — never `alert()`, never empty `.after()`.
+**MUST** show the outcome ([00](../00-AGENT-CONTRACT.md) §2d). Mark the **wrong field** (red input + the exact sentence under it). The first `input` / `change` on that control clears **only that** mark. Success uses **your** module toast/status — never `alert()`, never empty `.after()`, never only “could not save” when `errors` names a field.
 
 ```javascript
 .after(function (data, response, form) {
   var reply = $dotapp().parseReply(response);
   if (!reply) { return; }
   $dotapp(form).find(".shop_invalid").removeClass("shop_invalid");
-  $dotapp(form).find(".shop_field_err").html("");
+  $dotapp(form).find(".shop_field_err").text("");
   if (reply.status == 1) {
     if (reply.html) { $dotapp('#listWrap').html(reply.html); }
-    // your module toast / #status — "Saved"
-    if (reply.message) { $dotapp("#status").attr("hide", "false").html(reply.message); }
-    else if (reply.redirectTo) { window.location = reply.redirectTo; }
+    if (reply.message) { $dotapp("#status").attr("hide", "false").text(reply.message); }
+    if (reply.redirectTo) { window.location = reply.redirectTo; }
     return;
   }
   if (reply.errors) {
@@ -129,13 +128,30 @@ Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `
       var $el = $dotapp('[name="' + field + '"]');
       $el.addClass("shop_invalid");
       var $hint = $el.parent().find(".shop_field_err");
-      if ($hint.length) { $hint.html(text); }
+      if ($hint.length) { $hint.text(text); }
     });
   }
   if (reply.message && !reply.errors) {
-    $dotapp('#error-message').attr('hide', 'false').html(reply.message);
+    $dotapp('#error-message').attr('hide', 'false').text(reply.message);
   }
 });
 ```
 
-Markup next to each input: `<span class="shop_field_err"></span>`. CSS: `.shop_invalid { outline: 2px solid … }` (module prefix). PHP still re-validates.
+Markup next to each input: `<span class="shop_field_err"></span>`. Class prefix is the module’s (`shop_` here). PHP still re-validates.
+
+```css
+.shop_invalid {
+  border-color: #b42318;
+  background: #fdecea;
+}
+```
+
+Clear **that** field when the person edits it. Other invalid fields stay marked until they are edited or the next successful save:
+
+```javascript
+$dotapp().live("input", ".shop_invalid", function (el) {
+  el.classList.remove("shop_invalid");
+  var hint = el.parentNode ? el.parentNode.querySelector(".shop_field_err") : null;
+  if (hint) { hint.textContent = ""; }
+});
+```

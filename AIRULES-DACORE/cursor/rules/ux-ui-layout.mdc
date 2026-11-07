@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Layout and UX/UI (law)
 
-General UX/UI principles **MUST** be followed **at all costs**. A control that works but looks unfinished is a **bug**.
+General UX/UI principles **MUST** be followed **at all costs**. A control that works but looks unfinished is a **bug**. Save feedback (red field, exact sentence, clear on edit, AJAX overlay, GET tabs) is `29-ux-save-feedback.mdc`.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8c–§8e, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6–§6b.
 

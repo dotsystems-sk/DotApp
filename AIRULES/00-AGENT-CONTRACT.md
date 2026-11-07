@@ -130,7 +130,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Queries bound** | Every SQL in the chunk | User input concatenated into SQL; `$qb->raw()` `?` that is not a binding (comments / `COMMENT` count); mix `?` and `:named` |
 | **Inputs** | Request + persist | Password / HTML / URL / setting / token / hash from `$request->data()` not `data(true)`; missing `form()` / `Validator` where required; persist with only an FE overlay — PHP **MUST** still refuse |
 | **Middleware / route conflicts** | `module.init.php` + Middleware vs the action | Login `before` missing **or** handlers outside `Auth::isLogged()`; CRC layer **and** action `crcCheck()`; CRC on a GET gate; two overlapping `before` hooks that both CRC |
-| **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; success with no toast/status; field errors without marking the input ([§2d](#2d-visible-outcome-must--law)) |
+| **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; success with no toast/status; a named field error with only “could not save”; red input with no sentence under it; the red mark still showing after the person starts typing in that field; typing in one field clears every other field’s error ([§2d](#2d-visible-outcome-must--law)) |
 | **Layout / UX** | New/moved buttons, cards, forms, footers | Action flush to a parent edge; final button row with no bottom padding; cramped accidental alignment; mobile overflow or hover-only control ([§2f](#2f-layout-and-uxui-must--law)) |
 | **AJAX / same class** | Every `load()` / `form()` URL and action in this module | Flat `$request->data()['id']` read although fields are nested under `data`; handled product failure returned as HTTP 400/500; only the reported sibling fixed ([§2q](#2q-same-class-of-bug--hunt-the-module-must--law)) |
 | **Catch reported** | `rg -n "catch \(|catch\(" ` + every `execute(` in the chunk | A `catch` (or `execute()` `$err`) that does **not** call the module’s report helper → `dotapp.catch` + `dotapp.catch.error|info`; ad-hoc payload keys; a secret/token/request body inside the payload ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9) |
@@ -164,21 +164,34 @@ User reports a failure **after** ship: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.
 
 ### 2d. Visible outcome (MUST — law)
 
-The user **MUST** always see what happened. Silent save and silent fail are **bugs**.
+UX is the same rank as a working POST. The user **MUST** always see what happened, **where**, and **why**. Silent save and silent fail are **bugs**. A generic “Could not save” when the bad field is known is also a **bug**.
 
-**Every** stay-on-page action (save, toggle, delete, upload, login, form): PHP returns `status` + `message` (and `errors` when the problem is a **field**). JS **MUST** show it. Empty `.after()` is forbidden.
+**Every** stay-on-page action (save, toggle, delete, upload, login, form): PHP returns `status` + `message`, and `errors` keyed by the input `name` when the problem is a **field**. The sentence names the problem in product language (which value, which rule). JS **MUST** show it. Empty `.after()` is forbidden.
 
-**This folder has no DACore shell.** Notiflix does **not** exist. **You MUST build** the feedback in **your** module (`app/modules/<YourModule>/assets/`).
+**AJAX loading (MUST):** every `form()` / `load()` that waits on the server covers that form or list until the reply, on success **and** on fail. The overlay is built in **this** module. A stuck overlay and a save with no busy state are bugs. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Block while in flight”.
+
+**This folder has no DACore shell.** Notiflix does **not** exist. **You MUST build** the toast, the overlay, and the field marks in **your** module (`app/modules/<YourModule>/assets/`).
+
+#### Field errors (MUST)
+
+When validation can name a control:
+
+1. PHP reads `$request->data(true)` (unwrap nested `data`), checks the real value, and returns HTTP **200** + `status` 0 + a short `message` + `errors` as `{ fieldName: "exact sentence" }`. The sentence names the bad value and the rule. Several values in one field (addresses separated by `;`) are checked **one by one**. Example: `artluk@artluk.sk;not-an-email` → `errors.contact_email` says that `not-an-email` is not a valid address and that further addresses are separated by `;`.
+2. JS adds an invalid class on **that** input (red border and a light red tint) and writes the sentence in a node **under that field**. Use `.text()` / `textContent`. **MUST NOT** `.html()` a server string.
+3. A status line may repeat the summary. The status line **does not** replace the mark on the field.
+4. **Clear on edit (MUST):** the first `input` or `change` on that control removes **its** red state and **its** sentence. Fields that are still wrong stay marked. The error returns only on the next failed submit. **MUST NOT** leave the red border up while the person is already fixing that field. **MUST NOT** wipe every field’s error when they type in one of them.
+
+FE highlight without a PHP re-check is UX only — persist still fails in PHP ([§5](#5-security-non-negotiables)).
 
 | Kind | Channel (**MUST**) |
 |------|-------------------|
-| Field validation (wrong email, empty name, …) | **Preferred (FE + BE):** mark the **wrong input** (invalid/red class) **and** put the message **on that field** so the user sees **where** and **what**. PHP **MUST** return `errors` keyed by field (`Validator` shape). FE highlight without PHP re-check is UX only — persist still fails in PHP ([§5](#5-security-non-negotiables)). |
+| Field validation | Red input + the exact sentence under that input. Clear that field on the next `input` / `change`. |
 | Success (“Saved”, “Enabled”) | **Your** module toast / status node. Never `alert()`. |
 | Non-field failure (CRC, rights, server) | Same module channel + `reply.message`. |
 
-**MUST NOT:** only a generic “Validation failed” toast when the error belongs to a named field; skip success feedback; invent `alert()` / `window.confirm()`.
+**MUST NOT:** only “Could not save” / “Nastavenia sa nepodarilo uložiť” when a field is the cause; a red border with no sentence; a sentence only in a toast; an error that survives the first keystroke in that field; skip success feedback; `alert()` / `window.confirm()`.
 
-Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Visible outcome”, [19](19-VALIDATION-AND-INPUT.md), [EX-09](examples/EX-09-validation-and-errors.md).
+Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Visible outcome”, [19](19-VALIDATION-AND-INPUT.md), [EX-09](examples/EX-09-validation-and-errors.md). Compact: `AIRULES/cursor/rules/29-ux-save-feedback.mdc`.
 
 ### 2f. Layout and UX/UI (MUST — law)
 
@@ -566,7 +579,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 14. **Documentation (MUST):** English. Every file/class gets a docblock. Every public/static method in **`Controllers/`** and **`Middleware/`** starts PHPDoc with **`CRCchecking —`** naming **where** CRC runs (exact prefix/middleware, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence** — tags alone (`@return array<string, mixed>`) are a **bug**. Then `@param` / `@return` / `@throws` with **meaning**, not only types. Inline comments **MUST** use the labels **`// Why:`** (every logical step), **`// About:`** (what the chunk is / what the record represents), **`// Section:`** (menu or route). **MUST NOT** restate the code (`// increment i`), prompt-echo, omit the labels, or leave dead code / bare `TODO`. **MUST NOT** write `CRCchecking — prefix … MUST NOT crcCheck()` and then call `crcCheck()` in that method. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md).
 15. **Errors (MUST):** persist handlers in `try/catch` (`\Throwable`) — log, structured `ajaxReply`, **never** leak `$e->getMessage()`, **never** empty `catch`. `execute()` **MUST** get **both** callbacks (`$ok` and `$err`); omitting `$err` **throws**. **Every `catch` and every `execute()` `$err` MUST also report to the catch bus:** `Events::trigger('dotapp.catch', $payload)` then `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered/expected), with the fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`) — no secrets, tokens or request bodies in it. Route it through **one** report helper per module so a future debugger listener cannot break the reply. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
 16. **Cheap I/O (MUST):** pick the smallest load — `exists()` / `COUNT(*)` / `limit(1)` / `select` only used columns / `paginate()` / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` “for speed”. Canonical: [06](06-DATABASE.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2.
-17. **Visible outcome (MUST):** the user always sees success and failure. Public: **preferred** mark the wrong field (red + message on the input) — PHP returns `errors`. You **build** your own toast/status. Canonical: [§2d](#2d-visible-outcome-must--law).
+17. **Visible outcome (MUST):** the user always sees success and failure, and **where** a field failed. PHP returns `errors` keyed by input name with a sentence that names the bad value. JS paints that input red and writes the sentence under it. The first `input` / `change` on that control clears only that mark. You **build** your own toast, overlay, and field marks. Canonical: [§2d](#2d-visible-outcome-must--law).
 18. **Privilege and records (MUST):** no secret in a read-only view; no grant/mutate above the actor; SQL scoped to owner; own password needs current password; live routes; lockout covers 2FA if you built lockout. Public noauth that bots can hammer: **MUST warn** in chat (CAPTCHA optional — not MUST). Canonical: [11](11-AUTH-AND-CRYPTO.md) §11.
 19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
 20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend, and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.

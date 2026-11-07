@@ -30,6 +30,10 @@ L1 chrome (menus/site settings) → L2 **document body** (unique prose) → L3 *
 
 CMS owns the **page** cache for public URLs (`public_cache_*` in CMS admin). A pack **MUST NOT** build a second page cache, touch host entries, `Cache::use('CMS')`, or purge on a read path. Views **MUST** be cache-correct: no cookie / session / `$_SERVER` / time / random varying the HTML, no CSRF token or single-use bag in a host-cacheable page (use the host bypass call, or do not vary). A host hit **never runs the pack**, so **MUST NOT** count views, log, clean up, or lazily generate while rendering. The pack's own expensive answers **MUST** use `Cache::use('<Pack>')` + TTL + invalidation on pack writes + an **on/off switch in pack settings**. Canonical: `app/modules/CMS/AIRULES/14-PUBLIC-CACHE.md`, project `AIRULES/00` §2t.
 
+## Operator UX (MUST)
+
+Public forms and pack admin follow `app/modules/CMS/AIRULES/20-PACK-UX.md` and project `AIRULES/00` §2d. `$dotapp().form()` covers the form until the reply. A bad field is a red input plus the exact sentence under it. The first edit of that field clears **only that** mark. Tabs are separate GET pages. `PLAN/html/` shows the error state before production views.
+
 ## Tests before done (MUST)
 
 Unknown page → nav → publish, no code change · move a band to another page, no code change · delete the seed and the site still looks like the pack. Record in pack `PLAN/00-README.md`.

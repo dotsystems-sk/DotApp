@@ -63,7 +63,7 @@ Every actionable control has exactly one working path:
 - `$dotapp().live("click", selector, function (el, e) { … })` — first argument is the **element** (`function (e)` with `e.currentTarget` = dead button), or
 - a plain `<a href>` to a **registered GET** route.
 
-Check per handler: the selector matches the markup; overlay starts and is removed on success **and** error; success patches `reply.html` and shows the module’s own status (no `location.reload()`); error shows `reply.message`; delete uses a graphical confirm (no `alert` / `window.confirm`); user strings use `.text()`. Buttons with a handler but no markup, and markup with no handler, are both findings.
+Check per handler: the selector matches the markup; overlay starts and is removed on success **and** error; success patches `reply.html` and shows the module’s own status (no `location.reload()`); a named field error paints that input red and writes the sentence under it, and the first `input` / `change` clears only that field; error shows `reply.message`; delete uses a graphical confirm (no `alert` / `window.confirm`); user strings use `.text()`. Buttons with a handler but no markup, and markup with no handler, are both findings.
 
 ## 4. Backend endpoints (`24-dotapp-ajax-and-class-bugs.mdc`)
 

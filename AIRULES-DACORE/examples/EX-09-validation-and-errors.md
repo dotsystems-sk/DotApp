@@ -109,9 +109,7 @@ Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `
 
 **MUST** show the outcome ([00](../00-AGENT-CONTRACT.md) §2d).
 
-**DACore admin:** grep DACore first, then **toast** (`Notiflix.Notify.success` / `failure`). Field mark is optional extra.
-
-**Public:** mark the **wrong field** (where + what). Your own toast/status for success. Never `alert()`, never empty `.after()`.
+**DACore admin and public:** mark the **wrong field** (red input + the exact sentence under it) and toast the summary on admin. The first `input` / `change` on that control clears **only that** mark. Never `alert()`, never empty `.after()`, never only “could not save” when `errors` names a field.
 
 ```javascript
 .after(function (data, response, form) {
@@ -136,7 +134,7 @@ Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `
       var $el = $dotapp('[name="' + field + '"]');
       $el.addClass("shop_invalid");
       var $hint = $el.parent().find(".shop_field_err");
-      if ($hint.length) { $hint.html(text); }
+      if ($hint.length) { $hint.text(text); }
     });
   }
   if (window.Notiflix && Notiflix.Notify) {
@@ -148,3 +146,13 @@ Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `
 ```
 
 Public markup next to each input: `<span class="shop_field_err"></span>`. PHP still re-validates.
+
+Clear **that** field when the person edits it. Other invalid fields stay marked until they are edited or the next successful save:
+
+```javascript
+$dotapp().live("input", ".shop_invalid", function (el) {
+  el.classList.remove("shop_invalid");
+  var hint = el.parentNode ? el.parentNode.querySelector(".shop_field_err") : null;
+  if (hint) { hint.textContent = ""; }
+});
+```

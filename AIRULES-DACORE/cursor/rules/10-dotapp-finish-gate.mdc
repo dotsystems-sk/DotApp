@@ -19,7 +19,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers; `#DACore:AuthTest@check!` as a rights guard |
 | **DACore files** | Diff touches `app/modules/DACore/` without the informed exception (`AIRULES/00` §1) |
 | **DACore is not Bootstrap** | `data-bs-toggle="tab"` / `.tab-pane.fade` / `bootstrap.bundle` in this module — tab look must be GET links + this module’s CSS (`AIRULES/33` §0) |
-| **Visible outcome** | Silent `.after()`; admin save without a DACore toast; public field errors without marking the input (`AIRULES/00` §2d) |
+| **Visible outcome** | Silent `.after()`; admin save without a DACore toast; a known bad field with only “could not save” and no red input + sentence under it; that mark still showing after the person edits the field; AJAX save/list with no overlay (`AIRULES/00` §2d) |
 | **Opening `<fo-rm>`** | `{{ }}` anywhere from `<fo-rm` to that tag’s `>` (`action="{{ var: $apiAuth }}/save"`, or `method` first with `action="{{ var: $postAction }}"`). `method` and `action` must be literal. Fix the tag (`AIRULES/08`) |
 | **Layout / UX-UI** | Button flush to a card/`card-body`/modal/page edge; missing padding on a side / **top** / **bottom**; buttons last in a block with no space below (usual Save-at-the-bottom hole); `pt-0` footer with no `pb-*`; uncentered vs siblings (`AIRULES/00` §2f, `AIRULES/33` §6) |
 | **Admin page composition** | New/rewritten admin form/settings/editor is one undifferentiated card of inputs; missing numbered section + lede; missing Why-this-matters when the cluster is not obvious; two unrelated jobs on one GET; copied sibling-module chrome (`AIRULES/00` §2f, `AIRULES/33` §6b) |

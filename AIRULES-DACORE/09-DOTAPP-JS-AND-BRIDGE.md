@@ -201,14 +201,16 @@ Same rule for `$dotapp().load(...)` (toggles, delete, “add rule”). Bind row 
 
 The user **MUST** see what happened. Silent save / silent fail is a bug. Law: [00](00-AGENT-CONTRACT.md) §2d.
 
-**DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Success and failure = **toast**.
+**DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Success and non-field failure = **toast**.
 
-**Public website:** Notiflix is not there. **You MUST build** feedback. Field validation **preferred:** mark the wrong input (red) + message **on that field**. PHP returns `errors` keyed by field.
+**Public website:** Notiflix is not there. **You MUST build** feedback.
 
-| Surface | Success / fail | Field errors |
-|---------|----------------|--------------|
-| `Page@withMenu!` | `Notiflix.Notify.success` / `failure` (or `$dotapp().toast()` if that is what DACore has) | Toast `reply.message` (field mark optional extra) |
-| Public / front-office | Your module toast / status | **Preferred:** red input + text on the field |
+**Field errors (admin and public — MUST):** PHP returns `errors` keyed by the input `name`, with a sentence that names the bad value. JS paints that input red and puts the sentence **under it** (`.text()` / `textContent`). A toast may summarise; it does not replace the mark. **Clear on edit:** the first `input` or `change` on that control removes only that control’s red class and sentence. The error comes back only when they submit again and that field is still wrong. Law: [00](00-AGENT-CONTRACT.md) §2d.
+
+| Surface | Success / non-field fail | Field errors |
+|---------|--------------------------|--------------|
+| `Page@withMenu!` | `Notiflix.Notify.success` / `failure` (or `$dotapp().toast()` if that is what DACore has) | Red input + sentence under the field, plus a summary toast. Clear that field on the next `input` / `change`. |
+| Public / front-office | Your module toast / status | Red input + sentence under the field. Clear that field on the next `input` / `change`. |
 
 Copy-paste: [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md). Search DACore: [33](33-DACORE-PAGES-AND-UI.md).
 

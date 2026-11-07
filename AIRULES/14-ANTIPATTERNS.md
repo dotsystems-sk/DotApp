@@ -151,6 +151,8 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Assume getter chaining | Many getters return values |
 | `location.reload()` after `fo-rm` / `load` (stay on page) | Return `html` in JSON, patch the DOM, short toast ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-06](examples/EX-06-dotapp-js-boot.md)) |
 | Empty `.after()` / `alert()` | Toast + live list; `redirectTo` only when leaving the page |
+| Only “Could not save” when `errors` names a field | Red border + light tint on that input, exact sentence under it, `.text()` not `.html()` ([00](00-AGENT-CONTRACT.md) §2d, [EX-09](examples/EX-09-validation-and-errors.md)) |
+| Red mark left on while the person is already typing in that field | First `input` / `change` clears **that** field only; other wrong fields stay marked |
 | One `<fo-rm>` per row button / drag-and-drop via forms | `type="button"` + encrypted `data-*` + `$dotapp().load()` ([08](08-FORMS-AND-SECURITY.md)) |
 | List still clickable / second drag during `load()` | Cover the wrapper with **module preloaders** until success **and** error — desktop **and** mobile ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Custom OTP / jQuery 2FA digit widget | `$dotapp().twoFactor` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3, [EX-14](examples/EX-14-auth-and-2fa.md)) |

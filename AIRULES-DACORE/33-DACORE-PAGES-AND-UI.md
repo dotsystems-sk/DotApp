@@ -400,6 +400,8 @@ PHP handler: prefix `LoginAndCRC` already burned the token — only `form(['POST
 
 **MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, **toast** with the shell notify (**MUST** grep DACore first — `Notiflix.Notify.success` / `failure` or `$dotapp().toast()`). Never silent `.after()`. Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). Law: [00](00-AGENT-CONTRACT.md) §2d. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
 
+**MUST (field errors):** when Save can name the bad control, HTTP 200 + `status` 0 + `errors[fieldName]` is an exact product sentence (which value failed, how a list is separated). JS paints **that** input red and prints the sentence under it. The first `input` / `change` on that control clears only that mark. A toast that only says the settings could not be saved, with a clean form, is a bug. Host restatement: `app/modules/DACore/AIRULES/02-OPERATOR-UX.md`.
+
 **MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
 
 **MUST (admin persist = original request):** `$request->data(true)` (unwrap nested `data`). SQL protection is **named / `?` bindings** on insert/update — **MUST NOT** persist `$request->data()` (`protect()`). A maps URL `?q=Sabinov` stored from the protected copy becomes `?&#61;Sabinov`. Canonical: [19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md).

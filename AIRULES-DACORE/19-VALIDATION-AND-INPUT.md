@@ -28,7 +28,7 @@ $r = Validator::validate($email, 'required|email');
 
 **Check with `=== true`.** A failure array is truthy.
 
-**MUST (visible outcome — [00](00-AGENT-CONTRACT.md) §2d):** return that array to the browser as `errors` (field → messages). **Public FE:** mark each named input (invalid/red) **and** show the message **on that field**. **DACore admin:** toast `message` (search DACore / Notiflix first) — field mark is extra. Persist still re-checked in PHP. Sample: [EX-09](examples/EX-09-validation-and-errors.md).
+**MUST (visible outcome — [00](00-AGENT-CONTRACT.md) §2d):** return that array to the browser as `errors` (field → one exact sentence). **Admin and public:** mark each named input (invalid/red) **and** show the sentence **under that field**. Admin also toasts the summary (search DACore / Notiflix first). The first `input` / `change` on that control clears **its** mark; the error returns only on the next failed submit. Persist still re-checked in PHP from `$request->data(true)`. Sample: [EX-09](examples/EX-09-validation-and-errors.md).
 
 Throws `\InvalidArgumentException` for: parameter type mismatch, unknown rule, malformed rule parameters.
 

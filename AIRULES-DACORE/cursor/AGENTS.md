@@ -125,10 +125,11 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` 
 
 ## Visible outcome (**MUST** — law)
 
-Every save / toggle / delete / form **MUST** tell the user what happened. Silent success and silent fail are bugs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d.
+Every save / toggle / delete / form **MUST** tell the user what happened, **where**, and **why**. Silent success, silent fail, and a generic “could not save” when a field is known are bugs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d, `AIRULES/cursor/rules/29-ux-save-feedback.mdc`.
 
-- **DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Outcome channel = **toast**.
-- **Public site:** **you** build feedback. Field errors **preferred:** red input + message **on that field**. PHP returns `errors`. Persist still in PHP.
+- **DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Non-field outcome = **toast**.
+- **Field errors (admin and public):** red input + the exact sentence **under that field**. PHP returns `errors` keyed by `name`, from `$request->data(true)`. The first `input` / `change` on that control clears **only that** mark. The error returns on the next failed submit.
+- **AJAX:** cover the form or list until the reply (success and fail). **Tabs:** separate GET subpages, not `data-bs-toggle="tab"`.
 - Empty `.after()` is forbidden.
 
 ## Layout / UX-UI (**MUST** — law)

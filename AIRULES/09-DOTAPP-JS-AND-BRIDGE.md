@@ -193,9 +193,11 @@ The user **MUST** see what happened. Silent save / silent fail is a bug. Law: [0
 
 **Notiflix does not exist here.** Build toast / status in **your** module. Never `alert()`.
 
+**Field errors (MUST):** PHP returns `errors` keyed by the input `name`, with a sentence that names the bad value. JS paints that input red (border + light red tint) and puts the sentence **under it** (`.text()` / `textContent`). A status line may summarise; it does not replace the mark. **Clear on edit:** the first `input` or `change` on that control removes only that control’s red class and sentence. Other wrong fields stay marked. The error comes back only when they submit again and that field is still wrong. A generic “could not save” when `errors` names a field is a bug. FE mark without PHP re-check is UX only. Law: [00](00-AGENT-CONTRACT.md) §2d.
+
 | Kind | **MUST** |
 |------|----------|
-| Field validation | PHP returns `errors` keyed by field (`Validator` shape). JS marks that input (invalid/red class) **and** shows the message **on the field** (where + what). A generic banner alone is not enough when the error is a named field. FE mark without PHP re-check is UX only. |
+| Field validation | Red input + the exact sentence under that field. Clear that field on the next `input` / `change`. |
 | Success (“Saved”, “Enabled”) | Your module toast / status node + `reply.message`. |
 | Non-field failure (CRC, rights, server) | Same channel + `reply.message`. |
 

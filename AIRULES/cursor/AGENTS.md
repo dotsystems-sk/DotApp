@@ -82,8 +82,9 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` 
 
 Every save / toggle / delete / form **MUST** tell the user what happened. Silent success and silent fail are bugs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d.
 
-- **Field errors (preferred on public FE + BE):** PHP returns `errors` keyed by field. JS marks that input (red/invalid) **and** shows the message **on the field** (where + what).
+- **Field errors:** PHP returns `errors` keyed by the input `name`, with a sentence that names the bad value. JS paints that input red and writes the sentence **under it** (`.text()`). The first `input` / `change` on that control clears **only that** mark. A status line does not replace the mark.
 - **Success / non-field fail:** **your** module toast / status node + `reply.message`. Notiflix does not exist here. Never `alert()`.
+- Every `form()` / `load()` covers the form or list until the reply, on success **and** on fail.
 - Empty `.after()` is forbidden.
 
 ## HTML via Renderer (**MUST** — law)

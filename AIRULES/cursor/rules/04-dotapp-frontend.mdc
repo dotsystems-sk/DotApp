@@ -31,7 +31,7 @@ Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (
 - Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - Delete with `alert()` / `window.confirm()` — graphical dialog first ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - Public site: desktop-only header / hover menu / hide nav on mobile with no overlay drawer — L/R drawer, lock page scroll, scrollable drawer list, contacts+compact search in the drawer ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
-- Silent save / empty `.after()` / field error without marking the input — user **MUST** see success and fail (`AIRULES/00` §2d)
+- Silent save / empty `.after()` / only “could not save” when a field is the cause / a red mark that stays after the person starts typing in that field — red input, sentence under it, clear that field on the next `input` (`AIRULES/00` §2d, `29-ux-save-feedback.mdc`)
 
 ## Forms (preferred security — always for user POSTs)
 

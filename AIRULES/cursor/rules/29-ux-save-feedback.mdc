@@ -1,0 +1,33 @@
+---
+description: LAW — field errors in place (red + exact sentence), clear on edit, AJAX overlay until the reply
+alwaysApply: true
+---
+
+# Save feedback (LAW)
+
+UX is the same rank as a working POST. A control that saves but does not show **where** and **why** is a **bug**.
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d, `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3, `AIRULES/examples/EX-09-validation-and-errors.md`.
+
+This handbook has no admin shell and no Notiflix. The toast, the overlay, and the field marks are built in **this** module.
+
+## AJAX (MUST)
+
+Every `$dotapp().form()` / `load()` that waits on the server covers that form or list until the reply, on success **and** on fail. Remove the overlay on both paths. A stuck overlay and a save with no busy state are bugs.
+
+## Field errors (MUST)
+
+When the failure can name a control:
+
+1. PHP reads `$request->data(true)` (unwrap nested `data`). HTTP **200** + `status` 0 + a short `message` + `errors` keyed by the input `name`. The sentence names the bad value and the rule (several addresses: check each one; `;` separates them).
+2. JS paints **that** input red (border + light red tint) and writes the sentence **under the field** with `textContent` / `.text()`.
+3. A status line may repeat the summary. The status line does not replace the mark.
+4. **Clear on edit:** the first `input` or `change` on that control removes **its** red class and **its** sentence. Other wrong fields stay marked. The error returns only on the next failed submit.
+
+## Fail now
+
+- Only “Could not save” when a field is the cause
+- Red border with no sentence, or the sentence only in a toast
+- The red mark still showing after the person starts typing in that field
+- Wiping every field’s error because they typed in one of them
+- `.html()` of the server error string

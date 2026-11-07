@@ -50,6 +50,14 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 32. **Shared public GET:** `/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt` use a string passthrough plus `Router::after`. Canonical: [03](03-MODULES-AND-ROUTING.md).
 33. **Schema probes stay in the installer.** A request must not `SHOW TABLES` / `ensureTable` / `ALTER`. An installer callback that only `return false` does not fail the install — throw. Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
 
+## What's New (2026-11-07)
+
+### Field errors show the place, then clear when the person fixes it
+
+- A known bad field is a red input plus the exact sentence under it. A generic “could not save” is not enough.
+- The first `input` or `change` on that control removes only that mark. Other wrong fields stay marked until the next failed save.
+- The sample is [EX-09](examples/EX-09-validation-and-errors.md). Compact: `cursor/rules/29-ux-save-feedback.mdc`.
+
 ## What's New (2026-10-29)
 
 ### Procedures that stay correct without DACore
