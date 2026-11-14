@@ -10,6 +10,13 @@
  *   php dacore-pack-zip.php ExampleModule 1.2.0
  *   php dacore-pack-zip.php --module=ExampleModule --version=1.2.0
  *   php dacore-pack-zip.php --module=ExampleModule --version=1.2.0 --out=C:\releases
+ *   php dacore-pack-zip.php ExampleModule 1.2.0 --exclude=notes,drafts --include=Widgets
+ *
+ * A zip is a clean production package. Before packing, look at every entry in the
+ * module root and decide what it is for. Standard runtime entries are packed.
+ * PLAN/ and tests/ are development material and never ship. Any other entry in the
+ * module root must be named in --exclude= (development material) or --include=
+ * (runtime code the module needs). The packer stops until every entry is decided.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -58,16 +65,31 @@ foreach (array($liveInit, $liveListeners, $install, $source . DIRECTORY_SEPARATO
 $installation = (string) file_get_contents($source . DIRECTORY_SEPARATOR . 'Installation.php');
 assertQuotedVersionKeys($installation, $version);
 
+// About: the production inventory. Decides for every entry in the module root whether it ships.
+// Why: a zip is installed on customers' servers. Plans, tests, notes and other working folders
+// are not part of the product and can carry internal design or security detail.
+$inventory = classifyRootEntries($source, $args['exclude'], $args['include']);
+if ($inventory['unknown'] !== array()) {
+    fail(
+        "The module root has entries this packer does not know. Open each one, decide what it is for, then run again with\n"
+        . "  --exclude=A,B   development material (plans, notes, drafts, evaluations, scratch)\n"
+        . "  --include=A,B   runtime code or data the installed module needs\n"
+        . 'Undecided: ' . implode(', ', $inventory['unknown'])
+    );
+}
+
 $workRoot = rtrim(sys_get_temp_dir(), '\\/') . DIRECTORY_SEPARATOR . 'dacore-pack-' . bin2hex(random_bytes(8));
 $work = $workRoot . DIRECTORY_SEPARATOR . $module;
 try {
-    copyTree($source, $work);
+    copyTree($source, $work, $inventory['skip']);
     transformPackageCopy($work, $module, $liveInit, $liveListeners, $install);
     $zipPath = rtrim($outDir, '\\/') . DIRECTORY_SEPARATOR . $module . '-' . $version . '.zip';
     writeZip($work, $zipPath);
-    verifyZip($zipPath, $version);
+    verifyZip($zipPath, $version, $inventory['skip']);
     fwrite(STDOUT, $zipPath . PHP_EOL);
     fwrite(STDOUT, 'bytes=' . filesize($zipPath) . PHP_EOL);
+    fwrite(STDOUT, 'packed=' . implode(', ', $inventory['pack']) . PHP_EOL);
+    fwrite(STDOUT, 'left out=' . ($inventory['skip'] === array() ? '(nothing)' : implode(', ', $inventory['skip'])) . PHP_EOL);
 } finally {
     removeTree($workRoot);
 }
@@ -76,13 +98,15 @@ try {
  * Parse CLI flags and positional module/version.
  *
  * @param array<int, string> $argv
- * @return array{module: string, version: string, out: string}
+ * @return array{module: string, version: string, out: string, exclude: array<int, string>, include: array<int, string>}
  */
 function parsePackArgs(array $argv)
 {
     $module = '';
     $version = '';
     $out = '';
+    $exclude = array();
+    $include = array();
     $rest = array_slice($argv, 1);
     foreach ($rest as $arg) {
         if (strpos($arg, '--module=') === 0) {
@@ -95,6 +119,14 @@ function parsePackArgs(array $argv)
         }
         if (strpos($arg, '--out=') === 0) {
             $out = substr($arg, 6);
+            continue;
+        }
+        if (strpos($arg, '--exclude=') === 0) {
+            $exclude = array_merge($exclude, splitNameList(substr($arg, 10)));
+            continue;
+        }
+        if (strpos($arg, '--include=') === 0) {
+            $include = array_merge($include, splitNameList(substr($arg, 10)));
             continue;
         }
         if ($arg === '--help' || $arg === '-h') {
@@ -114,7 +146,97 @@ function parsePackArgs(array $argv)
     if ($module === '' || $version === '') {
         fail('Usage: php dacore-pack-zip.php Module 1.2.0');
     }
-    return array('module' => $module, 'version' => $version, 'out' => $out);
+    return array('module' => $module, 'version' => $version, 'out' => $out, 'exclude' => $exclude, 'include' => $include);
+}
+
+/**
+ * Splits a comma list of module-root names.
+ *
+ * @param string $list "notes,drafts"
+ * @return array<int, string>
+ */
+function splitNameList($list)
+{
+    $out = array();
+    foreach (explode(',', (string) $list) as $name) {
+        $name = trim($name, " \t\\/");
+        if ($name !== '') {
+            $out[] = $name;
+        }
+    }
+    return $out;
+}
+
+/**
+ * Decides for every entry in the module root whether it ships in the zip.
+ *
+ * Standard runtime entries are packed. PLAN/ and tests/ never ship, whatever the flags say.
+ * Anything else must be decided by the caller through --exclude= or --include=.
+ *
+ * @param string             $source  Absolute module folder.
+ * @param array<int, string> $exclude Names the caller marked as development material.
+ * @param array<int, string> $include Names the caller marked as runtime.
+ * @return array{pack: array<int, string>, skip: array<int, string>, unknown: array<int, string>}
+ */
+function classifyRootEntries($source, array $exclude, array $include)
+{
+    // About: what a DotApp / DACore module is made of at runtime.
+    $runtimeDirs = array('Api', 'Controllers', 'Libraries', 'Middleware', 'Models', 'views', 'assets',
+        'translations', 'init', 'about-assets', 'AIRULES', 'vendor');
+    $runtimeFiles = array('Installation.php', 'about.php', 'install.php', 'dainstall.php', 'module.init.php',
+        'module.listeners.php', '.hooks', 'Version.php', 'AIRULES.md', 'AI_RULES.md', 'LICENSE', 'LICENSE.txt');
+    // Why: plans and tests are development material; they are never part of an installed product.
+    $neverShip = array('PLAN', 'tests');
+
+    $lower = function (array $names) {
+        $map = array();
+        foreach ($names as $name) {
+            $map[strtolower($name)] = true;
+        }
+        return $map;
+    };
+    $runtimeDirMap = $lower($runtimeDirs);
+    $runtimeFileMap = $lower($runtimeFiles);
+    $neverMap = $lower($neverShip);
+    $excludeMap = $lower($exclude);
+    $includeMap = $lower($include);
+
+    $pack = array();
+    $skip = array();
+    $unknown = array();
+    $entries = scandir($source);
+    if (!is_array($entries)) {
+        fail('Module folder could not be read.');
+    }
+    foreach ($entries as $entry) {
+        if ($entry === '.' || $entry === '..') {
+            continue;
+        }
+        $key = strtolower($entry);
+        $isDir = is_dir($source . DIRECTORY_SEPARATOR . $entry);
+        if (isset($neverMap[$key])) {
+            $skip[] = $entry;
+            continue;
+        }
+        if (isset($excludeMap[$key])) {
+            $skip[] = $entry;
+            continue;
+        }
+        if ($isDir && isset($runtimeDirMap[$key])) {
+            $pack[] = $entry;
+            continue;
+        }
+        if (!$isDir && (isset($runtimeFileMap[$key]) || preg_match('/^installed_[a-f0-9]+_install\\.php$/', $entry) === 1)) {
+            $pack[] = $entry;
+            continue;
+        }
+        if (isset($includeMap[$key])) {
+            $pack[] = $entry;
+            continue;
+        }
+        $unknown[] = $entry . ($isDir ? '/' : '');
+    }
+    return array('pack' => $pack, 'skip' => $skip, 'unknown' => $unknown);
 }
 
 /**
@@ -427,7 +549,7 @@ function pickLiveMethod($live, $first, $second)
  * @param string $version
  * @return void
  */
-function verifyZip($zipPath, $version)
+function verifyZip($zipPath, $version, array $skipRoot = array())
 {
     $zip = new ZipArchive();
     if ($zip->open($zipPath) !== true) {
@@ -441,6 +563,14 @@ function verifyZip($zipPath, $version)
     $zip->close();
     if (in_array('install.php', $names, true)) {
         fail('Zip still contains install.php.');
+    }
+    foreach ($names as $entry) {
+        $first = strtolower((string) strtok($entry, '/'));
+        foreach (array_merge(array('PLAN', 'tests'), $skipRoot) as $left) {
+            if ($first === strtolower($left)) {
+                fail('Zip contains development material that must not ship: ' . $entry);
+            }
+        }
     }
     foreach ($names as $entry) {
         if (isAgentHelperPath($entry)) {
@@ -472,8 +602,13 @@ function verifyZip($zipPath, $version)
  * @param string $destination
  * @return void
  */
-function copyTree($source, $destination)
+function copyTree($source, $destination, array $skipRoot = array())
 {
+    // Why: entries the inventory left out never reach the package copy.
+    $skipMap = array();
+    foreach ($skipRoot as $name) {
+        $skipMap[strtolower($name)] = true;
+    }
     if (!is_dir($source) || is_link($source)) {
         fail('Module source is unavailable.');
     }
@@ -490,6 +625,10 @@ function copyTree($source, $destination)
             fail('Symlinks are not allowed in a DACore zip.');
         }
         $rel = substr($file->getPathname(), $baseLen);
+        $firstSegment = strtolower((string) strtok(str_replace('\\', '/', $rel), '/'));
+        if (isset($skipMap[$firstSegment])) {
+            continue;
+        }
         $target = $destination . DIRECTORY_SEPARATOR . $rel;
         if ($file->isDir()) {
             if (!mkdir($target, 0777, true) && !is_dir($target)) {

@@ -28,7 +28,7 @@ Final control <Module>:
 - [ ] 6. Input / IDs / CRC / SQL (finish gate rows)
 - [ ] 7. Comments: CRCchecking — PHPDoc, Why / About / Section
 - [ ] 8. Runtime schema probes = zero (AIRULES/07 §0a1)
-- [ ] 8b. No leftover agent helpers (no file or folder whose name starts with _)
+- [ ] 8b. No leftover agent helpers (a name starting with _ outside views partials and non-PHP test fixtures)
 - [ ] 9. Fix all, re-grep, tests, PLAN log, click list
 ```
 
@@ -118,7 +118,7 @@ Outside `Installation.php`: zero `SHOW TABLES|COLUMNS|INDEX`, `information_schem
 
 ## 8b. Leftover agent helpers
 
-Scratch files from a stuck agent run usually have a name that starts with `_` (`_probe.php`, `Libraries/_dump.php`, `_scratch/note.txt`). Glob the whole module. Any **file or folder** under `app/modules/<Target>/` whose name starts with `_` is a **finding**.
+Scratch files from a stuck agent run usually have a name that starts with `_` (`_probe.php`, `Libraries/_dump.php`, `_scratch/note.txt`). Glob the whole module. A **file or folder** whose name starts with `_` is a **finding** when it sits in the module root, `Controllers/`, `Libraries/`, `Middleware/`, `assets/`, is a `_folder` anywhere, or is a `_*.php` under `tests/`. Two kinds of `_` names belong to a module and are allowed: Renderer partials under `views/` (`views/…/_tabs.layout.php`, `_picture.view.php`) and non-PHP test fixtures under `tests/` (`tests/…/_expected.json`).
 
 They must not stay in the tree. A leftover script or dump is a security hole if it ships. A DACore install zip **MUST NOT** contain them: `EX-D09` refuses to pack until they are gone.
 

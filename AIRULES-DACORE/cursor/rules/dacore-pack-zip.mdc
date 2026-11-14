@@ -15,9 +15,29 @@ The PHP packer is stored as **text** so it cannot run from the handbook:
 
 When the user asks to zip / pack a **DACore-bound** module:
 
-1. Copy the `.txt` to the project root as `dacore-pack-zip.php`.
-2. Run `php dacore-pack-zip.php {Module} {version}` (`{version}` = highest quoted `'1.2.0' =>` key in `Installation.php`).
-3. **Delete** `dacore-pack-zip.php`. Leave the `.txt` in AIRULES untouched.
+1. **Inventory the module root** (below) — decide for every entry whether it is runtime or development material.
+2. Copy the `.txt` to the project root as `dacore-pack-zip.php`.
+3. Run `php dacore-pack-zip.php {Module} {version}` (`{version}` = highest quoted `'1.2.0' =>` key in `Installation.php`), with `--exclude=` / `--include=` for the non-standard entries you decided.
+4. **Delete** `dacore-pack-zip.php`. Leave the `.txt` in AIRULES untouched.
+5. Report the `packed=` and `left out=` lines to the user.
+
+**Production inventory (MUST — before you run the packer).** A zip is a clean production package that is installed on other servers. It carries what the module needs to run and nothing an agent made along the way.
+
+List every entry in the root of `app/modules/{Module}/` and decide what each one is for. **Open it** — do not judge by the name alone.
+
+| Kind | Examples | In the zip |
+|------|----------|------------|
+| Runtime | `Controllers/`, `Libraries/`, `Middleware/`, `Models/`, `Api/`, `views/`, `assets/`, `translations/`, `init/`, `about-assets/`, `vendor/`, `Installation.php`, `about.php`, `module.init.php`, `module.listeners.php`, `.hooks`, `Version.php`, the installer file, a host module's `AIRULES/` handbook | **Yes** |
+| Development | `PLAN/`, `tests/`, notes, drafts, evaluations, research, update plans, exports, screenshots, any working folder an agent created | **Never** |
+
+The packer enforces this:
+
+- Standard runtime entries are packed.
+- `PLAN/` and `tests/` are **always** left out.
+- On **any other** root entry it **stops** and names it. Decide, then run again with `--exclude=A,B` (development material) or `--include=A,B` (runtime the installed module needs).
+- **MUST NOT** pass `--include` just to make the packer pass. Include a folder only after you found the code that reads it at runtime.
+- Runtime code **MUST NOT** depend on a file under `PLAN/` or `tests/`. A developer-only screen that reads fixtures checks that the folder exists and stays off in production.
+- After packing, read the `packed=` and `left out=` lines and report both lists to the user.
 
 **Update compatibility (MUST):** DACore can load old module classes, copy new files, then run the new `Installation.php` in the same request. PHP keeps the old in-memory class. A new installer **MUST NOT** unconditionally call a newly added method on another module class; guard with `method_exists` / `defined`, keep the helper in `Installation.php`, or defer it. Before packing, test old-class-preloaded and new-class-loaded paths. Canonical: `AIRULES/35-DACORE-INSTALL.md` “Update request keeps old PHP classes in memory”.
 
@@ -27,4 +47,4 @@ php dacore-pack-zip.php ExampleModule 1.2.0
 Remove-Item .\dacore-pack-zip.php
 ```
 
-**MUST NOT** pack `app/modules/DACore/`. **MUST NOT** leave `dacore-pack-zip.php` in the repo. **MUST NOT** pack a file or folder whose name starts with `_` (agent scratch helpers). The packer exits with an error until those files are deleted or renamed.
+**MUST NOT** pack `app/modules/DACore/`. **MUST NOT** leave `dacore-pack-zip.php` in the repo. **MUST NOT** ship `PLAN/`, `tests/`, notes, evaluations or any other working folder. **MUST NOT** pack a file or folder whose name starts with `_` (agent scratch helpers) in the module root, `Controllers/`, `Libraries/`, `Middleware/`, `assets/`, any `_folder`, or a `_*.php` under `tests/`. Two kinds of `_` names belong to a module and are allowed: Renderer partials under `views/` (`views/…/_tabs.layout.php`, `_picture.view.php`) and non-PHP test fixtures under `tests/` (`tests/…/_expected.json`). The packer exits with an error until those files are deleted or renamed.

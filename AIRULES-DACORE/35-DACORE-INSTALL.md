@@ -598,6 +598,7 @@ Do **not** pack, blank root init files, or create `dainstall.php` on your own. O
 
 **MUST NOT** write a new zip script for each module.
 
+0. **Production inventory first.** List the module root, open every non-standard entry, and decide: runtime (ships) or development material (never ships — `PLAN/`, `tests/`, notes, evaluations, update plans, working folders). Pass your decisions as `--exclude=` / `--include=`; the packer stops on anything undecided ([EX-D09](examples/EX-D09-dacore-pack-zip.md) “Production inventory”).
 1. Copy `AIRULES/examples/EX-D09-dacore-pack-zip.php.txt` to the project root as `dacore-pack-zip.php` (the `.txt` suffix exists so the handbook copy cannot be executed).
 2. Run `php dacore-pack-zip.php {Module} {version}` from the project root (`--module=` / `--version=` / `--out=` are allowed). `{version}` **MUST** match the highest quoted key in `Installation.php`.
 3. Delete `dacore-pack-zip.php`. **MUST NOT** commit or leave that runnable copy in the repo.
@@ -687,6 +688,7 @@ does not invoke or overwrite it.
 - [ ] **While coding:** live root `module.init.php` / `module.listeners.php`, trigger is **`install.php`**, no `dainstall.php` / no inert stubs
 - [ ] After a new `Installation.php` version: `installed_*_install.php` renamed back to `install.php` (agent did it)
 - [ ] Zip **only** for a DACore-bound module and only when the user asked: used [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`copy .txt` → `dacore-pack-zip.php` → run → delete); zip **MUST** contain `dainstall.php` + `init/` + inert root + **`about.php`**; **MUST NOT** contain `install.php`; working tree restored; **MUST NOT** leave `dacore-pack-zip.php` in the repo ([00](00-AGENT-CONTRACT.md) §2e, [35](35-DACORE-INSTALL.md) §5)
+- [ ] Production inventory done: every root entry decided; the zip has no `PLAN/`, `tests/`, notes, evaluations or working folders; `packed=` / `left out=` reported to the user
 - [ ] Every `installer()` / `uninstaller()` key is **quoted text** in the file (`'1.0.0' =>` / `"1.0.0" =>`); **no** `self::` / `static::` / constant / variable / expression as a key (DACore zip scan would reject the package)
 - [ ] Every version callback starts with `Installations@exist!` and ends with `Installations@insert!`
 - [ ] `about.php` exists in the module root; changelog keys **match** `Installation.php`; new versions were **asked** if the user did not supply notes ([35](35-DACORE-INSTALL.md) §3b)
