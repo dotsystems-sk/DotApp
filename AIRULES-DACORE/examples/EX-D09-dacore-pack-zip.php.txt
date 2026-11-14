@@ -44,9 +44,14 @@ $install = firstExistingFile($source, array('install.php'));
 if ($install === '') {
     $install = firstMatchingFile($source, '/^installed_[a-f0-9]+_install\\.php$/');
 }
+if ($install === '') {
+    // Why: a module that was itself installed from a zip has dainstall.php instead of install.php.
+    // The zip needs exactly that file under that name, so it is a valid source too.
+    $install = firstExistingFile($source, array('dainstall.php'));
+}
 foreach (array($liveInit, $liveListeners, $install, $source . DIRECTORY_SEPARATOR . 'Installation.php', $source . DIRECTORY_SEPARATOR . 'about.php') as $need) {
     if ($need === '' || !is_file($need)) {
-        fail('Required module file is missing (live init, listeners, install.php, Installation.php, about.php).');
+        fail('Required module file is missing (live init, listeners, install.php or dainstall.php, Installation.php, about.php).');
     }
 }
 
@@ -238,7 +243,8 @@ function transformPackageCopy($work, $module, $sourceInit, $sourceListeners, $so
         }
     }
     $installName = basename($sourceInstall);
-    if (is_file($work . DIRECTORY_SEPARATOR . $installName)) {
+    // Why: when the source already is dainstall.php, the copy above is the file the zip must keep.
+    if ($installName !== 'dainstall.php' && is_file($work . DIRECTORY_SEPARATOR . $installName)) {
         unlink($work . DIRECTORY_SEPARATOR . $installName);
     }
     $staleInstalls = glob($work . DIRECTORY_SEPARATOR . 'installed_*_install.php');
@@ -370,7 +376,7 @@ function writeZip($work, $zipPath)
             fail('Recordings stay in app/runtime and must not enter the install zip: ' . $relative);
         }
         if (isAgentHelperPath($relative)) {
-            fail('Agent helper files (a name starting with _) must be deleted or renamed before packing: ' . $relative);
+            fail('A name starting with _ is allowed only for views partials and non-PHP test fixtures. Delete or rename: ' . $relative);
         }
         $zip->addFile($file->getPathname(), $relative);
     }
@@ -495,7 +501,7 @@ function copyTree($source, $destination)
             fail('Recordings stay in app/runtime and must not enter the install zip: ' . $rel);
         }
         if (isAgentHelperPath($rel)) {
-            fail('Agent helper files (a name starting with _) must be deleted or renamed before packing: ' . str_replace('\\', '/', $rel));
+            fail('A name starting with _ is allowed only for views partials and non-PHP test fixtures. Delete or rename: ' . str_replace('\\', '/', $rel));
         }
         if (!copy($file->getPathname(), $target)) {
             fail('Package file copy failed.');
@@ -546,20 +552,36 @@ function isRecordingFile($path)
 }
 
 /**
- * Scratch files agents leave behind. A leading _ on any path segment
- * must not ship: the file can be a dump, a probe, or an extra entry point.
+ * Scratch files agents leave behind. A leading _ on a path segment must not ship:
+ * the file can be a dump, a probe, or an extra entry point.
  *
- * @param string $path
+ * Two kinds of _ names are part of a module and are allowed:
+ *  - Renderer partials under views/ (views/.../_tabs.layout.php, _picture.view.php);
+ *  - test fixtures under tests/ that are data, not PHP (tests/.../_expected.json).
+ * Everything else is refused: the module root, Controllers, Libraries, Middleware, assets,
+ * any _folder, and any _*.php under tests/.
+ *
+ * @param string $path Path relative to the module root.
  * @return bool
  */
 function isAgentHelperPath($path)
 {
     $normalized = str_replace('\\', '/', (string) $path);
     $parts = explode('/', $normalized);
-    foreach ($parts as $part) {
-        if ($part !== '' && isset($part[0]) && $part[0] === '_') {
-            return true;
+    $top = isset($parts[0]) ? $parts[0] : '';
+    $last = count($parts) - 1;
+    foreach ($parts as $index => $part) {
+        if ($part === '' || !isset($part[0]) || $part[0] !== '_') {
+            continue;
         }
+        $isFileInSubfolder = ($index === $last && $index > 0);
+        if ($top === 'views' && $isFileInSubfolder && preg_match('/\.(layout|view)\.php$/', $part) === 1) {
+            continue;
+        }
+        if ($top === 'tests' && $isFileInSubfolder && preg_match('/\.php$/i', $part) !== 1) {
+            continue;
+        }
+        return true;
     }
     return false;
 }
