@@ -150,6 +150,7 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | **Final control (`/finalcontrol`)** | `AIRULES/00-AGENT-CONTRACT.md` §2u, `AIRULES/cursor/skills/finalcontrol/SKILL.md` |
 | Forms | `AIRULES/08-FORMS-AND-SECURITY.md` |
 | Frontend | `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` (§3 = live UX + overlays + **AJAX pagination**; §4 = `$dotapp().fn`; §4.C = jQuery ports) |
+| **Control slice (one button = six parts)** | `AIRULES/26-CONTROL-SLICE.md` |
 | Config/secrets | `AIRULES/10-CONFIG-AND-SECRETS.md` |
 | Cache / session | `AIRULES/20-CACHE-LOGGER-SESSION.md` (§1a = public cache + settings switch; DSM — never `$_SESSION`) |
 | Antipatterns | `AIRULES/14-ANTIPATTERNS.md` |

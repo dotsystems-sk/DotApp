@@ -53,7 +53,7 @@ if (is_int($raw) || (is_string($raw) && ctype_digit($raw))) {
 } else {
     $plain = Crypto::decrypt((string) $raw, 'Shop.items.page');
     if ($plain === false || !ctype_digit((string) $plain)) {
-        return ['status' => 0, 'message' => Translator::trans('Bad request')];
+        return ['status' => 0, 'message' => Translator::trans('This page link has expired. Reload the list and try again.')];
     }
     $page = max(1, (int) $plain);
 }
@@ -109,32 +109,20 @@ Outer card `#shopListWrap`, inner `#shopListInner` contains **table + footer**. 
 ## 4. JS (`function (el, e)` — not `e.currentTarget`)
 
 ```javascript
+// About: pager. live() hands the element first. shopSend() = module helper (AIRULES/26 §5).
 $dotapp().live("click", ".shop-page", function (el, e) {
-  if (e && typeof e.preventDefault === "function") {
-    e.preventDefault();
-  }
-  if (!el || el.disabled) {
+  e.preventDefault();
+  // Why: the current page and the disabled arrows are not actions.
+  if (el.disabled || $dotapp(el).closest(".page-item.disabled, .page-item.active").length) {
     return;
   }
-  var item = el.closest(".page-item");
-  if (item && (item.classList.contains("disabled") || item.classList.contains("active"))) {
-    return;
-  }
-  var page = el.getAttribute("data-page") || "";
+  var page = $dotapp(el).attr("data-page");
   if (!page) {
     return;
   }
-  Notiflix.Block.standard("#shopListWrap", "Loading…");
-  $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: page, q: currentQuery },
-    function (raw) {
-      var reply = $dotapp().parseReply(raw);
-      if (reply && reply.status == 1 && reply.html) {
-        $dotapp("#shopListInner").html(reply.html);
-      }
-      Notiflix.Block.remove("#shopListWrap");
-    },
-    function () { Notiflix.Block.remove("#shopListWrap"); }
-  );
+  shopSend("/api/v1/auth/Shop/items/list", { page: page, q: currentQuery }, "#shopListWrap", function (reply) {
+    $dotapp("#shopListInner").html(reply.html);
+  });
 });
 ```
 

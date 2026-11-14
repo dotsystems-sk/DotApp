@@ -39,7 +39,9 @@ Always include **before** your module script:
     <!-- Handler name MUST match PHP form(..., "saveContact", ...) -->
     {{ formName(saveContact) }}
 
-    <button type="submit" id="contactBtn">{{_ "Send" }}</button>
+    <div class="shop_actions">
+      <button type="submit" id="contactBtn">{{_ "Send" }}</button>
+    </div>
   </fo-rm>
 
   <script src="/assets/dotapp/dotapp.js"></script>
@@ -50,6 +52,7 @@ Always include **before** your module script:
 
 Notes:
 
+- The button sits in an action row. On a public page there is no DACore CSS, so the module defines it: `.shop_actions { display:flex; flex-wrap:wrap; gap:.75rem; padding:1rem 0 1.5rem; }` ([26](../26-CONTROL-SLICE.md) §2).
 - Prefer **`<fo-rm>`** over `<form>` (bots/scanners target `<form>`; DotApp converts at runtime).
 - **MUST:** `{{ formName(saveContact) }}` sits **between** `<fo-rm …>` and `</fo-rm>` — never after `</fo-rm>`, never before `<fo-rm>`. `method` and `action` on the opening tag are **literal**. **MUST NOT** put `{{ var: $postAction }}` (or any `{{ }}`) inside `<fo-rm …>`. That compiles to `<?php … ?>`; the `>` hides `method` and the page shows `{{ formName }}` as text. `method` before the variable still posts to the current page. Outside the pair, or with `method` hidden, the renderer leaves `{{ formName }}` unchanged (silent failure).
 - Renderer emits encrypted hidden fields binding **handler name + action URL + HTTP method** to a per-form key. Forging or swapping handlers from HTML is not practical.
@@ -78,18 +81,38 @@ Notes:
           window.location = reply.redirectTo || "/shop/";
           return;
         }
-        if (reply && reply.message) {
-          $dotapp("#error-message").attr("hide", "false").html(reply.message);
-        }
+        // Why: a body that is not base64 JSON comes back from parseReply() as a string.
+        var text = (reply && typeof reply === "object" && reply.message)
+          ? reply.message
+          : "The server sent an answer this page cannot read.";
+        $dotapp("#error-message").attr("hide", "false").html(text);
+        $dotapp(form).attr("blocked", "0");
+        $dotapp("#contactBtn").removeAttr("loading").removeAttr("loader");
+      })
+      .onError(function (data, status, body, form) {
+        // Why: .after() does not run on HTTP 4xx/5xx or a network fault. Without this hook
+        // the form stays blocked, the button keeps spinning and the visitor sees nothing.
+        var reply = $dotapp().parseReply(body);
+        var text = (reply && typeof reply === "object" && reply.message)
+          ? reply.message
+          : "The message was not sent (HTTP " + status + "). Try again.";
+        $dotapp("#error-message").attr("hide", "false").html(text);
         $dotapp(form).attr("blocked", "0");
         $dotapp("#contactBtn").removeAttr("loading").removeAttr("loader");
       });
   };
 
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp", function () {
+  if (window.$dotapp) {
     runMe(window.$dotapp);
-  }, { once: true });
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
 })();
 ```
 
@@ -147,7 +170,8 @@ class Contact extends \Dotsystems\App\Parts\Controller
      */
     public static function save($request)
     {
-        $answer = ['code' => 400, 'body' => ['status' => 0, 'message' => 'Bad request']];
+        // Why: HTTP 200 on every branch — HTTP 400 would skip .after() and hide this sentence.
+        $answer = ['code' => 200, 'body' => ['status' => 0, 'message' => 'This page is out of date. Reload it and send the form again.']];
 
         if ($request->crcCheck()) {
             $answer = $request->form(['POST'], 'saveContact', function ($request) {

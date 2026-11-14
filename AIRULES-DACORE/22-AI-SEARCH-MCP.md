@@ -32,8 +32,8 @@ try {
         ])
         ->call();                                   // 5. terminal
 } catch (AIException $e) {
-    Logger::use()->error('AI failed', ['msg' => $e->getMessage()]);
-    return Response::json(['status' => 0, 'message' => 'AI unavailable'], 503);
+    self::reportCatch('Shop:Assistant@ask', 'shop.ai.call', $e, 'error');
+    return Reply::fail('The AI service did not answer (shop.ai.call). Try again in a moment; the fault was logged.');
 }
 
 $text  = $out['reply'];                        // assistant text

@@ -30,35 +30,30 @@ Use `{{ enc(context): $id }}` when IDs must not be forgeable in plain HTML. Decr
 
 ```javascript
 (function () {
-  var runMe = function ($dotapp) {
-    $dotapp()
-      .form("#itemEdit")
-      .before(function (data, form) {
-        if ($dotapp(form).attr("blocked") == 1) return $dotapp().halt();
-        $dotapp(form).attr("blocked", "1");
-        $dotapp("#itemSaveBtn").attr("loading", "true").attr("loader", "dots");
-      })
-      .after(function (data, response, form) {
-        var reply = $dotapp().parseReply(response);
-        if (reply && reply.status == 1) {
-          if (reply.html) $dotapp("#listWrap").html(reply.html);
-          if (window.Notiflix && Notiflix.Notify) {
-            Notiflix.Notify.success(reply.message || "Saved");
-          }
-          // redirectTo only if this screen should be left
-        } else if (reply && reply.message) {
-          if (window.Notiflix && Notiflix.Notify) {
-            Notiflix.Notify.failure(reply.message);
-          } else {
-            $dotapp("#error-message").attr("hide", "false").html(reply.message);
-          }
-        }
-        $dotapp(form).attr("blocked", "0");
-        $dotapp("#itemSaveBtn").removeAttr("loading").removeAttr("loader");
-      });
-  };
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp", function () { runMe(window.$dotapp); }, { once: true });
+  function runMe($dotapp) {
+    // About: request helper — copy shopReply / shopDone / shopFail / shopSend / shopForm
+    // from AIRULES/26 §5 (full file: EX-06) here, once per module.
+
+    // Section: Shop — item editor
+    // About: save the item and redraw the list under the form.
+    shopForm("#itemEdit", "#itemEditCard", function (reply) {
+      if (reply.html) {
+        $dotapp("#listInner").html(reply.html);
+      }
+    });
+  }
+
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
 })();
 ```
 
@@ -67,20 +62,37 @@ Use `{{ enc(context): $id }}` when IDs must not be forgeable in plain HTML. Decr
 ```php
 Router::post('/api/v1/auth/Shop/items/edit', 'Shop:Items@save!', Router::STATIC_ROUTE);
 
+/**
+ * CRCchecking — #DACore:AuthTest@LoginAndCRC! (prefix /api/v1/auth/Shop/*). No crcCheck() here.
+ *
+ * Saves the edited item and returns the redrawn list.
+ *
+ * @param  mixed $request POST from <fo-rm id="itemEdit">.
+ * @return mixed Reply::ok() or Reply::fail() — always HTTP 200.
+ */
 public static function save($request)
 {
-    // Prefix #DACore:AuthTest@LoginAndCRC! already burned the token
-    $answer = $request->form(['POST'], 'saveItem', function ($request) {
-        $data = $request->data(true)['data'] ?? [];
-        $id = \Dotsystems\App\DotApp::DotApp()->decrypt($data['id'] ?? '', 'Shop.item.id');
-        if (!$id) {
-            return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Bad id']];
+    try {
+        $answer = $request->form(['POST'], 'saveItem', function ($request) {
+            $data = $request->data(true)['data'] ?? [];
+            $id = \Dotsystems\App\Parts\Crypto::decrypt((string) ($data['id'] ?? ''), 'Shop.item.id');
+            if ($id === false) {                       // decrypt returns FALSE, not null
+                return Reply::fail('This item link has expired. Reload the page and try again.');
+            }
+            // validate + DB update: each stop returns its own Reply::fail('…') — AIRULES/26 §7
+            return Reply::ok('Item saved.', ['html' => self::rowsHtml()]);
+        }, function ($request, $name) {
+            // Why: without this callback a bad form signature throws.
+            return Reply::fail('This form has expired. Reload the page and try again.');
+        });
+        if ($answer === false || $answer === null) {
+            return Reply::fail('This form does not match its handler (saveItem). Reload the page and try again.');
         }
-        // DB update...
-        return ['code' => 200, 'body' => ['status' => 1]];
-    });
-
-    return \Dotsystems\App\DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+        return $answer;
+    } catch (\Throwable $e) {
+        self::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error');
+        return Reply::fail('The item was not saved because of a server fault (shop.item.update). The fault was logged.');
+    }
 }
 ```
 

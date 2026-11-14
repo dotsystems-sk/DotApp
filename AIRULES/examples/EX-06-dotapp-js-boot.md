@@ -1,5 +1,7 @@
 # EX-06 — DotApp.js boot, loaders, form hooks
 
+The full page script (boot block, `shopReply` / `shopSend` / `shopForm`, `.onError()`) is [26](../26-CONTROL-SLICE.md). This file keeps the short pieces. Do not copy a handler that calls `load()` itself.
+
 ## Mandatory script
 
 ```html
@@ -12,15 +14,25 @@ This URL is served by the framework with **injected random keys**. Do not replac
 
 ```javascript
 (function () {
-  var runMe = function ($dotapp) {
-    // page logic
-  };
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp", function () {
+  function runMe($dotapp) {
+    // page logic — helpers from 26 §5 first
+  }
+
+  if (window.$dotapp) {
     runMe(window.$dotapp);
-  }, { once: true });
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
 })();
 ```
+
+The event is on **`window`**. `document.addEventListener("dotapp", …)` never fires.
 
 Plugins (`$dotapp().fn(...)`) register on **`dotapp-register`**, not `dotapp`. Full library recipe (new + jQuery port): [EX-15-dotapp-js-library.md](EX-15-dotapp-js-library.md) and [09](../09-DOTAPP-JS-AND-BRIDGE.md) §4 / §4.C. Never edit `app/parts/js/`.
 
@@ -40,6 +52,10 @@ $dotapp("#saveBtn").removeAttr("loading").removeAttr("loader");
   $dotapp(form).attr("blocked", "1");
 })
 .after(function (data, response, form) {
+  $dotapp(form).attr("blocked", "0");
+})
+.onError(function (data, status, body, form) {
+  // Why: .after() does not run on HTTP 4xx/5xx. Without this the form stays blocked.
   $dotapp(form).attr("blocked", "0");
 });
 ```
@@ -73,11 +89,11 @@ function listDone() {
   listBusy = false;
   $dotapp("#listWrap").removeClass("shop_busy");
 }
-$dotapp().live("click", ".js-toggle", function (e) {
+$dotapp().live("click", ".js-toggle", function (el, e) {
   if (listBusy) return;
   listBusy = true;
   $dotapp("#listWrap").addClass("shop_busy");
-  $dotapp().load("/shop/rules/toggle", "POST", { id: $dotapp(e.currentTarget).attr("data-id") },
+  $dotapp().load("/shop/rules/toggle", "POST", { id: $dotapp(el).attr("data-id") },
     function (raw) {
       var reply = $dotapp().parseReply(raw);
       if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
@@ -114,8 +130,8 @@ Drag-and-drop: same — `data-rule="{{ enc(Shop.rule.id): $id }}"` on the token;
 **Pager MUST exist and MUST be AJAX** (users, logs, items — any accumulating list, first ship). SQL `paginate()`. Buttons, not `<a href="?page=">` / `location.reload()`:
 
 ```javascript
-$dotapp().live("click", ".js-shop-page", function (e) {
-  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+$dotapp().live("click", ".js-shop-page", function (el, e) {
+  var page = $dotapp(el).attr("data-page");
   if (listBusy) return;
   listBusy = true;
   $dotapp("#listWrap").addClass("shop_busy");
@@ -160,8 +176,8 @@ $dotapp().live("input", "#shopSearch", function () {
 **Delete MUST confirm first** (graphical dialog — never `alert()` / `window.confirm()`):
 
 ```javascript
-$dotapp().live("click", ".js-delete", function (e) {
-  var id = $dotapp(e.currentTarget).attr("data-id");
+$dotapp().live("click", ".js-delete", function (el, e) {
+  var id = $dotapp(el).attr("data-id");
   $dotapp("#shopConfirmTitle").text("Delete this item?");
   $dotapp("#shopConfirmText").text("This cannot be undone.");
   $dotapp("#shopConfirm").removeAttr("hidden");

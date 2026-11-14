@@ -49,22 +49,28 @@ Write **one** report helper per module and call it from every `catch` / `$err` �
 
 ## Template
 
+Full skeleton with every stop: `AIRULES/26-CONTROL-SLICE.md` §7. The action answers HTTP **200** on every branch — HTTP 4xx/5xx skips `.after()` and the `load()` success callback, so the message would never reach the toast.
+
 ```php
 try {
-    if (!$request->crcCheck()) {
-        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 400);
+    // Prefix #DACore:AuthTest@LoginAndCRC! already burned the CRC — no crcCheck() here.
+    $answer = $request->form(['POST'], 'saveItem', function ($request) {
+        return self::saveItem($request->data(true)['data'] ?? []);   // Reply::ok() / Reply::fail()
+    }, function ($request, $name) {
+        return Reply::fail('This form has expired. Reload the page and try again.');
+    });
+    if ($answer === false || $answer === null) {
+        return Reply::fail('This form does not match its handler (saveItem). Reload the page and try again.');
     }
-    $answer = $request->form(['POST'], 'handler', $success, $errorCallback);
-    if (!is_array($answer) || !isset($answer['body'])) {
-        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Rejected'], 400);
-    }
-    return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+    return $answer;
 } catch (\Throwable $e) {
     // Report first (debugger trail), then answer the user — never leak $e.
     self::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error', ['item_id' => $id]);
-    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Could not save the item.'], 500);
+    return Reply::fail('The item was not saved because of a server fault (shop.item.update). The fault was logged.');
 }
 ```
+
+`Reply::ok($message, $extra)` / `Reply::fail($message, $errors)` = your module `Libraries/Reply.php` → `ajaxReply([...], 200)`. Every stop has its own sentence; **MUST NOT** `Server error` / `Bad request` / `Rejected` / `Save failed`. `crcCheck()` returns `1` / `0` / `false` — never compare it with `=== true`.
 
 `reportCatch()` = your module helper: builds the payload, `Events::trigger('dotapp.catch', $p)`, `Events::trigger('dotapp.catch.' . $severity, $p)`, then `Logger::use()->error(...)` (`info` → `warning`, because `info` is dropped by default).
 

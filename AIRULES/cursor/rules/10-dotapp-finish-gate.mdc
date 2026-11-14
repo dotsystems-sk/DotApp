@@ -39,6 +39,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **PLAN folder** | New module / rewrite with no `app/modules/<This>/PLAN/`; chat-only plan; one mega-file instead of a split folder; screen/position not in PLAN; PLAN used to skip project law (`AIRULES/00` §2o) |
 | **Rule stack** | Host `PLAN/` opened while writing a pack; project `AIRULES/` skipped because a module folder exists; pack ignored host `AIRULES/` (`AIRULES/00` §2p) |
 | **Browser discipline** | Browser/CDP/screenshot click-through used without explicit user request or yes (`AIRULES/00` §2r) |
+| **Control slice** | A control missing the action row, the listener, the route, the action, the HTTP 200 reply, or the notice on success and on failure; `.form()` without `.onError()`; `live` handler whose first argument is treated as the event; raw DOM where `$dotapp` has the method (`AIRULES/26`) |
 | **Planning in files** | Plan left in chat / plan mode / a temp file; ASK answers missing; dated PLAN log not ticked in this chunk (`AIRULES/00` §2s) |
 | **Public cache** | Public anonymous surface with no `Cache::use('<Module>')` and no PLAN note; cache with no settings switch; off still serves; hand-rolled storage; CSRF/cart/logged-in HTML on a shared key; `clear()` as invalidation (`AIRULES/00` §2t) |
 | **Shared public GET** | Second `Router::get` alone on `/sitemap.xml` / `/robots.txt` / `/rss.xml` / `/llms.txt`; `Response` from GET or after while others still need after; `Router::reset(true)` to steal the path (`AIRULES/03`) |

@@ -31,9 +31,21 @@ Prefer `<fo-rm>` + `{{ formName(...) }}` for all user forms — see [08-FORMS-AN
 
 ```javascript
 (function () {
-  var runMe = function ($dotapp) { /* app logic */ };
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp", function () { runMe(window.$dotapp); }, { once: true });
+  function runMe($dotapp) {
+    // page logic
+  }
+
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
 })();
 ```
 
@@ -43,23 +55,35 @@ Prefer `<fo-rm>` + `{{ formName(...) }}` for all user forms — see [08-FORMS-AN
 | `dotapp` | application logic |
 | `dotapp-template-ready` / `dotapp-reactive-ready` | add-on modules loaded |
 
+Both events are dispatched on **`window`**. `document.addEventListener("dotapp", …)` never fires. Copy the block **character for character**. A script that runs after `dotapp.js` misses the event, so the `if (window.$dotapp)` branch is mandatory. File shape: [26](26-CONTROL-SLICE.md) §3.
+
+`dotapp.js` takes over `<fo-rm>` **once**, when it executes. A `<fo-rm>` inserted later through `reply.html` is **not** taken over. Keep the form outside the fragment you replace.
+
 ---
 
 ## 2. Selector API and its traps
 
 `$dotapp(selector)` returns an instance for the matched elements. `$dotapp()` (no args) is the singleton used for forms, `load`, bridge, variables and plugins.
 
-Common methods: `each, first, get, all, nth, parent, children, find, next, prev, siblings, closest, is, index, clone, html, text, val, check, attr, removeAttr, prop, data, addClass, removeClass, toggleClass, hasClass, css, optionText, append, prepend, remove, empty, replaceWith, show, hide, toggle, enable, disable, focus, blur, fadeIn, fadeOut, slideDown, slideUp, width, height, on, one, off, live, trigger, form, submit, serialize, load, parseReply, sendInput, bridge, uploadFile, dragAndDropFile, variable, getVariable, computed, databind, hashRouter, validator, twoFactor, autosave, networkwatch, halt, fn`
+Common methods: `each, first, last, nth, get, all, length, parent, children, find, next, prev, siblings, closest, is, index, clone, html, text, val, check, attr, removeAttr, prop, data, addClass, removeClass, toggleClass, hasClass, css, optionText, append, prepend, remove, empty, replaceWith, show, hide, toggle, enable, disable, focus, blur, fadeIn, fadeOut, slideDown, slideUp, width, height, on, one, off, live, trigger, form, submit, serialize, load, parseReply, sendInput, bridge, uploadFile, dragAndDropFile, variable, getVariable, computed, databind, hashRouter, validator, twoFactor, autosave, networkwatch, halt, fn`
 
 | Trap | Reality |
 |------|---------|
 | Getters chain like jQuery | many getters return the **value**, not `this` |
-| `.html()` as getter | sets an internal last-result and returns `this` — read the DOM instead |
-| `.last()` / `.nth()` | buggy in shipped builds — use `.get(i)` / `.all()` |
-| `$(document).ready` | use the `dotapp` event |
+| `.html()` as getter | returns `this` — read the markup with `$dotapp(sel).html().getLastResult()` |
+| `.first()` / `.last()` / `.nth(i)` | return a `$dotapp` object (fixed 2026-11-14). `.get(i)` returns the raw element |
+| `.length` | number of matched elements. `undefined` means this `dotapp.js` is older than 2026-11-14 — update the framework, do not fall back to raw DOM |
+| `.find()` / `.children()` / `.siblings()` / `.clone()` | return a real collection (same date). Before that they returned an empty collection |
+| `.each(fn)` | calls `fn(index, element)` — index first |
+| `.val()` on an empty field | returns `null`, not `""` |
+| `.on(event, selector, fn)` | not delegated; returns an unsubscribe function — use `.live()` |
+| `.live("focus" / "blur")` | never fires — use `focusin` / `focusout` |
+| `$(document).ready` | use the `dotapp` event on `window` |
 | `$(this)` | `$dotapp(this)` |
-| `.on()` for dynamic DOM | use `.live(event, selector, fn)` |
-| Empty selection | getters may return `null`/`false`; `html()` can throw |
+| `.on()` for dynamic DOM | use `.live(event, selector, function (el, e) {})` — `el` is first |
+| Empty selection | getters return `null`/`false`; `.html(x)` **throws** when nothing matched |
+
+**Use `$dotapp` for the DOM** — not `document.getElementById`, `querySelector`, `getAttribute`, `innerHTML`, `classList`, or `el.addEventListener`. The want → write table is [26](26-CONTROL-SLICE.md) §4. Raw DOM is allowed only where `$dotapp` has no method, and inside a `$dotapp().fn` library (§4 below).
 
 Safe pattern:
 
@@ -72,19 +96,31 @@ $dotapp('#login [name="email"]').addClass('ok');       // then act
 
 ## 3. Network: always `load()` for DotApp endpoints
 
+Page code calls the module helper ([26](26-CONTROL-SLICE.md) §5), not `load()` directly:
+
 ```javascript
-$dotapp().load(url, "POST", { id: $dotapp(el).attr("data-id") },
-  function (response) {
-    var reply = $dotapp().parseReply(response);   // decodes base64 JSON from ajaxReply
-    if (!reply || reply.status != 1) { return; }
+shopSend("/api/v1/auth/Shop/items/toggle", { item: $dotapp(el).attr("data-item") }, "#shopItemsWrap", function (reply) {
+  $dotapp("#shopItemsInner").html(reply.html);
+});
+```
+
+What the helper wraps:
+
+```javascript
+$dotapp().load(url, "POST", payload,
+  function (rawText) {              // HTTP 2xx only. rawText is base64 JSON
+    var reply = $dotapp().parseReply(rawText);
   },
-  function (code) { /* 400 CRC, 403 CSRF, 404, 429 */ }
+  function (status, bodyText) {     // HTTP 4xx/5xx (status = code) and network faults (status = 0)
+  }
 );
 ```
 
+**MUST NOT** call `load()` with no error callback, and **MUST NOT** `return;` silently when `reply.status != 1`. `load()` returns a Promise that also rejects on failure; the helper adds `.catch()`.
+
 `load()` adds CSRF fields, computes the CRC, sets the `dotapp: load` header and posts `{ data, crc }`. Raw `fetch` / `$.ajax` will **fail `crcCheck()`** on the PHP side.
 
-`$dotapp().parseReply(text)` is required because PHP `ajaxReply()` returns **base64-encoded JSON**.
+`$dotapp().parseReply(text)` is required because PHP `ajaxReply()` returns **base64-encoded JSON**. For a body that is **not** base64 JSON (`Response::json()`, a PHP warning, an HTML error page) it returns the **raw string** — `reply.status` is then `undefined`. Answer `load()` / `form()` callers with `ajaxReply()` only, and treat a non-object reply as a failure (`shopReply()` in [26](26-CONTROL-SLICE.md) §5).
 
 ### Nested `data` + HTTP 400 = “Request failed” (**MUST**)
 
@@ -102,7 +138,7 @@ Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms. **Files
 
 `$dotapp().load()` and `<fo-rm>` post JSON `{ data, crc }`. A ZIP (or any file) stuffed into `FormData` on that pipeline **cannot** carry the CRC. PHP `crcCheck()` fails (400/403), the AJAX error callback fires, and the user sees a generic “Request failed” instead of the server `message`.
 
-**MUST:** `$dotapp().uploadFile(file, url, progressCallback)` — Promise of response **text**, then `$dotapp().parseReply(text)`. Drop zone: `$dotapp().dragAndDropFile(dropZone, fileInput, callback, parallel)` (it calls `uploadFile`).
+**MUST:** `$dotapp().uploadFile(file, url, progressCallback)` — Promise of response **text**, then `$dotapp().parseReply(text)`. `progressCallback(fileName, percent)` reports real upload progress (this ran only after the 2026-11-14 library fix). On HTTP failure the Promise rejects with an `Error` that carries `.status` and `.responseText`. Drop zone: `$dotapp().dragAndDropFile(dropZone, fileInput, callback, parallel)` (it calls `uploadFile`).
 
 **MUST NOT:** `new FormData()` + `load()` / `form()` / `fetch` / `$.ajax`. **MUST NOT** put `<input type="file">` inside `<fo-rm>` and expect CRC to work.
 
@@ -126,7 +162,7 @@ $request->upload(function (array $files) use (&$out) {
 
     $finfo = new \finfo(FILEINFO_MIME_TYPE);
     $mime = (string) $finfo->file($file['tmp_name']);
-    if ($mime === '' || str_contains($mime, 'php') || str_contains($mime, 'x-httpd-php')) {
+    if ($mime === '' || strpos($mime, 'php') !== false) {   // PHP 7.4: no str_contains()
         $out = ['status' => 0, 'message' => 'This file type is not allowed'];
         return;
     }
@@ -175,17 +211,25 @@ JS:
 ```javascript
 .after(function (data, response, form) {
     var reply = $dotapp().parseReply(response);
-    if (reply && reply.status == 1) {
-        if (reply.html) $dotapp('#listWrap').html(reply.html);
-        // toast: your module notify / a small status node — never alert()
-    } else if (reply && reply.message) {
-        // failure toast — same channel, not a blocking dialog
+    if (!reply || typeof reply !== "object") {
+        reply = { status: 0, message: "The server sent an answer this page cannot read." };
     }
+    $dotapp(form).attr('blocked', '0');
+    if (reply.status == 1) {
+        if (reply.html) $dotapp('#listInner').html(reply.html);
+    } else if (reply.message) {
+        // module notice — never alert()
+    }
+})
+.onError(function (data, status, body, form) {
+    // Why: .after() does not run on HTTP 4xx/5xx or a network fault.
     $dotapp(form).attr('blocked', '0');
 });
 ```
 
-Same rule for `$dotapp().load(...)` (toggles, delete, “add rule”). Bind row actions with `.live()` so they still work after the HTML is replaced.
+Page code does not write this chain in every handler. It calls `shopForm()` / `shopSend()` ([26](26-CONTROL-SLICE.md) §5), which always include `.onError()` and the `load()` error callback. A chain with no failure path leaves the form blocked and shows nothing.
+
+Bind row actions with `$dotapp().live("click", ".shop_x", function (el, e) {})`. The first argument is the element. `function (e)` plus `e.currentTarget` is a dead click.
 
 ### Visible outcome (**MUST**)
 
@@ -310,8 +354,8 @@ The pager **MUST** be **interactive AJAX**: stay on the page, overlay the list w
 First paint may be server-rendered page 1. Further pages: POST (or the same list API) with `page` (clamp `1 … last_page` in PHP). Keep current filters in that payload. Pager controls: `type="button"` + `.live()` — **MUST NOT** wrap them in `<fo-rm>`.
 
 ```javascript
-$dotapp().live("click", ".js-shop-page", function (e) {
-  var page = parseInt($dotapp(e.currentTarget).attr("data-page"), 10) || 1;
+$dotapp().live("click", ".js-shop-page", function (el, e) {
+  var page = parseInt($dotapp(el).attr("data-page"), 10) || 1;
   shopBusy(true);
   $dotapp().load("/shop/items/list", "POST", { page: page, q: currentQuery },
     function (raw) {
@@ -411,8 +455,7 @@ Only after the user confirms, call `$dotapp().load(...)` (encrypted `data-*`, ov
 Build the dialog in **your module** (`assets/` CSS + JS, classes `{lowercase_modulename}_*`). DotApp core does not ship a confirm UI. Put the item name with `.text()`, not `.html()`.
 
 ```javascript
-$dotapp().live("click", ".js-delete", function (e) {
-  var el = e.currentTarget;
+$dotapp().live("click", ".js-delete", function (el, e) {
   $dotapp("#shopConfirmTitle").text("Delete this item?");
   $dotapp("#shopConfirmText").text("This cannot be undone.");
   $dotapp("#shopConfirm").removeAttr("hidden");
@@ -773,5 +816,5 @@ Error codes mirror the bridge: 400/1 invalid, 403/2 key, 404/3 endpoint, 429/4 r
 | `$(fn)` | `dotapp` event |
 | `.on()` on dynamic nodes | `.live(...)` |
 | plain `<form>` + `_token` | `<fo-rm>` + `{{ formName(...) }}` |
-| raw JSON response | `parseReply()` (base64 JSON) |
+| raw JSON response | `ajaxReply()` (base64 JSON) + `parseReply()`; a non-object result is a failure, not a reply |
 | static `dotapp.js` copy | `/assets/dotapp/dotapp.js` |

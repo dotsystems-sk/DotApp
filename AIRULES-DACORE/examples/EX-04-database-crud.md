@@ -41,7 +41,7 @@ $rows = DB::module('RAW')->q(function ($qb) use ($id) {
 
 $row = $rows[0] ?? null;
 if ($row === null) {
-    return Response::json(['status' => 0, 'message' => 'Not found'], 404);
+    return Reply::fail('This item no longer exists.');   // 26 §7 — HTTP 200
 }
 ```
 
@@ -76,12 +76,13 @@ DB::module('RAW')->q(function ($qb) use ($title) {
     function ($error, $db, $execution_data) use (&$failed) {
         // $error['error'] string, $error['errno'] int
         $failed = $error;
-        Logger::use()->error('shop_items insert failed', $error);
+        Diag::reportCatch('Shop:Items@create', 'shop.item.create', null, 'error',
+            ['errno' => $error['errno'] ?? 0], $error['error'] ?? 'db error');
     }
 );
 
 if ($newId === null) {
-    return Response::json(['status' => 0, 'message' => 'Save failed'], 500);
+    return Reply::fail('The item was not saved: the database refused the change (shop.item.create). The fault was logged.');
 }
 ```
 
@@ -180,7 +181,7 @@ try {
     DB::module('RAW')->rollback();
     // Report before answering: this is the trail a debugger reads later (18 §9).
     Diag::reportCatch('Shop:Orders@create', 'shop.order.create', $e, 'error', ['items' => count($items)]);
-    return Response::json(['status' => 0, 'message' => 'Could not create order'], 500);
+    return Reply::fail('The order was not created and nothing was charged (shop.order.create). The fault was logged.');
 }
 ```
 

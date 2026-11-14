@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Final control (`/finalcontrol <Module>`)
 
-Canonical law: `AIRULES/00-AGENT-CONTRACT.md` §2u. This is a **fix run**, not a report-only audit: every failure found is fixed in the same run, then re-checked.
+Canonical law: `AIRULES/00-AGENT-CONTRACT.md` §2u. The standard every control is held to: `AIRULES/26-CONTROL-SLICE.md`. This is a **fix run**, not a report-only audit: every failure found is fixed in the same run, then re-checked.
 
 ## 0. Scope
 
@@ -34,6 +34,14 @@ Final control <Module>:
 
 ## 1. Control inventory
 
+Run the source check first and keep its output — it finds dead buttons, URLs with no route, silent requests, raw DOM, a wrong boot block, HTTP 4xx/5xx product replies and spacing classes with no CSS rule:
+
+```
+php AIRULES/tools/control-check.php <Target>
+```
+
+Every line it prints is a finding. It is a floor, not the whole control: continue with the inventory below.
+
 Grep `views/**/*.view.php`, `views/**/*.layout.php`, module `assets/**/*.js`, and any HTML built in PHP:
 
 `<button`, `class="[^"]*\bbtn\b`, `type="submit"`, `<fo-rm`, `{{ formName(`, `data-(action|id|page|token|del|toggle)`, `<a [^>]*href=`, `onclick=`, `$dotapp().load(`, `$dotapp().form(`, `.live(`, `uploadFile(`, `twoFactor(`, `modal(`.
@@ -49,7 +57,8 @@ A control with no row in every column is a **finding**, not a skip.
 For each control and its parent, read the markup **and** the CSS that applies (module CSS + DACore classes used):
 
 - Padding vs parent on **left, right, top, bottom**. Nothing flush against a card, `card-body`, footer, modal, drawer, or page edge.
-- Buttons that are the **last content** of a block have space below (`card-footer` + `pb-3`/`pb-4` or CSS `padding-bottom`). `pt-0` / `border-0` is compensated on the other side.
+- Buttons are in an action row: `.dacore-card-actions` after `.card-body`, or `d-flex flex-wrap gap-2`, or `.dacore-toolbar` (`AIRULES/26` §2). A bare button at the end of `.card-body` is a finding.
+- Every spacing class used has a CSS rule in DACore `core.css` or this module CSS. `card-footer`, `pb-3`, `pb-4`, `pt-0`, `pt-3`, `px-4`, `border-0`, `bg-transparent` have **none** in the shell — replace them, do not add more of them.
 - Placement matches sibling blocks (centered or same rhythm), not shoved left.
 - Groups of buttons wrap on mobile with a gap (`gap`, `flex-wrap`), touch target ≥ 40px, no horizontal overflow.
 - **Spacing between blocks:** consecutive cards / sections / `<dot-col>` / alerts / tables / pagers have vertical gap (`mb-*`, `gap`, margin). Two blocks touching = finding. Same for label ↔ input ↔ help text inside forms.
@@ -65,14 +74,14 @@ Every actionable control has exactly one working path:
 - `$dotapp().live("click", selector, function (el, e) { … })` — first argument is the **element** (`function (e)` with `e.currentTarget` = dead button), or
 - a plain `<a href>` to a **registered GET** route.
 
-Check per handler: selector actually matches the markup (class/data attribute spelled the same); overlay on start and removed on success **and** error; success patches `reply.html` + toast (no `location.reload()`); error shows `reply.message`; delete uses `Notiflix.Confirm` / `$dotapp().modal()` (no `alert` / `confirm`); text written with `.text()` not `.html()` for user strings. Buttons with a handler but no markup, and markup with no handler, are both findings.
+Check per handler: selector actually matches the markup (class/data attribute spelled the same); the request goes through the module helper (`xxxSend` / `xxxForm`, `AIRULES/26` §5) — a direct `$dotapp().load()` / `.form()` in a handler is a finding; `.form()` has `.onError()` as well as `.after()`; `load()` has its error callback; overlay removed and a toast shown on success, on `status` 0 **and** on HTTP failure; success patches `reply.html` (no `location.reload()`); the file ends with the canonical boot block; `$dotapp` is used instead of `getElementById` / `querySelector` / `getAttribute` / `innerHTML`; delete uses `Notiflix.Confirm` / `$dotapp().modal()` (no `alert` / `confirm`); text written with `.text()` not `.html()` for user strings. Buttons with a handler but no markup, and markup with no handler, are both findings.
 
 ## 4. Backend endpoints (`24-admin-ajax-and-class-bugs.mdc`)
 
 For every URL found in JS or forms:
 
 - A matching `Router::get/post` exists in `module.init.php` (same path, same HTTP method, same prefix) and points to an existing `Controller@method!`.
-- The method unwraps nested `data` (`load()`/`form()` post `{ data: {...}, crc }`), reads persist values with `data(true)`, and answers **HTTP 200 + `status` 0|1 + `message`** for product outcomes (no 400/500 for "not found"/"invalid").
+- The method unwraps nested `data` (`load()`/`form()` post `{ data: {...}, crc }`), reads persist values with `data(true)`, and answers **HTTP 200 + `status` 0|1 + `message`** on every branch through the module `Reply::ok()` / `Reply::fail()` (no 400/403/500, no `Response::json()` for a `load()` / `form()` caller). Each stop — input, record, rule, DB `$err`, `catch` — has its own sentence; `Server error` / `Bad request` / `Rejected` / `Save failed` are findings.
 - `crcCheck()` runs **once** per POST (prefix middleware **or** action, never both, never on GET or `upload()`).
 - Every `catch` / `execute()` `$err` reports through the module catch helper.
 - Same-class rule: one broken handler → grep and fix every sibling.

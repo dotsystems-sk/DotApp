@@ -56,7 +56,7 @@ DACore’s own lists (users, logs, email, SMS, inbox, plugin installer) **MUST**
 Skeleton:
 
 ```html
-<div class="card" id="shopListWrap" data-list-url="{{ var: $listUrl }}" data-busy="{{_ "Loading…" }}" data-fail="{{_ "Request failed" }}">
+<div class="card" id="shopListWrap">
   <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-3">
     <h5 class="mb-0">{{_ "Items" }}</h5>
     <div class="input-group dacore-list-search">
@@ -163,31 +163,24 @@ if ($total > 0) {
 `$dotapp().live(event, selector, handler)` calls **`handler(el, e)`**. The **first** argument is the matched element. Treating the first argument as a DOM event makes `e.currentTarget` `undefined` and the click **silently does nothing**.
 
 ```javascript
+// About: pager. live() hands the element first. shopSend() = module helper (AIRULES/26 §5).
 $dotapp().live("click", ".shop-page", function (el, e) {
-  if (e && typeof e.preventDefault === "function") {
-    e.preventDefault();
-  }
-  if (!el || !wrap.contains(el) || el.disabled) {
+  e.preventDefault();
+  // Why: the current page and the disabled arrows are not actions.
+  if (el.disabled || $dotapp(el).closest(".page-item.disabled, .page-item.active").length) {
     return;
   }
-  var item = el.closest(".page-item");
-  if (item && (item.classList.contains("disabled") || item.classList.contains("active"))) {
-    return;
-  }
-  var page = el.getAttribute("data-page") || "";
+  var page = $dotapp(el).attr("data-page");
   if (!page) {
     return;
   }
-  loadPage(page);
+  shopSend("/api/v1/auth/Shop/items/list", { page: page, q: currentQuery }, "#shopListWrap", function (reply) {
+    $dotapp("#shopListInner").html(reply.html);
+  });
 });
 ```
 
-`loadPage`:
-
-1. Overlay `#shopListWrap` (`Notiflix.Block` on admin).
-2. `$dotapp().load(listUrl, "POST", { page: page, q: currentQuery }, ok, err)`.
-3. `parseReply`. On `status == 1` set `#shopListInner` HTML (rows **and** pager).
-4. Remove overlay on success **and** error. Toast on failure.
+`shopSend()` covers `#shopListWrap`, calls `$dotapp().load()`, parses the reply, removes the overlay on success **and** on failure, and shows a toast when the list could not be loaded. On success the handler sets `#shopListInner` (rows **and** pager). The list action answers `Reply::ok('', ['html' => …])` — an empty message shows no toast on a plain page change.
 
 POST URL: `/api/v1/auth/{Module}/…/list`. Prefix `#DACore:AuthTest@LoginAndCRC!`. Action **MUST NOT** `crcCheck()` again. Decrypt `page` from `$request->data(true)['data']`.
 
@@ -202,13 +195,13 @@ Search: debounce ~300 ms, from 3 characters, reset to page 1 (omit token or empt
 | Fail | Fix |
 |------|-----|
 | `href="?page` / `logpage=` / `replaceState` | Buttons + `load()`, same URL |
-| `live("click"` handler with one `e` argument and `e.currentTarget` | `function (el, e)` + `el.getAttribute("data-page")` |
+| `live("click"` handler with one `e` argument and `e.currentTarget` | `function (el, e)` + `$dotapp(el).attr("data-page")` |
 | `data-page="2"` / `data-dacore-page` in **your** module | Encrypted `data-page` + your class |
 | `dacore-list-pager--split` | Centered column (debugger history) |
 | `->paginate(` then `total` used for `last_page` without a real `COUNT(*)` | Two queries as in §4 |
 | `count($rows)` as table total | Use `COUNT(*)` |
 | Pager POST `crcCheck()` after `LoginAndCRC!` | Prefix only |
-| Overlay missing / not removed on error | `Notiflix.Block` on the card |
+| Overlay missing / not removed on error / no toast on failure | Go through `shopSend()` ([26](26-CONTROL-SLICE.md) §5) |
 
 ---
 
@@ -216,7 +209,7 @@ Search: debounce ~300 ms, from 3 characters, reset to page 1 (omit token or empt
 
 | Wrong | Right |
 |-------|-------|
-| `function (e) { e.currentTarget … }` | `function (el, e) { el.getAttribute("data-page") }` |
+| `function (e) { e.currentTarget … }` | `function (el, e) { $dotapp(el).attr("data-page") }` |
 | `QueryObject::paginate()` total → “1–10 of 10” | `COUNT(*)` + `LIMIT`/`OFFSET` |
 | `?page=` / `?logpage=` / `replaceState` | Stay on the path; CRC Referer stays valid |
 | `<a class="page-link">` | `<button type="button" class="page-link">` |

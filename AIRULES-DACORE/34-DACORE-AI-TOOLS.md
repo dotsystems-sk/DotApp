@@ -220,7 +220,7 @@ window.addEventListener("DACore.AI.UIEvent", function (ev) {
   if (!ev || !ev.detail) return;
   if (ev.detail.name !== "Shop.Items.Update") return;
   var p = ev.detail.payload || {};
-  // p.id, p.page, … — then $dotapp().load(...) + patch html; no location.reload()
+  // p.id, p.page, … — then shopSend(...) (AIRULES/26 §5) + patch html; no location.reload()
 });
 ```
 

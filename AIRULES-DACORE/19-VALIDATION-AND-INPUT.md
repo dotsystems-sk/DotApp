@@ -28,7 +28,7 @@ $r = Validator::validate($email, 'required|email');
 
 **Check with `=== true`.** A failure array is truthy.
 
-**MUST (visible outcome — [00](00-AGENT-CONTRACT.md) §2d):** return that array to the browser as `errors` (field → one exact sentence). **Admin and public:** mark each named input (invalid/red) **and** show the sentence **under that field**. Admin also toasts the summary (search DACore / Notiflix first). The first `input` / `change` on that control clears **its** mark; the error returns only on the next failed submit. Persist still re-checked in PHP from `$request->data(true)`. Sample: [EX-09](examples/EX-09-validation-and-errors.md).
+**MUST (visible outcome — [00](00-AGENT-CONTRACT.md) §2d):** return that array to the browser as `errors` (field → messages). **Public FE:** mark each named input (invalid/red) **and** show the message **on that field**. **DACore admin:** toast `message` (search DACore / Notiflix first) — field mark is extra. Persist still re-checked in PHP. Sample: [EX-09](examples/EX-09-validation-and-errors.md).
 
 Throws `\InvalidArgumentException` for: parameter type mismatch, unknown rule, malformed rule parameters.
 
@@ -167,6 +167,8 @@ The switch is the boolean on `data()` / `query()`:
 
 Secure `<fo-rm>` fields after unwrap: `$request->data(true)['data']`.
 
+**Trap (core `RequestObj::data`):** the **first** `data()` call in a request parses the body and returns the **protected** copy even when called as `data(true)`. Under a CRC prefix or after `crcCheck()` the body is already parsed, so `data(true)` is the original. On an action where nothing has read the body yet, call `$request->data();` once on the line before `$request->data(true)`.
+
 Login / install handlers **MUST** also **show** every failure (`crcCheck` fail, `form()` `null`/`false`, `Auth::login === false`, codes 1–5 / 99). A 400 “Bad request” with no toast/message is incomplete. Canonical forms: [08](08-FORMS-AND-SECURITY.md). Sample: [EX-14](examples/EX-14-auth-and-2fa.md).
 
 ### Data access
@@ -208,7 +210,7 @@ Returns `$this`. Non-callable argument → `\InvalidArgumentException`; exceptio
 
 | Call | Returns | Notes |
 |------|---------|-------|
-| `crcCheck()` | `bool` | **One-shot:** first success calls `invalidateCSRF()`. Second call → used token → **`false`**. Also fails on missing `data`/`crc`, non-array payload, referer mismatch, CRC mismatch. **MUST NOT** middleware + controller. [08](08-FORMS-AND-SECURITY.md) |
+| `crcCheck()` | `1` / `0` / `false` (never `true` — test with `!`, not `=== true`) | **One-shot:** first success calls `invalidateCSRF()`. Second call → used token → **`false`**. Also fails on missing `data`/`crc`, non-array payload, referer mismatch, CRC mismatch. **MUST NOT** middleware + controller. [08](08-FORMS-AND-SECURITY.md) |
 | `formSignatureCheck()` | `bool` | |
 | `isValidCSRF($token)` | `bool` | **`true` = token NOT yet used** (i.e. valid) |
 | `invalidateCSRF($token)` | void | |
@@ -313,7 +315,7 @@ use Dotsystems\App\Parts\Limiter;
 
 $limiter = new Limiter([60 => 10, 3600 => 100], $identifier ?? null);
 if (!$limiter->isAllowed('shop.save')) {
-    return Response::json(['status' => 0, 'message' => 'Too many requests'], 429);
+    return Reply::fail('Too many attempts. Wait a minute and try again.');   // 26 §7 — HTTP 200 so the toast shows it
 }
 $remaining = $limiter->getRemaining('shop.save', 60);
 $resetIn   = $limiter->getResetTime('shop.save', 60);

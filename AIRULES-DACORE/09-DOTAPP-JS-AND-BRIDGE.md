@@ -32,8 +32,17 @@ Prefer `<fo-rm>` + `{{ formName(...) }}` for all user forms — see [08-FORMS-AN
 ```javascript
 (function () {
   var runMe = function ($dotapp) { /* app logic */ };
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp", function () { runMe(window.$dotapp); }, { once: true });
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
 })();
 ```
 
@@ -43,23 +52,34 @@ Prefer `<fo-rm>` + `{{ formName(...) }}` for all user forms — see [08-FORMS-AN
 | `dotapp` | application logic |
 | `dotapp-template-ready` / `dotapp-reactive-ready` | add-on modules loaded |
 
+Both events are dispatched on **`window`**, once, back to back, while `dotapp.js` executes. A script that runs later never receives them — that is why the `if (window.$dotapp)` branch is mandatory. `document.addEventListener("dotapp", …)` never fires. Copy the block above **character for character**; file shape and rules: [26](26-CONTROL-SLICE.md) §3.
+
+`dotapp.js` takes over `<fo-rm>` / `<form>` **once**, when it executes. Load it after the markup (end of `<body>`; the DACore shell does this). A `<fo-rm>` inserted later through `reply.html` is **not** taken over.
+
 ---
 
 ## 2. Selector API and its traps
 
 `$dotapp(selector)` returns an instance for the matched elements. `$dotapp()` (no args) is the singleton used for forms, `load`, bridge, variables and plugins.
 
-Common methods: `each, first, get, all, nth, parent, children, find, next, prev, siblings, closest, is, index, clone, html, text, val, check, attr, removeAttr, prop, data, addClass, removeClass, toggleClass, hasClass, css, optionText, append, prepend, remove, empty, replaceWith, show, hide, toggle, enable, disable, focus, blur, fadeIn, fadeOut, slideDown, slideUp, width, height, on, one, off, live, trigger, form, submit, serialize, load, parseReply, sendInput, bridge, uploadFile, dragAndDropFile, variable, getVariable, computed, databind, hashRouter, validator, twoFactor, autosave, networkwatch, halt, fn`
+Common methods: `each, first, last, nth, get, all, length, parent, children, find, next, prev, siblings, closest, is, index, clone, html, text, val, check, attr, removeAttr, prop, data, addClass, removeClass, toggleClass, hasClass, css, optionText, append, prepend, remove, empty, replaceWith, show, hide, toggle, enable, disable, focus, blur, fadeIn, fadeOut, slideDown, slideUp, width, height, on, one, off, live, trigger, form, submit, serialize, load, parseReply, sendInput, bridge, uploadFile, dragAndDropFile, variable, getVariable, computed, databind, hashRouter, validator, twoFactor, autosave, networkwatch, halt, fn`
 
 | Trap | Reality |
 |------|---------|
 | Getters chain like jQuery | many getters return the **value**, not `this` |
-| `.html()` as getter | sets an internal last-result and returns `this` — read the DOM instead |
-| `.last()` / `.nth()` | buggy in shipped builds — use `.get(i)` / `.all()` |
+| `.html()` as getter | returns `this` — read the markup with `$dotapp(sel).html().getLastResult()` |
+| `.first()` / `.last()` / `.nth(i)` | return a `$dotapp` object; `.get(i)` returns the raw element; `.first(false)` / `.last(false)` return the raw element |
+| `.length` | number of matched elements (`$dotapp(sel).length`) |
+| `$dotapp(nodeList)` / `$dotapp(array)` | accepted — elements that are not `HTMLElement` are dropped |
+| `dotapp.js` older than 2026-11-14 | `.find()` / `.children()` / `.siblings()` / `.clone()` returned an empty collection, `.last()` threw, `.nth()` returned nothing, `.length` was `undefined` — update the framework |
+| `.each(fn)` | calls `fn(index, element)` — index first |
+| `.val()` on an empty field | returns `null`, not `""` |
+| `.on(event, selector, fn)` | not delegated, returns an unsubscribe function — use `.live()` |
+| `.live("focus" / "blur")` | never fires (no bubbling) — use `focusin` / `focusout` |
 | `$(document).ready` | use the `dotapp` event |
 | `$(this)` | `$dotapp(this)` |
 | `.on()` for dynamic DOM | use `.live(event, selector, fn)` |
-| Empty selection | getters may return `null`/`false`; `html()` can throw |
+| Empty selection | getters return `null`/`false`; `.html(x)` **throws** — the id in the view and in the JS must match |
 
 Safe pattern:
 
@@ -68,23 +88,37 @@ var email = $dotapp('#login [name="email"]').val();   // read into a variable
 $dotapp('#login [name="email"]').addClass('ok');       // then act
 ```
 
+**Use `$dotapp` for the DOM — not `document.getElementById`, `querySelector`, `getAttribute`, `innerHTML`, `classList`, `el.addEventListener`.** The want → write table is [26](26-CONTROL-SLICE.md) §4. Raw DOM is allowed only where `$dotapp` has no method, and inside a `$dotapp().fn` library (§4 below).
+
 ---
 
 ## 3. Network: always `load()` for DotApp endpoints
 
 ```javascript
-$dotapp().load(url, "POST", { id: $dotapp(el).attr("data-id") },
-  function (response) {
-    var reply = $dotapp().parseReply(response);   // decodes base64 JSON from ajaxReply
-    if (!reply || reply.status != 1) { return; }
+// In page code: always through the module request helper (26 §5) — overlay, parseReply, toast, error path.
+shopSend("/api/v1/auth/Shop/items/toggle", { item: $dotapp(el).attr("data-item") }, "#shopItemsWrap", function (reply) {
+  $dotapp("#shopItemsInner").html(reply.html);
+});
+```
+
+What the helper wraps — the raw signature:
+
+```javascript
+$dotapp().load(url, "POST", payload,
+  function (rawText) {              // HTTP 2xx only. rawText is base64 JSON → parseReply(rawText)
+    var reply = $dotapp().parseReply(rawText);
   },
-  function (code) { /* 400 CRC, 403 CSRF, 404, 429 */ }
+  function (status, bodyText) {     // HTTP 4xx/5xx (status = code) and network faults (status = 0)
+    // bodyText may still carry a reply: window.dacoreRequestError.message(status, bodyText, "fallback")
+  }
 );
 ```
 
+**MUST NOT** call `load()` with no error callback, and **MUST NOT** `return;` silently when `reply.status != 1` — both are how a button ends up doing nothing. `load()` returns a Promise that also rejects on failure; the helper adds `.catch()`.
+
 `load()` adds CSRF fields, computes the CRC, sets the `dotapp: load` header and posts `{ data, crc }`. Raw `fetch` / `$.ajax` will **fail `crcCheck()`** on the PHP side.
 
-`$dotapp().parseReply(text)` is required because PHP `ajaxReply()` returns **base64-encoded JSON**.
+`$dotapp().parseReply(text)` is required because PHP `ajaxReply()` returns **base64-encoded JSON**. For a body that is **not** base64 JSON (`Response::json()`, a PHP warning, an HTML error page) it returns the **raw string** — `reply.status` is then `undefined`. Answer `load()` / `form()` callers with `ajaxReply()` only, and treat a non-object reply as a failure (`shopReply()` in [26](26-CONTROL-SLICE.md) §5).
 
 ### Nested `data` + HTTP 400 = “Request failed” (**MUST** — law)
 
@@ -108,7 +142,7 @@ Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms. **Files
 
 `$dotapp().load()` and `<fo-rm>` post JSON `{ data, crc }`. A ZIP (or any file) stuffed into `FormData` on that pipeline **cannot** carry the CRC. PHP `crcCheck()` fails (400/403), the AJAX error callback fires, and the user sees a generic “Request failed” instead of the server `message`.
 
-**MUST:** `$dotapp().uploadFile(file, url, progressCallback)` — Promise of response **text**, then `$dotapp().parseReply(text)`. Drop zone: `$dotapp().dragAndDropFile(dropZone, fileInput, callback, parallel)` (it calls `uploadFile`).
+**MUST:** `$dotapp().uploadFile(file, url, progressCallback)` — Promise of response **text**, then `$dotapp().parseReply(text)`. `progressCallback(fileName, percent)` reports real upload progress. On HTTP failure the Promise rejects with an `Error` that carries `.status` and `.responseText` — show `parseReply(error.responseText).message` when it is there. Drop zone: `$dotapp().dragAndDropFile(dropZone, fileInput, callback, parallel)` (it calls `uploadFile`).
 
 **MUST NOT:** `new FormData()` + `load()` / `form()` / `fetch` / `$.ajax`. **MUST NOT** put `<input type="file">` inside `<fo-rm>` and expect CRC to work.
 
@@ -132,7 +166,7 @@ $request->upload(function (array $files) use (&$out) {
 
     $finfo = new \finfo(FILEINFO_MIME_TYPE);
     $mime = (string) $finfo->file($file['tmp_name']);
-    if ($mime === '' || str_contains($mime, 'php') || str_contains($mime, 'x-httpd-php')) {
+    if ($mime === '' || strpos($mime, 'php') !== false) {   // PHP 7.4: no str_contains()
         $out = ['status' => 0, 'message' => 'This file type is not allowed'];
         return;
     }
@@ -151,6 +185,8 @@ $request->upload(function (array $files) use (&$out) {
 return \Dotsystems\App\DotApp::DotApp()->ajaxReply($out, 200);
 ```
 
+`$out` is declared before the call (`$out = ['status' => 0, 'message' => 'No file arrived. Choose a file and try again.'];`). Replace the three sample messages with sentences that name the reason: `'The file is larger than 5 MB.'`, `'Only JPG, PNG and WebP images can be uploaded.'`.
+
 **MUST (every upload, PHP):** reject executable / script files. **`.php` and PHP variants are always forbidden** — no product exception. Check **extension** (including `.jpg.php` / `.php.jpg`), **MIME from the bytes** (`finfo` on `tmp_name`), and **magic / headers**. Frontend `accept=` is UX only. **MUST NOT** trust `$file['type']`. **MUST NOT** store an unchecked file where the web server can execute it.
 
 **MUST NOT** `crcCheck()` on this endpoint — there is no `{ data, crc }`. Guard with `#Shop:Rights@check!` / `Auth::can()`. Return HTTP **200** + `status` 0|1 so the Promise resolves and you toast `reply.message`. HTTP 400/403/500 hits `fetch`’s error path (generic failure). Overlay the drop zone until the Promise settles.
@@ -166,34 +202,24 @@ return \Dotsystems\App\DotApp::DotApp()->ajaxReply($out, 200);
 | **MUST** overlay the region while in flight (desktop **and** mobile) | — |
 | **MUST NOT** `location.reload()` / `window.location` as the success path | |
 
-PHP (stay on page):
+PHP (stay on page) — the module reply helper ([26](26-CONTROL-SLICE.md) §7), always HTTP 200:
 
 ```php
-return ['code' => 200, 'body' => [
-    'status' => 1,
-    'message' => 'Enabled',
-    'html' => $tableHtml,   // re-rendered tbody / list fragment
-]];
+return Reply::ok('Enabled.', ['html' => $tableHtml]);                              // re-rendered tbody / list fragment
+return Reply::fail('The rule was not enabled: it has no recipient yet.');          // status 0 + the reason
 ```
 
-JS:
+JS — the module request helper ([26](26-CONTROL-SLICE.md) §5):
 
 ```javascript
-.after(function (data, response, form) {
-    var reply = $dotapp().parseReply(response);
-    if (reply && reply.status == 1) {
-        if (reply.html) $dotapp('#listWrap').html(reply.html);
-        if (window.Notiflix && Notiflix.Notify) {
-            Notiflix.Notify.success(reply.message || 'Saved');
-        }
-    } else if (reply && reply.message) {
-        if (window.Notiflix && Notiflix.Notify) {
-            Notiflix.Notify.failure(reply.message);
-        }
-    }
-    $dotapp(form).attr('blocked', '0');
+shopForm("#shopRuleForm", "#shopRuleCard", function (reply) {
+  if (reply.html) {
+    $dotapp("#shopRulesInner").html(reply.html);
+  }
 });
 ```
+
+`shopForm()` binds `.before()`, `.after()` **and** `.onError()`. `.after(data, rawText, form)` runs only on HTTP 2xx; `.onError(data, status, bodyText, form)` runs on HTTP 4xx/5xx and network faults. A chain with no `.onError()` leaves the form blocked with no toast.
 
 Same rule for `$dotapp().load(...)` (toggles, delete, “add rule”). Bind row actions with `.live()` so they still work after the HTML is replaced. Toast: **DACore admin** → Notiflix (shell). **Public website** → your module notify. Never `alert()`.
 
@@ -201,16 +227,14 @@ Same rule for `$dotapp().load(...)` (toggles, delete, “add rule”). Bind row 
 
 The user **MUST** see what happened. Silent save / silent fail is a bug. Law: [00](00-AGENT-CONTRACT.md) §2d.
 
-**DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Success and non-field failure = **toast**.
+**DACore admin:** the shell loads Notiflix (`Notify` / `Confirm` / `Block`) and `window.dacoreRequestError` (reads `reply.message` out of an HTTP error body). There is no `$dotapp().toast()`. Use the shell through the one module request helper ([26](26-CONTROL-SLICE.md) §5). Do **not** invent a second toast library. Success and failure = **toast**.
 
-**Public website:** Notiflix is not there. **You MUST build** feedback.
+**Public website:** Notiflix is not there. **You MUST build** feedback. Field validation **preferred:** mark the wrong input (red) + message **on that field**. PHP returns `errors` keyed by field.
 
-**Field errors (admin and public — MUST):** PHP returns `errors` keyed by the input `name`, with a sentence that names the bad value. JS paints that input red and puts the sentence **under it** (`.text()` / `textContent`). A toast may summarise; it does not replace the mark. **Clear on edit:** the first `input` or `change` on that control removes only that control’s red class and sentence. The error comes back only when they submit again and that field is still wrong. Law: [00](00-AGENT-CONTRACT.md) §2d.
-
-| Surface | Success / non-field fail | Field errors |
-|---------|--------------------------|--------------|
-| `Page@withMenu!` | `Notiflix.Notify.success` / `failure` (or `$dotapp().toast()` if that is what DACore has) | Red input + sentence under the field, plus a summary toast. Clear that field on the next `input` / `change`. |
-| Public / front-office | Your module toast / status | Red input + sentence under the field. Clear that field on the next `input` / `change`. |
+| Surface | Success / fail | Field errors |
+|---------|----------------|--------------|
+| `Page@withMenu!` | `Notiflix.Notify.success` / `failure` on `status` 1, on `status` 0 **and** on HTTP/network failure | Toast `reply.message` (field mark optional extra) |
+| Public / front-office | Your module toast / status | **Preferred:** red input + text on the field |
 
 Copy-paste: [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md). Search DACore: [33](33-DACORE-PAGES-AND-UI.md).
 
@@ -247,20 +271,18 @@ Skipping Notiflix on an admin page does **not** waive preloaders. A custom syste
 - Do not rely on desktop-only layout for the busy state.
 - One in-flight request per region; a second tap/drag is ignored until the overlay is gone.
 - Toasts are short and non-blocking. Never `alert()`.
-- **Layout (LAW):** every new button/control has padding vs its parent on **all sides** (left, right, top, bottom). When the buttons are the **last** content of a block, **almost always** pad **below**. A Save glued to the card edge is a **bug**. Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6.
+- **Layout (LAW):** every new button/control has padding vs its parent on **all sides** (left, right, top, bottom). Buttons live in `.dacore-card-actions` after `.card-body` (or a `d-flex gap-2` row). `card-footer` / `pb-4` have no CSS rule in the DACore shell. A Save glued to the card edge is a **bug**. Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6.
 
 Notiflix API (when you choose option 1):
 
 ```javascript
-Notiflix.Block.standard("#listWrap", "Loading…");   // CSS selector, NodeList, or array of nodes — not one Element
-$dotapp().load(url, "POST", payload, function (raw) {
-    // parseReply, patch TBODY / #listInner, Notify.success
-    Notiflix.Block.remove("#listWrap");
-}, function () {
-    Notiflix.Block.remove("#listWrap");
-    Notiflix.Notify.failure("Request failed");
-});
+Notiflix.Block.standard("#listWrap", "Loading…");   // pass a CSS selector string
+Notiflix.Block.remove("#listWrap");
+Notiflix.Notify.success("Enabled.");
+Notiflix.Notify.failure(window.dacoreRequestError.message(status, bodyText, "The request did not reach the server"));
 ```
+
+These four calls belong in **one** place — the module request helper `shopSend()` / `shopForm()` ([26](26-CONTROL-SLICE.md) §5). Handlers call the helper; they do not repeat block / parse / toast / unblock.
 
 **MUST NOT:** leave the list draggable/tappable during save; start a second `load()` on the same region while the first is in flight; forget to remove the overlay on the error path; empty `.after()` / empty `load` success callback; `alert()`; rely on a full reload “so the table updates”; skip overlays because “we didn’t use Notiflix”.
 
@@ -335,17 +357,11 @@ First paint may be server-rendered page 1. Further pages: POST with encrypted `p
 $dotapp().live("click", ".shop-page", function (el, e) {
   if (e && typeof e.preventDefault === "function") e.preventDefault();
   if (!el || el.disabled) return;
-  var page = el.getAttribute("data-page") || "";
+  var page = $dotapp(el).attr("data-page") || "";
   if (!page) return;
-  Notiflix.Block.standard("#listWrap", "Loading…");
-  $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: page, q: currentQuery },
-    function (raw) {
-      var reply = $dotapp().parseReply(raw);
-      if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
-      Notiflix.Block.remove("#listWrap");
-    },
-    function () { Notiflix.Block.remove("#listWrap"); }
-  );
+  shopSend("/api/v1/auth/Shop/items/list", { page: page, q: currentQuery }, "#listWrap", function (reply) {
+    $dotapp("#listInner").html(reply.html);
+  });
 });
 ```
 
@@ -399,15 +415,9 @@ $dotapp().live("input", "#shopSearch", function () {
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(function () {
     currentQuery = q.length >= 3 ? q : "";
-    Notiflix.Block.standard("#listWrap", "Searching…");
-    $dotapp().load("/api/v1/auth/Shop/items/list", "POST", { page: 1, q: currentQuery },
-      function (raw) {
-        var reply = $dotapp().parseReply(raw);
-        if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
-        Notiflix.Block.remove("#listWrap");
-      },
-      function () { Notiflix.Block.remove("#listWrap"); }
-    );
+    shopSend("/api/v1/auth/Shop/items/list", { page: 1, q: currentQuery }, "#listWrap", function (reply) {
+      $dotapp("#listInner").html(reply.html);
+    });
   }, 300);
 });
 ```
@@ -452,7 +462,9 @@ Notiflix.Confirm.show(
   "Delete",
   "Cancel",
   function () {
-    // overlay + load() with encrypted data-id
+    shopSend("/api/v1/auth/Shop/items/delete", { item: item }, "#listWrap", function (reply) {
+      $dotapp("#listInner").html(reply.html);
+    });
   }
 );
 ```
@@ -484,10 +496,9 @@ PHP is still `Auth::confirmTwoFactor` ([11](11-AUTH-AND-CRYPTO.md) §5) **on log
 
 ```javascript
 $dotapp(".two-fa-inputs input").twoFactor(function (code) {
-    $dotapp().load("/shop/login/2fa", "POST", { tfa: code }, function (raw) {
-        var reply = $dotapp().parseReply(raw);
-        if (reply && reply.status == 1 && reply.redirectTo) {
-            window.location = reply.redirectTo;   // leaving the login page is OK
+    shopSend("/shop/login/2fa", { tfa: code }, "#shopLoginCard", function (reply) {
+        if (reply.redirectTo) {
+            window.location = reply.redirectTo;   // Why: leaving the login page is the success path here
         }
     });
 }, { length: 6, allowLetters: false, autoSubmit: true });
@@ -548,8 +559,17 @@ Page logic listens to `dotapp`. Libraries listen to **`dotapp-register`**. Mixin
         window.dispatchEvent(new Event('dotapp-shophighlight-ready'));
     };
 
-    if (window.$dotapp) runMe(window.$dotapp);
-    else window.addEventListener('dotapp-register', function () { runMe(window.$dotapp); }, { once: true });
+    if (window.$dotapp) {
+      runMe(window.$dotapp);
+    } else {
+      window.addEventListener(
+        "dotapp-register",
+        function () {
+          runMe(window.$dotapp);
+        },
+        { once: true }
+      );
+    }
 })();
 ```
 
@@ -573,9 +593,16 @@ One instance per DOM node, cached on the element. Register on `dotapp-register`.
         }
         ShopChart.prototype.refresh = function () {
             var self = this;
-            this.dotApp.load(this.settings.url, 'GET', {}, function (raw) {
+            // Why: a GET must have no data object — load(url, 'GET', {}) sends a body and fetch rejects it.
+            this.dotApp.load(this.settings.url, 'GET', null, function (raw) {
                 var reply = self.dotApp.parseReply(raw);
-                if (!reply || reply.status != 1) { return; }
+                if (!reply || typeof reply !== 'object' || reply.status != 1) {
+                    Notiflix.Notify.failure((reply && reply.message) || 'The chart data could not be loaded.');
+                    return;
+                }
+                // draw the chart from reply here
+            }, function (status, body) {
+                Notiflix.Notify.failure(window.dacoreRequestError.message(status, body, 'The chart data could not be loaded'));
             });
         };
 
@@ -595,8 +622,17 @@ One instance per DOM node, cached on the element. Register on `dotapp-register`.
         window.dispatchEvent(new Event('dotapp-shopchart-ready'));
     };
 
-    if (window.$dotapp) runMe(window.$dotapp);
-    else window.addEventListener('dotapp-register', function () { runMe(window.$dotapp); }, { once: true });
+    if (window.$dotapp) {
+      runMe(window.$dotapp);
+    } else {
+      window.addEventListener(
+        "dotapp-register",
+        function () {
+          runMe(window.$dotapp);
+        },
+        { once: true }
+      );
+    }
 })();
 ```
 
@@ -629,7 +665,7 @@ Porting **is** writing a new library. Do **not** wrap `$.fn.foo` (`$(el).plugin(
 
 **When porting, ask the user** (usually yes). jQuery may stay for leftover UI; **every request** still uses `$dotapp().load` / `form` / bridge.
 
-If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').dotSelect2()`, `.dotDataTable()`, `.modal()`, `.toast()`, `.daterangepicker()`). **MUST search first:** grep `app/modules/DACore/` (read-only) and your module `assets/` — DACore has many subpages and libraries in the base. Do **not** write a second copy. Do **not** copy DACore JS into your module. Read those files **read-only** as shape examples. Put **your** port in `app/modules/<YourModule>/assets/js/` — never into `app/modules/DACore/` or `app/parts/js/`. Canonical: [33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”.
+If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').dotSelect2()`, `.modal()`, `.offcanvas()`, `.dragDrop()`). **MUST search first:** grep `app/modules/DACore/` (read-only) and your module `assets/` — DACore has many subpages and libraries in the base. Do **not** write a second copy. Do **not** copy DACore JS into your module. Read those files **read-only** as shape examples. Put **your** port in `app/modules/<YourModule>/assets/js/` — never into `app/modules/DACore/` or `app/parts/js/`. Canonical: [33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”.
 
 #### Playbook
 
@@ -650,10 +686,12 @@ If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').
 |-------|------------------|----------|
 | Per-element widget | 1 el → API, many → `this` | select, table, date range |
 | Markup + `getOrCreate` | `this.get(0)` then instance | toast / modal already in HTML |
-| Factory on `$dotapp()` | manager / new dialog | `$dotapp().modal(settings)`, `$dotapp().dotNotify()` |
+| Factory on `$dotapp()` | manager / new dialog | `$dotapp().modal(settings)` |
 | Chainable helper | `this` | highlight, class tweaks (pattern A) |
 
 #### jQuery → `$dotapp` map (inside the new library)
+
+This table is for the **internals of a `$dotapp().fn` library only**. Page code (handlers, forms) uses `$dotapp` — [26](26-CONTROL-SLICE.md) §4.
 
 | jQuery | In the port |
 |--------|-------------|
@@ -663,7 +701,7 @@ If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').
 | `.on('click', fn)` | `el.addEventListener` or `$dotapp(el).on` / `.live` for dynamic nodes |
 | `$(document).on('click', '.x', fn)` | one `document.addEventListener` + `e.target.closest` |
 | `.data('k')` | `el.dataset` / `getAttribute` |
-| `.find('.c')` | `el.querySelectorAll` |
+| `.find('.c')` | `el.querySelectorAll` or `$dotapp(el).find('.c')` |
 | `$.ajax` / `$.post` | `$dotapp().load` + `parseReply` |
 | `$(this)` in a handler | native `el` from `.live(..., function (el, e)` — **not** `e.currentTarget` as the first arg ([40](40-DACORE-LIST-PAGER.md)) |
 
@@ -682,7 +720,7 @@ $dotapp().fn("shopPicker", function (options) {
 
 Usage after `dotapp`: `var picker = $dotapp('#city').shopPicker({ search: true });`
 
-Read-only DACore ports (if installed): `app/modules/DACore/assets/js/dotapp.select2.js`, `dotapp.datatable.js`, `dotapp.modals.js`, `dotapp.toasts.js`, `dotapp.daterangepicker.js`. Copy the **shape**, not the files.
+Read-only DACore ports (if installed): `app/modules/DACore/assets/js/dotapp.select2.js`, `dotapp.modals.js`, `dotapp.offcanvas.js`, `dotapp.dragdrop.js`. List the folder — the files on disk are the source of truth. Copy the **shape**, not the files.
 
 Full copy-paste (new lib + port skeleton): [examples/EX-15-dotapp-js-library.md](examples/EX-15-dotapp-js-library.md).
 
@@ -737,7 +775,7 @@ $dotapp()
   .before(function (data, el) {})
   .onValueError(function (inputName, el) {})
   .after(function (body, el) { /* body = PHP return value */ })
-  .onResponseCode(function (fn, code) {}, 429);
+  .onResponseCode(function (status, text, el, e) {}, 429);   // register ONE status code per bridge — a second distinct code throws
 ```
 
 ### Response and error codes
@@ -811,5 +849,5 @@ Error codes mirror the bridge: 400/1 invalid, 403/2 key, 404/3 endpoint, 429/4 r
 | `$(fn)` | `dotapp` event |
 | `.on()` on dynamic nodes | `.live(...)` |
 | plain `<form>` + `_token` | `<fo-rm>` + `{{ formName(...) }}` |
-| raw JSON response | `parseReply()` (base64 JSON) |
+| raw JSON response | PHP `ajaxReply()` (base64 JSON) + JS `parseReply()`; never `Response::json()` for a `load()` / `form()` caller |
 | static `dotapp.js` copy | `/assets/dotapp/dotapp.js` |

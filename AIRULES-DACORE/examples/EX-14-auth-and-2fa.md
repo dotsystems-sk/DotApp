@@ -38,8 +38,9 @@ public static function loginPost($request)
         Auth::logout();
     }
 
+    // Why: crcCheck() returns 1 / 0 / false — test it with !, never === true. HTTP 200 so .after() shows the sentence.
     if (!$request->crcCheck()) {
-        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 400);
+        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'This page is out of date. Reload it and sign in again.'], 200);
     }
 
     $answer = $request->form(['POST'], 'loginForm', function ($request) {
@@ -56,7 +57,7 @@ public static function loginPost($request)
 
         if ($login === false) {
             // malformed input (missing password, both email+username, wrong stage)
-            return ['code' => 200, 'body' => ['status' => 0, 'errorNo' => 1, 'message' => 'Bad request']];
+            return ['code' => 200, 'body' => ['status' => 0, 'errorNo' => 1, 'message' => 'Enter your email and password.']];
         }
 
         if ($login['logged'] !== true) {
@@ -65,13 +66,13 @@ public static function loginPost($request)
                 2 => 'Invalid email or password',
                 3 => 'Invalid email or password',
                 4 => 'Could not load permissions',
-                5 => 'Bad request',
-                99 => 'Server error',
+                5 => 'Enter your email and password.',
+                99 => 'Sign-in is temporarily unavailable (shop.login). The fault was logged.',
             ];
             Logger::use()->warning('login failed', ['error' => $login['error']]);
             return ['code' => 200, 'body' => [
                 'status' => 0, 'errorNo' => 2,
-                'message' => $map[$login['error']] ?? 'Login failed',
+                'message' => $map[$login['error']] ?? 'Sign-in failed (shop.login). The fault was logged.',
             ]];
         }
 
@@ -99,11 +100,13 @@ public static function loginPost($request)
 
         return ['code' => 200, 'body' => ['status' => 1, 'redirectTo' => '/shop/']];
     }, function ($request, $name) {
-        return ['code' => 403, 'body' => ['status' => 0, 'message' => 'Invalid signature']];
+        // Why: without this callback a bad form signature throws.
+        return ['code' => 200, 'body' => ['status' => 0, 'message' => 'This sign-in form has expired. Reload the page and try again.']];
     });
 
     if (!is_array($answer) || !isset($answer['body'])) {
-        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Rejected'], 400);
+        // Why: form() gives false on a wrong HTTP method and null when formName / action do not match.
+        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'This sign-in form does not match its handler (loginForm). Reload the page and try again.'], 200);
     }
     return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
 }
@@ -242,9 +245,12 @@ Do **not** invent digit boxes. `dotapp.js` already has them ([09](../09-DOTAPP-J
 
 ```javascript
 $dotapp(".two-fa-inputs input").twoFactor(function (code) {
-  $dotapp().load("/shop/login/2fa", "POST", { tfa: code }, function (raw) {
-    var reply = $dotapp().parseReply(raw);
-    if (reply && reply.status == 1 && reply.redirectTo) window.location = reply.redirectTo;
+  // shopSend() = the module request helper (AIRULES/26 §5; public page variant): overlay, parseReply,
+  // a visible message on a wrong code AND on an HTTP failure.
+  shopSend("/shop/login/2fa", { tfa: code }, "#shopLoginCard", function (reply) {
+    if (reply.redirectTo) {
+      window.location = reply.redirectTo;
+    }
   });
 }, { length: 6, allowLetters: false, autoSubmit: true });
 ```
@@ -277,7 +283,7 @@ if ($r['error'] === 1) {
 }
 if ($r['error'] === 99) {
     CatchBus::reportDb((array) ($r['error_data'] ?? []));
-    return ['status' => 0, 'message' => 'Server error'];
+    return ['status' => 0, 'message' => 'The account was not created (shop.account.create). The fault was logged.'];
 }
 
 try {

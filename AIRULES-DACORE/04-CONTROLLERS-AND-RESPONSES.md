@@ -82,9 +82,9 @@ Validation: `Validator::validate(...)` (returns `true` or an error array), `Inpu
 |--------|--------|
 | HTML string | Becomes `$request->response->body` |
 | `new Response($status, $body)` | Short-circuits pipeline |
-| `Response::json($array, $code = 200)` | JSON body + content-type |
+| `Response::json($array, $code = 200)` | Plain JSON body + content-type — for **external** API clients only (they read the HTTP status) |
 | `Response::redirect($url, $code = 302)` | Redirect |
-| `DotApp::DotApp()->ajaxReply($body, $code)` | **Base64 JSON** — client must use `parseReply` |
+| `DotApp::DotApp()->ajaxReply($body, 200)` | **Base64 JSON** — the answer for every `$dotapp().load()` / `.form()` caller, through the module `Reply::ok()` / `Reply::fail()` ([26](26-CONTROL-SLICE.md) §7) |
 | `null` | Keep existing body |
 
 **Important:** static `Response::*` calls mutate a **shared** response object bound to the request and return a `Response` for chaining. There is no `send()` / static `status()`. Use `Response::make($code, $body)` or `new Response(...)` when you want a distinct object to return.
@@ -107,11 +107,13 @@ Do not assume layout vars bleed into view vars. **VIEW = outer file:** `setLayou
 
 **Sandbox:** do not pass PHP function names as var names or nested string values (`time`, `copy`, `count`, `header`, …) — the isolator **drops the whole var**. Details: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5.
 
-### JSON API
+### JSON API (external clients)
 
 ```php
 return Response::json(['status' => 1, 'items' => $rows]);
 ```
+
+**Who calls the endpoint decides the answer.** `$dotapp().load()` / `.form()` (every admin and public page of this project) → `Reply::ok()` / `Reply::fail()`: base64 JSON, HTTP 200. `parseReply()` hands back a plain-JSON body as a **string**, so a `Response::json()` answer makes the page show nothing. Another server, a mobile app or a script → `Response::json()` with real HTTP codes.
 
 ### Redirect styles
 
@@ -180,24 +182,31 @@ class Home extends \Dotsystems\App\Parts\Controller
         return $html;
     }
 
+    /**
+     * CRCchecking — #DACore:AuthTest@LoginAndCRC! (prefix /api/v1/auth/Shop/*). No crcCheck() here.
+     *
+     * Saves one item from the edit form and answers with the sentence the operator reads in the toast.
+     *
+     * @param  mixed $request POST from <fo-rm id="shopItemForm">.
+     * @return mixed Reply::ok() or Reply::fail() — always HTTP 200.
+     */
     public static function save($request)
     {
         try {
-            // Isolated POST: crcCheck here. Under /api/v1/… CRC prefix: skip — only form().
-            if (!$request->crcCheck()) {
-                return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 400);
-            }
-
             $answer = $request->form(
                 ['POST'],
                 'saveItem',
                 function ($request) {
+                    // Why: form() posts { data: {...}, crc } — the fields are one level down.
                     $payload = $request->data(true)['data'] ?? [];
-                    $title = trim((string)($payload['title'] ?? ''));
+
+                    // 1. Input — each stop has its own sentence.
+                    $title = trim((string) ($payload['title'] ?? ''));
                     if ($title === '') {
-                        return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Title required']];
+                        return Reply::fail('Enter the item title.', ['title' => 'Enter the item title.']);
                     }
 
+                    // 2. Write
                     $newId = null;
                     DB::module('RAW')->q(function ($qb) use ($title) {
                         $qb->insert('shop_items', [
@@ -209,31 +218,37 @@ class Home extends \Dotsystems\App\Parts\Controller
                             $newId = $exec['insert_id'] ?? $db->inserted_id();
                         },
                         function ($error) {
-                            Logger::use()->error('insert failed', $error);
+                            self::reportCatch('Shop:Items@save', 'shop.item.create', null, 'error',
+                                ['errno' => $error['errno'] ?? 0], $error['error'] ?? 'db error');
                         }
                     );
-
                     if ($newId === null) {
-                        return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Save failed']];
+                        return Reply::fail('The item was not saved: the database refused the change (shop.item.create). The fault was logged.');
                     }
-                    return ['code' => 200, 'body' => ['status' => 1, 'id' => $newId]];
+
+                    // 3. Answer
+                    return Reply::ok('Item saved.', ['html' => self::rowsHtml()]);
                 },
-                function ($request, $name) {                 // error callback is REQUIRED
-                    return ['code' => 403, 'body' => ['status' => 0, 'message' => 'Invalid signature']];
+                function ($request, $name) {
+                    // Why: without this callback a bad form signature throws.
+                    return Reply::fail('This form has expired. Reload the page and try again.');
                 }
             );
 
-            if (!is_array($answer) || !isset($answer['body'])) {   // handles null / false
-                return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Rejected'], 400);
+            if ($answer === false || $answer === null) {
+                // Why: form() gives false on a wrong HTTP method and null when formName / action do not match.
+                return Reply::fail('This form does not match its handler (saveItem). Reload the page and try again.');
             }
-
-            return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+            return $answer;
         } catch (\Throwable $e) {
-            Logger::use()->error('Shop save failed', ['msg' => $e->getMessage()]);
-            return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Server error'], 500);
+            self::reportCatch('Shop:Items@save', 'shop.item.create', $e, 'error');
+            return Reply::fail('The item was not saved because of a server fault (shop.item.create). The fault was logged.');
         }
     }
 }
 ```
+
+`Reply::ok()` / `Reply::fail()` are the module reply helper from [26](26-CONTROL-SLICE.md) §7 — `ajaxReply([...], 200)`. Every branch answers HTTP **200**: HTTP 4xx/5xx skips `.after()` and the `load()` success callback, so the message would never reach the toast. An isolated POST with **no** CRC prefix starts with `if (!$request->crcCheck()) { return Reply::fail('This page is out of date. Reload it and try again.'); }` — `crcCheck()` returns `1` / `0` / `false`, never `true`.
+
 
 Why each guard exists: `form()` **throws** without an error callback, returns `false` on method mismatch and `null` on handler mismatch; `execute()` **throws** without an error callback; a missing view yields `""`. See [18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md).

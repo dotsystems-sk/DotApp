@@ -475,7 +475,7 @@ Canonical (read-only): `app/modules/DACore/views/layouts/plugins/_gate.layout.ph
 - `$dotapp("#… input").twoFactor(submitFn, { length: 6, autoSubmit: true, allowLetters: false, invalidClass: "is-invalid" })`
 - Paste of six digits **or** the sixth box filled → **immediately** POST (`form` / `load`). Confirm is fallback only
 - Overlay `.modal-content` until the request ends ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
-- Footer padding vs the modal (`pb-4`). A lock-in gate may omit Cancel; an optional confirm **MUST** keep Cancel
+- Buttons in `.modal-footer` (it has its own padding in the shell) with `gap-2` between them. A lock-in gate may omit Cancel; an optional confirm **MUST** keep Cancel
 
 **MUST NOT:** one `<input maxlength="6">` on the settings card; OTP boxes inline under Save; a custom OTP / jQuery widget; `autoSubmit: false` on unlock/confirm step-up; a second look per module; `Auth::confirmTwoFactor` (login stage 2 only).
 

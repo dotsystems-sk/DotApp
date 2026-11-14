@@ -40,7 +40,7 @@ Posted fields sit **inside** `data`. **MUST** unwrap (`formBag` / `posted()`) �
 
 | Where CRC runs | Action |
 |----------------|--------|
-| `#DACore:AuthTest@CRC!` / `LoginAndCRC!` on `/api/v1/auth\|noauth/{Module}/*`, **or** DACore `#DACore:AuthTest@check!` on `POST /dacore/*` | **MUST NOT** `crcCheck()` again — only `form()` / persist |
+| `#DACore:AuthTest@CRC!` / `LoginAndCRC!` on `/api/v1/auth\|noauth/{Module}/*`, **or** DACore’s own `#DACore:AuthTest@crcGuard!` on `POST {prefixUrl}/dacore/*` | **MUST NOT** `crcCheck()` again — only `form()` / persist |
 | That POST has **no** prefix CRC | **MUST** `crcCheck()` **once** in the action (EX-01) |
 
 **PHPDoc (MUST):** every public method in `Controllers/` and `Middleware/` starts with **`CRCchecking —`** naming that row in plain text (exact `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` / prefix path, or `this action`, or `none`). The next agent **MUST NOT** add `crcCheck()` when the line already names a prefix. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
@@ -163,49 +163,53 @@ If you omit this script, do not claim the form is DotApp-secure.
 ### Template
 
 ```html
-<fo-rm method="post" id="saveForm" action="/api/v1/auth/Shop/items/save">
-  <input type="text" name="title" />
-  {{ formName(saveItem) }}
-  <button type="submit" id="saveBtn">Save</button>
-</fo-rm>
+<div class="card mb-6" id="saveCard">
+  <fo-rm method="post" id="saveForm" action="/api/v1/auth/Shop/items/save">
+    <div class="card-body">
+      <input type="text" name="title" class="form-control" />
+      {{ formName(saveItem) }}
+    </div>
+    <div class="dacore-card-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </fo-rm>
+</div>
 <script src="/assets/dotapp/dotapp.js"></script>
 <script src="/assets/modules/Shop/js/save.js"></script>
 ```
 
-### JS (loader + halt + parseReply)
+### JS (the module request helper)
 
 ```javascript
-$dotapp().form("#saveForm")
-  .before(function (data, form) {
-    if ($dotapp(form).attr("blocked") == 1) return $dotapp().halt();
-    $dotapp(form).attr("blocked", "1");
-    $dotapp("#saveBtn").attr("loading", "true").attr("loader", "dots");
-  })
-  .after(function (data, response, form) {
-    var reply = $dotapp().parseReply(response);
-    if (reply && reply.status == 1) {
-        if (reply.html) $dotapp('#listWrap').html(reply.html);
-        // toast — do not location.reload(); redirectTo only if leaving this page
-    }
-    $dotapp(form).attr("blocked", "0");
-    $dotapp("#saveBtn").removeAttr("loading").removeAttr("loader");
-  });
+// shopForm() is defined once per module — AIRULES/26 §5. It binds .before() + .after() + .onError(),
+// blocks the card, and ends every request in exactly one toast.
+shopForm("#saveForm", "#saveCard", function (reply) {
+  if (reply.html) {
+    $dotapp("#listInner").html(reply.html);
+  }
+});
 ```
 
-Boot with the `dotapp` event — see [examples/EX-06-dotapp-js-boot.md](examples/EX-06-dotapp-js-boot.md).
+`.form()` has **three** hooks: `.before(data, form)`, `.after(data, rawText, form)`, `.onError(data, status, bodyText, form)`. `.after()` does **not** run on HTTP 4xx/5xx or a network fault. A chain with no `.onError()` leaves the form blocked and shows nothing. Boot block and file shape: [26](26-CONTROL-SLICE.md) §3.
 
 ### PHP
 
 ```php
-if ($request->crcCheck()) {
-    $answer = $request->form(['POST'], 'saveItem', function ($request) {
-        $data = $request->data(true)['data'] ?? [];
-        // validate + persist
-        return ['code' => 200, 'body' => ['status' => 1, 'message' => 'Saved', 'html' => $tableHtml]];
-    });
+// Under the #DACore:AuthTest@LoginAndCRC! prefix the CRC is already burned — start with form().
+$answer = $request->form(['POST'], 'saveItem', function ($request) {
+    $data = $request->data(true)['data'] ?? [];
+    // validate + persist — each stop returns its own Reply::fail('…')
+    return Reply::ok('Item saved.', ['html' => $tableHtml]);
+}, function ($request, $name) {
+    return Reply::fail('This form has expired. Reload the page and try again.');
+});
+if ($answer === false || $answer === null) {
+    return Reply::fail('This form does not match its handler (saveItem). Reload the page and try again.');
 }
-return \Dotsystems\App\DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+return $answer;
 ```
+
+`Reply` = the module helper from [26](26-CONTROL-SLICE.md) §7 (HTTP 200, `status`, `message`). Full action with `try/catch` and the catch report: same section.
 
 Handler string in `formName(saveItem)` **must equal** `form(..., 'saveItem', ...)`.
 

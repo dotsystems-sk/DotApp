@@ -19,7 +19,7 @@ $result = Auth::login([
 
 if ($result === false) {
     // MALFORMED INPUT (missing password, both email+username, wrong stage)
-    return ['status' => 0, 'message' => 'Bad request'];
+    return ['status' => 0, 'message' => 'Enter your email and password.'];
 }
 
 if ($result['logged'] === true) {
@@ -107,7 +107,7 @@ Throws `\Exception('Invalid email address.')` if `$email` fails `FILTER_VALIDATE
 try {
     $r = Auth::createUser($u, $p, $email);
 } catch (\Throwable $e) {
-    return Response::json(['status' => 0, 'message' => 'Invalid email'], 422);
+    return Reply::fail('Enter a valid email address.', ['email' => 'Enter a valid email address.']);   // 26 §7
 }
 ```
 
@@ -209,7 +209,7 @@ $cipher = Crypto::encrypt($plain, 'Shop.item.id');       // string
 $plain  = Crypto::decrypt($cipher, 'Shop.item.id');      // string|FALSE
 
 if ($plain === false) {
-    return Response::json(['status' => 0, 'message' => 'Invalid token'], 400);
+    return Reply::fail('This link has expired. Reload the page and try again.');   // 26 §7
 }
 
 $cipherArr = Crypto::encrypta(['id' => 5], 'Shop.payload');

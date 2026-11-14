@@ -104,7 +104,7 @@ Full detail: [06-DATABASE.md](06-DATABASE.md).
 | `Config::get($section,$key)` | `null` if unset | same |
 | `Validator::validate(...)` | `true` on success, **array** on failure | `if ($r === true)` — do **not** use truthiness |
 | `Input::validate()` | `bool` | Read `getErrors()` on false |
-| `$request->crcCheck()` | `bool` | Never skip; **once** per request (second call burns → `false`) |
+| `$request->crcCheck()` | **`1` / `0` / `false`** — never `true` | Test with `if (!$request->crcCheck())`. `=== true` rejects every valid POST. **Once** per request (second call burns → falsy) |
 | `$request->form(...)` | callback return, or `false`, or **`null`**, or throws | Guard all three |
 | `Limiter::isAllowed($route)` | `bool` | — |
 | `Renderer::loadView()` / missing layout | **`""`** + warning log (no exception) | Blank page with no error |
@@ -118,7 +118,7 @@ Full detail: [06-DATABASE.md](06-DATABASE.md).
 ```php
 $plain = Crypto::decrypt($cipher, 'Shop.item.id');
 if ($plain === false) {
-    return Response::json(['status' => 0, 'message' => 'Invalid token'], 400);
+    return Reply::fail('This item link has expired. Reload the page and try again.');   // 26 §7 — HTTP 200
 }
 ```
 
@@ -175,33 +175,74 @@ $hits = $r['data'];
 ### Standard controller guard
 
 ```php
+/**
+ * CRCchecking — #DACore:AuthTest@LoginAndCRC! (prefix /api/v1/auth/Shop/*). No crcCheck() here.
+ *
+ * Saves one item from the edit form and answers with the sentence the operator reads in the toast.
+ *
+ * @param  mixed $request POST from <fo-rm id="shopItemForm">.
+ * @return mixed Reply::ok() or Reply::fail() — always HTTP 200.
+ */
 public static function save($request)
 {
     try {
-        if (!$request->crcCheck()) {
-            return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 400);
+        $answer = $request->form(
+            ['POST'],
+            'saveItem',
+            function ($request) {
+                // Why: form() posts { data: {...}, crc } — the fields are one level down.
+                $payload = $request->data(true)['data'] ?? [];
+
+                // 1. Input — each stop has its own sentence.
+                $title = trim((string) ($payload['title'] ?? ''));
+                if ($title === '') {
+                    return Reply::fail('Enter the item title.', ['title' => 'Enter the item title.']);
+                }
+
+                // 2. Write
+                $newId = null;
+                DB::module('RAW')->q(function ($qb) use ($title) {
+                    $qb->insert('shop_items', [
+                        'title' => $title,
+                        'created_at' => date('Y-m-d H:i:s'),
+                    ]);
+                })->execute(
+                    function ($result, $db, $exec) use (&$newId) {
+                        $newId = $exec['insert_id'] ?? $db->inserted_id();
+                    },
+                    function ($error) {
+                        self::reportCatch('Shop:Items@save', 'shop.item.create', null, 'error',
+                            ['errno' => $error['errno'] ?? 0], $error['error'] ?? 'db error');
+                    }
+                );
+                if ($newId === null) {
+                    return Reply::fail('The item was not saved: the database refused the change (shop.item.create). The fault was logged.');
+                }
+
+                // 3. Answer
+                return Reply::ok('Item saved.', ['html' => self::rowsHtml()]);
+            },
+            function ($request, $name) {
+                // Why: without this callback a bad form signature throws.
+                return Reply::fail('This form has expired. Reload the page and try again.');
+            }
+        );
+
+        if ($answer === false || $answer === null) {
+            // Why: form() gives false on a wrong HTTP method and null when formName / action do not match.
+            return Reply::fail('This form does not match its handler (saveItem). Reload the page and try again.');
         }
-
-        $answer = $request->form(['POST'], 'saveItem', function ($request) {
-            // ... work ...
-            return ['code' => 200, 'body' => ['status' => 1]];
-        }, function ($request, $name) {
-            return ['code' => 403, 'body' => ['status' => 0, 'message' => 'Invalid signature']];
-        });
-
-        if (!is_array($answer) || !isset($answer['body'])) {
-            return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Rejected'], 400);
-        }
-
-        return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+        return $answer;
     } catch (\Throwable $e) {
-        Logger::use()->error('save failed', ['msg' => $e->getMessage()]);
-        return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Server error'], 500);
+        self::reportCatch('Shop:Items@save', 'shop.item.create', $e, 'error');
+        return Reply::fail('The item was not saved because of a server fault (shop.item.create). The fault was logged.');
     }
 }
 ```
 
 Note the **error callback on `form()`** — without it a bad signature **throws**.
+
+`Reply::ok()` / `Reply::fail()` are the module reply helper from [26](26-CONTROL-SLICE.md) §7 — `ajaxReply([...], 200)`. Every branch answers HTTP **200**: HTTP 4xx/5xx skips `.after()` and the `load()` success callback, so the message would never reach the toast. An isolated POST with **no** CRC prefix starts with `if (!$request->crcCheck()) { return Reply::fail('This page is out of date. Reload it and try again.'); }` — `crcCheck()` returns `1` / `0` / `false`, never `true`.
 
 ---
 
@@ -346,7 +387,7 @@ private static function reportCatch($source, $operation, $e = null, $severity = 
 } catch (\Throwable $e) {
     // Telemetry first, then the user-visible outcome (00 §2d — admin = toast).
     self::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error', ['item_id' => $id]);
-    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Could not save the item.'], 500);
+    return Reply::fail('The item was not saved because of a server fault (shop.item.update). The fault was logged.');   // HTTP 200 — 26 §7
 }
 ```
 
@@ -406,7 +447,7 @@ Listener bodies **MUST** be defensive (own `try/catch`) and cheap — they run i
 | `Entity::save()` | void + ok callback | void + err callback / throws |
 | `Validator::validate` | `true` | `array<field, string[]>` |
 | `Input::validate` | `true` | `false` + `getErrors()` |
-| `$request->crcCheck` | `true` | `false` |
+| `$request->crcCheck` | `1` (truthy, not `true`) | `0` / `false` |
 | `$request->form` | callback return | `false` / `null` / throws |
 | `$request->validateInputs` | `true` | array w/ `error_code` 403\|422 |
 | `Crypto::decrypt` | string | **`false`** |

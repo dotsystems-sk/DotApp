@@ -416,6 +416,9 @@
                 this.#elements = selector.all().slice();
             } else if (selector instanceof HTMLElement) {
                 this.#elements = [selector];
+            } else if (Array.isArray(selector) || selector instanceof NodeList || selector instanceof HTMLCollection) {
+                // Pole / NodeList / HTMLCollection elementov - pouzivaju to find(), children(), siblings(), clone()
+                this.#elements = Array.from(selector).filter(element => element instanceof HTMLElement);
             }
             this.#liveHandlers = new Map();
             this.#documentHandlers = new Map();
@@ -1440,7 +1443,7 @@
             return this.#elements.length > 0 ? this.#elements[0] : null;
         }
 
-        last() {
+        last(chainable = true) {
             if (chainable === true) return new DotApp(this.#elements[this.#elements.length - 1] || null);
             return this.#elements.length > 0 ? this.#elements[this.#elements.length - 1] : null;
         }
@@ -1450,7 +1453,11 @@
         }
 
         nth(index) {
-            this.get(index);
+            return new DotApp(this.get(index));
+        }
+
+        get length() {
+            return this.#elements.length;
         }
 
         getElements() {
@@ -2973,54 +2980,41 @@
                 const formData = new FormData();
                 formData.append('user_files', file);
 
-                // Create ReadableStream for progress tracking
-                const stream = new ReadableStream({
-                    start(controller) {
-                        // For simplicity use entire file as one chunk
-                        controller.enqueue(file);
-                        controller.close();
-                    }
-                });
+                // XMLHttpRequest - fetch nevie hlasit priebeh uploadu
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url, true);
+                xhr.setRequestHeader('dotapp', 'load');
 
-                // Wrapper for progress tracking
-                let loaded = 0;
-                const total = file.size;
-                const body = new ReadableStream({
-                    async pull(controller) {
-                        const reader = stream.getReader();
-                        const { done, value } = await reader.read();
-                        if (done) {
-                            controller.close();
-                            return;
+                if (typeof progressCallback === 'function') {
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable && event.total > 0) {
+                            progressCallback(file.name, (event.loaded / event.total) * 100);
                         }
-                        controller.enqueue(value);
-                        loaded += value.byteLength;
-                        if (typeof progressCallback === 'function' && total > 0) {
-                            const percentComplete = (loaded / total) * 100;
-                            progressCallback(file.name, percentComplete);
-                        }
-                    }
-                });
+                    };
+                }
 
-                fetch(url, {
-                    method: 'POST',
-                    body: formData, // Use FormData directly, stream is for illustration
-                    headers: {
-                        'dotapp': 'load'
-                    }
-                })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Error sending ${file.name}: ${response.status}`);
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        if (typeof progressCallback === 'function') {
+                            progressCallback(file.name, 100);
                         }
-                        return response.text();
-                    })
-                    .then(text => {
-                        resolve(text);
-                    })
-                    .catch(error => {
-                        reject(error);
-                    });
+                        resolve(xhr.responseText);
+                        return;
+                    }
+                    const error = new Error(`Error sending ${file.name}: ${xhr.status}`);
+                    error.status = xhr.status;
+                    error.responseText = xhr.responseText;
+                    reject(error);
+                };
+
+                xhr.onerror = () => {
+                    const error = new Error(`Error sending ${file.name}: network error`);
+                    error.status = 0;
+                    error.responseText = '';
+                    reject(error);
+                };
+
+                xhr.send(formData);
             });
         }
 

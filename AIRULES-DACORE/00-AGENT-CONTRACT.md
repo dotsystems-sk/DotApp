@@ -266,7 +266,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **Middleware / route conflicts** | `module.init.php` + Middleware vs the action | Login `before` missing **or** handlers outside `Auth::isLogged()`; CRC layer **and** action `crcCheck()`; CRC on a GET gate; `#DACore:AuthTest@check!` used as a rights guard (it **ignores** passed rights — use `#YourModule:Rights@check!`) |
 | **DACore files** | The diff | Any edit/add/delete under `app/modules/DACore/` unless the informed exception in [§1](#dacore-files--strict-default-informed-exception-only) |
 | **Read scope** | Tool paths in this chunk (Read / Grep / Glob / Task) | Opened `app/modules/<Sibling>/` while programming `<Target>` without the user naming that sibling as the extend/listen/Extender target. Copied a sibling’s cards/CSS/chrome. Hunt over `app/modules/*`. Examples taken from a live sibling instead of `AIRULES/examples/` ([§1b](#1b-read-scope-must--law)) |
-| **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; admin save without a DACore toast; a known bad field with only “could not save” and no red input + sentence under it; that mark still showing after the person starts editing the field; AJAX save/list with no overlay ([§2d](#2d-visible-outcome-must--law)) |
+| **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; admin save without a DACore toast; public field errors without marking the input ([§2d](#2d-visible-outcome-must--law)) |
 | **Layout / UX-UI** | Diff of views, CSS, and chrome (buttons, footers, cards, modals) | Control flush to the parent edge; missing padding on a side / **top** / **bottom**; buttons last in a block with no space below (the usual Save-at-the-bottom hole); uncentered/cramped vs siblings; `pt-0` footer with no `pb-*`; desktop-only placement ([§2f](#2f-layout-and-uxui-must--law), [33](33-DACORE-PAGES-AND-UI.md) §6) |
 | **Admin page composition** | New/rewritten admin form, settings, or editor views | One undifferentiated card of inputs; missing numbered section + one-sentence lede; missing “Why this matters” note when the cluster is not obvious; two unrelated jobs on one GET; purpose-less page header; copied another module’s chrome into the target module ([§2f](#2f-layout-and-uxui-must--law), [33](33-DACORE-PAGES-AND-UI.md) §6b) |
 | **HTML via Renderer** | Diff of Controllers / Libraries vs `views/` | A screen or fragment (table, grid, empty state, pager chrome, tree, crumbs, card) built with `$html .=` / `'<table` / `'<tr` / `'<div class=` / `'<ul class=` / a `*Html()` factory in PHP. Fail unless that **one piece** has `// Why:` naming a real exception (sandbox callable drop, `Page@paginate!` `<li>`, one tiny chip) — never a whole list ([§2j](#2j-html-via-renderer-must--law), [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c) |
@@ -304,44 +304,29 @@ User reports a failure **after** ship: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.
 
 ### 2d. Visible outcome (MUST — law)
 
-UX is the same rank as a working POST. The user **MUST** always see what happened, **where**, and **why**. Silent save and silent fail are **bugs**. A generic “Could not save” when the bad field is known is also a **bug**.
+The user **MUST** always see what happened. Silent save and silent fail are **bugs**.
 
-**Every** stay-on-page action (save, toggle, delete, upload, login, form): PHP returns `status` + `message`, and `errors` keyed by field name when the problem is a **field**. The sentence names the problem in product language (which value, which rule). JS **MUST** show it. Empty `.after()` is forbidden.
-
-**AJAX loading (MUST):** every `form()` / `load()` that waits on the server covers that form or list until the reply, on success **and** on fail. Admin: `Notiflix.Block` (or this page’s own overlay). Public: a preloader in **this** module. A stuck overlay and a save with no busy state are bugs. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Block while in flight”.
-
-**Tabs (MUST):** a control that looks like tabs is **separate GET subpages** + `<a href>` + **this** module’s CSS. **MUST NOT** `data-bs-toggle="tab"` / `.tab-pane.fade`. Canonical: [33](33-DACORE-PAGES-AND-UI.md) §0.
-
-#### Field errors (admin and public — MUST)
-
-When validation can name a control:
-
-1. PHP reads `$request->data(true)` (unwrap nested `data`; unprotect a private copy if the nested bag is still `protect()`-mutated), checks the real value, and returns HTTP **200** + `status` 0 + a short `message` + `errors` as `{ fieldName: "exact sentence" }`. Several addresses separated by `;` are checked **one by one**. Example: `artluk@artluk.sk;not-an-email` on the contact list → `errors.contact_email` says that `not-an-email` is not a valid address and that further addresses are separated by `;`.
-2. JS adds an invalid class on **that** input (red border and a light red tint) and writes the sentence in a node **under that field**. Use `.text()` / `textContent`. **MUST NOT** `.html()` a server string.
-3. A toast may repeat the summary. The toast **does not** replace the mark on the field.
-4. **Clear on edit (MUST):** the first `input` or `change` on that control removes **its** red state and **its** sentence. Fields that are still wrong stay marked. The error returns only on the next failed submit. **MUST NOT** leave the red border up while the person is already fixing that field. **MUST NOT** wipe every field’s error when they type in one of them.
-
-**MUST NOT:** only “Could not save” / “Nastavenia sa nepodarilo uložiť” when a field is the cause; a red border with no sentence; a sentence only in a toast; an error that survives the first keystroke in that field.
+**Every** stay-on-page action (save, toggle, delete, upload, login, form): PHP returns HTTP 200 + `status` + a `message` that names what happened and at which step (and `errors` when the problem is a **field**). JS **MUST** show it. Empty `.after()` is forbidden; `.form()` without `.onError()` is forbidden (`.after()` does not run on HTTP 4xx/5xx). Write-time recipe, reply helper and action skeleton: [26](26-CONTROL-SLICE.md).
 
 #### DACore admin (`Page@withMenu!`)
 
-**MUST** grep `app/modules/DACore/` **read-only** first — Notiflix (`Notify`, `Confirm`, `Block`), `$dotapp().toast()`, `$dotapp().modal()`, `assets/js/dotapp.toasts.js`, vendor notify. **Use what the shell already loads.** Do **not** invent a second toast library. Disk is the source of truth ([33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”).
+**MUST** grep `app/modules/DACore/` **read-only** first — Notiflix (`Notify`, `Confirm`, `Block`), `window.dacoreRequestError`, `$dotapp().modal()`. (There is no `$dotapp().toast()` and no `dotapp.toasts.js` in the shell.) **Use what the shell already loads.** Do **not** invent a second toast library. Disk is the source of truth ([33](33-DACORE-PAGES-AND-UI.md) “Search DACore first”).
 
 | Kind | Channel (**MUST**) |
 |------|-------------------|
-| Success / non-field failure / CRC / rights | **Toast** — `Notiflix.Notify.success` / `failure` (or `$dotapp().toast()` if that is what you found in DACore). |
-| Field validation | Toast **and** the field: red input + the exact sentence under that input. Clear that field’s error on the next `input` / `change`. |
+| Success / failure / CRC / rights | **Toast** — `Notiflix.Notify.success` / `failure`, through the one module request helper ([26](26-CONTROL-SLICE.md) §5). Three paths, three toasts: `status` 1, `status` 0, **and** HTTP 4xx/5xx / network (`.onError()` / the `load()` error callback + `dacoreRequestError.message()`). |
+| Field validation | Toast with `reply.message` is the admin outcome. Marking the input is optional extra — **do not skip the toast**. |
 
 #### Public / front-office (no admin shell)
 
-Notiflix is **not** there. **You MUST build** feedback in **your** module. CMS template packs follow the same field rule (`app/modules/CMS/AIRULES/20-PACK-UX.md`).
+Notiflix is **not** there. **You MUST build** feedback in **your** module.
 
 | Kind | Channel (**MUST**) |
 |------|-------------------|
-| Field validation | Mark the **wrong input** (invalid/red class) **and** the message **on that field**. PHP **MUST** return `errors` keyed by field. Clear that field’s error on the next `input` / `change`. Persist still re-checked in PHP. |
+| Field validation | **Preferred (FE + BE):** mark the **wrong input** (invalid/red class) **and** the message **on that field** (where + what). PHP **MUST** return `errors` keyed by field. Persist still re-checked in PHP. |
 | Success / non-field failure | **Your** module toast / status node + `reply.message`. Never `alert()`. |
 
-Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Visible outcome”, [19](19-VALIDATION-AND-INPUT.md), [33](33-DACORE-PAGES-AND-UI.md), [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md). Compact: `AIRULES/cursor/rules/29-ux-save-feedback.mdc`. Host restatements: `app/modules/DACore/AIRULES/02-OPERATOR-UX.md`, `app/modules/CMS/AIRULES/20-PACK-UX.md`.
+Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 “Visible outcome”, [19](19-VALIDATION-AND-INPUT.md), [33](33-DACORE-PAGES-AND-UI.md), [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md).
 
 ### 2e. DACore installable zip (MUST — law)
 
@@ -377,12 +362,12 @@ A control that **works** but looks unfinished is a **bug**, same rank as a silen
 **When adding a button (or any action control) — MUST, every time:**
 
 1. Check **padding on all sides** — left, right, **top**, and **bottom**. The control **MUST NOT** sit flush against the parent’s edge.
-2. **Last in the block (usual fail):** if the buttons are the **last content** of a card, `card-body`, modal, drawer, or page section, **almost always** add space **below** (`card-footer` + `pb-3`/`pb-4`, or CSS `padding-bottom`). Dropping Save at the bottom with no bottom padding is the most common layout bug.
+2. **Last in the block (usual fail):** if the buttons are the **last content** of a card, `card-body`, modal, drawer, or page section, put them in their **own action row** after `.card-body`: `<div class="dacore-card-actions">` (flex, wrap, gap, padding on all four sides). **DACore is not Bootstrap:** `card-footer`, `pb-3`, `pb-4`, `pt-0`, `px-4`, `border-0` have **no CSS rule** in `core.css` and add no space — that is the cause of the Save-glued-to-the-bottom bug. Copy-paste markup + the list of classes that exist: [26](26-CONTROL-SLICE.md) §2.
 3. Place it **deliberately vs the parent**: centered or aligned to the same rhythm as sibling cards/footers — not shoved left by leftover `text-start` / missing flex.
-4. Match the **shell**. **DACore admin:** grep existing `card-footer` / `btn` spacing first (read-only). **Public:** your module CSS. Do not invent a second spacing system.
+4. Match the **shell**. **DACore admin:** `.dacore-card-actions`, `.dacore-toolbar`, `d-flex gap-2`; before any other utility class `grep -c` it in `app/modules/DACore/assets/css/core.css` (zero hits = it does nothing). **Public:** your module CSS. Do not invent a second spacing system.
 5. Desktop **and** mobile: adequate touch target, wrap without overflow, no hover-only placement.
 
-**Fail now if:** a Save/primary is glued to the card or page edge; buttons are the last piece of a block with **no** bottom padding; a footer has `pt-0` with **no** compensating `pb-*`; a cluster is cramped or uncentered vs siblings; a new control ignores the parent’s padding box.
+**Fail now if:** a Save/primary is glued to the card or page edge; buttons are the last piece of a block with **no** bottom padding; a spacing class with no CSS rule in the shell or this module; a cluster is cramped or uncentered vs siblings; a new control ignores the parent’s padding box.
 
 **Admin page composition (MUST — every DACore-bound form / settings / editor):**
 
@@ -640,7 +625,7 @@ Live browser click-through **burns tokens**. The operator is faster at Save / De
 **MUST**
 
 - Write the code. Run the finish gate (CRC once, enc IDs, unwrap, HTTP **200** + `status`, CatchBus, PHP 7.4+).
-- Verify UX/UI from **source**: numbered sections, lede, Why panel, target-module label-row heights (label with `?` vs sibling without), `card-footer` padding, no `pt-0` on Save.
+- Verify UX/UI from **source**: numbered sections, lede, Why panel, target-module label-row heights (label with `?` vs sibling without), action rows (`.dacore-card-actions`), no `pt-0` on Save.
 - If the operator should click: write a **short click list** (“open `/admin/<TargetModule>/items`, Add, Save, Delete, tell me if it worked”). Do **not** perform those clicks.
 - **ASK** before any live browser. Proceed **only** if this turn’s user message **commands** it (`over to v prehliadači`, `klikni`, `verify in the browser`) **or** they answered **yes** to that ASK.
 
@@ -722,6 +707,26 @@ Models often hand off a module whose buttons are flush against the card, blocks 
 - Skip the comment pass because "the code is clear"
 
 Compact: `AIRULES/cursor/rules/31-final-control.mdc`.
+
+### 2v. Control slice — write the whole button the first time (MUST — law)
+
+`/finalcontrol` (§2u) is a confirmation, not the place where buttons get repaired. A control is **one slice of six parts** written in the **same chunk**: markup in an action row → listener → route → action → reply → toast on success, on `status` 0 **and** on HTTP/network failure. Finish all six before starting the next control.
+
+**MUST**
+
+1. Open [26-CONTROL-SLICE.md](26-CONTROL-SLICE.md) before the first button of a task and **copy** its blocks: the action-row markup (§2), the JS file shape with the exact boot block (§3), the `$dotapp` want → write table (§4), the module request helper (§5), the route (§6), the `Reply` helper and action skeleton (§7).
+2. Send every request through the one module helper (`xxxSend` / `xxxForm`). `.form()` chains carry `.onError()`; `load()` carries its error callback.
+3. End every PHP branch in `Reply::ok()` / `Reply::fail()` — HTTP 200, and a sentence that names the object and the step that stopped. Server faults carry the operation slug passed to `reportCatch()`.
+4. After the slice, add the control row (`Control | View | Listener | URL + method | Route | Controller@method | Success toast | Failure toast`, every cell `file:line`) to the reply and run `php AIRULES/tools/control-check.php <Module>`.
+
+**MUST NOT**
+
+- Write the views of a screen first and "wire them later" — that is how buttons end up with no listener or no route
+- A boot block in any other form than [26](26-CONTROL-SLICE.md) §3; `document.getElementById` / `querySelector` / `getAttribute` / `innerHTML` in page code
+- `ajaxReply(..., 400|403|500)`, `'code' => 4xx|5xx`, or `Response::json()` for a `load()` / `form()` caller; messages `Server error` / `Bad request` / `Rejected` / `Save failed`
+- `card-footer` / `pb-3` / `pb-4` / `pt-0` / `px-4` / `border-0` for spacing — no CSS rule in the DACore shell
+
+Compact: `AIRULES/cursor/rules/32-control-slice.mdc`.
 
 ---
 
@@ -839,7 +844,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 14. **Documentation (MUST):** English. Every file/class gets a docblock. Every public/static method in **`Controllers/`** and **`Middleware/`** starts PHPDoc with **`CRCchecking —`** naming **where** CRC runs (exact prefix/middleware such as `#DACore:AuthTest@LoginAndCRC!`, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence** — tags alone (`@return array<string, mixed>`) are a **bug**. Then `@param` / `@return` / `@throws` with **meaning**, not only types. Inline comments **MUST** use the labels **`// Why:`** (every logical step), **`// About:`** (what the chunk is / what the record represents), **`// Section:`** (admin menu or route). **MUST NOT** restate the code (`// increment i`), prompt-echo, omit the labels, or leave dead code / bare `TODO`. **MUST NOT** write `CRCchecking — prefix … MUST NOT crcCheck()` and then call `crcCheck()` in that method. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md).
 15. **Errors (MUST):** persist handlers in `try/catch` (`\Throwable`) — log, structured `ajaxReply`, **never** leak `$e->getMessage()`, **never** empty `catch`. `execute()` **MUST** get **both** callbacks (`$ok` and `$err`); omitting `$err` **throws**. **Every `catch` and every `execute()` `$err` MUST also report to the catch bus:** `Events::trigger('dotapp.catch', $payload)` then `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered/expected), with the fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`) — no secrets, tokens, rights blobs or request bodies in it. Route it through **one** report helper per module (in **your** module, never a file under `app/modules/DACore/`) so a future debugger listener cannot break the reply. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
 16. **Cheap I/O (MUST):** pick the smallest load — `exists()` / `COUNT(*)` / `limit(1)` / `select` only used columns / `paginate()` / one `join`. **MUST NOT** `->all()` then filter, N+1 in `foreach`, or `Config::db('cache')` “for speed”. Canonical: [06](06-DATABASE.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §2.
-17. **Visible outcome (MUST):** the user always sees success and failure, **where**, and **why**. **DACore admin:** search DACore first, then **toast** (Notiflix / `$dotapp().toast()`). A known bad field is also a **red input + the exact sentence under it** (admin and public). That mark **clears on the next edit** of that field and returns only on the next failed save. AJAX covers the form/list until the reply. Tabs are separate GET pages. Canonical: [§2d](#2d-visible-outcome-must--law).
+17. **Visible outcome (MUST):** the user always sees success and failure. **DACore admin:** **toast** through the one module request helper — [26](26-CONTROL-SLICE.md) §5 (`Notiflix.Notify`; there is no `$dotapp().toast()`). **Public:** mark the wrong field (red + message on the input). Canonical: [§2d](#2d-visible-outcome-must--law).
 18. **Privilege and records (MUST):** no secret in a read-only view; no grant/mutate above the actor; SQL scoped to owner; own password needs current password; live routes; lockout covers 2FA if you built lockout. Public noauth that bots can hammer: **MUST warn** in chat (CAPTCHA optional — not MUST). Canonical: [11](11-AUTH-AND-CRYPTO.md) §11.
 19. **Known attack vectors (MUST):** the catalogue in [24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md) is **law** — injection (SQL, XSS, command, template, deserialization), channels (headers, redirect, mail, SSRF, mass assignment), identity (CSRF, fixation, brute force, enumeration), access control (IDOR, escalation, wrong guard, tampered fields), browser headers, files/paths, abuse/rate limit, leaks, crypto, third-party/AI/prompt injection. **MUST NOT** ship a chunk that enables one. Open only the sections for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix a vector in **your** module — **never** by patching `app/modules/DACore/`. A vector not listed there is still forbidden — apply the nearest row and **say it in chat**.
 20. **Performance, schema and readability (MUST):** [25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md) is **law** — smallest I/O, bounded memory (page big sets, no O(n²), no full-array copies), **indexes designed for the queries you actually wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column; composite order equality → range → sort; leftmost prefix; no duplicate prefix indexes), sane column types, cheap frontend (**reuse DACore assets** instead of a second library), and the documentation standard (§7: **`CRCchecking —` first** on controller/middleware public methods, PHPDoc **purpose sentence** then tags, labeled **`Why:`** / **`About:`** / **`Section:`**). Index and query **your** tables only — never `dacore_*`. Run the perf pass ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §8) with the finish gate.
@@ -905,7 +910,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - PHP: default 7.4+; ASK in the plan for a higher version — NOT match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they said yes (00 §2i)
  * - Cursor: inherit parent model for subagents; ASK before expensive models; Composer 2.5 = file hunt only, not the coder
  * - Finish gate (LAW): after every chunk grep crcCheck once, enc ids, bound SQL, data(true), middleware vs action, Events::trigger vs .hooks — 00 §2c / 41
- * - Visible outcome (LAW): user always sees save/fail, where, and why; toast plus red field + sentence; clear that field on the next edit — 00 §2d
+ * - Visible outcome (LAW): user always sees save/fail; DACore admin = search DACore then toast; public = mark the wrong field — 00 §2d
  * - Layout / UX-UI (LAW): buttons MUST have padding vs parent on all sides; when last in a block almost always pad below; never flush to the card edge — 00 §2f, 33 §6
  * - HTML via Renderer (LAW): when it can be a template it MUST be; PHP HTML string only for a named one-piece exception — 00 §2j / 05 §1c
  * - Planning depth (LAW): new module / first surface / rewrite plan MUST inventory every Menu@register row (or No menu), page, tab, control — length is OK — 00 §2k / 45
@@ -998,8 +1003,9 @@ Start at [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md).
 | Plan / PHP version | **00 §2i** — ASK 7.4+ (default) vs a higher PHP; no answer → 7.4+ | — |
 | Plan / new module, first major surface, or rewrite | **00 §2k** + **§2o** + **§2p** / **[45](45-MODULE-PLANNING.md)** — `PLAN/` in **this** module (split files); packs read host `AIRULES/`, not host `PLAN/` | — |
 | Cursor `.mdc` / copied AIRULES folder | **00 §2l** — source is `AIRULES/cursor/rules/`; agent **MUST** copy into `.cursor/rules/` | [INSTALL.md](INSTALL.md) |
+| **Any button / form / row action / pager (before writing it)** | **00 §2v** / **[26](26-CONTROL-SLICE.md)** — six parts in one chunk; action row; exact boot block; `$dotapp` not raw DOM; one request helper; `Reply::ok/fail` HTTP 200 + specific message | [EX-06](examples/EX-06-dotapp-js-boot.md), [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | **After every code chunk** | **00 §2c** finish gate — CRC once, enc IDs, bound SQL, inputs, middleware / AuthTest conflicts | [17](17-CHECKLISTS.md) Finish gate |
-| Stay-on-page save / errors | **00 §2d** visible outcome — toast **and** red field + exact sentence; clear that field on the next edit; AJAX overlay | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
+| Stay-on-page save / errors | **00 §2d** visible outcome — DACore toast (search first); public = mark the wrong field | [EX-09](examples/EX-09-validation-and-errors.md), [EX-06](examples/EX-06-dotapp-js-boot.md) |
 | Buttons / card footers / chrome spacing | **00 §2f** layout + UX/UI — padding on all sides; **bottom** when buttons are last in the block | [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6 |
 | Page / list / AJAX HTML fragment | **00 §2j** / **05 §1c** — Renderer + layout; PHP markup only for a named one-piece exception | [EX-05](examples/EX-05-renderer-page.md), [EX-D02](examples/EX-D02-dacore-admin-page.md) |
 | New module | 00, 02, 03, **00 §1b** (read only this module + DACore — not siblings) | [EX-03](examples/EX-03-module-scaffold.md) |

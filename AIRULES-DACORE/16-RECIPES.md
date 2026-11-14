@@ -73,7 +73,9 @@ Must include `/assets/dotapp/dotapp.js` (random keys). Prefer this over plain CS
 
 ---
 
-## R5 — JSON API endpoint
+## R5 — JSON API endpoint (external clients)
+
+This recipe is for a caller that is **not** `$dotapp` — another server, a mobile app, a script. Such a client reads the HTTP status, so real codes and plain JSON (`Response::json`) are correct here. An endpoint called by `$dotapp().load()` / `.form()` is different: it answers with `Reply::ok()` / `Reply::fail()` — base64 JSON, HTTP 200 ([26](26-CONTROL-SLICE.md) §7).
 
 ```php
 Router::get('/api/v1/shop/items', 'Shop:Api@listItems!', Router::STATIC_ROUTE);
@@ -82,12 +84,12 @@ public static function listItems($request)
 {
     try {
         $rows = \Dotsystems\App\Parts\DB::module('RAW')->q(function ($qb) {
-            $qb->select('*')->from('shop_items')->orderBy('id', 'DESC')->limit(50);
+            $qb->select(['id', 'title', 'price'])->from('shop_items')->orderBy('id', 'DESC')->limit(50);
         })->all();                       // [] when empty
         return \Dotsystems\App\Parts\Response::json(['status' => 1, 'items' => $rows]);
     } catch (\Throwable $e) {
-        \Dotsystems\App\Parts\Logger::use()->error('api list failed', ['msg' => $e->getMessage()]);
-        return \Dotsystems\App\Parts\Response::json(['status' => 0, 'message' => 'Server error'], 500);
+        self::reportCatch('Shop:Api@listItems', 'shop.api.items.list', $e, 'error');
+        return \Dotsystems\App\Parts\Response::json(['status' => 0, 'message' => 'The item list could not be read (shop.api.items.list).'], 500);
     }
 }
 ```

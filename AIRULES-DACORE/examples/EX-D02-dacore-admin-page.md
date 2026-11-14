@@ -11,7 +11,7 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
 ## Layout: `views/layouts/admin/items.layout.php`
 
 ```html
-<div class="card mb-6" id="listWrap" data-list-url="{{ var: $apiAuth }}/items/list">
+<div class="card mb-6" id="listWrap">
   <h5 class="card-header d-flex justify-content-between align-items-center">
     <span>{{_ "Items" }} <span class="badge bg-label-primary">{{ var: $total }}</span></span>
     <a href="{{ var: $baseUrl }}/items/0" class="btn btn-primary btn-sm">
@@ -24,7 +24,6 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
     <table class="table table-hover">
       <thead>
         <tr>
-          <th>{{_ "ID" }}</th>
           <th>{{_ "Title" }}</th>
           <th>{{_ "SKU" }}</th>
           <th>{{_ "Price" }}</th>
@@ -35,7 +34,6 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
       <tbody>
         {{ foreach $items as $item }}
         <tr>
-          <td>{{ var: $item['id'] }}</td>
           <td><strong>{{ var: $item['title'] }}</strong></td>
           <td>{{ var: $item['sku'] }}</td>
           <td>{{ var: $item['price'] }}</td>
@@ -47,9 +45,14 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
             {{ /if }}
           </td>
           <td>
-            <a class="btn btn-icon btn-sm" href="{{ var: $baseUrl }}/items/{{ var: $item['id'] }}">
-              <i class="ri ri-edit-line"></i>
-            </a>
+            <div class="d-flex flex-wrap gap-2 justify-content-end">
+              <a class="btn btn-icon btn-sm" href="{{ var: $baseUrl }}/items/{{ var: $item['token'] }}">
+                <i class="ri ri-edit-line"></i>
+              </a>
+              <button type="button" class="btn btn-icon btn-sm shop_item_delete" data-item="{{ enc(Shop.item.id): $item['id'] }}">
+                <i class="ri ri-delete-bin-line"></i>
+              </button>
+            </div>
           </td>
         </tr>
         {{ /foreach }}
@@ -57,23 +60,23 @@ Admin JS is `$dotapp`. jQuery may stay for UI widgets during a port; **requests*
     </table>
   </div>
 
-  <div class="card-footer">
+  <div class="card-footer dacore-list-pager">
     <ul class="pagination mb-0">{{ var: $links }}</ul>
   </div>
   </div>
 </div>
 ```
 
-Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. `$baseUrl` is the HTML page prefix (`/dacore/Shop`). `$apiAuth` is `/api/v1/auth/Shop` — pass it from the controller for list `load()` URLs. The `<fo-rm action>` is a **literal** path; **MUST NOT** write `action="{{ var: $apiAuth }}/items/save"` on the opening tag ([08](../08-FORMS-AND-SECURITY.md)). Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md). `#listInner` is the fragment AJAX replaces (rows **and** pager).
+Notes: the raw database id is never sent to the browser — the edit link uses a URL-safe sealed token (`$item['token']`, [33](../33-DACORE-PAGES-AND-UI.md) §13) and the delete button an encrypted `data-item`. Row buttons sit in a `d-flex gap-2` row. `{{ var: }}` output is **not** escaped — sanitise anything user-supplied in the controller. `$baseUrl` is the HTML page prefix (`/dacore/Shop`). `$apiAuth` is `/api/v1/auth/Shop` — pass it from the controller for list `load()` URLs. The `<fo-rm action>` is a **literal** path; **MUST NOT** write `action="{{ var: $apiAuth }}/items/save"` on the opening tag ([08](../08-FORMS-AND-SECURITY.md)). Conditions wrap the expression in parentheses as the framework parser expects a simple expression. `$links` come from `DACore:Page@paginate!` with a **button** `$callable` — [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md). `#listInner` is the fragment AJAX replaces (rows **and** pager).
 
 ## Edit form with dotgrid + secure form
 
 ```html
-<div class="card mb-6">
+<div class="card mb-6" id="itemCard">
   <h5 class="card-header">{{_ "Edit item" }}</h5>
-  <div class="card-body">
 
-    <fo-rm action="/api/v1/auth/Shop/items/save" method="post" id="itemForm">
+  <fo-rm action="/api/v1/auth/Shop/items/save" method="post" id="itemForm">
+    <div class="card-body">
       <input type="hidden" name="id" value="{{ enc(Shop.item.id): $itemId }}" />
 
       <dot-grid dg-marginb20="any" wrapped="any" stretch="any" any="12" class="mb-4">
@@ -103,81 +106,76 @@ Notes: `{{ var: }}` output is **not** escaped — sanitise anything user-supplie
       </dot-grid>
 
       {{ formName(saveItem) }}
+    </div>
 
-      <button type="submit" class="btn btn-primary" id="itemSaveBtn">{{_ "Save" }}</button>
+    <div class="dacore-card-actions">
       <a href="{{ var: $baseUrl }}/items" class="btn btn-outline-secondary">{{_ "Cancel" }}</a>
-    </fo-rm>
-
-  </div>
+      <button type="submit" class="btn btn-primary">{{_ "Save" }}</button>
+    </div>
+  </fo-rm>
 </div>
 ```
 
 `md="6"` plus `ldesktop="6"` is required — `md` does not cascade to wider breakpoints.
 
+The buttons are in their own row, `.dacore-card-actions`, **after** `.card-body` and still inside `<fo-rm>`. That class has padding on all four sides and a gap. `card-footer` / `pb-4` have no CSS rule in the DACore shell ([26](../26-CONTROL-SLICE.md) §2). A real editor splits the fields into numbered sections with a lede ([33](../33-DACORE-PAGES-AND-UI.md) §6b); this sample shows one section.
+
 ## Page script: `assets/js/admin-items.js`
 
-`dotapp.js` is already loaded by the DACore shell, so only guard for the event:
+`dotapp.js`, Notiflix and `window.dacoreRequestError` are already loaded by the DACore shell. The script has one shape ([26](../26-CONTROL-SLICE.md) §3): helpers, then one handler per control, then the boot block.
 
 ```javascript
 (function () {
-  var runMe = function ($dotapp) {
-    $dotapp()
-      .form("#itemForm")
-      .before(function (data, form) {
-        if ($dotapp(form).attr("blocked") == 1) {
-          return $dotapp().halt();
-        }
-        $dotapp(form).attr("blocked", "1");
-        $dotapp("#itemSaveBtn").attr("loading", "true").attr("loader", "dots");
-      })
-      .after(function (data, response, form) {
-        var reply = $dotapp().parseReply(response);
+  function runMe($dotapp) {
+    // About: request helper — copy shopReply / shopDone / shopFail / shopSend / shopForm
+    // from AIRULES/26 §5 (full file: EX-06) here, once per module.
 
-        if (reply && reply.status == 1) {
-          if (window.Notiflix && Notiflix.Notify) {
-            Notiflix.Notify.success(reply.message || "Saved");
-          }
-          if (reply.html) {
-            $dotapp("#listWrap").html(reply.html);
-          } else if ($dotapp("#itemForm").attr("data-list-url")) {
-            // leaving the edit screen → list is OK
-            window.location = $dotapp("#itemForm").attr("data-list-url") || document.referrer;
-          }
-        } else if (reply && reply.message) {
-          if (window.Notiflix && Notiflix.Notify) {
-            Notiflix.Notify.failure(reply.message);
-          }
-        }
+    // Section: Shop — item editor
+    // About: save the item. Why: the editor leaves for the list on success, so the reply carries redirectTo.
+    shopForm("#itemForm", "#itemCard", function (reply) {
+      if (reply.redirectTo) {
+        window.location = reply.redirectTo;
+      }
+    });
 
-        $dotapp(form).attr("blocked", "0");
-        $dotapp("#itemSaveBtn").removeAttr("loading").removeAttr("loader");
+    // Section: Shop — items list
+    // About: delete one item after a graphical confirm, then redraw rows and pager.
+    $dotapp().live("click", ".shop_item_delete", function (el, e) {
+      var item = $dotapp(el).attr("data-item");
+      Notiflix.Confirm.show("Delete this item?", "This cannot be undone.", "Delete", "Cancel", function () {
+        shopSend("/api/v1/auth/Shop/items/delete", { item: item }, "#listWrap", function (reply) {
+          $dotapp("#listInner").html(reply.html);
+        });
       });
-  };
+    });
 
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp", function () { runMe(window.$dotapp); }, { once: true });
+    // About: pager. data-page is ciphertext; live() hands the element first.
+    $dotapp().live("click", ".shop-page", function (el, e) {
+      var page = $dotapp(el).attr("data-page");
+      if (!page) {
+        return;
+      }
+      shopSend("/api/v1/auth/Shop/items/list", { page: page }, "#listWrap", function (reply) {
+        $dotapp("#listInner").html(reply.html);
+      });
+    });
+  }
+
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
 })();
 ```
 
-On a **list** page (add rule, toggle, delete, reorder, **page**): overlay `#listWrap` **before** `load()`, patch `#listInner` (rows **and** pager), then remove the overlay on success **and** error. Pager law: [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md). `$dotapp().live` = `function (el, e)`.
-
-```javascript
-$dotapp().live("click", ".shop-page", function (el, e) {
-  if (e && typeof e.preventDefault === "function") e.preventDefault();
-  if (!el || el.disabled) return;
-  var page = el.getAttribute("data-page") || "";
-  if (!page) return;
-  Notiflix.Block.standard("#listWrap", "Loading…");
-  $dotapp().load($dotapp("#listWrap").attr("data-list-url"), "POST", { page: page },
-    function (raw) {
-      var reply = $dotapp().parseReply(raw);
-      if (reply && reply.status == 1 && reply.html) $dotapp("#listInner").html(reply.html);
-      Notiflix.Block.remove("#listWrap");
-    },
-    function () { Notiflix.Block.remove("#listWrap"); }
-  );
-});
-```
+`shopForm()` binds `.before()`, `.after()` **and** `.onError()`; `shopSend()` passes both `load()` callbacks. Success, `status` 0 and HTTP failure each end in one toast, and the overlay always comes off. Every URL in this script has a route and an action — [26](../26-CONTROL-SLICE.md) §6–§7. Pager law: [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md).
 
 Operators cannot turn 2FA off. A **second** 2FA prompt: **ASK** in the plan (default **no**). If the user named an action (wipe, grant `dotapp.root`, install a package), use the [EX-D10](EX-D10-stepup-2fa-modal.md) modal + `$dotapp().twoFactor` `{ autoSubmit: true }` and verify in your module. See [32](../32-DACORE-RIGHTS.md) §6.
 
@@ -190,7 +188,7 @@ Labels, help, rights descriptions: **MUST** be product copy a software company w
 ```php
 $id = \Dotsystems\App\Parts\Crypto::decrypt($data['id'] ?? '', 'Shop.item.id');
 if ($id === false) {                        // decrypt returns FALSE, not null
-    return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Invalid id']];
+    return Reply::fail('This item link has expired. Reload the page and try again.');   // 26 §7
 }
 ```
 

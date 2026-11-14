@@ -48,7 +48,7 @@ Theory lives in `0x`–`2x` (framework), `3x` (DACore), and **[41](../41-MODULE-
 For any form a user submits in a browser:
 
 1. **Must** load `/assets/dotapp/dotapp.js` (it injects per-session encryption keys).
-2. **Must** use `<fo-rm>` + `{{ formName(handlerName) }}`. **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST** write `method` and `action` as literal attributes on the opening tag. **MUST NOT** put `{{ }}` there (`{{ var: $postAction }}` compiles to `<?php … ?>` and the `>` hides `method`, so the page shows `{{ formName }}` as text).
+2. **Must** use `<fo-rm>` + `{{ formName(handlerName) }}`. **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST** write `method` and `action` as literal attributes on the opening tag. **MUST NOT** put `{{ }}` there (`{{ var: $apiAuth }}` compiles to `<?php … ?>` and the `>` hides `method`, so the page shows `{{ formName }}` as text).
 3. **Must** `crcCheck()` **once** (API prefix **or** action) then `$request->form(...)` — never both.
 
 This binds the handler name, action URL and HTTP method under a per-form key plus CRC and a one-time CSRF token — far stronger than a plain CSRF field. `{{ CSRF }}` alone is not sufficient for the DotApp JS transport.

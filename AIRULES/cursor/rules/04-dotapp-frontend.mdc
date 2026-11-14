@@ -14,7 +14,7 @@ Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SEC
 2. Optional template/reactive
 3. Module scripts
 
-Bootstrap on `dotapp` event; register plugins on `dotapp-register` via `$dotapp().fn(...)`.
+Bootstrap on the `dotapp` event on **`window`**, with the exact `if (window.$dotapp)` block from `AIRULES/26-CONTROL-SLICE.md` §3. A `$dotapp().fn` library waits for `dotapp-register`. `$dotapp().live` passes the element first: `function (el, e)`. `.form()` needs `.onError()` — `.after()` does not run on HTTP 4xx/5xx. `.find()` / `.last()` / `.nth()` / `.length` work since `dotapp.js` 2026-11-14; an `undefined` `.length` means the framework copy is old.
 
 Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/`. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`.
 

@@ -92,67 +92,89 @@ Unknown rules **pass silently** in `Input` — register a filter or use `Validat
 
 ---
 
-## Canonical error envelope for JSON endpoints
+## Reply contract for `load()` / `form()` endpoints
+
+One shape, one helper — [26](../26-CONTROL-SLICE.md) §7:
 
 ```php
-return DotApp::DotApp()->ajaxReply([
-    'status' => 0,          // 1 = success
-    'errorNo' => 2,         // your own code, for the JS side
-    'message' => 'Human readable message',
-    'errors' => $fieldErrors ?? null,
-], 200);
+return Reply::fail('Check the highlighted fields.', $fieldErrors);   // status 0 + errors { field: sentence }
+return Reply::ok('Contact saved.', ['html' => $html]);                // status 1
 ```
 
-Keep HTTP 200 for business validation failures (the JS `parseReply` path reads `status`), and reserve 4xx/5xx for transport/authorisation problems.
+Always HTTP 200. HTTP 4xx/5xx skips `.after()`, so a failure sent that way never reaches the page. Only the CRC prefix (400) and the rights middleware (403) answer non-200, and the `.onError()` hook shows those.
 
 ## Client side
 
-**MUST** show the outcome ([00](../00-AGENT-CONTRACT.md) §2d).
+**MUST** show the outcome on all three paths ([00](../00-AGENT-CONTRACT.md) §2d): `status` 1, `status` 0, and HTTP / network failure.
 
-**DACore admin and public:** mark the **wrong field** (red input + the exact sentence under it) and toast the summary on admin. The first `input` / `change` on that control clears **only that** mark. Never `alert()`, never empty `.after()`, never only “could not save” when `errors` names a field.
+**DACore admin:** `shopForm()` from [26](../26-CONTROL-SLICE.md) §5 — toast. Field marks are an optional extra.
+
+**Public page:** mark the **wrong field** (where + what) and show a status line. There is no Notiflix and no `dacoreRequestError` here, so the module helper does the same job with its own nodes:
 
 ```javascript
-.after(function (data, response, form) {
-  var reply = $dotapp().parseReply(response);
-  if (!reply) { return; }
+// About: public-page variant of the module request helper (same names as AIRULES/26 §5).
+function shopReply(raw) {
+  var reply = $dotapp().parseReply(raw);
+  if (!reply || typeof reply !== "object") {
+    return { status: 0, message: "The server sent an answer this page cannot read." };
+  }
+  return reply;
+}
+
+function shopShow(form, kind, text) {
+  $dotapp(form).find(".shop_status").attr("data-kind", kind).text(text);
+}
+
+function shopMarkFields(form, errors) {
   $dotapp(form).find(".shop_invalid").removeClass("shop_invalid");
-  $dotapp(form).find(".shop_field_err").html("");
-  if (reply.status == 1) {
-    if (reply.html) { $dotapp('#listWrap').html(reply.html); }
-    if (window.Notiflix && Notiflix.Notify) {
-      Notiflix.Notify.success(reply.message || "Saved");
-    } else if (reply.message) {
-      $dotapp("#status").attr("hide", "false").html(reply.message);
-    }
-    if (reply.redirectTo) { window.location = reply.redirectTo; }
-    return;
-  }
-  if (reply.errors) {
-    Object.keys(reply.errors).forEach(function (field) {
-      var msgs = reply.errors[field];
-      var text = Array.isArray(msgs) ? msgs[0] : msgs;
-      var $el = $dotapp('[name="' + field + '"]');
-      $el.addClass("shop_invalid");
-      var $hint = $el.parent().find(".shop_field_err");
-      if ($hint.length) { $hint.text(text); }
+  $dotapp(form).find(".shop_field_err").text("");
+  Object.keys(errors || {}).forEach(function (field) {
+    var text = Array.isArray(errors[field]) ? errors[field][0] : errors[field];
+    var input = $dotapp(form).find('[name="' + field + '"]');
+    input.addClass("shop_invalid");
+    input.parent().find(".shop_field_err").text(text);
+  });
+}
+
+function shopForm(selector, onOk) {
+  $dotapp().form(selector)
+    .before(function (data, form) {
+      if ($dotapp(form).attr("blocked") == 1) {
+        return $dotapp().halt();
+      }
+      $dotapp(form).attr("blocked", "1").addClass("shop_busy");
+    })
+    .after(function (data, raw, form) {
+      var reply = shopReply(raw);
+      $dotapp(form).attr("blocked", "0").removeClass("shop_busy");
+      shopMarkFields(form, reply.errors);
+      if (reply.status == 1) {
+        shopShow(form, "ok", reply.message || "");
+        if (typeof onOk === "function") {
+          onOk(reply);
+        }
+        return;
+      }
+      shopShow(form, "error", reply.message || "The form was not sent and the server gave no reason.");
+    })
+    .onError(function (data, status, body, form) {
+      // Why: .after() does not run on HTTP 4xx/5xx or a network fault.
+      var reply = $dotapp().parseReply(body);
+      var text = (reply && typeof reply === "object" && reply.message)
+        ? reply.message
+        : "The form was not sent (HTTP " + status + "). Try again.";
+      $dotapp(form).attr("blocked", "0").removeClass("shop_busy");
+      shopShow(form, "error", text);
     });
-  }
-  if (window.Notiflix && Notiflix.Notify) {
-    Notiflix.Notify.failure(reply.message || "Request failed");
-  } else if (reply.message && !reply.errors) {
-    $dotapp('#error-message').attr('hide', 'false').html(reply.message);
+}
+
+shopForm("#contactForm", function (reply) {
+  if (reply.redirectTo) {
+    window.location = reply.redirectTo;
   }
 });
 ```
 
-Public markup next to each input: `<span class="shop_field_err"></span>`. PHP still re-validates.
+Texts are written with `.text()`, never `.html()` — they may contain what the visitor typed. `.shop_busy` is the module overlay class (covers the form, blocks pointer and touch).
 
-Clear **that** field when the person edits it. Other invalid fields stay marked until they are edited or the next successful save:
-
-```javascript
-$dotapp().live("input", ".shop_invalid", function (el) {
-  el.classList.remove("shop_invalid");
-  var hint = el.parentNode ? el.parentNode.querySelector(".shop_field_err") : null;
-  if (hint) { hint.textContent = ""; }
-});
-```
+Public markup: `<span class="shop_field_err"></span>` next to each input and one `<p class="shop_status"></p>` inside the form. PHP still re-validates.

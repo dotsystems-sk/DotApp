@@ -8,7 +8,7 @@ Rules: [09-DOTAPP-JS-AND-BRIDGE.md](../09-DOTAPP-JS-AND-BRIDGE.md) §4 (playbook
 
 **Never** add files under `app/parts/js/` or `app/modules/DACore/`. Put a **new** library in **your** module assets only after that search finds nothing.
 
-Named examples (not exhaustive — disk is the source of truth): `dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`, `twoFactor`, Notiflix.
+Named examples (not exhaustive — disk is the source of truth): `dotSelect2`, `modal`, `offcanvas`, `dragDrop`, `twoFactor`, Notiflix.
 
 ---
 
@@ -56,8 +56,17 @@ Named examples (not exhaustive — disk is the source of truth): `dotSelect2`, `
         window.dispatchEvent(new Event('dotapp-shopchart-ready'));
     };
 
-    if (window.$dotapp) runMe(window.$dotapp);
-    else window.addEventListener('dotapp-register', function () { runMe(window.$dotapp); }, { once: true });
+    if (window.$dotapp) {
+      runMe(window.$dotapp);
+    } else {
+      window.addEventListener(
+        "dotapp-register",
+        function () {
+          runMe(window.$dotapp);
+        },
+        { once: true }
+      );
+    }
 })();
 ```
 
@@ -69,8 +78,17 @@ Page script listens to **`dotapp`**, not `dotapp-register`:
         var chart = $dotapp('#sales').shopChart({ url: '/shop/chart' });
         chart.refresh();
     };
-    if (window.$dotapp) runMe(window.$dotapp);
-    else window.addEventListener('dotapp', function () { runMe(window.$dotapp); }, { once: true });
+    if (window.$dotapp) {
+      runMe(window.$dotapp);
+    } else {
+      window.addEventListener(
+        "dotapp",
+        function () {
+          runMe(window.$dotapp);
+        },
+        { once: true }
+      );
+    }
 })();
 ```
 
@@ -164,8 +182,17 @@ New: `$dotapp('#city').shopPicker({ search: true })`. Keep the CSS class so exis
         get: function (el) { return instances.get(el) || null; }
     };
 
-    if (window.$dotapp) runMe(window.$dotapp);
-    else window.addEventListener("dotapp-register", function () { runMe(window.$dotapp); }, { once: true });
+    if (window.$dotapp) {
+      runMe(window.$dotapp);
+    } else {
+      window.addEventListener(
+        "dotapp-register",
+        function () {
+          runMe(window.$dotapp);
+        },
+        { once: true }
+      );
+    }
 })();
 ```
 

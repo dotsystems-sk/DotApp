@@ -71,7 +71,7 @@ $css = [
           <input type="hidden" name="code" id="shopStepupCode" value="" />
           {{ formName(confirmDangerousAction) }}
         </div>
-        <div class="modal-footer d-flex justify-content-center gap-2 pb-4">
+        <div class="modal-footer d-flex justify-content-center gap-2">
           <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{_ "Cancel" }}</button>
           <button type="submit" class="btn btn-primary" id="shopStepupConfirm">{{_ "Confirm and continue" }}</button>
         </div>
@@ -81,37 +81,27 @@ $css = [
 </div>
 ```
 
-A lock-in gate (installer unlock) may omit Cancel. An optional confirm (turn a flag off) **MUST** keep Cancel. Footer buttons **MUST** have padding vs the modal (`pb-4`).
+A lock-in gate (installer unlock) may omit Cancel. An optional confirm (turn a flag off) **MUST** keep Cancel. The buttons sit in `.modal-footer`, which has its own padding in the DACore shell; `gap-2` separates them. (`pb-4` has no CSS rule there — [26](../26-CONTROL-SLICE.md) §2.)
 
 ---
 
 ## Page JS
 
 ```javascript
+// Inside runMe($dotapp) of the page script (file shape + boot block: AIRULES/26 §3).
 var OTP = "#shopStepupOtp input";
 
-function otpCode() {
-  return $dotapp(OTP).twoFactor() || "";
-}
-
-function showStepup() {
-  var hidden = document.getElementById("shopStepupCode");
-  if (hidden) {
-    hidden.value = "";
-  }
+// About: open the modal with an empty code.
+function shopShowStepup() {
+  $dotapp("#shopStepupCode").val("");
   $dotapp("#shopStepupModal").modal().show();
 }
 
+// About: six boxes; a paste fills them and submits the form at once.
 $dotapp(OTP).twoFactor(
-  function () {
-    var form = document.getElementById("shopStepupForm");
-    var hidden = document.getElementById("shopStepupCode");
-    if (hidden) {
-      hidden.value = otpCode();
-    }
-    if (form) {
-      $dotapp(form).submit();
-    }
+  function (code) {
+    $dotapp("#shopStepupCode").val(code);
+    $dotapp("#shopStepupForm").submit();
   },
   {
     length: 6,
@@ -122,18 +112,13 @@ $dotapp(OTP).twoFactor(
   }
 );
 
-$dotapp("#shopStepupForm").form(function (reply) {
-  if (window.Notiflix && Notiflix.Block) {
-    Notiflix.Block.remove("#shopStepupModal .modal-content");
-  }
-  if (reply && reply.status == 1) {
-    $dotapp("#shopStepupModal").modal().hide();
-    Notiflix.Notify.success(reply.message || "");
-    return;
-  }
-  Notiflix.Notify.failure((reply && reply.message) || "Request failed");
+// About: the confirm request. shopForm() = module helper (AIRULES/26 §5): before + after + onError, overlay, toast.
+shopForm("#shopStepupForm", "#shopStepupModal .modal-content", function (reply) {
+  $dotapp("#shopStepupModal").modal().hide();
 });
 ```
+
+`.form()` takes a **selector** and returns a chain of `.before()` / `.after()` / `.onError()`. `$dotapp(form).form(function (reply) {})` binds nothing — the submit would run with no outcome at all.
 
 `twoFactor` paste fills all six boxes and fires the callback. Completing the boxes does **not** authorize — PHP still verifies.
 
@@ -147,11 +132,11 @@ $dotapp("#shopStepupForm").form(function (reply) {
 $user = Auth::attributes();
 $code = preg_replace('/\D+/', '', (string) ($payload['code'] ?? ''));
 if (empty($user['tfa_auth']) || empty($user['tfa_auth_secret'])) {
-    return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Two-factor authentication is required.']];
+    return Reply::fail('Turn on two-factor authentication in your profile before confirming this action.');
 }
 $expected = \Dotsystems\App\Parts\TOTP::generate($user['tfa_auth_secret']);
 if ($code === '' || !hash_equals((string) $expected, $code)) {
-    return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Invalid confirmation code']];
+    return Reply::fail('That code is not valid. Enter the current 6-digit code.');
 }
 // then persist
 ```

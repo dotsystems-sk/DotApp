@@ -165,7 +165,7 @@ window.addEventListener("DACore.AI.UIEvent", function (ev) {
   if (ev.detail.name !== "Shop.Items.Update") return;
   var p = ev.detail.payload || {};
   if (!$dotapp("#shopItemsWrap").length) return;
-  // overlay + $dotapp().load(...) using p.id / p.page — same as the page's own refresh
+  // shopSend(...) (AIRULES/26 §5) using p.id / p.page — same as the page's own refresh
   // MUST NOT location.reload()
 });
 ```

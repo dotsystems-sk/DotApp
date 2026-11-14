@@ -202,7 +202,7 @@ DACore ships **many admin subpages and libraries** in the base. Agents **MUST NO
 
 1. Search `app/modules/DACore/` **read-only** — `assets/js`, `assets/css`, `vendor`, views, controllers — for the same job (select, table, modal, toast, **Notiflix.Notify / Confirm / Block**, date range, confirm, overlay, pager, icons, cards, …). **Toasts and alerts:** use the shell’s notify. Do **not** invent a second toast library.
 2. Search **your** module `app/modules/<YourModule>/assets/` — it may already exist from an earlier task.
-3. Check what the shell already loads (this file §4) and named `$dotapp` widgets (including `dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`, `twoFactor`, Notiflix, `Page@paginate!`, dotgrid, Remix). The files on disk are the source of truth — that list is not exhaustive.
+3. Check what the shell already loads (this file §4) and named `$dotapp` widgets (`dotSelect2`, `modal`, `offcanvas`, `dragDrop`, `twoFactor`, Notiflix `Notify` / `Confirm` / `Block`, `window.dacoreRequestError`, `Page@paginate!`, dotgrid, Remix, `.dacore-card-actions` / `.dacore-toolbar` / `.dacore-empty`; there is **no** `$dotapp().toast()`, `dotDataTable` or `daterangepicker` in the shell). The files on disk are the source of truth — that list is not exhaustive.
 
 **MUST NOT** search `app/modules/<Sibling>/` for cards, CSS, or “how they laid out a page.” That is a [00](00-AGENT-CONTRACT.md) §1b read-scope violation. A sibling is readable **only** when the user named it as the module this work extends / listens to. Examples of DotApp admin pages live in `AIRULES/examples/`, not in a live neighbour.
 
@@ -239,7 +239,7 @@ DACore administration **runs on `$dotapp`** (`/assets/dotapp/dotapp.js` is alrea
 
 Requests **MUST** go through `$dotapp().form` / `$dotapp().load` / `dotbridge` so CRC, CSRF, keys and signatures stay intact. Mixing jQuery UI with `$dotapp` transport is fine; mixing jQuery **AJAX** with DotApp endpoints is not.
 
-**When porting** jQuery plugins: **ask first**, then **rewrite** them as a new `$dotapp` library (porting = writing a new lib — do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) **§4.C** and [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget (`dotSelect2`, `dotDataTable`, `modal`, `toast`, `daterangepicker`), **use that** — do not copy DACore JS into your module. Do not silently keep `$.ajax`. If they keep jQuery for UI only, still send every request with `$dotapp`.
+**When porting** jQuery plugins: **ask first**, then **rewrite** them as a new `$dotapp` library (porting = writing a new lib — do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) **§4.C** and [EX-15](examples/EX-15-dotapp-js-library.md). If DACore already ships the widget (`dotSelect2`, `modal`, `offcanvas`, `dragDrop`), **use that** — do not copy DACore JS into your module. Do not silently keep `$.ajax`. If they keep jQuery for UI only, still send every request with `$dotapp`.
 
 Plugin registration (own libraries): see [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 and [EX-15](examples/EX-15-dotapp-js-library.md). Never edit `app/parts/js/` or `app/modules/DACore/`.
 
@@ -251,8 +251,17 @@ Plugin registration (own libraries): see [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 an
       return this;
     });
   };
-  if (window.$dotapp) runMe(window.$dotapp);
-  else window.addEventListener("dotapp-register", function () { runMe(window.$dotapp); }, { once: true });
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp-register",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
 })();
 ```
 
@@ -296,13 +305,36 @@ The surrounding shell (`layout-wrapper` → `layout-container` → `layout-menu`
 
 ### Button padding vs the parent (MUST — law)
 
-Whenever you **add or move a button** (Save, Back, Copy, empty-state action, modal footer, pager cluster), **MUST** check padding vs the parent on **all sides**: left, right, **top**, and **bottom**. A working POST with a flush control is **not** done.
+**DACore is not Bootstrap.** `core.css` has no rule for `card-footer`, `pb-3`, `pb-4`, `pt-0`, `pt-3`, `px-4`, `border-0`, `bg-transparent`. Writing them adds **no space** — that is how Save ends up glued to the bottom edge.
 
-The usual hole: a Save (or a row of actions) is the **last content** in a card, `card-body`, modal, drawer, or page block. The parent then has no leftover space **below**, so the control sits on the bottom edge. That is a **bug**. When buttons are the last piece of a block, **almost always** add bottom padding — `card-footer` with `pb-3`/`pb-4`, or CSS `padding-bottom` on that parent. `pt-0` on a footer **MUST** still keep that bottom padding.
+Buttons go in their **own row**, a sibling **after** `.card-body`, with the shell class that already has padding on all four sides and a gap:
 
-**MUST NOT:** drop Save at the end of `card-body` with no footer / `pb-*`; claim done from the PHP handler without reading the HTML/CSS chrome.
+```html
+<div class="card mb-6" id="shopItemCard">
+  <h5 class="card-header">{{_ "Item" }}</h5>
+  <fo-rm method="post" action="/api/v1/auth/Shop/items/save" id="shopItemForm">
+    <div class="card-body">
+      <!-- fields -->
+      {{ formName(saveItem) }}
+    </div>
+    <div class="dacore-card-actions">
+      <a href="/dacore/Shop/items" class="btn btn-outline-secondary">{{_ "Cancel" }}</a>
+      <button type="submit" class="btn btn-primary">{{_ "Save" }}</button>
+    </div>
+  </fo-rm>
+</div>
+```
 
-Canonical: [00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c. Compact: `AIRULES/cursor/rules/ux-ui-layout.mdc`.
+| Place | Class |
+|-------|-------|
+| Save / Cancel under a form or card | `.dacore-card-actions` |
+| Buttons in a table row, or next to each other anywhere | `<div class="d-flex flex-wrap gap-2">` |
+| Buttons above a list | `.dacore-toolbar` |
+| Space between consecutive cards / sections / alerts | `mb-4` / `mb-6` |
+
+**MUST NOT:** a bare `<button>` as the last line of `.card-body`; a button straight after an input; two buttons with no `gap`; a spacing class you did not find in `core.css` (`grep -c "\.the-class" app/modules/DACore/assets/css/core.css` — zero hits = write the rule in **your** module CSS).
+
+Full list of classes that exist, the public-page variant and the source check: [26](26-CONTROL-SLICE.md) §2. Canonical: [00](00-AGENT-CONTRACT.md) §2f. Compact: `AIRULES/cursor/rules/ux-ui-layout.mdc`.
 
 ### 6b. Admin page composition (MUST — law)
 
@@ -382,25 +414,28 @@ In `Menu@register` pass just the classes (`ri ri-store-2-line`) — DACore wraps
 Use the framework secure-form stack — it is unchanged by DACore ([08](08-FORMS-AND-SECURITY.md), [examples/EX-01](examples/EX-01-secure-form-complete.md)):
 
 ```html
-<fo-rm action="/api/v1/auth/Shop/items/save" method="post" id="itemForm">
-  <dot-grid wrapped="any">
-    <dot-col any="12" md="6" ldesktop="6">
-      <input type="text" name="title" class="form-control" required />
-    </dot-col>
-  </dot-grid>
-
-  {{ formName(saveItem) }}
-  <button type="submit" class="btn btn-primary" id="itemSaveBtn">{{_ "Save" }}</button>
-</fo-rm>
+<div class="card mb-6" id="itemCard">
+  <fo-rm action="/api/v1/auth/Shop/items/save" method="post" id="itemForm">
+    <div class="card-body">
+      <dot-grid wrapped="any">
+        <dot-col any="12" md="6" ldesktop="6">
+          <input type="text" name="title" class="form-control" required />
+        </dot-col>
+      </dot-grid>
+      {{ formName(saveItem) }}
+    </div>
+    <div class="dacore-card-actions">
+      <button type="submit" class="btn btn-primary">{{_ "Save" }}</button>
+    </div>
+  </fo-rm>
+</div>
 ```
 
 **MUST:** `{{ formName(saveItem) }}` sits **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST** keep `method` and `action` as literal text on the opening tag, as in the sample. **MUST NOT** write `action="{{ var: $apiAuth }}/items/save"` (or any other `{{ }}`) on `<fo-rm …>` — the compiled `?>` hides `method` and the page shows `{{ formName }}` as text ([08](08-FORMS-AND-SECURITY.md)).
 
 PHP handler: prefix `LoginAndCRC` already burned the token — only `form(['POST'], 'saveItem', $ok, $err)` → `ajaxReply()`. Because `dotapp.js` is already loaded by the shell, your page script only registers the hooks.
 
-**MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, **toast** with the shell notify (**MUST** grep DACore first — `Notiflix.Notify.success` / `failure` or `$dotapp().toast()`). Never silent `.after()`. Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). Law: [00](00-AGENT-CONTRACT.md) §2d. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
-
-**MUST (field errors):** when Save can name the bad control, HTTP 200 + `status` 0 + `errors[fieldName]` is an exact product sentence (which value failed, how a list is separated). JS paints **that** input red and prints the sentence under it. The first `input` / `change` on that control clears only that mark. A toast that only says the settings could not be saved, with a clean form, is a bug. Host restatement: `app/modules/DACore/AIRULES/02-OPERATOR-UX.md`.
+**MUST (live UX):** `<fo-rm>` does not reload. After save / toggle / add-on-the-same-page, return `html` (updated table) + `message` in JSON, patch the DOM, **toast** through the module request helper `shopForm()` / `shopSend()` ([26](26-CONTROL-SLICE.md) §5 — `Notiflix.Notify` + `dacoreRequestError`, both loaded by the shell). **MUST** bind `.onError()` as well as `.after()`: `.after()` does not run on HTTP 4xx/5xx. Never silent `.after()`. Never `location.reload()`. `redirectTo` only when leaving (e.g. edit screen → list). Law: [00](00-AGENT-CONTRACT.md) §2d. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3 and [EX-06](examples/EX-06-dotapp-js-boot.md).
 
 **MUST NOT** wrap row actions in `<fo-rm>` (up/down, drag-and-drop, toggle, delete, paginate). Those are `type="button"` + encrypted `data-*` + `$dotapp().load()`. One optional add/edit `<fo-rm>` above the table is enough ([08](08-FORMS-AND-SECURITY.md)).
 

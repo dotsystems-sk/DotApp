@@ -468,15 +468,15 @@ General UX/UI principles **MUST** be followed **at all costs**. A screen that po
 | Check | Fail if |
 |-------|---------|
 | Padding vs the **parent** on **all sides** (left, right, top, bottom) | Control glued to any edge |
-| **Last in the block** | Buttons are the last content of a card / `card-body` / modal / page section with **no space below** — the usual Save-at-the-bottom hole. **Almost always** needs `card-footer` + `pb-3`/`pb-4` (or CSS `padding-bottom`) |
+| **Last in the block** | Buttons are the last content of a card / `card-body` / modal / page section with **no space below** — the usual Save-at-the-bottom hole. Put the buttons in `.dacore-card-actions` **after** `.card-body` ([26](26-CONTROL-SLICE.md) §2). `card-footer` / `pb-3` / `pb-4` have **no CSS rule** in the DACore shell and add no space |
 | Alignment vs siblings | One card’s Save left-stacked, the next centered; leftover `text-start` / missing flex |
-| Rhythm | `pt-0` (or `border-0`) with **no** compensating `pb-*` / CSS `padding-bottom` |
+| Rhythm | A spacing class that is not defined in DACore `core.css` or this module CSS (`pt-0`, `border-0`, `pb-4`, `px-4` …) — it does nothing |
 | Touch / wrap | Hover-only placement; overflow on a phone; hit target too small |
 
 **MUST:**
 
 - Look at the **parent padding box**, not only the button. Footer, card, and page edge all count.
-- Prefer the shell’s existing spacing (`card-footer`, `pb-3`/`pb-4`, centered flex) — **grep DACore first** on admin pages ([33](33-DACORE-PAGES-AND-UI.md)).
+- Use the shell’s action row `.dacore-card-actions` (flex, wrap, gap, padding on all sides); row buttons `d-flex flex-wrap gap-2`. Before any other utility class: `grep -c "\.the-class" app/modules/DACore/assets/css/core.css` — zero hits = define it in this module CSS ([26](26-CONTROL-SLICE.md) §2).
 - After adding a button, **re-read the rendered structure** (HTML class list + CSS). Do not claim done from the PHP handler alone.
 
 **MUST NOT:** ship a primary Save flush against the bottom of a card; leave the last buttons in a block without bottom padding; zero the footer padding on one side and forget the other; invent a one-off margin that fights the parent’s flex/`h-100` layout.

@@ -144,7 +144,7 @@ Usage in a controller — report, then show the admin toast:
 ```php
 } catch (\Throwable $e) {
     Diag::reportCatch('Shop:Items@save', 'shop.item.update', $e, 'error', ['item_id' => $id]);
-    return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Could not save the item.'], 500);
+    return Reply::fail('The item was not saved because of a server fault (shop.item.update). The fault was logged.');   // 26 §7 — HTTP 200
 }
 ```
 

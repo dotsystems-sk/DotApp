@@ -37,9 +37,11 @@ Events::on('dotapp.catch', function ($payload) {
 | no event at all for a failing click | The failure is **before** your handler (CRC / `AuthTest` prefix / rights / route) → §2 |
 | `operation` present but the user saw nothing | Visible outcome is missing ([00](00-AGENT-CONTRACT.md) §2d — admin = toast) — a second bug, fix both |
 
-If the module has `catch` blocks that do **not** report, add the report helper first — that is the fix, not a detour. DACore’s own internals do not report to this bus and **MUST NOT** be patched to do so.
+If the module has `catch` blocks that do **not** report, add the report helper first — that is the fix, not a detour. DACore’s own controllers report to the same bus through their internal `CatchBus`; DACore ships no listener and no log page for it, so the listener is yours ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9). **MUST NOT** patch DACore.
 
-Log files need `Config::logger('core_log_enabled', true)` ([20](20-CACHE-LOGGER-SESSION.md) §2); the bus itself fires regardless.
+Log files need `Config::logger('core_log_enabled', true)` ([20](20-CACHE-LOGGER-SESSION.md) §2); the bus itself fires regardless. With logging off, `Logger::use()->error()` writes **nothing** — a `catch` that only logs loses the exception.
+
+**From the toast to the code:** a server-fault toast ends with an operation slug — `…a server fault (shop.item.update). The fault was logged.` Grep that slug in the module: it is the second argument of the `reportCatch()` call in the `catch` / `$err` that produced it ([26](26-CONTROL-SLICE.md) §7).
 
 ---
 
@@ -98,7 +100,7 @@ Canonical: [08](08-FORMS-AND-SECURITY.md) “`crcCheck()` burns the token”.
 
 | Middleware does | Controller / action |
 |-----------------|---------------------|
-| Prefix already called `crcCheck()` (`#DACore:AuthTest@CRC!` / `LoginAndCRC!`, or `check` on `POST /dacore/*`) | **MUST NOT** call `crcCheck()` again — only `form()` / persist |
+| Prefix already called `crcCheck()` (`#DACore:AuthTest@CRC!` / `LoginAndCRC!`, or DACore’s own `crcGuard` on `POST {prefixUrl}/dacore/*`) | **MUST NOT** call `crcCheck()` again — only `form()` / persist |
 | HTML `Gate@login` only (no CRC) | **MUST** `crcCheck()` **once** in the action if that POST has no API prefix |
 | No prefix CRC on that POST | **MUST** `crcCheck()` **once** in the action |
 
@@ -106,7 +108,7 @@ Canonical: [08](08-FORMS-AND-SECURITY.md) “`crcCheck()` burns the token”.
 
 `$request->form()` does **not** run `crcCheck()`.
 
-**MUST NOT** use `#DACore:AuthTest@check!` as a permission guard — it **ignores** the rights you pass. Copy your own `Rights` middleware ([32](32-DACORE-RIGHTS.md)).
+**MUST NOT** use `#DACore:AuthTest@check!` as a permission guard — it **ignores** the rights you pass, and it runs **no** CRC either. Copy your own `Rights` middleware ([32](32-DACORE-RIGHTS.md)).
 
 ---
 
@@ -121,7 +123,7 @@ Work top-down. Stop when you find a match.
 5. **Original vs protected input** — persist / passwords / HTML / URLs / hashes **MUST** be `$request->data(true)` (secure fields: `['data']`). `$request->data()` runs `protect()` (`)`, `=`, `%`, … become a different string — `?q=` → `?&#61;`). SQL protection is named / `?` bindings, not `protect()`. Login/installer then “never matches”; settings Save stores a broken href. [19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md).
 6. **`Auth::login` === `false`** (malformed) vs `['error']` 1–5 / 99. **MUST** map every branch to a visible message — silent 400 is a frontend/handler bug. [11](11-AUTH-AND-CRYPTO.md), [EX-14](examples/EX-14-auth-and-2fa.md).
 7. **File/ZIP** — `FormData` + `load()` / `<fo-rm>` cannot carry CRC. **MUST** `$dotapp().uploadFile` + `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint. [09](09-DOTAPP-JS-AND-BRIDGE.md).
-8. **JS** — `$dotapp().form` / `load` + `parseReply`. Raw `fetch` / `$.ajax` fails `crcCheck()`. `.after()` **MUST** show `reply.message` on `status != 1` and on HTTP 400. Admin: Notiflix toast OK. Public site: your module UI — Notiflix is DACore-only.
+8. **JS** — `$dotapp().form` / `load` + `parseReply`. Raw `fetch` / `$.ajax` fails `crcCheck()`. `.after()` runs only on HTTP 2xx and **MUST** show `reply.message` on `status != 1`. HTTP 4xx/5xx (CRC prefix 400, rights 403, a PHP fatal 500) and network faults reach only **`.onError(data, status, bodyText, form)`** / the `load()` error callback — a missing `.onError()` is the usual “click and nothing happens, form stays blocked”. Every request goes through the module helper ([26](26-CONTROL-SLICE.md) §5). Admin: Notiflix toast. Public site: your module UI — Notiflix is DACore-only.
 9. **DDL / installer** — `$qb->raw()` treats **every** `?` as a placeholder, including `COMMENT 'SMS?'`. [06](06-DATABASE.md).
 
 ---

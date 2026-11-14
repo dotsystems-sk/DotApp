@@ -50,6 +50,16 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 32. **Shared public GET:** `/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt` use a string passthrough plus `Router::after`. Canonical: [03](03-MODULES-AND-ROUTING.md).
 33. **Schema probes stay in the installer.** A request must not `SHOW TABLES` / `ensureTable` / `ALTER`. An installer callback that only `return false` does not fail the install — throw. Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
 
+## What's New (2026-11-14)
+
+### `dotapp.js` fixes, written as the way a button is built
+
+- `.find()`, `.children()`, `.siblings()`, `.clone()`, `.last()`, `.nth()` and `.length` work. A copy where `$dotapp("body").length` is `undefined` is older than this fix.
+- `$dotapp().live` gives the element first. `e.currentTarget` in that handler is a dead click.
+- `.form()` needs `.onError()`. `.after()` does not run on HTTP 4xx/5xx, so the form stays blocked.
+- `parseReply()` returns the raw string when the body is not base64 JSON. A `load()` / `form()` caller answers with `ajaxReply()`.
+- One control is six parts, written together: [26](26-CONTROL-SLICE.md). Check: `php AIRULES/tools/control-check.php Module`.
+
 ## What's New (2026-11-07)
 
 ### Field errors show the place, then clear when the person fixes it

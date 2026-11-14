@@ -215,7 +215,8 @@ class Admin extends \Dotsystems\App\Parts\Controller
             } else {
                 $plain = Crypto::decrypt((string) $raw, 'Shop.items.page');
                 if ($plain === false || !ctype_digit((string) $plain)) {
-                    return Response::json(['status' => 0, 'message' => Translator::trans('Bad request')], 400);
+                    // Why: ajaxReply (base64) + HTTP 200 — Response::json() or HTTP 400 never reaches the toast.
+                    return Reply::fail(Translator::trans('This page link has expired. Reload the list and try again.'));
                 }
                 $page = max(1, (int) $plain);
             }
@@ -259,14 +260,15 @@ class Admin extends \Dotsystems\App\Parts\Controller
                 ->renderLayout();
 
             if ($html === '') {
-                Logger::use()->error('Shop admin items-inner layout empty');
-                return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Template error'], 500);
+                self::reportCatch('Shop:Admin@itemsList', 'shop.items.render', null, 'error', [], 'admin/items-inner rendered empty');
+                return Reply::fail('The list could not be drawn: its template is missing (shop.items.render). The fault was logged.');
             }
 
-            return DotApp::DotApp()->ajaxReply(['status' => 1, 'html' => $html], 200);
+            // Why: a pager patch has nothing to announce — an empty message shows no toast.
+            return Reply::ok('', ['html' => $html]);
         } catch (\Throwable $e) {
-            Logger::use()->error('Shop itemsList failed', ['msg' => $e->getMessage()]);
-            return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Server error'], 500);
+            self::reportCatch('Shop:Admin@itemsList', 'shop.items.list', $e, 'error');
+            return Reply::fail('The list could not be loaded because of a server fault (shop.items.list). The fault was logged.');
         }
     }
 
@@ -280,7 +282,7 @@ class Admin extends \Dotsystems\App\Parts\Controller
                     $data = $request->data(true)['data'] ?? [];
                     $title = trim((string) ($data['title'] ?? ''));
                     if ($title === '') {
-                        return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Title is required']];
+                        return Reply::fail('Enter the item title.', ['title' => 'Enter the item title.']);
                     }
 
                     $newId = null;
@@ -296,30 +298,37 @@ class Admin extends \Dotsystems\App\Parts\Controller
                         function ($r, $db, $exec) use (&$newId) {
                             $newId = $exec['insert_id'] ?? $db->inserted_id();
                         },
-                        function ($error) { Logger::use()->error('item insert', $error); }
+                        function ($error) {
+                            self::reportCatch('Shop:Admin@itemSave', 'shop.item.create', null, 'error',
+                                ['errno' => $error['errno'] ?? 0], $error['error'] ?? 'db error');
+                        }
                     );
 
                     if ($newId === null) {
-                        return ['code' => 200, 'body' => ['status' => 0, 'message' => 'Save failed']];
+                        return Reply::fail('The item was not saved: the database refused the change (shop.item.create). The fault was logged.');
                     }
-                    return ['code' => 200, 'body' => ['status' => 1, 'id' => $newId]];
+                    return Reply::ok('Item saved.', ['redirectTo' => self::listUrl()]);
                 },
                 function ($request, $name) {
-                    return ['code' => 403, 'body' => ['status' => 0, 'message' => 'Invalid signature']];
+                    // Why: without this callback a bad form signature throws.
+                    return Reply::fail('This form has expired. Reload the page and try again.');
                 }
             );
 
-            if (!is_array($answer) || !isset($answer['body'])) {
-                return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Rejected'], 400);
+            if ($answer === false || $answer === null) {
+                // Why: form() gives false on a wrong HTTP method and null when formName / action do not match.
+                return Reply::fail('This form does not match its handler (saveItem). Reload the page and try again.');
             }
-            return DotApp::DotApp()->ajaxReply($answer['body'], $answer['code']);
+            return $answer;
         } catch (\Throwable $e) {
-            Logger::use()->error('Shop itemSave failed', ['msg' => $e->getMessage()]);
-            return DotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Server error'], 500);
+            self::reportCatch('Shop:Admin@itemSave', 'shop.item.create', $e, 'error');
+            return Reply::fail('The item was not saved because of a server fault (shop.item.create). The fault was logged.');
         }
     }
 }
 ```
+
+`Reply::ok()` / `Reply::fail()` = the module reply helper (`Libraries/Reply.php`, [26](../26-CONTROL-SLICE.md) §7): HTTP 200, `status`, `message`. `self::reportCatch()` = the module catch helper ([18](../18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9). Every stop has its own sentence; a server fault carries its operation slug so the developer can grep it. `self::listUrl()` returns the registered list URL.
 
 `LoginAndCRC` already burned the token on `/api/v1/auth/Shop/…` — the handler starts with `form()`. Full error-handling rationale: [18](../18-ERROR-HANDLING-AND-RETURN-VALUES.md).
 

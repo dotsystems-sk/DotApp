@@ -452,6 +452,8 @@ class RequestObj {
             $this->origData = $data;
             $this->dotApp->protect($data);
             $this->data = $data;
+            // Aj prve volanie data(true) musi vratit original, nie chranenu kopiu
+            if ($orig === true) return $this->origData;
             return $this->data;
         }
 

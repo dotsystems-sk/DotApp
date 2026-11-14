@@ -60,6 +60,35 @@ For this task, existing `trigger()` behavior MUST remain unchanged. `triggerWith
 
 The user authorizes removing `ksort` / `krsort` from `app/parts/Installer.php` so `install()` runs `installer()` keys with `foreach` in PHP array order. `uninstall()` reverses that map (`array_reverse`). Do not sort installer keys with `ksort`, `uksort`, `krsort`, or `usort` (`1.0.10` sorts before `1.0.9`). Allowed: `app/parts/Installer.php`, `app/tests/` for this check, related AIRULES, and dropping any DACore sort override that existed only because of core `ksort`.
 
+## Writing a control (**MUST** — law, before the first button)
+
+Open `AIRULES/26-CONTROL-SLICE.md` and **copy** its blocks. A button, form, toggle, row action or pager is **one slice of six parts written in the same chunk**: (1) markup in an action row, (2) listener, (3) route, (4) action, (5) reply, (6) toast. Finish all six before the next control. Do not write the views first and wire them later.
+
+- **Markup:** buttons in `<div class="dacore-card-actions">` **after** `.card-body`; row buttons in `<div class="d-flex flex-wrap gap-2">`. DACore is **not** Bootstrap — `card-footer`, `pb-3`, `pb-4`, `pt-0`, `px-4`, `border-0` have **no CSS rule** and add no space.
+- **JS file:** `(function () { function runMe($dotapp) { … } <boot block> })();` and the boot block is exactly:
+
+```javascript
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
+```
+
+  (`"dotapp-register"` only in a `$dotapp().fn` library.) No one-line `if … else`, no `DOMContentLoaded`, no `document.addEventListener("dotapp")`.
+- **Inside `runMe`:** `$dotapp(selector)` / `$dotapp(el)` + `.attr() .val() .html(x) .text(x) .addClass() .closest()`; events with `$dotapp().live("click", ".x", function (el, e) {})`. **Not** `document.getElementById`, `querySelector`, `getAttribute`, `innerHTML`, `classList`, `el.addEventListener`. Traverse and count with `$dotapp` too: `.find()` `.children()` `.siblings()` `.first()` `.last()` `.nth(i)` `.length`.
+- **Requests:** only through the one module helper `xxxSend(url, payload, region, onOk)` / `xxxForm(selector, region, onOk)` (`AIRULES/26` §5). `.form()` needs `.onError()` — `.after()` does **not** run on HTTP 4xx/5xx.
+- **PHP:** every branch ends in `Reply::ok()` / `Reply::fail()` — HTTP **200**, `status` 0|1, a sentence naming the object and the step that stopped (server faults add the operation slug). **MUST NOT** `ajaxReply(..., 400|500)`, `Response::json()` for a `load()` / `form()` caller, or `Server error` / `Bad request` / `Save failed`.
+- **Then:** add the row `Control | View | Listener | URL + method | Route | Controller@method | Success toast | Failure toast` (every cell `file:line`) to the reply and run `php AIRULES/tools/control-check.php <Module>`.
+
+Canonical: `AIRULES/26-CONTROL-SLICE.md`, `AIRULES/00-AGENT-CONTRACT.md` §2v. Compact: `AIRULES/cursor/rules/32-control-slice.mdc`.
+
 ## Cursor credits (**MUST**)
 
 When **planning** programming, **ASK** whether more expensive models may be used. If the user does not say yes: stay on **this** chat model. Subagents that write or plan code **MUST inherit** (`inherit`). **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. **Composer 2.5** is OK **only** for hunting a pile of files — **not** as the programmer. That hunt **MUST** stay in the current module + DACore + a user-named dependency (`AIRULES/00-AGENT-CONTRACT.md` §1b) — **MUST NOT** search `app/modules/*`. A bigger model is for a capability this one lacks (e.g. generate an image) — **ASK** if it costs extra. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2b.
@@ -101,7 +130,7 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 7. **Attacks** — `htmlspecialchars` before `{{ var: }}` (it does **not** escape) and `.text()` in JS; whitelist sort + writable columns; no request data in `header()` / redirect / `HttpHelper` URL; no `eval` / `exec` / `unserialize` / `include $x`; `random_bytes` for tokens, `hash_equals` for secrets; `throttle()` on public POST; no `getMessage()` / `var_dump` in the reply; no write to `dacore_*` / `users_rights*`. Catalogue + the 12-grep threat pass: `AIRULES/24-ATTACK-VECTORS.md`.
 8. **Catch reported** — every `catch` **and** every `execute()` `$err` calls the module report helper: `Events::trigger('dotapp.catch', $p)` then `dotapp.catch.error` (aborted) / `dotapp.catch.info` (recovered). Fixed payload (`severity, module, source, operation, message, exception, code, file, line, time` + `context` ids/counts, `user_id`), no secrets/tokens/rights/bodies, helper and listener in **your** module, and the user still sees the toast. Canonical: `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9.
 9. **Perf / readability** — no `->all()` on a growing table, no query/HTTP/rights check/log inside `foreach` (prefetch + keyed map), no `select('*')` on a list, no O(n²) or per-row array copy, every new `WHERE`/`ORDER BY` column indexed (composite: equality → range → sort), every index carries a comment naming its query, no duplicate of a library DACore ships, every public method a PHPDoc **purpose sentence** then tags (not tags-only), every logical step **`// Why:`**, page actions **`// About:`** / **`// Section:`**. Canonical + greps: `AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md` §8.
-10. **Layout / UX-UI** — every new button has padding vs the parent on **all sides** (left, right, top, bottom). When buttons are the **last** content of a card/`card-body`/modal, **almost always** pad **below**. Not flush to the card/page edge; centered or aligned to siblings. `pt-0` footers still have `pb-*` / CSS `padding-bottom`. New/rewritten admin forms **MUST** be numbered sections + one-sentence lede + tinted Why-this-matters — **not** one wall of inputs. Chrome stays in **this** module; **MUST NOT** copy sibling-module chrome. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6–§6b.
+10. **Layout / UX-UI + control slice** — every control has its six parts (`AIRULES/26`) and `php AIRULES/tools/control-check.php <Module>` is clean. Buttons sit in `.dacore-card-actions` after `.card-body` (row buttons `d-flex flex-wrap gap-2`); no bare button at the end of `.card-body`; no spacing class without a CSS rule (`card-footer`, `pb-3`, `pb-4`, `pt-0`, `px-4`, `border-0`). New/rewritten admin forms **MUST** be numbered sections + one-sentence lede + tinted Why-this-matters — **not** one wall of inputs. Chrome stays in **this** module; **MUST NOT** copy sibling-module chrome. Canonical: `AIRULES/26-CONTROL-SLICE.md` §2, `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6–§6b.
 11. **HTML via Renderer** — when markup can be a template, it **MUST** be a template. Grep Controllers/Libraries for `$html .=` / `'<table` / `'<tr` / `'<div class=` / `*Html(` factories. A PHP HTML string is **only** for a named one-piece exception (`// Why:` + sandbox drop / `Page@paginate!` `<li>` / one tiny chip) — never a table, grid, tree, empty state, crumbs, or pager wrapper. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2j, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1c.
 12. **DACore is not Bootstrap** — grep `data-bs-toggle="tab"` / `.tab-pane.fade` / `bootstrap.bundle` in this module. Tab look = real GET links + this module’s CSS. Grid = `<dot-grid>` / `<dot-col>`. Canonical: `AIRULES/33-DACORE-PAGES-AND-UI.md` §0.
 13. **Hooks** — fire **`module.{lowercase_modulename}.{hook_name}.hook`** only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:`. Same name in `app/modules/<ThisModule>/.hooks`. No secrets. No `trigger()` inside `foreach` of a growing list. DACore-bound: read `app/modules/DACore/.hooks` first. Canonical: `AIRULES/41-MODULE-HOOKS.md` §6.
@@ -125,16 +154,15 @@ Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` 
 
 ## Visible outcome (**MUST** — law)
 
-Every save / toggle / delete / form **MUST** tell the user what happened, **where**, and **why**. Silent success, silent fail, and a generic “could not save” when a field is known are bugs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d, `AIRULES/cursor/rules/29-ux-save-feedback.mdc`.
+Every save / toggle / delete / form **MUST** tell the user what happened. Silent success and silent fail are bugs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2d.
 
-- **DACore admin:** **MUST** grep `app/modules/DACore/` read-only first (Notiflix.Notify / Confirm / Block, `$dotapp().toast()`, `dotapp.toasts.js`). Use the shell. Do **not** invent a second toast library. Non-field outcome = **toast**.
-- **Field errors (admin and public):** red input + the exact sentence **under that field**. PHP returns `errors` keyed by `name`, from `$request->data(true)`. The first `input` / `change` on that control clears **only that** mark. The error returns on the next failed submit.
-- **AJAX:** cover the form or list until the reply (success and fail). **Tabs:** separate GET subpages, not `data-bs-toggle="tab"`.
+- **DACore admin:** the shell loads Notiflix (`Notify` / `Confirm` / `Block`) and `window.dacoreRequestError`. Outcome channel = **toast**, through the one module request helper (`AIRULES/26` §5). Three paths, three toasts: `status` 1, `status` 0, **and** HTTP 4xx/5xx / network (`.onError()` + the `load()` error callback). PHP answers HTTP 200 with a sentence that names the step that stopped.
+- **Public site:** **you** build feedback. Field errors **preferred:** red input + message **on that field**. PHP returns `errors`. Persist still in PHP.
 - Empty `.after()` is forbidden.
 
 ## Layout / UX-UI (**MUST** — law)
 
-General UX/UI principles **MUST** be followed **at all costs**. After adding a button: check **padding vs the parent on all sides** (left, right, top, bottom). When the buttons are the **last content** of a card, `card-body`, modal, or page block, **almost always** add space **below** (`card-footer` + `pb-3`/`pb-4`). Place the cluster deliberately (centered or same rhythm as siblings). A Save glued to the card edge is a **bug**. Admin forms **MUST** use numbered sections, a one-sentence lede, and a tinted Why-this-matters note when the cluster is not obvious — **not** one undifferentiated page of inputs. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8c–§8e, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6–§6b.
+Buttons live in an **action row**: `<div class="dacore-card-actions">` placed **after** `.card-body` (inside `<fo-rm>`), row buttons in `<div class="d-flex flex-wrap gap-2">`, list toolbars in `.dacore-toolbar`. Never a bare button at the end of `.card-body`. **DACore is not Bootstrap:** `card-footer`, `pb-3`, `pb-4`, `pt-0`, `px-4`, `border-0` have **no CSS rule** in `core.css` and add no space — check a class with `grep -c` before using it, or define it in this module CSS. Consecutive blocks are separated by `mb-4` / `mb-6`. Admin forms **MUST** use numbered sections, a one-sentence lede, and a tinted Why-this-matters note when the cluster is not obvious — **not** one undifferentiated page of inputs. Canonical: `AIRULES/26-CONTROL-SLICE.md` §2, `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8c–§8e, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6–§6b.
 
 ## Public cache with an operator switch (**MUST** — law)
 
@@ -210,6 +238,7 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | Checklists | `AIRULES/17-CHECKLISTS.md` (**Finish gate** = 00 §2c) |
 | **Finish gate (after every chunk)** | `AIRULES/00-AGENT-CONTRACT.md` §2c |
 | **HTML via Renderer (templates, not PHP factories)** | `AIRULES/00-AGENT-CONTRACT.md` §2j, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1c |
+| **Control slice (write-time: markup, boot, `$dotapp`, request helper, reply)** | `AIRULES/26-CONTROL-SLICE.md` + `php AIRULES/tools/control-check.php <Module>` |
 | **Visible outcome (save/fail)** | `AIRULES/00-AGENT-CONTRACT.md` §2d |
 | **Catch bus (`dotapp.catch` in every catch)** | `AIRULES/18-ERROR-HANDLING-AND-RETURN-VALUES.md` §9 |
 | **Event tracer (`dotapp.catchall` — core fires every trigger)** | `AIRULES/01-ARCHITECTURE.md`, `AIRULES/23-DEBUG-PLAYBOOK.md` §1c — listener in **your** module |

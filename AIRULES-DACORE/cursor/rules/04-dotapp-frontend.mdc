@@ -14,7 +14,7 @@ Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SEC
 2. Optional template/reactive
 3. Module scripts
 
-Bootstrap on `dotapp` event; register plugins on `dotapp-register` via `$dotapp().fn(...)`.
+Boot block, `$dotapp` instead of raw DOM, and the request helper: **`AIRULES/26-CONTROL-SLICE.md` §3–§5** (compact: `32-control-slice.mdc`). Page code waits for `dotapp`; a `$dotapp().fn(...)` library waits for `dotapp-register`. Both events are on `window`.
 
 Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/`. Never edit `app/modules/DACore/` by default (informed exception: `AIRULES/00` §1). **MUST grep DACore (read-only) and this module first** — reuse an existing widget; do not write a second copy. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`. If DACore already ships the widget, use it.
 
@@ -45,25 +45,19 @@ Must load `/assets/dotapp/dotapp.js` first (injects random keys).
 Full sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
 
 ```javascript
-$dotapp().form('#saveForm')
-  .before(function (data, form) {
-    if ($dotapp(form).attr('blocked') == 1) return $dotapp().halt();
-    $dotapp(form).attr('blocked', '1');
-    $dotapp('#btn').attr('loading', 'true').attr('loader', 'dots');
-    if (window.Notiflix && Notiflix.Block) Notiflix.Block.standard('#saveForm', 'Loading…');
-  })
-  .after(function (data, response, form) {
-    var reply = $dotapp().parseReply(response);
-    if (reply && reply.status == 1 && reply.html) $dotapp('#listInner').html(reply.html);
-    $dotapp(form).attr('blocked', '0');
-    $dotapp('#btn').removeAttr('loading').removeAttr('loader');
-    if (window.Notiflix && Notiflix.Block) Notiflix.Block.remove('#saveForm');
-  });
+// shopForm() is the module helper from AIRULES/26 §5: before + after + onError, overlay, toast.
+shopForm("#shopItemForm", "#shopItemCard", function (reply) {
+  if (reply.html) {
+    $dotapp("#shopItemsInner").html(reply.html);
+  }
+});
 ```
+
+`.form()` has three hooks: `.before(data, form)`, `.after(data, rawText, form)`, `.onError(data, status, bodyText, form)`. `.after()` does **not** run on HTTP 4xx/5xx. A chain without `.onError()` leaves the form blocked and shows nothing.
 
 ## AJAX
 
-`$dotapp().load(url, method, data, ok, err)` — not raw fetch for DotApp secure APIs.
+`$dotapp().load(url, method, data, ok(rawText), err(status, bodyText))` — only inside the module helper `shopSend(url, payload, region, onOk)` (`AIRULES/26` §5). Not raw fetch. DOM work uses `$dotapp` as well — `.find()` `.children()` `.closest()` `.last()` `.nth(i)` `.length` — not `document.querySelector` / `getAttribute` (`AIRULES/26` §4).
 
 ## Bridge
 
