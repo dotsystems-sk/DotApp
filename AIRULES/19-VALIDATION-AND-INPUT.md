@@ -165,6 +165,8 @@ The switch is the boolean on `data()` / `query()`:
 
 Secure `<fo-rm>` fields after unwrap: `$request->data(true)['data']`.
 
+`data(true)` returns the original on every call, including the first one in a request. (Core before 2026-11-14 returned the protected copy when `data(true)` was the very first read of the body — on a project with an old core, update the framework.)
+
 Login / install handlers **MUST** also **show** every failure (`crcCheck` fail, `form()` `null`/`false`, `Auth::login === false`, codes 1–5 / 99). A 400 “Bad request” with no toast/message is incomplete. Canonical forms: [08](08-FORMS-AND-SECURITY.md). Sample: [EX-14](examples/EX-14-auth-and-2fa.md).
 
 ### Data access

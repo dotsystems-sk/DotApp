@@ -3,5 +3,6 @@
   "2.0.1": "Minor fix - Update testing",
   "2.0.2": "Minor fix 2026-08-30",
   "2.0.3": "Minor fix 2026-10-29",
-  "2.0.4": "Minor fixes — rules and the dotapp.js library"
+  "2.0.4": "Minor fixes — rules and the dotapp.js library",
+  "2.0.5": "Minor fix — data(true) returns the original on every call, including the first read"
 }
