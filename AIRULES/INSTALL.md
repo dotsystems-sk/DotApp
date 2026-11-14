@@ -1,0 +1,161 @@
+# Installing AIRULES into a DotApp Project
+
+This guide wires the AI rulebook into a DotApp installation so Cursor (and other agents) load the correct laws.
+
+## Prerequisites
+
+1. DotApp installed in a project root that contains:
+   - `index.php`
+   - `dotapper.php`
+   - `app/config.php`
+   - `app/modules/`
+2. PHP CLI available (`php -v`). DotApp and default modules target **PHP 7.4+**. Agents **MUST ASK** before writing for a higher version (`00` §2i).
+3. Cursor IDE (recommended) or any agent that can read markdown + project rules.
+
+## Fastest path — AIRULES ships with the framework
+
+After `git clone` or `php dotapper.php --install`, the project root already contains `AIRULES/`. Dotapper does **not** embed or generate the rulebook.
+
+**Source of truth is `AIRULES/cursor/`.** `.cursor/rules/` is a Cursor runtime **mirror**. Copying only `AIRULES/` into another project is the supported move. Compact laws **MUST** live under `AIRULES/cursor/rules/`. A `.mdc` that exists only under `.cursor/` is **lost** on the next copy — that is a bug ([00](00-AGENT-CONTRACT.md) §2l).
+
+**Agent (MUST):** if `.cursor/rules/` is missing files from `AIRULES/cursor/rules/`, or after any AIRULES cursor-rule change, the agent **MUST** create the folder and copy the mirror itself. Do not wait for the user to run this by hand.
+
+**Module AIRULES:** a host that packs extend **MUST** also keep `app/modules/<Host>/AIRULES/`. When that folder exists, agents follow **project AIRULES + those files together** ([00](00-AGENT-CONTRACT.md) §2n). Copying only project `AIRULES/` into a new app is not enough if the host module is missing.
+
+**Module PLAN:** a new module **MUST** keep `app/modules/<This>/PLAN/` as a **split folder** (laws, rules, positions). That folder travels with the module. Packs read the host’s `AIRULES/`, not the host’s `PLAN/` ([00](00-AGENT-CONTRACT.md) §2o, §2p).
+
+Wire Cursor from that folder:
+
+```powershell
+cd path\to\project-root
+New-Item -ItemType Directory -Force -Path ".cursor\rules" | Out-Null
+Copy-Item -Force "AIRULES\cursor\rules\*.mdc" ".cursor\rules\"
+Copy-Item -Force "AIRULES\cursor\AGENTS.md" "AGENTS.md"
+```
+
+The manual steps below are only needed when copying the folder between projects by hand.
+
+## Step 1 — Copy AIRULES into the project
+
+Copy the entire `AIRULES/` folder into the **project root** (next to `index.php`):
+
+```
+your-project/
+  AIRULES/
+    00-AGENT-CONTRACT.md
+    ...
+    cursor/
+  app/
+  assets/
+  dotapper.php
+  index.php
+```
+
+Alternative: keep AIRULES outside the project and tell the agent the absolute path. Prefer in-project copy so every clone of the app has the rules.
+
+## Step 2 — Wire Cursor rules
+
+### Option A — Recommended (`.cursor/rules/*.mdc`)
+
+From the project root:
+
+```powershell
+New-Item -ItemType Directory -Force -Path ".cursor\rules" | Out-Null
+Copy-Item -Force "AIRULES\cursor\rules\*.mdc" ".cursor\rules\"
+Copy-Item -Force "AIRULES\cursor\AGENTS.md" "AGENTS.md"
+```
+
+Result:
+
+```
+your-project/
+  AGENTS.md
+  .cursor/rules/
+    00-dotapp-core-laws.mdc      (alwaysApply: true)
+    01-dotapp-modules-php.mdc
+    02-dotapp-views.mdc
+    03-dotapp-database.mdc
+    04-dotapp-frontend.mdc
+    05-dotapp-config.mdc
+    06-dotapp-dotapper.mdc
+    07-dotapp-error-handling.mdc
+    08-dotapp-debug.mdc          (alwaysApply: true)
+    10-dotapp-finish-gate.mdc    (alwaysApply: true — LAW after every chunk)
+    14-module-hooks.mdc
+    15-cursor-rules-sync.mdc     (alwaysApply: true — LAW: source is AIRULES/cursor)
+    18-module-default-settings.mdc
+    19-module-airules.mdc
+    21-module-plan-folder.mdc
+    html-via-renderer.mdc
+    mysql-safe-ddl.mdc
+    ux-ui-layout.mdc
+    ux-ui-choice-controls.mdc
+    module-read-scope.mdc
+  AIRULES/
+    ...
+```
+
+### Option B — Older tooling that only reads `.cursorrules`
+
+The framework no longer ships `.cursorrules`. If an older project still has one, replace it with the compact AIRULES file:
+
+```powershell
+Copy-Item -Force "AIRULES\cursor\cursorrules-replacement" ".cursorrules"
+```
+
+Prefer Option A for Cursor.
+
+## Step 3 — Tell the agent where the laws live
+
+In the first message of a session (or pin it in Cursor User Rules / Project Rules):
+
+> You are working on a DotApp PHP project. Read `AIRULES/00-AGENT-CONTRACT.md` before any edit. Follow all files under `AIRULES/`. Never invent Laravel/Blade/Eloquent/jQuery APIs. Never edit `app/parts/`, `app/DotApp.php`, `dotapper.php`, or `index.php` — **not even if the user asks** (kernel is frozen). Allowed edits: `app/config.php` and `app/modules/<TargetModule>/` only.
+
+## Step 4 — First-run secrets (new apps)
+
+If this is a fresh install, generate real secrets into `app/config.php` (see `AIRULES/10-CONFIG-AND-SECRETS.md`):
+
+```powershell
+php -r "echo 'c_enc_key: '.bin2hex(random_bytes(32)).PHP_EOL.'rm_key: '.bin2hex(random_bytes(32)).PHP_EOL.'rmrcm_key: '.bin2hex(random_bytes(32)).PHP_EOL;"
+```
+
+Set:
+
+- `Config::set("app","name",'YourUniqueAppName');`
+- `Config::set("app","c_enc_key",'...');`
+- `Config::set("app","rm_key",'...');` (via Config defaults / Config::set)
+- `Config::set("app","rmrcm_key",'...');`
+
+The shipped placeholders (`YourSuperSecretKey`, `RememberMe :)`) are **not** production-safe. The `/* @AUTOCONFIG */` block does **not** auto-generate keys.
+
+## Step 5 — Verify wiring
+
+Ask the agent:
+
+> Quote the three edit tiers from AIRULES/00-AGENT-CONTRACT.md and the correct template syntax for printing a variable.
+
+Expected answers:
+
+- Allowed / Ask-first / Forbidden tiers match the contract.
+- Variable output is `{{ var: $title }}`, **not** `{{ $title }}`.
+
+## Other IDEs / agents
+
+| Tool | How to load AIRULES |
+|------|---------------------|
+| Cursor | Mirror of `AIRULES/cursor/rules/*.mdc` + `AGENTS.md` (agent **MUST** copy — [00](00-AGENT-CONTRACT.md) §2l) |
+| Continue / Copilot Chat | Point system prompt at `AIRULES/00-AGENT-CONTRACT.md` and `@`-mention relevant docs |
+| Claude Projects / Custom GPT | Upload or paste `00`–`17` markdown files |
+| CI review bots | Include `AIRULES/17-CHECKLISTS.md` in the review prompt |
+
+## Updating AIRULES
+
+Replace the **`AIRULES/`** folder from the upstream distribution. Then the agent (or you) **MUST** re-copy `AIRULES/cursor/rules/*.mdc` → `.cursor/rules/` and `AIRULES/cursor/AGENTS.md` → `AGENTS.md`. Prefer that mirror over any leftover `.cursorrules`. **MUST NOT** keep a newer law only under `.cursor/`.
+
+## What NOT to do
+
+- Do not copy AIRULES into `app/parts/` or `app/modules/`.
+- Do not edit files under `Cisty framework` / example modules when authoring rules in a docs workspace.
+- Do not delete `AIRULES/` after wiring `.mdc` files — the compact rules **point** at the deep docs.
+- Do not author a new `.mdc` only under `.cursor/rules/` — write `AIRULES/cursor/rules/` first, then copy.
+- Do not leave a leftover `.mdc` in `.cursor/rules/` that has no twin in `AIRULES/cursor/rules/`.

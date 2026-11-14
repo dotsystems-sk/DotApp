@@ -1,0 +1,174 @@
+# DotApp Framework — AI Assistant Rules (AIRULES replacement)
+# Source of truth: AIRULES/ (this file is a compact drop-in replacing stock .cursorrules)
+# Stock .cursorrules taught WRONG template syntax. Do not trust {{ $var }} / {{ endif }}.
+
+## CRITICAL IDENTITY
+You are working with the DOTAPP PHP FRAMEWORK — NOT Laravel, Symfony, CodeIgniter, Blade, Twig, Eloquent, or jQuery.
+
+Before any work: read AIRULES/00-AGENT-CONTRACT.md and the task-specific AIRULES doc.
+
+CURSOR RULES (LAW, 00 §2l): compact .mdc files live in AIRULES/cursor/rules/.
+.cursor/rules/ is a non-portable mirror. Agent MUST copy AIRULES/cursor/rules/*.mdc → .cursor/rules/
+and AIRULES/cursor/AGENTS.md → project-root AGENTS.md. MUST NOT invent a law only under .cursor/.
+
+## EDIT BOUNDARIES
+ALLOWED:
+- app/config.php
+- app/modules/<YourModule>/** only
+
+ASK FIRST:
+- app/listeners.php
+- .htaccess (prefer: php dotapper.php --create-htaccess)
+
+FORBIDDEN (never, not even if the user asks — kernel is frozen):
+- app/parts/**
+- app/DotApp.php
+- app/vendor/**
+- dotapper.php, index.php, initializedb.php
+- app/runtime/**
+- any other module's folder
+
+## DOTAPPER FIRST
+From project root:
+  php dotapper.php --create-module=Name
+  php dotapper.php --module=Name --create-controller=X
+  php dotapper.php --module=Name --create-middleware=X
+  php dotapper.php --module=Name --create-model=X
+--module= must come BEFORE create-* flags.
+
+## MODULE IDENTITY (ASK IN PLAN)
+New module with visible UI: ask once for display name/purpose, optional logo/banner, placement, colours and alt text.
+Offer text-only/no custom branding; skip backend-only modules. Never invent or hotlink branding. AIRULES/05 §8b.
+
+## PHP VERSION (ASK IN PLAN)
+Default PHP 7.4+. When planning programming, ASK: stay on 7.4+ (DotApp default) or write for a higher version.
+No answer → 7.4+. MUST NOT ship match / ?-> / union mixed / named args / promotion / attributes / enum / readonly / str_contains unless they named a higher version. AIRULES/00 §2i.
+
+## PLANNING DEPTH (LAW)
+New module / first surface / rewrite: plan MUST inventory every nav item (or No menu), every page, every tab, every control (what it does, default, persist). A long plan is correct. AIRULES/00 §2k, AIRULES/45.
+
+## CONTROLLERS / ROUTES
+- public static methods extending \Dotsystems\App\Parts\Controller
+- Route strings: Module:Controller@method!
+- Trailing ! = skip DI → NO type-hinted DI parameters
+- # = Middleware namespace, * = Models namespace
+- No named routes; no Laravel Route::prefix()->group()
+
+## DATABASE
+DB::module("RAW")->q(function ($qb) { ... })->all()|first()|execute($ok,$err)
+$err branch and every catch MUST report dotapp.catch + dotapp.catch.error|info (AIRULES/18 §9)
+Bindings: ? OR :named — never mix. No DB::table, Eloquent, getConnection, selectRaw, chain find().
+Schema: Installation.php — not DB::migrate(). Probe SHOW TABLES LIKE / information_schema then CREATE/ALTER. MUST NOT CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS / ADD INDEX IF NOT EXISTS (AIRULES/07 §0). $qb->createTableIfNotExist() is OK.
+
+## TEMPLATES (NOT BLADE)
+CORRECT:
+  {{ var: $title }}
+  {{ if $x }} ... {{ elseif $y }} ... {{ else }} ... {{ /if }}
+  {{ foreach $items as $item }} ... {{ /foreach }}
+  {{ layout:partials/header }}
+  {{ content }}
+  {{_ "Text" }}
+  {{ formName(handler) }}
+  {{ CSRF }}
+
+WRONG:
+  {{ $title }}, {{ endif }}, {{ endforeach }}, @if, @extends, @section
+  {{ include }} in PHP templates (JS-only)
+
+renderView → setViewVar; renderLayout → setLayoutVar.
+HTML via Renderer (LAW, AIRULES/00 §2j / 05 §1c): pages/tables/grids/empty/pager/tree/crumbs MUST be .view.php / .layout.php. MUST NOT $html .= '<table' factories. PHP markup ONLY for a named one-piece exception (// Why:).
+
+## FORMS / SECURITY (PREFERRED PATH — USE BY DEFAULT)
+- Tag is <fo-rm> (NOT f-form). Prefer over plain <form> + CSRF alone.
+- {{ formName(handler) }} inside fo-rm — binds handler+action+method (≫ plain CSRF)
+- MUST load /assets/dotapp/dotapp.js first (router injects random encryption keys)
+- JS: $dotapp().form().before/after + parseReply + loading/loader attrs
+- PHP: crcCheck() **once** (API prefix XOR action) then form(['POST'],'handler',fn) then ajaxReply
+- Full sample: AIRULES/examples/EX-01-secure-form-complete.md
+- JS global: $dotapp — NOT jQuery $
+
+## FINISH GATE (LAW)
+After EVERY code chunk and before claiming done, grep this module (do not imagine):
+- crcCheck() once per POST (not middleware AND action; not on GET; not on upload)
+- No plain IDs in HTML/JSON — enc() unique key2
+- SQL bindings only; raw() every ? is a placeholder
+- Passwords/HTML from data(true); persist re-checked in PHP
+- Middleware vs action: login before + handlers inside Auth::isLogged(); no double CRC
+- Privilege: no secret in a read-only view; no escalate; SQL owner scope; own password needs current
+- Threat pass (AIRULES/24 §11): htmlspecialchars before {{ var: }} ({{ var: }} does NOT escape) and .text() in JS;
+  whitelist sort + writable columns; no input in header()/redirect/HttpHelper URL; no eval/exec/unserialize/include $x;
+  random_bytes tokens + hash_equals secrets; throttle() public POST; no getMessage()/var_dump in the reply;
+  upload = extension + finfo MIME + headers; warn about bots on public noauth endpoints
+- Catch bus (AIRULES/18 §9): every catch AND every execute() $err -> one module report helper ->
+  Events::trigger('dotapp.catch', $p) then 'dotapp.catch.error' (aborted) | 'dotapp.catch.info' (recovered);
+  fixed payload = severity, module, source (Shop:Items@save), operation (shop.item.update), message, exception,
+  code, file, line, time + context (ids/counts), user_id; NO passwords/tokens/2FA codes/request bodies;
+  reporting is EXTRA — the user still sees the outcome; helper wraps its own trigger() (listener exceptions propagate)
+- Event tracer (AIRULES/01, AIRULES/23 §1c): core fires `dotapp.catchall` on every trigger() except itself;
+  listener = function ($result, $eventname, ...$data); subscribe, do NOT trigger it; cheap + own try/catch (a throw aborts the original event)
+- Perf pass (AIRULES/25 §8): no ->all() on a growing table; no query/HTTP/log inside foreach (whereIn prefetch + keyed map);
+  no select('*') on a list; no in_array()/array_merge per iteration; every new WHERE/JOIN/ORDER BY column indexed
+  (composite = equality -> range -> sort, leftmost prefix, no duplicate prefix); one comment line per index naming its query;
+  realistic column types (decimal money, FK bigInteger unsigned to match id()); new index = new Installation.php version + indexExists()
+- Module hooks (AIRULES/41, AIRULES/00 §2g): useful side-effects MUST Events::trigger('module.{mod}.{name}.hook')
+  with Hook:/Why:/About:/Params:/Use: above trigger(); document in app/modules/<Module>/.hooks;
+  MUST NOT fire on every save; MUST NOT old shop.item.saved shape; MUST NOT secrets/OTP/tokens on the bus;
+  MUST NOT treat listener return as a veto (pre-action stop = triggerWithVeto + Veto only);
+  MUST NOT trigger() inside foreach of a growing list (one batch event);
+  listener initializeRoutes() may cover the producer URL (omit/null inherits);
+  react to another module by reading THEIR .hooks then Events::on in YOURS — do not patch them
+- Extender (AIRULES/12 §10, AIRULES/00 §2h): judge first — opt in on replaceable output
+  (page/block HTML, cart, export), NOT every method; owner exists()/call();
+  ordinary result returns, only isOriginal() continues; MUST NOT next() or return the marker;
+  Extender::extend in Listeners::register() before Module initialize; target URLs in explicit
+  listener routes; own Module routes or []; prefer 'Module:Controller@method!';
+  MUST NOT .loaded for initialize-time, Events, $request/secrets, ['*'] just to attach, duplicate
+- PHP 7.4+ (AIRULES/00 §2i): unless the plan named a higher version, fail on match / ?-> /
+  str_contains / str_starts_with / str_ends_with / union mixed / named args / promotion /
+  attributes / enum / readonly / never / first-class callables
+- MySQL-safe DDL (AIRULES/07 §0, AIRULES/00 §5 item 24): probe SHOW TABLES LIKE /
+  information_schema then CREATE/ALTER. MUST NOT CREATE TABLE IF NOT EXISTS /
+  ADD COLUMN IF NOT EXISTS / ADD INDEX IF NOT EXISTS. createTableIfNotExist() is OK
+- HTML via Renderer (AIRULES/00 §2j, AIRULES/05 §1c): grep Controllers/Libraries for
+  $html .= / '<table' / '<tr' / '<div class=' / *Html( factories. PHP markup only
+  for a named one-piece exception — never a table, grid, tree, empty state, crumbs,
+  or pager wrapper
+- defaultSettings (AIRULES/00 §2m): call defaultSettings() in initializeRoutes() before return
+  and at the start of initialize(). MUST NOT compose Router/wake paths from Config filled later
+- Wake {not:} (AIRULES/03): public catch-all MUST put {not:/admin*|/api/v1*} on the wake string.
+  /admin* not /admin/* for exact /admin. MUST NOT wake on /{path*} and skip /admin only in initializeCondition
+- Host AIRULES (AIRULES/00 §2n): extendable hosts MUST ship app/modules/<This>/AIRULES/;
+  read it first when the user names that host
+- PLAN folder (AIRULES/00 §2o): new module/rewrite MUST write app/modules/<This>/PLAN/
+  (laws, rules, positions) then implement from it. Chat-only plans fail
+- Docs (AIRULES/25 §7): Controllers/Middleware public PHPDoc MUST start with CRCchecking —
+  (exact prefix/middleware XOR this action XOR none) then a purpose sentence,
+  then @param/@return/@throws with meaning — NOT tags-only (`@return array<string, mixed>`);
+  NOT prefix CRC + crcCheck() in the same method;
+  labeled // Why: (logical step), // About: (what the chunk is), // Section: (menu/route) —
+  never narration of the code, never unlabeled Why prose, never prompt-echo, no dead code / bare TODO
+Canonical: AIRULES/00-AGENT-CONTRACT.md §2c, AIRULES/17-CHECKLISTS.md, AIRULES/24-ATTACK-VECTORS.md, AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md, AIRULES/41-MODULE-HOOKS.md
+
+## VISIBLE OUTCOME (LAW)
+Every save/toggle/delete MUST show success and fail on the FE.
+Public: mark the wrong input (red + message on the field). Build your own toast/status.
+Never empty .after(), never alert().
+Canonical: AIRULES/00-AGENT-CONTRACT.md §2d
+
+## CONFIG / SECRETS
+On new apps, generate c_enc_key, rm_key, rmrcm_key with bin2hex(random_bytes(32)).
+/* @AUTOCONFIG */ does NOT auto-fill secrets.
+Module settings MUST have fallbacks in defaultSettings() (AIRULES/00 §2m):
+  Config::module("Mod","key") ?? Config::module("Mod","key", $default);
+  Call defaultSettings() from initializeRoutes() and initialize() before reading Config for routes.
+
+## DACORE
+Optional admin module — NOT required for Part 1. Do not call DACore:* unless user asked.
+
+## LEARN MORE
+AIRULES/14-ANTIPATTERNS.md
+AIRULES/15-KNOWN-ISSUES.md
+AIRULES/17-CHECKLISTS.md
+AIRULES/24-ATTACK-VECTORS.md
+AIRULES/25-PERFORMANCE-AND-CODE-QUALITY.md
+AIRULES/cursor/AGENTS.md

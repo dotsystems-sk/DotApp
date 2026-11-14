@@ -1,0 +1,68 @@
+---
+description: DotApp views — Renderer syntax is not Blade/Twig
+globs: app/modules/**/views/**
+alwaysApply: false
+---
+
+# DotApp Views
+
+Full reference: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md`.
+
+## Correct syntax
+
+```html
+{{ var: $title }}
+{{_ "Login" }}
+{{ if isset($user) }} ... {{ elseif $x }} ... {{ else }} ... {{ /if }}
+{{ foreach $items as $item }} ... {{ /foreach }}
+{{ layout:partials/header }}
+{{ content }}
+<fo-rm method="post" action="/shop/contact">
+  {{ formName(saveItem) }}
+</fo-rm>
+{{ CSRF }}
+```
+
+## Wrong (never)
+
+- `{{ $title }}`, `@if`, `@foreach`, `@extends`, `@section`, `@yield`
+- `{{ endif }}`, `{{ endforeach }}`
+- `{{ include 'x' }}` in PHP templates (JS-only)
+- Assuming auto-escaping on `var:`
+- Prompt-echo UI copy (“this user can hide the icon…”) — product language only (`AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8)
+- `{{ }}` inside the opening `<fo-rm …>` tag (`action="{{ var: $postAction }}"`). `method` and `action` are literal. Body `{{ var }}` is fine (`AIRULES/08-FORMS-AND-SECURITY.md`)
+
+## Files
+
+- Views: `*.view.php` via `setView('name')` — **this is the outer file**
+- Layouts: `views/layouts/*.layout.php` via `setLayout('path')` — **inner piece**
+- Cross-module: `Shop:path`
+
+## How they compose (MUST)
+
+**Your module owns the HTML document:** `setView` + `setLayout` + `renderView()` → layout HTML replaces `{{ content }}` **inside the view**. The layout does not wrap the view. The view **MUST** contain `{{ content }}` or the layout is discarded.
+
+Other valid paths: `setLayout` + `renderLayout()` (fragment; view ignored); or generate HTML to a string and inject with `setViewVar` / `str_replace`. **MUST:** that string is itself `renderLayout()` / `renderView()` output — **MUST NOT** concatenate tags in PHP. Full: `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §1b, §1c.
+
+## HTML via Renderer (LAW)
+
+When markup **can** be a template, it **MUST** be. Pages, tables, grids, empty states, pager chrome, trees, crumbs, AJAX fragments live in `.view.php` / `.layout.php`. PHP markup **only** for a named one-piece exception (`// Why:`). `AIRULES/00` §2j, `AIRULES/05` §1c.
+
+## Renderer vars
+
+- `renderView()` → `setViewVar` only
+- `renderLayout()` → `setLayoutVar` only
+- Sandbox checks variable names and nested values with `is_callable()`. A value/key such as `time`, `copy`, `count`, `key`, or `header` can silently drop the entire bag. Prefix risky keys; **MUST NOT** patch Renderer.
+
+## Renderer lifecycle
+
+- `dotapp.renderer.before` / `after` receive one `RendererLifecycleContext` (contract 1).
+- A `before` listener may `useReplacement($html)` for layout/view/rendered code; listener return values do nothing.
+- Custom renderer events and the `after` phase are observe-only.
+- Register cheaply in `Listeners::register()` with explicit listener routes; never log output/secrets. Full: `AIRULES/05` §5.
+
+## Assets
+
+`/assets/modules/{Module}/...` and `/assets/dotapp/dotapp.js`.
+
+**Public website chrome:** overlay mobile drawer (L/R), lock page scroll while open, scrollable nav list, contacts + compact search in the drawer unless large search is its own section. `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3.

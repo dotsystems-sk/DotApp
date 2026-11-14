@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DotApp Framework - Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        nav {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        nav a:hover {
+            background: #f0f0f0;
+        }
+
+        section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .attribute-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .attribute-table th,
+        .attribute-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .attribute-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .attribute-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .badge-required {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge-optional {
+            background: #6c757d;
+            color: white;
+        }
+
+        .example-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example-box h4 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .method-signature {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DotApp Framework</h1>
+            <p>Comprehensive Documentation v1.0</p>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#getting-started">Getting Started</a></li>
+                <li><a href="#custom-functions">Custom Functions</a></li>
+                <li><a href="#selectors">Selectors</a></li>
+                <li><a href="#dom-manipulation">DOM Manipulation</a></li>
+                <li><a href="#events">Events</a></li>
+                <li><a href="#variables">Variables</a></li>
+                <li><a href="#computed">Computed</a></li>
+                <li><a href="#forms">Forms</a></li>
+                <li><a href="#bridge">Bridge</a></li>
+                <li><a href="#routing">Routing</a></li>
+                <li><a href="#validation">Validation</a></li>
+                <li><a href="#ajax">AJAX</a></li>
+                <li><a href="#file-upload">File Upload</a></li>
+                <li><a href="#two-factor">Two-Factor</a></li>
+                <li><a href="#custom-functions">Custom Functions</a></li>
+                <li><a href="#api-reference">API Reference</a></li>
+            </ul>
+        </nav>
+
+        <section id="introduction">
+            <h2>Introduction</h2>
+            <p>
+                <strong>DotApp</strong> is a lightweight and customizable JavaScript framework for building web applications. 
+                It provides a jQuery-like API with modern features including reactive variables, computed properties, 
+                form handling, routing, validation, and secure AJAX communication.
+            </p>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>jQuery-like API</strong> - Familiar selector and chaining syntax</li>
+                <li><strong>Reactive Variables</strong> - DotAppVariable with automatic DOM binding</li>
+                <li><strong>Computed Variables</strong> - Automatic dependency tracking and memoization</li>
+                <li><strong>Event System</strong> - Comprehensive event handling with live delegation</li>
+                <li><strong>Form Handling</strong> - Automatic form interception with hooks system</li>
+                <li><strong>Bridge System</strong> - Secure server communication with CSRF/CRC protection</li>
+                <li><strong>Hash Routing</strong> - Client-side routing with lifecycle events</li>
+                <li><strong>Validation</strong> - Extensive validation methods</li>
+                <li><strong>AJAX</strong> - Secure load() method with automatic CSRF/CRC</li>
+                <li><strong>File Upload</strong> - Drag-and-drop file upload with progress tracking</li>
+                <li><strong>Two-Factor Auth</strong> - Built-in 2FA input handling</li>
+                <li><strong>Special Events</strong> - bodychange, attrchange, resizechange, and more</li>
+            </ul>
+
+            <h3>Requirements</h3>
+            <ul>
+                <li>Modern browser with ES6+ support (private class fields, async/await)</li>
+                <li>No external dependencies</li>
+            </ul>
+        </section>
+
+        <section id="getting-started">
+            <h2>Getting Started</h2>
+            
+            <h3>Installation</h3>
+            <p>Include DotApp in your HTML:</p>
+            <pre><code>&lt;script src="dotapp.js"&gt;&lt;/script&gt;
+&lt;!-- Optional modules --&gt;
+&lt;script src="dotapp.template.js"&gt;&lt;/script&gt;
+&lt;script src="dotapp.reactive.js"&gt;&lt;/script&gt;</code></pre>
+
+            <h3>Basic Usage</h3>
+            <p>
+                DotApp uses a <code>$dotapp()</code> function similar to jQuery. However, you must ensure DotApp 
+                is loaded before using it. Always wrap your code in the recommended pattern:
+            </p>
+            <pre><code>(function() {
+    const runMe = function($dotapp) {
+        // Select elements
+        $dotapp('#myElement').html('Hello World');
+
+        // Chain methods
+        $dotapp('.buttons')
+            .addClass('active')
+            .on('click', function() {
+                console.log('Clicked!');
+            });
+
+        // Global instance (no selector)
+        $dotapp().variable('myVar', 'initial value');
+    };
+
+    // Check if DotApp is already loaded
+    if (window.$dotapp) {
+        // DotApp is already loaded, run immediately
+        runMe(window.$dotapp);
+    } else {
+        // DotApp not loaded yet, wait for 'dotapp' event
+        window.addEventListener('dotapp', () => runMe(window.$dotapp), { once: true });
+    }
+})();</code></pre>
+
+            <div class="info">
+                <strong>Note:</strong> When called without arguments, <code>$dotapp()</code> returns the global instance 
+                used for framework-level operations (variables, routing, etc.). When called with a selector, 
+                it returns a new DotApp instance for DOM manipulation.
+            </div>
+        </section>
+
+        <section id="custom-functions">
+            <h2>Using DotApp in Your Code</h2>
+            <p>
+                <strong>IMPORTANT:</strong> Before you start writing code that uses DotApp, you must ensure that 
+                the DotApp framework is loaded and ready. Using the wrong pattern can cause errors if your script 
+                loads before DotApp. <strong>Always use the recommended pattern shown below.</strong>
+            </p>
+
+            <h3>Recommended Pattern for Using DotApp</h3>
+            <p>
+                When writing your own code that uses DotApp, you must wrap it in a pattern that checks if DotApp 
+                is available. This ensures your code works regardless of script loading order.
+            </p>
+
+            <div class="warning">
+                <strong>Important:</strong> This is the only recommended and safe way to use DotApp in your code. 
+                It works regardless of script loading order. <strong>Always use this pattern!</strong>
+            </div>
+
+            <div class="example-box">
+                <h4>Example: Using DotApp in Your Code</h4>
+                <pre><code>(function() {
+    const runMe = function($dotapp) {
+        // Your code that uses DotApp goes here
+        $dotapp('#myDIV').html('Hello World');
+        
+        $dotapp('.buttons').on('click', function() {
+            console.log('Button clicked');
+        });
+        
+        // Create variables
+        const myVar = $dotapp().variable('myVar', 'initial value');
+        
+        // Use any DotApp functionality
+        $dotapp('#content').template('user/profile', {
+            name: 'John Doe',
+            email: 'john@example.com'
+        });
+    };
+
+    // Check if DotApp is already loaded
+    if (window.$dotapp) {
+        // DotApp is already loaded, run immediately
+        runMe(window.$dotapp);
+    } else {
+        // DotApp not loaded yet, wait for 'dotapp' event
+        window.addEventListener('dotapp', () => runMe(window.$dotapp), { once: true });
+    }
+})();</code></pre>
+            </div>
+
+            <h3>Why This Pattern is Important</h3>
+            <p>
+                Without this pattern, if your script loads before DotApp, you'll get errors like 
+                <code>Cannot read property 'html' of undefined</code> or <code>$dotapp is not a function</code>. 
+                This pattern ensures your code only runs when DotApp is ready.
+            </p>
+
+            <div class="example-box">
+                <h4>Example: Complete Application Code</h4>
+                <pre><code>(function() {
+    const runMe = function($dotapp) {
+        // Initialize your application
+        console.log('Application starting...');
+        
+        // Set up event handlers
+        $dotapp('#submitBtn').on('click', async function() {
+            const formData = {
+                name: $dotapp('#nameInput').val(),
+                email: $dotapp('#emailInput').val()
+            };
+            
+            try {
+                const response = await $dotapp().load('/api/submit', 'POST', formData);
+                $dotapp('#result').html('Success: ' + response);
+            } catch (error) {
+                $dotapp('#result').html('Error: ' + error.message);
+            }
+        });
+        
+        // Create reactive variables
+        const searchVar = $dotapp().variable('searchQuery', '');
+        searchVar.bindToElement($dotapp('#searchInput'), { live: true });
+        
+        // Set up routing
+        $dotapp().hashRouter('#home', () => {
+            $dotapp('#content').html('&lt;h1&gt;Home Page&lt;/h1&gt;');
+        });
+        
+        // Your application code continues here...
+    };
+
+    // Ensure DotApp is loaded
+    if (window.$dotapp) {
+        runMe(window.$dotapp);
+    } else {
+        window.addEventListener('dotapp', () => runMe(window.$dotapp), { once: true });
+    }
+})();</code></pre>
+            </div>
+
+            <h3>Registering Custom Functions and Modules</h3>
+            <p>
+                If you want to extend DotApp with custom functions (that can be called like <code>$dotapp().myFunction()</code>), 
+                you need to register them. For this, use the <code>dotapp-register</code> event instead of <code>dotapp</code>.
+            </p>
+
+            <div class="info">
+                <strong>When to use which event:</strong>
+                <ul>
+                    <li><strong><code>dotapp</code> event</strong> - For your application code that <strong>uses</strong> DotApp</li>
+                    <li><strong><code>dotapp-register</code> event</strong> - For registering custom functions/modules that <strong>extend</strong> DotApp</li>
+                </ul>
+            </div>
+
+            <h4>Registering Custom Functions</h4>
+            <p>To add custom methods to DotApp that can be chained, use the <code>fn()</code> method:</p>
+            <div class="example-box">
+                <h4>Example: Registering Custom Function</h4>
+                <pre><code>(function() {
+    const runMe = function($dotapp) {
+        // Register your custom function
+        $dotapp().fn('myCustomFunction', function(arg1, arg2) {
+            // Your custom function logic
+            this.getElements().forEach(el => {
+                el.setAttribute('data-custom', arg1);
+            });
+            return this; // Return this for chaining
+        });
+    };
+
+    // Use 'dotapp-register' event for registering functions
+    if (window.$dotapp) {
+        runMe(window.$dotapp);
+    } else {
+        window.addEventListener('dotapp-register', () => runMe(window.$dotapp), { once: true });
+    }
+})();</code></pre>
+            </div>
+
+            <h4>Using Your Custom Function</h4>
+            <p>Once registered, you can use your custom function just like any other DotApp method:</p>
+            <div class="example-box">
+                <h4>Example: Using Custom Function</h4>
+                <pre><code>&lt;!-- HTML --&gt;
+&lt;div id="myElement"&gt;Content&lt;/div&gt;
+&lt;button id="myButton"&gt;Click me&lt;/button&gt;
+
+&lt;script&gt;
+// After the custom function is registered, use it:
+$dotapp('#myElement')
+    .myCustomFunction('value1', 'value2')  // Your custom function
+    .addClass('active')                     // Chain other DotApp methods
+    .html('Updated content');
+
+// Use in event handlers
+$dotapp('#myButton').on('click', function() {
+    $dotapp('#myElement')
+        .myCustomFunction('newValue', 'anotherValue')
+        .css('color', 'red');
+});
+
+// Use with selectors
+$dotapp('.myClass').myCustomFunction('sharedValue', 'param2');
+&lt;/script&gt;</code></pre>
+            </div>
+
+            <h4>Creating Custom Modules</h4>
+            <p>
+                For complex modules (like template, reactive, or connector modules), create a module with initialization logic. 
+                Always use the <code>dotapp-register</code> event and follow this exact pattern:
+            </p>
+            <div class="example-box">
+                <h4>Example: Complete Custom Module (Recommended Pattern)</h4>
+                <pre><code>(function() {
+    // Flag to prevent double registration
+    let isRegistered = false;
+    
+    const runMe = function($dotapp) {
+        // Prevent double registration
+        if (isRegistered) {
+            console.warn('MyModule already registered, skipping...');
+            return;
+        }
+        isRegistered = true;
+        
+        // Your module classes and logic here
+        class MyModuleClass {
+            constructor(dotAppInstance, settings) {
+                // Module initialization
+            }
+        }
+        
+        // Register module function
+        const myModuleFunction = function(settings) {
+            const instanceKey = '_myModule';
+            const elements = this.getElements();
+            if (elements.length !== 1) {
+                throw new Error('MyModule must be applied to exactly one element');
+            }
+            const element = elements[0];
+            if (!element[instanceKey]) {
+                element[instanceKey] = new MyModuleClass(this, settings);
+            }
+            return element[instanceKey];
+        };
+        
+        // Register the function with DotApp
+        $dotapp().fn('myModule', myModuleFunction);
+        
+        // Dispatch ready event (optional, but recommended)
+        window.dispatchEvent(new Event('dotapp-mymodule-ready'));
+    };
+
+    // Check if DotApp is already loaded
+    if (window.$dotapp) {
+        // DotApp is already loaded, run immediately
+        runMe(window.$dotapp);
+    } else {
+        // Wait for 'dotapp-register' event (for modules)
+        window.addEventListener('dotapp-register', () => runMe(window.$dotapp), { once: true });
+    }
+})();</code></pre>
+            </div>
+
+            <h4>Using Your Custom Module</h4>
+            <p>Once your module is registered, you can use it on elements. The module function returns the module instance, which you can use to call module methods:</p>
+            <div class="example-box">
+                <h4>Example: Using Custom Module</h4>
+                <pre><code>&lt;!-- HTML --&gt;
+&lt;div id="myContainer"&gt;Content&lt;/div&gt;
+&lt;div id="anotherContainer"&gt;Another content&lt;/div&gt;
+
+&lt;script&gt;
+// Initialize module on an element (returns module instance)
+const myModuleInstance = $dotapp('#myContainer').myModule({
+    setting: 'value',
+    option: true
+});
+
+// Now you can call methods on the module instance
+myModuleInstance.someMethod();
+myModuleInstance.anotherMethod('parameter');
+
+// Each element gets its own instance (cached)
+const anotherInstance = $dotapp('#anotherContainer').myModule({
+    setting: 'different value'
+});
+
+// The same element returns the same instance (cached)
+const sameInstance = $dotapp('#myContainer').myModule();
+// sameInstance === myModuleInstance (true)
+
+// You can also chain DotApp methods before calling the module
+$dotapp('#myContainer')
+    .addClass('active')
+    .myModule({ setting: 'value' })
+    .someMethod();
+
+// Wait for module to be ready (if module dispatches ready event)
+window.addEventListener('dotapp-mymodule-ready', function() {
+    console.log('MyModule is ready!');
+    $dotapp('#myContainer').myModule({ setting: 'value' });
+});
+&lt;/script&gt;</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example: Real-World Module (Connector Module Pattern)</h4>
+                <p>Here's how a real module (like connector) is structured:</p>
+                <pre><code>(function() {
+    let isRegistered = false;
+    
+    const runMe = function($dotapp) {
+        if (isRegistered) {
+            console.warn('Connector module already registered, skipping...');
+            return;
+        }
+        isRegistered = true;
+        
+        // Module classes
+        class ConnectorHalt {
+            constructor(reason) {
+                this.reason = reason;
+            }
+        }
+        
+        class DotAppConnector {
+            #dotAppInstance;
+            // ... module implementation ...
+            
+            constructor(dotAppInstance, settings = {}) {
+                this.#dotAppInstance = dotAppInstance;
+                // ... initialization ...
+            }
+            
+            // ... module methods ...
+        }
+        
+        // Register module function
+        const connector = function(settings) {
+            const instanceKey = '_connector';
+            const elements = this.getElements();
+            if (elements.length !== 1) {
+                throw new Error('Connector must be applied to exactly one element');
+            }
+            const element = elements[0];
+            if (!element[instanceKey]) {
+                element[instanceKey] = new DotAppConnector(this, settings);
+            }
+            return element[instanceKey];
+        };
+        
+        // Register with DotApp
+        $dotapp().fn('connector', connector);
+        
+        // Dispatch ready event
+        window.dispatchEvent(new Event('dotapp-connector-ready'));
+    };
+
+    // Register module
+    if (window.$dotapp) {
+        runMe(window.$dotapp);
+    } else {
+        window.addEventListener('dotapp-register', () => runMe(window.$dotapp), { once: true });
+    }
+})();</code></pre>
+            </div>
+
+            <h3>Event Timing</h3>
+            <p>DotApp dispatches events in the following order:</p>
+            <ol>
+                <li><code>dotapp-register</code> - Fired when DotApp is ready for module registration</li>
+                <li><code>dotapp</code> - Fired when DotApp is fully initialized and ready for use</li>
+            </ol>
+
+            <div class="example-box">
+                <h4>Example: Complete Custom Module</h4>
+                <pre><code>/*
+    My Custom Module
+    Author: Your Name
+    Version: 1.0
+*/
+
+(function() {
+    let isRegistered = false;
+    
+    const runMe = function($dotapp) {
+        if (isRegistered) {
+            console.warn('MyCustomModule already registered');
+            return;
+        }
+        isRegistered = true;
+        
+        // Register module functions
+        $dotapp().fn('highlight', function(color = 'yellow') {
+            this.getElements().forEach(el => {
+                el.style.backgroundColor = color;
+            });
+            return this;
+        });
+        
+        $dotapp().fn('shake', function() {
+            this.getElements().forEach(el => {
+                el.style.animation = 'shake 0.5s';
+            });
+            return this;
+        });
+        
+        // Initialize module
+        console.log('MyCustomModule loaded');
+        
+        // Dispatch ready event
+        window.dispatchEvent(new Event('mycustommodule-ready'));
+    };
+
+    // Register module
+    if (window.$dotapp) {
+        runMe(window.$dotapp);
+    } else {
+        window.addEventListener('dotapp-register', () => runMe(window.$dotapp), { once: true });
+    }
+})();
+
+// Usage:
+// $dotapp('#element').highlight('red').shake();</code></pre>
+            </div>
+
+            <h3>Best Practices</h3>
+            <ul>
+                <li><strong>Always use IIFE</strong> - Wrap your code in <code>(function() { ... })()</code> to avoid global scope pollution</li>
+                <li><strong>Check for existing registration</strong> - Use a flag to prevent double registration</li>
+                <li><strong>Use correct event</strong> - <code>dotapp</code> for functions, <code>dotapp-register</code> for modules</li>
+                <li><strong>Return <code>this</code></code> - Allow method chaining by returning the DotApp instance</li>
+                <li><strong>Dispatch ready events</strong> - Let other code know when your module is ready</li>
+                <li><strong>Handle both cases</strong> - Check if <code>window.$dotapp</code> exists, otherwise wait for event</li>
+            </ul>
+
+            <div class="warning">
+                <strong>Common Mistakes:</strong>
+                <ul>
+                    <li>Not checking if DotApp is loaded - causes errors if script loads before DotApp</li>
+                    <li>Using wrong event - <code>dotapp</code> vs <code>dotapp-register</code></li>
+                    <li>Not preventing double registration - can cause duplicate event listeners</li>
+                    <li>Not returning <code>this</code> - breaks method chaining</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="selectors">
+            <h2>Selectors</h2>
+            <p>
+                DotApp supports CSS selectors, DOM elements, and DotApp instances as selectors.
+            </p>
+
+            <h3>Selector Types</h3>
+            <div class="example-box">
+                <h4>CSS Selector (String)</h4>
+                <pre><code>$dotapp('#myId')           // ID selector
+$dotapp('.myClass')       // Class selector
+$dotapp('div p')          // Descendant selector
+$dotapp('input[type="text"]')  // Attribute selector</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>DOM Element</h4>
+                <pre><code>const element = document.getElementById('myId');
+$dotapp(element)</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>DotApp Instance</h4>
+                <pre><code>const instance = $dotapp('.items');
+$dotapp(instance)  // Creates new instance with same elements</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>No Selector (Global Instance)</h4>
+                <pre><code>$dotapp()  // Returns global instance for framework operations</code></pre>
+            </div>
+
+            <h3>Element Access Methods</h3>
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                        <th>Returns</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>first(chainable)</code></td>
+                        <td>Get first element</td>
+                        <td>DotApp instance (if chainable) or HTMLElement</td>
+                    </tr>
+                    <tr>
+                        <td><code>last()</code></td>
+                        <td>Get last element</td>
+                        <td>DotApp instance or HTMLElement</td>
+                    </tr>
+                    <tr>
+                        <td><code>get(index)</code></td>
+                        <td>Get element at index</td>
+                        <td>HTMLElement or null</td>
+                    </tr>
+                    <tr>
+                        <td><code>nth(index)</code></td>
+                        <td>Alias for get(index)</td>
+                        <td>HTMLElement or null</td>
+                    </tr>
+                    <tr>
+                        <td><code>all()</code></td>
+                        <td>Get all elements as array</td>
+                        <td>Array of HTMLElements</td>
+                    </tr>
+                    <tr>
+                        <td><code>getElements()</code></td>
+                        <td>Alias for all()</td>
+                        <td>Array of HTMLElements</td>
+                    </tr>
+                    <tr>
+                        <td><code>each(callback)</code></td>
+                        <td>Iterate over elements</td>
+                        <td>DotApp instance (chainable)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="example-box">
+                <h4>Example: Element Access</h4>
+                <pre><code>// Get first element
+const first = $dotapp('.items').first(false);  // Returns HTMLElement
+const firstChain = $dotapp('.items').first();   // Returns DotApp instance
+
+// Iterate over elements
+$dotapp('.items').each((index, element) => {
+    console.log(`Item ${index}:`, element);
+});
+
+// Get all elements
+const allElements = $dotapp('.items').all();</code></pre>
+            </div>
+        </section>
+
+        <section id="dom-manipulation">
+            <h2>DOM Manipulation</h2>
+
+            <h3>Content Manipulation</h3>
+
+            <h4>html(value)</h4>
+            <p>Get or set HTML content. Getter returns the last result (use <code>getLastResult()</code>).</p>
+            <div class="method-signature">
+                html(value?: string): DotApp | string
+            </div>
+            <pre><code>// Setter
+$dotapp('#content').html('&lt;h1&gt;Hello&lt;/h1&gt;');
+
+// Getter
+const html = $dotapp('#content').html();
+const result = $dotapp().getLastResult();  // Get the actual value</code></pre>
+
+            <h4>text(value)</h4>
+            <p>Get or set text content (no HTML).</p>
+            <div class="method-signature">
+                text(value?: string): DotApp | string | null
+            </div>
+            <pre><code>// Setter
+$dotapp('#content').text('Hello World');
+
+// Getter
+const text = $dotapp('#content').text();  // Returns string directly</code></pre>
+
+            <h4>val(value)</h4>
+            <p>Get or set value of form elements (input, textarea, select).</p>
+            <div class="method-signature">
+                val(value?: any): DotApp | any | null
+            </div>
+            <pre><code>// Setter
+$dotapp('#input').val('New value');
+$dotapp('#select').val('option-value');
+
+// Getter
+const value = $dotapp('#input').val();  // Returns string
+const selectValue = $dotapp('#select').val();  // Returns selected value
+
+// Multiple select
+$dotapp('#multiSelect').val(['opt1', 'opt2']);  // Set multiple
+const values = $dotapp('#multiSelect').val();   // Returns array</code></pre>
+
+            <h4>optionText(value)</h4>
+            <p>Get or set selected option text (not value) for select elements.</p>
+            <div class="method-signature">
+                optionText(value?: string | string[]): DotApp | string | string[] | null
+            </div>
+            <pre><code>// Setter
+$dotapp('#select').optionText('Option Text');
+
+// Getter
+const text = $dotapp('#select').optionText();  // Returns option text</code></pre>
+
+            <h3>Attributes and Properties</h3>
+
+            <h4>attr(name, value)</h4>
+            <p>Get or set HTML attributes.</p>
+            <pre><code>// Setter
+$dotapp('#element').attr('data-id', '123');
+
+// Getter
+const id = $dotapp('#element').attr('data-id');
+const result = $dotapp().getLastResult();</code></pre>
+
+            <h4>removeAttr(name)</h4>
+            <p>Remove an attribute.</p>
+            <pre><code>$dotapp('#element').removeAttr('data-id');</code></pre>
+
+            <h4>data(key, value)</h4>
+            <p>Get or set data attributes (uses dataset API).</p>
+            <pre><code>// Setter
+$dotapp('#element').data('userId', '123');
+
+// Getter
+const userId = $dotapp('#element').data('userId');</code></pre>
+
+            <h4>prop(name, value)</h4>
+            <p>Get or set DOM properties.</p>
+            <pre><code>// Setter
+$dotapp('#checkbox').prop('checked', true);
+
+// Getter
+const checked = $dotapp('#checkbox').prop('checked');</code></pre>
+
+            <h3>Classes</h3>
+
+            <h4>addClass(className)</h4>
+            <p>Add a CSS class.</p>
+            <pre><code>$dotapp('.items').addClass('active');</code></pre>
+
+            <h4>removeClass(className)</h4>
+            <p>Remove a CSS class.</p>
+            <pre><code>$dotapp('.items').removeClass('active');</code></pre>
+
+            <h4>toggleClass(className)</h4>
+            <p>Toggle a CSS class.</p>
+            <pre><code>$dotapp('#button').toggleClass('active');</code></pre>
+
+            <h4>hasClass(className)</h4>
+            <p>Check if element has a class.</p>
+            <pre><code>if ($dotapp('#element').hasClass('active')) {
+    // Element has the class
+}</code></pre>
+
+            <h3>CSS</h3>
+
+            <h4>css(property, value)</h4>
+            <p>Get or set CSS properties.</p>
+            <div class="method-signature">
+                css(property: string, value?: string): DotApp | string | null<br>
+                css(properties: object): DotApp
+            </div>
+            <pre><code>// Set single property
+$dotapp('#element').css('color', 'red');
+
+// Set multiple properties
+$dotapp('#element').css({
+    color: 'red',
+    fontSize: '16px',
+    marginTop: '10px'
+});
+
+// Get property
+const color = $dotapp('#element').css('color');</code></pre>
+
+            <h4>width(value)</h4>
+            <p>Get or set element width.</p>
+            <pre><code>// Setter
+$dotapp('#element').width(500);  // pixels
+$dotapp('#element').width('50%');
+
+// Getter
+const width = $dotapp('#element').width();  // Returns number</code></pre>
+
+            <h4>height(value)</h4>
+            <p>Get or set element height.</p>
+            <pre><code>// Setter
+$dotapp('#element').height(300);
+
+// Getter
+const height = $dotapp('#element').height();</code></pre>
+
+            <h3>Visibility</h3>
+
+            <h4>show()</h4>
+            <p>Show element (removes inline display style).</p>
+            <pre><code>$dotapp('#element').show();</code></pre>
+
+            <h4>hide()</h4>
+            <p>Hide element (sets display: none).</p>
+            <pre><code>$dotapp('#element').hide();</code></pre>
+
+            <h4>toggle()</h4>
+            <p>Toggle element visibility.</p>
+            <pre><code>$dotapp('#element').toggle();</code></pre>
+
+            <h3>Animations</h3>
+
+            <h4>fadeIn(duration)</h4>
+            <p>Fade in element.</p>
+            <pre><code>$dotapp('#element').fadeIn(400);  // 400ms duration</code></pre>
+
+            <h4>fadeOut(duration)</h4>
+            <p>Fade out element.</p>
+            <pre><code>$dotapp('#element').fadeOut(400);</code></pre>
+
+            <h4>slideDown(duration)</h4>
+            <p>Slide down element (expand height).</p>
+            <pre><code>$dotapp('#element').slideDown(400);</code></pre>
+
+            <h4>slideUp(duration)</h4>
+            <p>Slide up element (collapse height).</p>
+            <pre><code>$dotapp('#element').slideUp(400);</code></pre>
+
+            <h3>DOM Structure</h3>
+
+            <h4>append(content)</h4>
+            <p>Append content to element.</p>
+            <pre><code>// Append HTML string
+$dotapp('#container').append('&lt;div&gt;New item&lt;/div&gt;');
+
+// Append DOM element
+const div = document.createElement('div');
+$dotapp('#container').append(div);
+
+// Append DotApp instance
+$dotapp('#container').append($dotapp('.items'));</code></pre>
+
+            <h4>prepend(content)</h4>
+            <p>Prepend content to element.</p>
+            <pre><code>$dotapp('#container').prepend('&lt;div&gt;First item&lt;/div&gt;');</code></pre>
+
+            <h4>remove()</h4>
+            <p>Remove element from DOM.</p>
+            <pre><code>$dotapp('.item').remove();</code></pre>
+
+            <h4>empty()</h4>
+            <p>Remove all child elements.</p>
+            <pre><code>$dotapp('#container').empty();</code></pre>
+
+            <h4>clone()</h4>
+            <p>Clone element(s).</p>
+            <pre><code>const cloned = $dotapp('.item').clone();
+$dotapp('#container').append(cloned);</code></pre>
+
+            <h4>replaceWith(content)</h4>
+            <p>Replace element with new content.</p>
+            <pre><code>$dotapp('#old').replaceWith('&lt;div id="new"&gt;New content&lt;/div&gt;');</code></pre>
+
+            <h3>Traversal</h3>
+
+            <h4>parent()</h4>
+            <p>Get parent element.</p>
+            <pre><code>const parent = $dotapp('.child').parent();</code></pre>
+
+            <h4>children(selector)</h4>
+            <p>Get direct children, optionally filtered by selector.</p>
+            <pre><code>// All children
+const children = $dotapp('#parent').children();
+
+// Filtered children
+const activeChildren = $dotapp('#parent').children('.active');</code></pre>
+
+            <h4>find(selector)</h4>
+            <p>Find descendants matching selector.</p>
+            <pre><code>const items = $dotapp('#container').find('.item');</code></pre>
+
+            <h4>next()</h4>
+            <p>Get next sibling.</p>
+            <pre><code>const next = $dotapp('.item').next();</code></pre>
+
+            <h4>prev()</h4>
+            <p>Get previous sibling.</p>
+            <pre><code>const prev = $dotapp('.item').prev();</code></pre>
+
+            <h4>siblings(selector)</h4>
+            <p>Get siblings, optionally filtered.</p>
+            <pre><code>// All siblings
+const siblings = $dotapp('.item').siblings();
+
+// Filtered siblings
+const activeSiblings = $dotapp('.item').siblings('.active');</code></pre>
+
+            <h4>closest(selector)</h4>
+            <p>Get closest ancestor matching selector.</p>
+            <pre><code>const container = $dotapp('.item').closest('.container');</code></pre>
+
+            <h3>Form Elements</h3>
+
+            <h4>check(value)</h4>
+            <p>Get or set checkbox/radio checked state.</p>
+            <pre><code>// Setter
+$dotapp('#checkbox').check(true);
+$dotapp('.checkboxes').check(['val1', 'val2']);  // Multiple checkboxes
+
+// Getter
+const checked = $dotapp('#checkbox').check();  // Returns boolean
+const checkedValues = $dotapp('.checkboxes').check();  // Returns array</code></pre>
+
+            <h4>serialize()</h4>
+            <p>Serialize form data to URL-encoded string.</p>
+            <pre><code>const formData = $dotapp('#myForm').serialize();
+// Returns: "name=value&email=test@example.com"</code></pre>
+
+            <h4>enable() / disable()</h4>
+            <p>Enable or disable form elements.</p>
+            <pre><code>$dotapp('#input').disable();
+$dotapp('#input').enable();</code></pre>
+
+            <h4>focus() / blur()</h4>
+            <p>Focus or blur focusable elements.</p>
+            <pre><code>$dotapp('#input').focus();
+$dotapp('#input').blur();</code></pre>
+
+            <h3>Utility Methods</h3>
+
+            <h4>is(selector)</h4>
+            <p>Check if element matches selector.</p>
+            <pre><code>if ($dotapp('#element').is('.active')) {
+    // Element matches selector
+}</code></pre>
+
+            <h4>index()</h4>
+            <p>Get element index among siblings.</p>
+            <pre><code>const index = $dotapp('.item').index();  // Returns 0, 1, 2, etc.</code></pre>
+
+            <h4>getLastResult()</h4>
+            <p>Get the last result from a getter method.</p>
+            <pre><code>$dotapp('#element').html();  // Getter doesn't return value directly
+const html = $dotapp().getLastResult();  // Get the actual value</code></pre>
+        </section>
+
+        <section id="events">
+            <h2>Event Handling</h2>
+
+            <h3>Basic Events</h3>
+
+            <h4>on(event, selector, handler)</h4>
+            <p>Attach event handler. Supports event delegation.</p>
+            <div class="method-signature">
+                on(event: string, selector?: string | function, handler?: function): function
+            </div>
+            <pre><code>// Direct event
+$dotapp('#button').on('click', function() {
+    console.log('Clicked!');
+});
+
+// Event delegation
+$dotapp('#container').on('click', '.item', function() {
+    console.log('Item clicked');
+});
+
+// Global event (no selector)
+const off = $dotapp().on('customEvent', function(data) {
+    console.log('Custom event:', data);
+});
+
+// Remove handler
+off();</code></pre>
+
+            <h4>off(event, callback, selector)</h4>
+            <p>Remove event handler.</p>
+            <pre><code>const handler = function() { console.log('clicked'); };
+$dotapp('#button').on('click', handler);
+$dotapp('#button').off('click', handler);</code></pre>
+
+            <h4>one(event, selector, handler)</h4>
+            <p>Attach event handler that fires only once.</p>
+            <pre><code>$dotapp('#button').one('click', function() {
+    console.log('This fires only once');
+});</code></pre>
+
+            <h4>live(event, selector, handler)</h4>
+            <p>Attach event handler that works for dynamically added elements.</p>
+            <pre><code>// Works for elements added after this call
+$dotapp().live('click', '.dynamic-item', function() {
+    console.log('Dynamic item clicked');
+});</code></pre>
+
+            <h3>Special Events</h3>
+            <p>DotApp provides several special events for advanced use cases:</p>
+
+            <h4>bodychange</h4>
+            <p>Fires when element content changes (innerHTML or value).</p>
+            <pre><code>$dotapp('#content').on('bodychange', function(element, oldContent, newContent) {
+    console.log('Content changed from', oldContent, 'to', newContent);
+});</code></pre>
+
+            <h4>attrchange</h4>
+            <p>Fires when any attribute changes.</p>
+            <pre><code>$dotapp('#element').on('attrchange', function(element, attrName, oldValue, newValue) {
+    console.log(`Attribute ${attrName} changed from ${oldValue} to ${newValue}`);
+});
+
+// Or watch specific attribute
+$dotapp('#element').on('attrchange:data-id', function(element, attrName, oldValue, newValue) {
+    console.log('data-id changed');
+});</code></pre>
+
+            <h4>resizechange</h4>
+            <p>Fires when element size changes.</p>
+            <pre><code>$dotapp('#element').on('resizechange', function(element, oldSize, newSize) {
+    console.log('Size changed:', oldSize, '->', newSize);
+});</code></pre>
+
+            <h4>positionchange</h4>
+            <p>Fires when element position changes.</p>
+            <pre><code>$dotapp('#element').on('positionchange', function(element, oldPosition, newPosition) {
+    console.log('Position changed');
+});</code></pre>
+
+            <h4>visibilitychange</h4>
+            <p>Fires when element visibility changes (enters/leaves viewport).</p>
+            <pre><code>$dotapp('#element').on('visibilitychange', function(element, isVisible) {
+    console.log('Element is now', isVisible ? 'visible' : 'hidden');
+});</code></pre>
+
+            <h3>Triggering Events</h3>
+            <p>Use the global <code>trigger()</code> method to fire custom events:</p>
+            <pre><code>// Trigger custom event
+$dotapp().trigger('myEvent', arg1, arg2, arg3);
+
+// Listen for custom event
+$dotapp().on('myEvent', function(arg1, arg2, arg3) {
+    console.log('Event triggered with:', arg1, arg2, arg3);
+});</code></pre>
+        </section>
+
+        <section id="variables">
+            <h2>Variables (DotAppVariable)</h2>
+            <p>
+                DotAppVariable provides reactive data binding with automatic DOM updates and change tracking.
+            </p>
+
+            <h3>Creating Variables</h3>
+
+            <h4>variable(name, initialValue)</h4>
+            <p>Create or get a variable.</p>
+            <pre><code>// Create variable
+$dotapp().variable('userName', 'John Doe');
+
+// Get variable
+const userNameVar = $dotapp().variable('userName');
+
+// Get variable by name
+const var = $dotapp().getVariable('userName');</code></pre>
+
+            <h3>Variable Properties and Methods</h3>
+
+            <h4>value</h4>
+            <p>Get or set variable value. Setting triggers callbacks and updates bound elements.</p>
+            <pre><code>const myVar = $dotapp().variable('myVar', 'initial');
+
+// Get value
+console.log(myVar.value);  // 'initial'
+
+// Set value (triggers callbacks and updates DOM)
+myVar.value = 'new value';</code></pre>
+
+            <h4>onChange(callback)</h4>
+            <p>Listen for value changes.</p>
+            <pre><code>const listener = myVar.onChange((oldValue, newValue) => {
+    console.log('Changed from', oldValue, 'to', newValue);
+});
+
+// Remove listener
+listener.off();
+
+// Pause listener
+listener.pause();
+
+// Resume listener
+listener.resume();</code></pre>
+
+            <h4>watch(callback, now)</h4>
+            <p>Watch for changes, optionally call immediately.</p>
+            <pre><code>// Watch with immediate call
+myVar.watch((oldValue, newValue) => {
+    console.log('Value:', newValue);
+}, true);  // true = call immediately with current value</code></pre>
+
+            <h4>reset(initialValue)</h4>
+            <p>Reset variable to initial value.</p>
+            <pre><code>myVar.reset();  // Reset to original initial value
+myVar.reset('new initial');  // Reset to new initial value</code></pre>
+
+            <h4>hasChange() / isDirty()</h4>
+            <p>Check if variable has changed from initial value.</p>
+            <pre><code>if (myVar.hasChange()) {
+    console.log('Variable has been modified');
+}</code></pre>
+
+            <h3>Element Binding</h3>
+
+            <h4>bindToElement(element, options)</h4>
+            <p>Bind variable to DOM element(s) for two-way data binding.</p>
+            <div class="method-signature">
+                bindToElement(element: HTMLElement | DotApp, options?: object): void
+            </div>
+            <pre><code>// Bind to input
+const nameVar = $dotapp().variable('name', '');
+nameVar.bindToElement(document.getElementById('nameInput'), {
+    live: true  // Update on every keystroke (input event)
+});
+
+// Bind to multiple elements
+nameVar.bindToElement($dotapp('.name-inputs'), {
+    live: false  // Update only on change/blur
+});
+
+// Options:
+// - live: boolean - If true, updates on 'input' event (realtime)
+// - events: array - Custom events to listen to (default: ['change'] for inputs, ['bodychange'] for others)</code></pre>
+
+            <h3>Autosave</h3>
+
+            <h4>autosave(config)</h4>
+            <p>Automatically save variable value to server when it changes.</p>
+            <pre><code>const noteVar = $dotapp().variable('note', '');
+noteVar.autosave({
+    url: '/api/save-note',
+    debounce: 1000,  // Wait 1 second after change before saving
+    onSuccess: (response) => {
+        console.log('Saved successfully');
+    },
+    onError: (error) => {
+        console.error('Save failed:', error);
+    }
+});</code></pre>
+
+            <h3>Data Binding Attribute</h3>
+            <p>You can use the <code>dotbind</code> attribute for automatic binding:</p>
+            <pre><code>&lt;input type="text" dotbind="userName"&gt;
+
+&lt;script&gt;
+    // Variable is automatically created and bound
+    $dotapp().variable('userName', '');
+&lt;/script&gt;</code></pre>
+
+            <h3>databind() Method</h3>
+            <p>Programmatically bind elements to a variable:</p>
+            <pre><code>$dotapp('.name-inputs').databind('userName', {
+    initialValue: ''
+});</code></pre>
+        </section>
+
+        <section id="computed">
+            <h2>Computed Variables</h2>
+            <p>
+                Computed variables automatically track dependencies and recompute only when needed. 
+                They provide memoization and automatic invalidation.
+            </p>
+
+            <h3>Creating Computed Variables</h3>
+
+            <h4>computed(fn)</h4>
+            <p>Create a computed variable that automatically tracks dependencies.</p>
+            <div class="method-signature">
+                computed(fn: function): ComputedVariable
+            </div>
+            <pre><code>// Create reactive variables
+const firstName = $dotapp().variable('firstName', 'John');
+const lastName = $dotapp().variable('lastName', 'Doe');
+
+// Create computed variable
+const fullName = $dotapp().computed(() => {
+    return `${firstName.value} ${lastName.value}`;
+});
+
+// Access computed value
+console.log(fullName.value);  // 'John Doe'
+
+// When dependencies change, computed automatically updates
+firstName.value = 'Jane';
+console.log(fullName.value);  // 'Jane Doe' (automatically recomputed)</code></pre>
+
+            <h3>Computed Features</h3>
+
+            <h4>Automatic Dependency Tracking</h4>
+            <p>Computed variables automatically track which variables they depend on:</p>
+            <pre><code>const a = $dotapp().variable('a', 1);
+const b = $dotapp().variable('b', 2);
+
+const sum = $dotapp().computed(() => {
+    return a.value + b.value;  // Automatically tracks a and b
+});
+
+// Changing a or b will invalidate sum
+a.value = 3;
+console.log(sum.value);  // Automatically recomputed: 5</code></pre>
+
+            <h4>Nested Computed Variables</h4>
+            <p>Computed variables can depend on other computed variables:</p>
+            <pre><code>const price = $dotapp().variable('price', 100);
+const quantity = $dotapp().variable('quantity', 2);
+
+const subtotal = $dotapp().computed(() => price.value * quantity.value);
+const tax = $dotapp().computed(() => subtotal.value * 0.1);
+const total = $dotapp().computed(() => subtotal.value + tax.value);
+
+// Changing price or quantity will cascade through all computed variables
+price.value = 150;
+// subtotal, tax, and total all automatically update</code></pre>
+
+            <h4>Memoization</h4>
+            <p>Computed values are memoized - they only recompute when dependencies change:</p>
+            <pre><code>let computeCount = 0;
+const expensive = $dotapp().computed(() => {
+    computeCount++;
+    // Expensive computation
+    return someExpensiveOperation();
+});
+
+console.log(expensive.value);  // Computes once
+console.log(expensive.value);  // Uses cached value (no recomputation)
+console.log(computeCount);     // 1</code></pre>
+
+            <h4>onChange Support</h4>
+            <p>Computed variables support onChange callbacks:</p>
+            <pre><code>const fullName = $dotapp().computed(() => {
+    return `${firstName.value} ${lastName.value}`;
+});
+
+fullName.onChange((newValue) => {
+    console.log('Full name changed to:', newValue);
+});</code></pre>
+
+            <h4>Manual Invalidation</h4>
+            <p>You can manually invalidate a computed variable:</p>
+            <pre><code>const computed = $dotapp().computed(() => {
+    return someValue.value;
+});
+
+// Force recomputation
+computed.invalidate();</code></pre>
+
+            <div class="warning">
+                <strong>Circular Dependencies:</strong> The framework detects circular dependencies and will warn 
+                if a computed variable depends on itself (directly or indirectly).
+            </div>
+        </section>
+
+        <section id="forms">
+            <h2>Form Handling</h2>
+            <p>
+                DotApp automatically intercepts form submissions and provides a hooks system for processing.
+            </p>
+
+            <h3>Automatic Form Interception</h3>
+            <p>
+                By default, all forms (except those with <code>data-dotapp-nojs</code> attribute) are automatically 
+                intercepted. The default action is prevented and handled by DotApp.
+            </p>
+            <pre><code>&lt;form id="myForm" action="/api/submit" method="POST"&gt;
+    &lt;input name="name" value="John"&gt;
+    &lt;button type="submit"&gt;Submit&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;script&gt;
+    // Form is automatically intercepted
+    // No additional code needed for basic submission
+&lt;/script&gt;</code></pre>
+
+            <h3>Form Hooks</h3>
+
+            <h4>form(selector)</h4>
+            <p>Register hooks for form submission.</p>
+            <div class="method-signature">
+                form(selector: string | HTMLElement): FormChain
+            </div>
+
+            <h4>before(fn)</h4>
+            <p>Hook that runs before form submission. Can halt submission by returning <code>halt()</code>.</p>
+            <pre><code>$dotapp().form('#myForm')
+    .before((formData, form) => {
+        console.log('Before submit:', formData);
+        
+        // Validate
+        if (!formData.name) {
+            return $dotapp().halt();  // Stop submission
+        }
+        
+        // Modify form data
+        formData.customField = 'value';
+        return formData;  // Return modified data
+    });</code></pre>
+
+            <h4>after(fn)</h4>
+            <p>Hook that runs after successful form submission.</p>
+            <pre><code>$dotapp().form('#myForm')
+    .after((formData, response, form) => {
+        console.log('Form submitted successfully');
+        console.log('Response:', response);
+    });</code></pre>
+
+            <h4>onError(fn)</h4>
+            <p>Hook that runs on form submission error.</p>
+            <pre><code>$dotapp().form('#myForm')
+    .onError((formData, status, error, form) => {
+        console.error('Form submission failed:', status, error);
+    });</code></pre>
+
+            <h3>Programmatic Submission</h3>
+
+            <h4>submit()</h4>
+            <p>Programmatically submit a form.</p>
+            <pre><code>$dotapp('#myForm').submit();</code></pre>
+
+            <h3>Form Data Serialization</h3>
+
+            <h4>serialize()</h4>
+            <p>Serialize form data to URL-encoded string.</p>
+            <pre><code>const formData = $dotapp('#myForm').serialize();
+// Returns: "name=value&email=test@example.com"</code></pre>
+
+            <h3>File Upload Support</h3>
+            <p>Forms with file inputs are automatically handled:</p>
+            <pre><code>&lt;form id="uploadForm" action="/api/upload" method="POST" enctype="multipart/form-data"&gt;
+    &lt;input type="file" name="file"&gt;
+    &lt;button type="submit"&gt;Upload&lt;/button&gt;
+&lt;/form&gt;
+
+&lt;script&gt;
+    // File upload is handled automatically
+    $dotapp().form('#uploadForm')
+        .after((formData, response) => {
+            console.log('File uploaded');
+        });
+&lt;/script&gt;</code></pre>
+
+            <h3>Disabling Form Interception</h3>
+            <p>Add <code>data-dotapp-nojs</code> attribute to allow native form submission:</p>
+            <pre><code>&lt;form data-dotapp-nojs action="/submit" method="POST"&gt;
+    &lt;!-- This form will submit normally, bypassing DotApp --&gt;
+&lt;/form&gt;</code></pre>
+        </section>
+
+        <section id="bridge">
+            <h2>Bridge System</h2>
+            <p>
+                The Bridge system provides secure server communication with automatic CSRF/CRC protection. 
+                It's designed to work with server-side PHP functions.
+            </p>
+
+            <h3>HTML Attributes</h3>
+            <p>Configure bridge functions using HTML attributes:</p>
+            <pre><code>&lt;button dotbridge-function="saveUser"
+        dotbridge-event="click"
+        dotbridge-inputs="name,email"
+        dotbridge-url="/api/users"&gt;
+    Save User
+&lt;/button&gt;
+
+&lt;input type="text" dotbridge-input="name"&gt;
+&lt;input type="email" dotbridge-input="email"&gt;</code></pre>
+
+            <h3>JavaScript API</h3>
+
+            <h4>bridge(functionName, event)</h4>
+            <p>Register a bridge function programmatically.</p>
+            <div class="method-signature">
+                bridge(functionName: string, event: string): BridgeChain
+            </div>
+            <pre><code>$dotapp().bridge('saveUser', 'click')
+    .before((data, element, event) => {
+        console.log('Before bridge call:', data);
+        // Can modify data or halt
+        return data;
+    })
+    .after((response, element, event) => {
+        console.log('Bridge call successful:', response);
+    })
+    .onError((error, element, event) => {
+        console.error('Bridge call failed:', error);
+    })
+    .onResponseCode(400, (status, text, element, event) => {
+        console.error('Bad request:', text);
+    });</code></pre>
+
+            <h3>Bridge Hooks</h3>
+
+            <h4>before(fn)</h4>
+            <p>Runs before bridge call. Can modify data or halt execution.</p>
+            <pre><code>.before((data, element, event) => {
+    // Validate
+    if (!data.name) {
+        return $dotapp().halt();  // Stop execution
+    }
+    
+    // Modify data
+    data.timestamp = Date.now();
+    return data;
+})</code></pre>
+
+            <h4>after(fn)</h4>
+            <p>Runs after successful bridge call.</p>
+            <pre><code>.after((response, element, event) => {
+    console.log('Success:', response.body);
+})</code></pre>
+
+            <h4>onError(fn)</h4>
+            <p>Runs on bridge call error.</p>
+            <pre><code>.onError((error, element, event) => {
+    console.error('Error:', error);
+})</code></pre>
+
+            <h4>onResponseCode(code, fn)</h4>
+            <p>Handle specific HTTP response codes.</p>
+            <pre><code>.onResponseCode(404, (status, text, element, event) => {
+    console.error('Not found');
+})
+.onResponseCode(403, (status, text, element, event) => {
+    console.error('Forbidden');
+})</code></pre>
+
+            <h4>onValueError(fn)</h4>
+            <p>Runs when input validation fails (dotbridge-result="0").</p>
+            <pre><code>.onValueError((inputName, element, event) => {
+    console.error('Validation failed for:', inputName);
+})</code></pre>
+
+            <h3>Security</h3>
+            <p>
+                Bridge calls automatically include CSRF tokens and CRC (Cyclic Redundancy Check) values 
+                for secure communication. These are handled transparently by the framework.
+            </p>
+        </section>
+
+        <section id="routing">
+            <h2>Hash Routing</h2>
+            <p>
+                DotApp provides client-side hash-based routing with lifecycle events.
+            </p>
+
+            <h3>Registering Routes</h3>
+
+            <h4>hashRouter(route, handler)</h4>
+            <p>Register a route handler.</p>
+            <div class="method-signature">
+                hashRouter(route: string, handler: function): void
+            </div>
+            <pre><code>// Register routes
+$dotapp().hashRouter('#home', () => {
+    $dotapp('#content').html('&lt;h1&gt;Home Page&lt;/h1&gt;');
+});
+
+$dotapp().hashRouter('#about', () => {
+    $dotapp('#content').html('&lt;h1&gt;About Page&lt;/h1&gt;');
+});
+
+$dotapp().hashRouter('#default', () => {
+    $dotapp('#content').html('&lt;h1&gt;Default Page&lt;/h1&gt;');
+});</code></pre>
+
+            <h3>Route Lifecycle Events</h3>
+            <p>Listen for route changes and lifecycle events:</p>
+            <pre><code>// Global route change event
+$dotapp().on('route.onchange', (newHash, oldHash) => {
+    console.log('Route changed from', oldHash, 'to', newHash);
+});
+
+// Route-specific events
+$dotapp().on('route.#home.before', () => {
+    console.log('Before home route');
+});
+
+$dotapp().on('route.#home.after', (result) => {
+    console.log('After home route:', result);
+});</code></pre>
+
+            <h3>Manual Route Checking</h3>
+
+            <h4>checkHash()</h4>
+            <p>Manually check and trigger current hash route.</p>
+            <pre><code>$dotapp().checkHash();</code></pre>
+
+            <h3>Default Route</h3>
+            <p>
+                If no route matches the current hash, the <code>#default</code> route is used (if registered). 
+                If no hash is present, <code>#default</code> is also used.
+            </p>
+        </section>
+
+        <section id="validation">
+            <h2>Validation</h2>
+            <p>
+                DotApp provides extensive validation methods through the <code>validator</code> property.
+            </p>
+
+            <h3>Using the Validator</h3>
+            <pre><code>// Access validator
+const validator = $dotapp().validator;
+
+// Or use directly
+if ($dotapp().validator.isEmail(email)) {
+    // Valid email
+}</code></pre>
+
+            <h3>Validation Methods</h3>
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                        <th>Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>isEmail(text)</code></td>
+                        <td>Validates email format</td>
+                        <td><code>validator.isEmail('test@example.com')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isRequired(text)</code></td>
+                        <td>Checks if string is not empty</td>
+                        <td><code>validator.isRequired('text')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isNumber(value)</code></td>
+                        <td>Checks if value is a number</td>
+                        <td><code>validator.isNumber(123)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isInteger(value)</code></td>
+                        <td>Checks if value is an integer</td>
+                        <td><code>validator.isInteger(5)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isInRange(value, min, max)</code></td>
+                        <td>Checks if number is in range</td>
+                        <td><code>validator.isInRange(5, 1, 10)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isMinLength(text, min)</code></td>
+                        <td>Checks minimum string length</td>
+                        <td><code>validator.isMinLength('text', 3)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isMaxLength(text, max)</code></td>
+                        <td>Checks maximum string length</td>
+                        <td><code>validator.isMaxLength('text', 10)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isUrl(text)</code></td>
+                        <td>Validates URL format</td>
+                        <td><code>validator.isUrl('https://example.com')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isAlpha(text)</code></td>
+                        <td>Checks if string contains only letters</td>
+                        <td><code>validator.isAlpha('abc')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isAlphanumeric(text)</code></td>
+                        <td>Checks if string contains only letters and numbers</td>
+                        <td><code>validator.isAlphanumeric('abc123')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isStrongPassword(text, special)</code></td>
+                        <td>Validates strong password (8+ chars, uppercase, digit, optional special)</td>
+                        <td><code>validator.isStrongPassword('Pass123!', true)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isPhoneNumber(text)</code></td>
+                        <td>Validates phone number format</td>
+                        <td><code>validator.isPhoneNumber('+1234567890')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isDate(text)</code></td>
+                        <td>Validates date string</td>
+                        <td><code>validator.isDate('2024-01-01')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isOneOf(value, allowedValues)</code></td>
+                        <td>Checks if value is in allowed array</td>
+                        <td><code>validator.isOneOf('a', ['a', 'b', 'c'])</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isJson(text)</code></td>
+                        <td>Validates JSON string</td>
+                        <td><code>validator.isJson('{"key":"value"}')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isUsername(text, min, max, allowDash, allowDot)</code></td>
+                        <td>Validates username format</td>
+                        <td><code>validator.isUsername('user_name', 3, 20, true, false)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isBoolean(value)</code></td>
+                        <td>Checks if value is boolean</td>
+                        <td><code>validator.isBoolean(true)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isCreditCard(text)</code></td>
+                        <td>Validates credit card using Luhn algorithm</td>
+                        <td><code>validator.isCreditCard('4111111111111111')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isHexColor(text)</code></td>
+                        <td>Validates hex color code</td>
+                        <td><code>validator.isHexColor('#ff0000')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isIpAddress(text)</code></td>
+                        <td>Validates IPv4 or IPv6 address</td>
+                        <td><code>validator.isIpAddress('192.168.1.1')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isUuid(text)</code></td>
+                        <td>Validates UUID format</td>
+                        <td><code>validator.isUuid('550e8400-e29b-41d4-a716-446655440000')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isNotEmptyArray(value)</code></td>
+                        <td>Checks if value is non-empty array</td>
+                        <td><code>validator.isNotEmptyArray([1, 2, 3])</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isValidFileName(text)</code></td>
+                        <td>Validates file name</td>
+                        <td><code>validator.isValidFileName('file.txt')</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isPositiveNumber(value)</code></td>
+                        <td>Checks if number is positive</td>
+                        <td><code>validator.isPositiveNumber(5)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isMatchingRegex(text, regex)</code></td>
+                        <td>Validates against regex pattern</td>
+                        <td><code>validator.isMatchingRegex('abc', /^[a-z]+$/)</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isUniqueInArray(array, key)</code></td>
+                        <td>Checks if array values are unique</td>
+                        <td><code>validator.isUniqueInArray([1, 2, 3])</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>isSet(value)</code></td>
+                        <td>Checks if value is set (not null/undefined/empty)</td>
+                        <td><code>validator.isSet('value')</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Validation Examples</h3>
+            <div class="example-box">
+                <h4>Example: Form Validation</h4>
+                <pre><code>function validateForm(formData) {
+    const validator = $dotapp().validator;
+    const errors = {};
+    
+    if (!validator.isRequired(formData.name)) {
+        errors.name = 'Name is required';
+    }
+    
+    if (!validator.isEmail(formData.email)) {
+        errors.email = 'Invalid email';
+    }
+    
+    if (!validator.isMinLength(formData.password, 8)) {
+        errors.password = 'Password must be at least 8 characters';
+    }
+    
+    if (!validator.isStrongPassword(formData.password, true)) {
+        errors.password = 'Password must contain uppercase, digit, and special character';
+    }
+    
+    return Object.keys(errors).length === 0 ? null : errors;
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="ajax">
+            <h2>AJAX (load method)</h2>
+            <p>
+                The <code>load()</code> method provides secure AJAX communication with automatic CSRF/CRC protection.
+            </p>
+
+            <h3>Basic Usage</h3>
+
+            <h4>load(url, method, data, callback, errorCallback)</h4>
+            <p>Load data from server. Supports flexible parameter overloading.</p>
+            <div class="method-signature">
+                load(url: string, method?: string | object | function, data?: object | FormData | function, callback?: function, errorCallback?: function): Promise
+            </div>
+
+            <div class="example-box">
+                <h4>Example 1: GET Request</h4>
+                <pre><code>// Simple GET
+$dotapp().load('/api/data')
+    .then(response => {
+        console.log('Data:', response);
+    });
+
+// GET with callback
+$dotapp().load('/api/data', (response) => {
+    console.log('Data:', response);
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 2: POST Request</h4>
+                <pre><code>// POST with data
+$dotapp().load('/api/save', 'POST', {
+    name: 'John',
+    email: 'john@example.com'
+})
+.then(response => {
+    console.log('Saved:', response);
+})
+.catch(error => {
+    console.error('Error:', error);
+});
+
+// POST with callbacks
+$dotapp().load('/api/save', 'POST', {
+    name: 'John'
+}, (response) => {
+    console.log('Success:', response);
+}, (status, error) => {
+    console.error('Error:', status, error);
+});</code></pre>
+            </div>
+
+            <div class="example-box">
+                <h4>Example 3: FormData Upload</h4>
+                <pre><code>const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('name', 'document.pdf');
+
+$dotapp().load('/api/upload', 'POST', formData)
+    .then(response => {
+        console.log('Uploaded:', response);
+    });</code></pre>
+            </div>
+
+            <h3>Parameter Overloading</h3>
+            <p>The <code>load()</code> method supports flexible parameter patterns:</p>
+            <pre><code>// Pattern 1: url, method, data, callback, errorCallback
+$dotapp().load('/api', 'POST', {data: 'value'}, callback, errorCallback);
+
+// Pattern 2: url, data, callback, errorCallback (method inferred as POST)
+$dotapp().load('/api', {data: 'value'}, callback, errorCallback);
+
+// Pattern 3: url, callback, errorCallback (GET request)
+$dotapp().load('/api', callback, errorCallback);
+
+// Pattern 4: url, callback (GET request)
+$dotapp().load('/api', callback);</code></pre>
+
+            <h3>Security Features</h3>
+            <p>
+                The <code>load()</code> method automatically includes:
+            </p>
+            <ul>
+                <li><strong>CSRF Protection</strong> - Automatic CSRF token exchange and inclusion</li>
+                <li><strong>CRC (Cyclic Redundancy Check)</strong> - Data integrity verification</li>
+                <li><strong>Secure Headers</strong> - Automatic header management</li>
+            </ul>
+
+            <h3>Error Handling</h3>
+            <p>Handle errors via callbacks or Promise catch:</p>
+            <pre><code>// Promise-based error handling
+$dotapp().load('/api/data')
+    .then(response => {
+        console.log('Success:', response);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+
+// Callback-based error handling
+$dotapp().load('/api/data', 
+    (response) => {
+        console.log('Success:', response);
+    },
+    (status, error) => {
+        console.error('Error:', status, error);
+        // status: HTTP status code (0 for network errors)
+        // error: Error message or response text
+    }
+);</code></pre>
+
+            <h3>Response Parsing</h3>
+
+            <h4>parseReply(reply)</h4>
+            <p>Parse server response (handles base64-encoded JSON).</p>
+            <pre><code>const response = await $dotapp().load('/api/data');
+const parsed = $dotapp().parseReply(response);
+// If response is base64-encoded JSON, it's automatically decoded and parsed</code></pre>
+        </section>
+
+        <section id="file-upload">
+            <h2>File Upload</h2>
+
+            <h3>Drag and Drop</h3>
+
+            <h4>dragAndDropFile(divElement, fileInput, callback, parallel)</h4>
+            <p>Enable drag-and-drop file upload.</p>
+            <div class="method-signature">
+                dragAndDropFile(divElement: string | HTMLElement, fileInput: HTMLInputElement, callback?: function, parallel?: boolean): void
+            </div>
+            <pre><code>&lt;div id="drop-zone"&gt;Drop files here&lt;/div&gt;
+&lt;input type="file" id="file-input" multiple&gt;
+
+&lt;script&gt;
+    $dotapp().dragAndDropFile(
+        '#drop-zone',
+        document.getElementById('file-input'),
+        (dropZone, filenames, uploadFn) => {
+            // Show filenames
+            dropZone.innerHTML = `&lt;p&gt;Files: ${filenames.join(', ')}&lt;/p&gt;`;
+            
+            // Upload with progress
+            const uploader = uploadFn((filename, percent) => {
+                console.log(`${filename}: ${percent}%`);
+            });
+            
+            // Start upload
+            uploader.upload();
+        },
+        true  // parallel upload (false for sequential)
+    );
+&lt;/script&gt;</code></pre>
+
+            <h3>Direct File Upload</h3>
+
+            <h4>uploadFile(file, url, progressCallback)</h4>
+            <p>Upload a single file with progress tracking.</p>
+            <div class="method-signature">
+                uploadFile(file: File, url: string, progressCallback?: function): Promise
+            </div>
+            <pre><code>const file = fileInput.files[0];
+
+$dotapp().uploadFile(file, '/api/upload', (filename, percent) => {
+    console.log(`Upload progress: ${percent}%`);
+})
+.then(response => {
+    console.log('Upload complete:', response);
+})
+.catch(error => {
+    console.error('Upload failed:', error);
+});</code></pre>
+        </section>
+
+        <section id="two-factor">
+            <h2>Two-Factor Authentication</h2>
+            <p>
+                DotApp provides built-in support for two-factor authentication input handling.
+            </p>
+
+            <h3>Basic Usage</h3>
+
+            <h4>twoFactor(elementOrCallback, callback, settings)</h4>
+            <p>Initialize 2FA input handling.</p>
+            <div class="method-signature">
+                twoFactor(elementOrCallback?: string | function, callback?: function, settings?: object): DotApp | string | boolean
+            </div>
+
+            <div class="example-box">
+                <h4>Example: 6-Digit Code</h4>
+                <pre><code>&lt;div class="two-fa-inputs"&gt;
+    &lt;input type="text" maxlength="1"&gt;
+    &lt;input type="text" maxlength="1"&gt;
+    &lt;input type="text" maxlength="1"&gt;
+    &lt;input type="text" maxlength="1"&gt;
+    &lt;input type="text" maxlength="1"&gt;
+    &lt;input type="text" maxlength="1"&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+    $dotapp('.two-fa-inputs input').twoFactor(
+        (code) => {
+            console.log('Code entered:', code);
+            // Submit code to server
+        },
+        {
+            length: 6,
+            allowLetters: false,
+            uppercase: true,
+            autoSubmit: true
+        }
+    );
+&lt;/script&gt;</code></pre>
+            </div>
+
+            <h3>Settings</h3>
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Option</th>
+                        <th>Type</th>
+                        <th>Default</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>allowLetters</code></td>
+                        <td>boolean</td>
+                        <td>false</td>
+                        <td>Allow letters in addition to numbers</td>
+                    </tr>
+                    <tr>
+                        <td><code>length</code></td>
+                        <td>number</td>
+                        <td>6</td>
+                        <td>Expected code length</td>
+                    </tr>
+                    <tr>
+                        <td><code>uppercase</code></td>
+                        <td>boolean</td>
+                        <td>true</td>
+                        <td>Convert letters to uppercase</td>
+                    </tr>
+                    <tr>
+                        <td><code>autoSubmit</code></td>
+                        <td>boolean</td>
+                        <td>true</td>
+                        <td>Call callback when all inputs are filled</td>
+                    </tr>
+                    <tr>
+                        <td><code>invalidClass</code></td>
+                        <td>string</td>
+                        <td>'invalid'</td>
+                        <td>CSS class added to invalid inputs</td>
+                    </tr>
+                    <tr>
+                        <td><code>pattern</code></td>
+                        <td>RegExp</td>
+                        <td>null</td>
+                        <td>Custom validation pattern</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Getting the Code</h3>
+            <p>Get the entered code programmatically:</p>
+            <pre><code>// Get code (returns false if incomplete)
+const code = $dotapp('.two-fa-inputs input').twoFactor();
+if (code) {
+    console.log('Code:', code);
+}</code></pre>
+
+            <h3>Features</h3>
+            <ul>
+                <li>Automatic focus movement between inputs</li>
+                <li>Backspace moves to previous input</li>
+                <li>Arrow key navigation</li>
+                <li>Paste support (pastes code across all inputs)</li>
+                <li>Auto-submit when all inputs are filled</li>
+                <li>Input validation</li>
+            </ul>
+        </section>
+
+        <section id="api-reference">
+            <h2>API Reference</h2>
+
+            <h3>Core Methods</h3>
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Description</th>
+                        <th>Returns</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>$dotapp(selector)</code></td>
+                        <td>Create DotApp instance with selector</td>
+                        <td>DotApp</td>
+                    </tr>
+                    <tr>
+                        <td><code>$dotapp()</code></td>
+                        <td>Get global DotApp instance</td>
+                        <td>DotApp</td>
+                    </tr>
+                    <tr>
+                        <td><code>fn(key, fn)</code></td>
+                        <td>Register custom function</td>
+                        <td>void</td>
+                    </tr>
+                    <tr>
+                        <td><code>domain()</code></td>
+                        <td>Get current domain (protocol + hostname)</td>
+                        <td>string</td>
+                    </tr>
+                    <tr>
+                        <td><code>isSet(value)</code></td>
+                        <td>Check if value is set</td>
+                        <td>boolean</td>
+                    </tr>
+                    <tr>
+                        <td><code>isFunction(input)</code></td>
+                        <td>Check if input is function</td>
+                        <td>boolean</td>
+                    </tr>
+                    <tr>
+                        <td><code>halt()</code></td>
+                        <td>Return halt object to stop execution</td>
+                        <td>DotAppHalt</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Special Features</h3>
+
+            <h4>autosave(config)</h4>
+            <p>Enable autosave for element content changes.</p>
+            <pre><code>$dotapp('#editor').autosave({
+    url: '/api/save',
+    debounce: 1000,
+    onSuccess: (response) => {},
+    onError: (error) => {}
+});</code></pre>
+
+            <h4>networkwatch(callback)</h4>
+            <p>Monitor network requests for element.</p>
+            <pre><code>$dotapp('#monitor').networkwatch((element, request, response, stats) => {
+    console.log('Request:', request.url, request.method);
+    console.log('Duration:', stats.duration, 'ms');
+    if (stats.error) {
+        console.error('Error:', stats.error);
+    }
+});</code></pre>
+
+            <h4>databind(variableName, options)</h4>
+            <p>Bind elements to a variable programmatically.</p>
+            <pre><code>$dotapp('.name-inputs').databind('userName', {
+    initialValue: ''
+});</code></pre>
+        </section>
+
+        <section id="events-reference">
+            <h2>Framework Events</h2>
+            <p>DotApp dispatches several global events that you can listen to:</p>
+
+            <table class="attribute-table">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>When Fired</th>
+                        <th>Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>dotapp-register</code></td>
+                        <td>When DotApp is ready for module registration</td>
+                        <td>Register custom modules</td>
+                    </tr>
+                    <tr>
+                        <td><code>dotapp</code></td>
+                        <td>When DotApp is fully initialized</td>
+                        <td>Register custom functions, start application code</td>
+                    </tr>
+                    <tr>
+                        <td><code>route.onchange</code></td>
+                        <td>When hash route changes</td>
+                        <td>Track route changes</td>
+                    </tr>
+                    <tr>
+                        <td><code>route.#routeName.before</code></td>
+                        <td>Before route handler executes</td>
+                        <td>Pre-route logic</td>
+                    </tr>
+                    <tr>
+                        <td><code>route.#routeName.after</code></td>
+                        <td>After route handler executes</td>
+                        <td>Post-route logic</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="example-box">
+                <h4>Example: Listening to Framework Events</h4>
+                <pre><code>// Wait for DotApp to be ready
+window.addEventListener('dotapp', () => {
+    console.log('DotApp is ready!');
+    // Your application code here
+});
+
+// Listen for route changes
+$dotapp().on('route.onchange', (newHash, oldHash) => {
+    console.log('Route changed:', oldHash, '->', newHash);
+});
+
+// Listen for specific route
+$dotapp().on('route.#home.before', () => {
+    console.log('About to load home route');
+});</code></pre>
+            </div>
+        </section>
+
+        <div class="footer">
+            <p>DotApp Framework v1.0 | <a href="https://dotapp.dev/">dotapp.dev</a></p>
+            <p>Author: Štefan Miščík | License: MIT</p>
+        </div>
+    </div>
+</body>
+</html>

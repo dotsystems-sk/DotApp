@@ -1,0 +1,36 @@
+---
+description: LAW — DACore admin forms are numbered sections + lede + Why-this-matters, not one wall of inputs
+alwaysApply: true
+---
+
+# Admin page composition (LAW)
+
+A working POST on **one long card of inputs** is a **bug**. Operators must see where they are, what this cluster is for, and why it matters.
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6b, `AIRULES/05-VIEWS-TEMPLATES-ASSETS.md` §8e, `AIRULES/45-MODULE-PLANNING.md` §4.
+
+## MUST (every new/rewritten admin form, settings, or editor)
+
+1. **Page header** — product title + one purpose sentence.
+2. **Numbered sections** — related fields in a card with a visible number (when order matters), a heading, and a **one-sentence lede**.
+3. **Why-this-matters** — a calm tinted panel (admin-palette green/teal) when the cluster is not obvious. Short **product** copy. Not prompt-echo. Not a help dump.
+4. **Related fields only** — Identity is not SEO. Assignments are not the body.
+5. **GET workspaces** — more than ~two jobs on one object → real GET subpages + **this module’s** tab CSS. Not `data-bs-toggle="tab"`.
+6. **Advanced** — stems, JSON, internal codes, rare dates out of the first card.
+7. Chrome lives in **this** module (`{lowercase_modulename}_section_*` / `{lowercase_modulename}_guidance_*`).
+
+## MUST NOT
+
+- One undifferentiated `card-body` of labels + inputs
+- Skip the lede / Why panel “to save space”
+- Copy another module’s section-header, guidance-panel, or namespaced chrome into this module
+- Two unrelated jobs (body + SEO + assignments) on one GET
+- Why copy that restates the field label
+
+## Plan first
+
+A new module / first surface / rewrite **MUST** inventory every numbered section, its lede, Why panel yes/no, and GET leaf. One field list with no section boundaries = failed plan.
+
+## Finish gate
+
+Fail the chunk if a new/rewritten admin form is one wall of inputs or copies sibling chrome.

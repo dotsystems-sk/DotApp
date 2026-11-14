@@ -1,0 +1,64 @@
+---
+description: DotApp frontend — $dotapp is not jQuery; secure forms and bridge
+globs: app/modules/**/assets/**/*.js
+alwaysApply: false
+---
+
+# DotApp Frontend JS
+
+Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SECURITY.md`.
+
+## Load order
+
+1. `/assets/dotapp/dotapp.js` (router-generated keys)
+2. Optional template/reactive
+3. Module scripts
+
+Boot block, `$dotapp` instead of raw DOM, and the request helper: **`AIRULES/26-CONTROL-SLICE.md` §3–§5** (compact: `32-control-slice.mdc`). Page code waits for `dotapp`; a `$dotapp().fn(...)` library waits for `dotapp-register`. Both events are on `window`.
+
+Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/`. Never edit `app/modules/DACore/` by default (informed exception: `AIRULES/00` §1). **MUST grep DACore (read-only) and this module first** — reuse an existing widget; do not write a second copy. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`. If DACore already ships the widget, use it.
+
+## Never
+
+- `$.ajax` / `$.post` / `$.get` / raw `fetch` to DotApp endpoints (CRC/keys/signatures live in `$dotapp`)
+- Assume getters always chain
+- Skip CRC/CSRF by using raw `fetch` to secure endpoints
+- `location.reload()` after `fo-rm` / `load` while staying on the page — patch `reply.html` + Notiflix toast (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- One `<fo-rm>` per row action — use `$dotapp().load()` + encrypted `data-*` (`AIRULES/08-FORMS-AND-SECURITY.md`)
+- Leave a list/form clickable during `load()` — overlay until success **and** error (Notiflix preferred **or** module preloaders; desktop **and** mobile) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Dump users/logs/items with `->all()`, skip the pager because “few rows now”, or change pages by reloading `<a href="?page=">` / `location.reload()` / `replaceState` — `AIRULES/40-DACORE-LIST-PAGER.md`
+- `$dotapp().live("click", …, function (e) { e.currentTarget })` — `live` calls `handler(el, e)`; pager clicks silently no-op (`AIRULES/40`)
+- Ship a catalog/articles list with no search, or filter `->all()` in JS — **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars)
+- Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Invent step-up 2FA on every settings Save — **ASK** in the plan (default no). When named: installer modal + `{ autoSubmit: true }`, not a 6-digit field on the card (`AIRULES/32-DACORE-RIGHTS.md` §6, EX-D10)
+- Delete with `alert()` / `window.confirm()` — graphical dialog first (`Notiflix.Confirm` on admin) (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Public site: desktop-only header / hover menu / hide nav on mobile with no overlay drawer — L/R drawer, lock page scroll, scrollable drawer list, contacts+compact search in the drawer (`AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3)
+- Silent save / empty `.after()` / invent a second toast instead of grepping DACore — admin **toast**; public mark the field (`AIRULES/00` §2d)
+- `$request->data()['id']` after `load()` without unwrap, or product-fail HTTP 400/500 — unwrap nested `data`, HTTP **200** + `status` 0|1. One hit → fix every sibling in this module (`AIRULES/00` §2q, `AIRULES/09` §3)
+
+jQuery `$` may coexist **for UI widgets** (ported datepickers, etc.). It must **not** send app requests. Prefer `$dotapp` for new DOM code. Register plugins with `$dotapp().fn(...)` on `dotapp-register`. When porting jQuery libraries, **ask**, then rewrite as `$dotapp().fn` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C.
+
+## Forms (preferred security — always for user POSTs)
+
+HTML: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`). **MUST** put `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST** write `method` and `action` as literal attributes on the opening tag. **MUST NOT** put `{{ }}` inside `<fo-rm …>` — compiled `?>` hides `method` (`{{ formName }}` shows as text) or cuts `action` (posts to the current page).  
+Must load `/assets/dotapp/dotapp.js` first (injects random keys).  
+Full sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
+
+```javascript
+// shopForm() is the module helper from AIRULES/26 §5: before + after + onError, overlay, toast.
+shopForm("#shopItemForm", "#shopItemCard", function (reply) {
+  if (reply.html) {
+    $dotapp("#shopItemsInner").html(reply.html);
+  }
+});
+```
+
+`.form()` has three hooks: `.before(data, form)`, `.after(data, rawText, form)`, `.onError(data, status, bodyText, form)`. `.after()` does **not** run on HTTP 4xx/5xx. A chain without `.onError()` leaves the form blocked and shows nothing.
+
+## AJAX
+
+`$dotapp().load(url, method, data, ok(rawText), err(status, bodyText))` — only inside the module helper `shopSend(url, payload, region, onOk)` (`AIRULES/26` §5). Not raw fetch. DOM work uses `$dotapp` as well — `.find()` `.children()` `.closest()` `.last()` `.nth(i)` `.length` — not `document.querySelector` / `getAttribute` (`AIRULES/26` §4).
+
+## Bridge
+
+Template `{{ dotbridge:on(click)="fn(args)" }}` + `$dotApp->bridge->fn('fn', ...)`.

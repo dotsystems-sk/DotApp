@@ -1,0 +1,23 @@
+---
+description: LAW — defaultSettings() before routes; never compose URLs from Config that is filled later
+alwaysApply: true
+---
+
+# Module defaultSettings + routes (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2m, `AIRULES/03-MODULES-AND-ROUTING.md`.
+
+## MUST
+
+- Put every module Config default in **`defaultSettings()`** (`Config::module(...) ?? Config::module(..., $default)`). Idempotent. `config.php` wins.
+- Call **`defaultSettings()`** at the start of **`initializeRoutes()`** (before the wake-list `return`) **and** at the start of **`initialize()`**.
+- Only **after** that may `initialize()` read Config to register `Router::get` / `post`.
+- Wake prefixes that must work before another module loads use a **literal path** this module owns, not a Config key that module fills later.
+
+## MUST NOT
+
+- Compose wake maps or `Router` paths from Config that is only set in someone else’s `initialize()` / `defaultSettings()`.
+- Hardcode that owner’s fallback so their `defaultSettings()` never applies when `config.php` omitted the key.
+- `include` another module’s `module.init.php` just to steal their defaults.
+
+Finish gate: `initializeRoutes()` / `initialize()` that read Config without `defaultSettings()` first = fail.

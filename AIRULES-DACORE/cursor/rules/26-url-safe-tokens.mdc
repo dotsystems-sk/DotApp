@@ -1,0 +1,25 @@
+---
+description: LAW — Crypto tokens in URLs must be base64url (A-Za-z0-9-_). Apache 404s on %2F in a path.
+alwaysApply: true
+---
+
+# URL-safe encrypted tokens (LAW)
+
+Canonical: `AIRULES/11-AUTH-AND-CRYPTO.md` §8, `AIRULES/33-DACORE-PAGES-AND-UI.md` §13.
+
+`Crypto::encrypt` is standard base64 (`+` `/` `=`). In a **URL path** those become `%2B` `%2F` `%3D`. Apache treats `%2F` as a slash → **Not Found**.
+
+## MUST
+
+- Keep AES + unique `$key2`. Still `Auth::can` / ownership.
+- After encrypt, map to `[A-Za-z0-9_-]+` (no padding): `rtrim(strtr($cipher, '+/', '-_'), '=')`.
+- Before decrypt, reverse (`-_` → `+/`, pad to 4). Accept leftover standard base64 (`{{ enc }}`, old bookmarks).
+- Path `href` / `{token}` / `redirectTo` **MUST** use the sealed helper — **not** `{{ enc }}` in the path (`{{ enc }}` is still standard base64).
+- Keep URL-token sealing and unsealing in the owning module, such as `Libraries/UrlToken.php`.
+
+## MUST NOT
+
+- Put raw `Crypto::encrypt` into `/admin/Module/…/{token}`
+- Drop encryption or send `value="7"`
+- Patch DACore or `app/parts/` for this
+- Invent a second cipher or store sealed tokens in the DB

@@ -1,0 +1,298 @@
+# 31 — DACore Menu Registration
+
+Menu items live in the `dacore_menu` table. Register them **from your installer**, never on every request.
+
+---
+
+## API
+
+```php
+DotApp::call("DACore:Menu@register", string $menuid, array $data): bool
+```
+
+| Aspect | Detail |
+|--------|--------|
+| Returns | `bool` — `true` on insert or update |
+| `false` when | `$menuid` is empty, `$data` is not an array, `name` is empty, or the DB write fails |
+| Throws | never |
+| Logs | nothing — **check the return value yourself** |
+| Idempotency | **upsert by `menuid`** (safe to call repeatedly) |
+| Cache | clears `Cache::use('DAcore')` when `Config::module('DACore','useCache') === true` |
+| Unregister | **no API exists** — see [36](36-DACORE-KNOWN-ISSUES.md) |
+
+`$menuid` is truncated to 50 chars. Use a stable dotted id: `YourModule.section.item`.
+
+---
+
+## `$data` keys (complete)
+
+| Key | Type | Required | Default | Notes |
+|-----|------|----------|---------|-------|
+| `name` | string | **yes** | — | Visible label; empty ⇒ `register` returns `false`. **MUST** be product copy ([05](05-VIEWS-TEMPLATES-ASSETS.md) §8) — never prompt-echo |
+| `parent` | string | no | `''` | Parent's **`menuid`** (not a numeric id). Max 50 chars. `''` = root |
+| `icon` | string | no | `''` | Remix Icon classes, e.g. `ri ri-time-line`. Plain classes get wrapped into `<i class="menu-icon ...">` automatically; raw `<i ...>` HTML is kept as-is |
+| `url` | string | no | `''` | Route path. Max 100 chars |
+| `urlprefix` | int | no | `0` | `1` = prepend `Config::module('DACore','prefixUrl')` when rendering |
+| `rights` | array or JSON string | no | `'{}'` | Visibility rule (see below). Arrays are `json_encode`d for you |
+| `type` | int | no | `1` | `0` header, `1` leaf, `2` expandable parent |
+| `ordering` | int | no | `0` | Ascending sort within the same parent |
+
+### `type` semantics
+
+| `type` | Renders as | Visibility rule |
+|--------|-----------|-----------------|
+| `0` | section header | shown **only if it has at least one visible child** |
+| `1` | leaf link | shown when rights pass |
+| `2` | expandable parent | **skipped when it has no visible children and an empty `url`** |
+
+So a three-level menu is: header (`0`) → parent (`2`) → leaf (`1`), each child pointing at its parent's `menuid`.
+
+### `rights` semantics (evaluated at render time, OR logic)
+
+| Value | Meaning |
+|-------|---------|
+| `[]` / `'{}'` / empty after decode | **no restriction** — visible to every logged-in user |
+| `["*"]` | any logged-in user |
+| `["YourModule.*"]` | user has any permission starting with `YourModule.` |
+| `["dotapp.root","YourModule.admin"]` | `Auth::can([...])` with OR semantics |
+
+Wildcards work **here** (menu) but **not** for AI tool rights ([34](34-DACORE-AI-TOOLS.md)).
+
+---
+
+## Own header, grouping, and module-own menu (**MUST**)
+
+Not every module has a sidebar. If **your** module **does** register menu items:
+
+**Ideal:** one section header of your own (`type => 0`, `parent => ''`, `menuid` like `Shop.main`). Extra headers are OK when the product has several top-level sections. Do **not** register only leaves at the root — the sidebar will not group.
+
+**Default layout (MUST when the user does not pick one):** shared nested tree on the **full** admin sidebar:
+
+1. Section header `type => 0` (area name, e.g. Website, Media)
+2. One expandable product item `type => 2` with **empty** `url` (the `<TargetModule>` product name)
+3. Page leaves `type => 1` under that item
+4. Every admin page: `Page@withMenu!(…, '')` — **not** a branch `$menuId`
+
+From about **five** items, nest under `type => 2`. Do **not** dump ten `type => 1` leaves under a header. Do **not** treat “many items” or “this is a real app” as a reason to switch to module-own.
+
+Independent products each own a section. Do **not** hang one product under another unless the user asked for an extension `parent`.
+
+**ASK in chat before you scaffold a new DACore module.** Two layouts:
+
+| Layout | When | Main (global) sidebar | Inside the module |
+|--------|------|----------------------|-------------------|
+| **Shared nested (default)** | User wants it, **or the user does not answer** | Header `0` → product group `2` → leaves `1` | `Page@withMenu!(…, '')` — full menu |
+| **Module-own** | **Only** when the user **explicitly** chooses it | Header + **one** leaf that opens the module | `Page@withMenu!(…, 'Shop.nav')` — that branch + Return back |
+
+**MUST NOT** default to module-own. Module-own is opt-in. A non-empty `$menuId` loads **one level only** (`menuid = X OR parent = X`) and DACore appends **Return back**. Nested `type => 2` groups under that branch will **not** show their children. Grouping with `type => 2` belongs on the **shared** menu. **MUST NOT** register Return back yourself. See [36](36-DACORE-KNOWN-ISSUES.md).
+
+Module-own wiring (**only if the user explicitly chose it**):
+
+```php
+// Global sidebar: header + one entry (does not list the module’s pages)
+DotApp::call("DACore:Menu@register", "Shop.main", [ /* type 0, parent '' */ ]);
+DotApp::call("DACore:Menu@register", "Shop.main.home", [
+    'name' => 'Shop',
+    'parent' => 'Shop.main',
+    'url' => '/Shop/',
+    'urlprefix' => 1,
+    'type' => 1,
+    // …
+]);
+
+// Inner items — parent is the branch id passed to withMenu, NOT Shop.main
+DotApp::call("DACore:Menu@register", "Shop.nav.items", [
+    'name' => 'Items',
+    'parent' => 'Shop.nav',
+    'url' => '/Shop/items',
+    'urlprefix' => 1,
+    'type' => 1,
+    // …
+]);
+```
+
+Every inner admin page (same `$menuId` on all of them). Edit/detail URLs that are **not** under the registered leaf **MUST** also pass `$currentFile` — [§ Active sidebar](#active-sidebar-on-subpages-must):
+
+```php
+return static::call("DACore:Page@withMenu!", $title, $html, [], $css, $js, 'Shop.nav');
+return static::call("DACore:Page@withMenu!", $title, $html, [], $css, $js, 'Shop.nav', $listUrl);
+```
+
+`''` / `null` = full shared menu. A `menuid` = that branch’s direct children + Return back. See [33](33-DACORE-PAGES-AND-UI.md).
+
+Do **not** register `Shop.nav` itself as a root `type => 0` header — it would appear as a second section in the global sidebar. It is only the `parent` / `$menuId` of the inner items.
+
+**`menuid` always starts with your module name** (`Shop.…`). That is what uninstall deletes. Register from `Installation.php` ([35](35-DACORE-INSTALL.md)).
+
+**Allowed:** an **extension** module may hang items under another module’s header or parent (`'parent' => 'Shop.main.catalog'`) when it extends that product. The `menuid` still belongs to **you** (`Reports.shop.export`). Do **not** reuse `Shop.*` ids.
+
+```php
+// Reports extends Shop — under Shop's catalog, but the id is Reports.*
+DotApp::call("DACore:Menu@register", "Reports.shop.export", [
+    'name' => 'Export',
+    'parent' => 'Shop.main.catalog',
+    'icon' => 'ri ri-download-2-line',
+    'url' => '/reports-admin/shop-export',
+    'urlprefix' => 1,
+    'rights' => json_encode(['dotapp.root', 'Shop.administrator', 'Reports.export']),
+    'type' => 1,
+    'ordering' => 50,
+]);
+```
+
+**Uninstall MUST** remove **only your** rows (`WHERE menuid LIKE 'Reports.%'` or the explicit ids you registered). **MUST NOT** `DELETE … LIKE 'Shop.%'` from an extension — that wipes the host module’s menu. See [36](36-DACORE-KNOWN-ISSUES.md).
+
+---
+
+## Correct registration (from `Installation.php`)
+
+```php
+use Dotsystems\App\DotApp;
+use Dotsystems\App\Parts\Logger;
+
+$rights = ['dotapp.root', 'Shop.administrator', 'Shop.items.view'];
+
+// 1) section header
+$ok = DotApp::call("DACore:Menu@register", "Shop.main", [
+    'name' => 'Shop',
+    'parent' => '',
+    'icon' => '',
+    'url' => '',
+    'urlprefix' => 1,
+    'rights' => json_encode(['dotapp.root', 'Shop.*']),
+    'type' => 0,
+    'ordering' => 500,
+]);
+if ($ok !== true) {
+    Logger::use()->error('Menu register failed', ['menuid' => 'Shop.main']);
+}
+
+// 2) expandable parent
+DotApp::call("DACore:Menu@register", "Shop.main.catalog", [
+    'name' => 'Catalog',
+    'parent' => 'Shop.main',
+    'icon' => 'ri ri-store-2-line',
+    'url' => '',
+    'urlprefix' => 1,
+    'rights' => json_encode($rights),
+    'type' => 2,
+    'ordering' => 1,
+]);
+
+// 3) leaf pointing at your route
+DotApp::call("DACore:Menu@register", "Shop.main.catalog.items", [
+    'name' => 'Items',
+    'parent' => 'Shop.main.catalog',
+    'icon' => '',
+    'url' => '/Shop/items',          // urlprefix=1 -> /dacore/Shop/items
+    'urlprefix' => 1,
+    'rights' => json_encode($rights),
+    'type' => 1,
+    'ordering' => 1,
+]);
+```
+
+The `url` must match the route you registered in `module.init.php`:
+
+```php
+Router::get(rtrim((string) Config::module("DACore", "prefixUrl"), "/") . "/Shop/items", "Shop:Admin@items!");
+```
+
+---
+
+## Reading the menu (rarely needed)
+
+```php
+$nodes = DotApp::call('*DACore:Menu@getItems!', '');   // '' = full tree
+```
+
+Each node:
+
+```php
+[
+    'type' => 'menu-header' | 'menu-item',
+    'text' => string,
+    'url'  => string,     // absent for headers
+    'icon' => string,     // HTML
+    'items' => array,     // optional children
+]
+```
+
+Passing a non-empty `$menuId` selects `menuid = X OR parent = X` (**one level**), then appends a synthetic **"Return back"** leaf pointing at `prefixUrl + defaultUrl` (last — do not register it). Results are cached under key `DACore.menu` with context `{menuid, user}` for 600 s when `useCache` is on.
+
+Render HTML with `DotApp::call('DACore:Menu@generate!', $nodes, $options)` — returns `<li>` fragments without a wrapping `<ul>`. `$options` accepts `current_file` and `base_href`. Admin pages **MUST** go through `Page@withMenu!` (7th argument `$currentFile` → `current_file`; optional 8th `$assetModule` for a class-compatible chrome module). `Menu@generate` is an Extender target — a skin may replace the `<li>` HTML. Do not rebuild the sidebar.
+
+---
+
+## Active sidebar on subpages (**MUST**)
+
+The left menu highlights **one registered leaf** (`menu-item active`) and opens its parents. That is **not** “whatever URL is in the browser”.
+
+`Menu@generate` (via `Menu::bestMenuMatch`) compares the request path — after stripping `Config::module('DACore','prefixUrl')` — to each leaf `url` (also after prefix). **Exact path wins.** If there is no exact hit, it walks **up** one segment at a time (`/Shop/items/4` → `/Shop/items`).
+
+| Browser URL | Registered leaf (`urlprefix` 1) | Sidebar |
+|-------------|----------------------------------|---------|
+| `/admin/dacore/Shop/items` | `/Shop/items` | **Items** active — exact |
+| `/admin/dacore/Shop/items/4` | `/Shop/items` | **Items** still active — walk-up |
+| `/admin/dacore/users-list` | `/dacore/users-list` | **Users list** active — exact |
+| `/admin/dacore/users/4` | `/dacore/users-list` | **Nothing** — `/dacore/users` is not a registered url |
+
+`$menuId` only chooses **which tree** to render (full vs module-own). It does **not** pick the highlighted leaf.
+
+When this screen belongs to a menu section but its URL is **not** that leaf and **not** a longer path under it (edit, profile, `/users/{id}`, `/users/{id}/devices`), **MUST** pass `Page@withMenu` 7th argument `$currentFile` = the registered list/section URL. DACore forwards it to `Menu@generate` as `current_file` (pretend the request is that path). Empty / omitted = real `REQUEST_URI`.
+
+```php
+$prefix = rtrim((string) Config::module('DACore', 'prefixUrl'), '/');
+$listUrl = $prefix . '/Shop/users-list';   // same as Menu@register url + prefixUrl
+
+return static::call(
+    'DACore:Page@withMenu!',
+    Translator::trans('Edit user'),
+    $html,
+    [],
+    $css,
+    $js,
+    '',                 // $menuId — which tree
+    $listUrl            // $currentFile — which leaf stays active
+);
+```
+
+Pass `prefixUrl + registered url` (what DACore Users does: `prefixUrl . '/dacore/users-list'`) **or** the registered `url` alone — generate strips `prefixUrl` from both sides. Query strings are ignored.
+
+When the list URL **is** a prefix of the detail (`/Shop/items` + `/Shop/items/4`), omit `$currentFile` — walk-up already lights the leaf.
+
+A page that belongs to a **different** leaf (e.g. My account, not Users list) **MUST** pass **that** leaf’s URL, or `''` if the request URL already matches it.
+
+**MUST NOT**
+
+- Register a menu row for every edit/detail URL
+- Leave a section page with **no** active leaf
+- Use `$menuId` to fake the highlight
+- Patch DACore CSS/JS / overwrite `$_SERVER['REQUEST_URI']`
+- Call `Menu@generate` yourself to “fix” the sidebar — use `withMenu` `$currentFile`
+
+---
+
+## Common mistakes
+
+| Wrong | Right |
+|-------|-------|
+| Registering menu items in `module.init.php` | Register in `Installation.php` (once per version) |
+| `'parent' => 12` (numeric id) | `'parent' => 'Shop.main'` (parent's `menuid`) |
+| Forgetting `'urlprefix' => 1` | URL then misses `/dacore` and 404s |
+| `'type' => 2` with no children and no `url` | Item silently disappears |
+| Random `menuid` per install | Duplicate menu entries — keep ids stable |
+| `INSERT INTO dacore_menu ...` | `DACore:Menu@register` |
+| Ignoring the return value | Check `!== true` and log |
+| Expecting an unregister call | None exists — plan your uninstall SQL |
+| Own sidebar with no `type => 0` header | One header per module (`Shop.main`); more only if you need more sections |
+| Ten `type => 1` leaves under a header (global sidebar) | Nest under `type => 2` on the **shared** menu (`0` → `2` → `1`); `withMenu` `$menuId` `''` |
+| Guess the layout / skip the chat question | **ASK**; if the user does not answer, ship **shared nested** — **MUST NOT** default to module-own |
+| Plan that says “register a Settings item” without listing every `Menu@register` row | Inventory each `menuid` / `type` / `parent` / `url` / `rights` in the plan ([45](45-MODULE-PLANNING.md), [00](00-AGENT-CONTRACT.md) §2k) |
+| Default to module-own because the module has many pages | Module-own **only** when the user explicitly chose it |
+| Nest `type => 2` groups under a branch `$menuId` | Branch is one level — inner items are direct `type => 1` children of that id |
+| Invent a “Return back” menu row | DACore appends it when `$menuId !== ''` |
+| Edit `/Shop/users/4` with no `$currentFile` (list is `/Shop/users-list`) | `withMenu` 7th `$currentFile` = registered list URL |
+| Register a menu row per edit/detail URL | One leaf; subpages pass `$currentFile` |
+| Use `$menuId` to fake the active item | `$menuId` = tree; `$currentFile` = highlight |
+| Extension `menuid` `Shop.extra…` / uninstall `LIKE 'Shop.%'` | Your prefix (`Reports.…`); delete only `Reports.%` ([31](31-DACORE-MENU.md)) |

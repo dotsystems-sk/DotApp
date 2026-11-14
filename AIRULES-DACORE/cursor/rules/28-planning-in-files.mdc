@@ -1,0 +1,35 @@
+---
+description: LAW — planning is written into app/modules/<This>/PLAN/ files; leave plan mode, explain why, keep a dated log; never a chat-only or temp plan
+alwaysApply: true
+---
+
+# Planning happens in files (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2s, `AIRULES/45-MODULE-PLANNING.md` §0b–§0c. Folder law: §2o.
+
+A plan in **plan mode**, in chat history, in a temp/desktop file, or on the agent’s machine is **lost work**. It cannot be handed to the client, cannot move to another computer, and the next agent starts blind. The deliverable of planning is **`app/modules/<This>/PLAN/`** — split Markdown inside the module, so copying `app/modules/<This>/` carries laws, inventories, decisions, and history.
+
+Applies whenever the user says **plan / naplánuj / urob plán / navrhni**, or asks for an approach before code, and always when `AIRULES/00` §2k applies (new module, first major surface, rewrite).
+
+## MUST
+
+1. **Leave the read-only planner** — request `SwitchMode` → agent **before** producing the plan, because the plan must be written to files.
+2. **Say why in one or two sentences**: the plan is written as files in the module so it is versioned, portable to another machine, and the client gets everything. Do not paste the law into chat.
+3. **Write `app/modules/<This>/PLAN/`** as a split folder: index + status, module laws, rules/conventions, menu, screens, positions, schema, ASK answers (`AIRULES/45` §0).
+4. **Keep a dated log** (`11-LOG.md` / `LOG.md`): what the user asked, the decision or cause, what shipped, the `Installation.php` version, what is still open. **Tick it in the same chunk as the code.**
+5. **Record every ASK answer** (model budget, PHP version, menu shape, identity/logo, step-up 2FA, extras) so nobody re-asks the user on the next machine.
+6. **Chat = summary + open questions. PLAN = the plan.**
+
+## MUST NOT
+
+- Deliver the plan only as chat text or a planner artefact, then start coding
+- Park the plan in root `PLAN.md`, a temp/desktop folder, a gist, or `.cursor/`
+- One mega-file instead of the split folder
+- Skip `PLAN/` because the chat already has it, the module is small, or the user is reading along right now
+- Code from memory when this module’s `PLAN/` was never updated after the last chunk
+- Open `app/modules/<Host>/PLAN/` while writing a pack (`AIRULES/00` §2p)
+- Put secrets, tokens, or customer personal data into PLAN files
+
+Reference shape: `app/modules/CakeByKristina/PLAN/` (index + status, laws, screens, admin density, schema, ASK answers, `11-LOG.md`).
+
+Finish gate: plan left in chat / plan mode, or a shipped chunk with no log entry = fail.

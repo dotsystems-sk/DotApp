@@ -1,0 +1,254 @@
+# 04 — Controllers and Responses
+
+## Controller rules
+
+1. Namespace: `Dotsystems\App\Modules\{Module}\Controllers`
+2. Extend `\Dotsystems\App\Parts\Controller`
+3. Methods are **`public static function`** — there is no `$this`
+4. First argument is usually `$request` (RequestObj)
+5. Route string: `"Module:Controller@method!"`
+6. Comments: English. Public controller/middleware PHPDoc **MUST** start with **`CRCchecking —`** (exact prefix/middleware / `this action` / `none`); then a **purpose sentence** then `@param`/`@return` (not tags-only); labeled **`// Why:`** / **`// About:`** / **`// Section:`** — not every line ([03](03-MODULES-AND-ROUTING.md), [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md))
+
+### With DI (no trailing `!`)
+
+```php
+public static function index($request, \Dotsystems\App\Parts\Renderer $renderer)
+{
+    return $renderer->module(static::modulename())
+        ->setView('home')
+        ->setViewVar('title', 'Hello')
+        ->renderView();
+}
+```
+
+Route: `"Shop:Home@index"` (no `!`).
+
+### Without DI (trailing `!`) — preferred for hot paths
+
+```php
+public static function index($request)
+{
+    $renderer = \Dotsystems\App\Parts\Renderer::new();
+    return $renderer->module('Shop')
+        ->setView('home')
+        ->setViewVar('title', 'Hello')
+        ->renderView();
+}
+```
+
+Route: `"Shop:Home@index!"`.
+
+**Wrong with `!`:**
+
+```php
+// Will break — DI params are not injected when ! is used
+public static function index($request, Renderer $renderer) { ... }
+```
+
+### Calling other controllers
+
+```php
+DotApp::call('Shop:Home@helper!', $arg1);
+static::call('otherMethod', $request);
+static::call('OtherModule:Page@withShell!', $title, $html);
+```
+
+Prefixes: `#` Middleware, `*` Models.
+
+---
+
+## Reading the request
+
+```php
+$data = $request->data();           // protected/escaped copy (by reference) — default
+$raw  = $request->data(true);       // original bytes — MUST for persist (URLs, settings, HTML, passwords)
+$get  = $request->query();          // protected GET
+$getRaw = $request->query(true);    // original GET
+$id   = $request->matchData()['id'] ?? null;
+$method = $request->getMethod();
+```
+
+**MUST:** `data()` / `query()` run `protect()` (old programmer-guard). SQL injection protection is **named / `?` bindings** ([06](06-DATABASE.md)). **MUST** persist `$request->data(true)` — passwords, HTML, URLs, settings. `data()` on a password or `?q=` URL with `)`, `=`, `%` stores the **wrong** string (`&#61;`). Canonical: [19](19-VALIDATION-AND-INPUT.md). There is **no `headers()` method**.
+
+Uploads: `$request->upload(function ($files) { ... });` — each entry has `field, name, type, size, tmp_name, error, extension`. Always check `$f['error'] !== UPLOAD_ERR_OK`.
+
+Validation: `Validator::validate(...)` (returns `true` or an error array), `Input::group(...)` + `$request->validateInputs('group')`.
+
+---
+
+## Return values
+
+| Return | Effect |
+|--------|--------|
+| HTML string | Becomes `$request->response->body` |
+| `new Response($status, $body)` | Short-circuits pipeline |
+| `Response::json($array, $code = 200)` | Plain JSON body + content-type — for **external** API clients only (they read the HTTP status) |
+| `Response::redirect($url, $code = 302)` | Redirect |
+| `DotApp::DotApp()->ajaxReply($body, 200)` | **Base64 JSON** — the answer for every `$dotapp().load()` / `.form()` caller, through the module `Reply::ok()` / `Reply::fail()` ([26](26-CONTROL-SLICE.md) §7) |
+| `null` | Keep existing body |
+
+**Important:** static `Response::*` calls mutate a **shared** response object bound to the request and return a `Response` for chaining. There is no `send()` / static `status()`. Use `Response::make($code, $body)` or `new Response(...)` when you want a distinct object to return.
+
+### View rendering
+
+```php
+return Renderer::new()
+    ->module('Shop')
+    ->setView('page')
+    ->setLayout('home/content')   // optional
+    ->setViewVar('title', $title)
+    ->setViewVar('items', $items)
+    ->renderView();
+```
+
+`renderLayout()` uses **layout vars only** (`setLayoutVar`).  
+`renderView()` eval uses **view vars only** (`setViewVar`).  
+Do not assume layout vars bleed into view vars. **VIEW = outer file:** `setLayout` + `renderView()` inserts the layout at `{{ content }}` in the view — or `renderLayout()` / inject a string ([05](05-VIEWS-TEMPLATES-ASSETS.md) §1b). **HTML via Renderer (MUST — law):** when markup can be a template, it **MUST** be. **MUST NOT** concatenate tables/grids/empty states in the controller. Canonical: [00](00-AGENT-CONTRACT.md) §2j, [05](05-VIEWS-TEMPLATES-ASSETS.md) §1c.
+
+**Sandbox:** do not pass PHP function names as var names or nested string values (`time`, `copy`, `count`, `header`, …) — the isolator **drops the whole var**. Details: [05](05-VIEWS-TEMPLATES-ASSETS.md) §5.
+
+### JSON API (external clients)
+
+```php
+return Response::json(['status' => 1, 'items' => $rows]);
+```
+
+**Who calls the endpoint decides the answer.** `$dotapp().load()` / `.form()` (every admin and public page of this project) → `Reply::ok()` / `Reply::fail()`: base64 JSON, HTTP 200. `parseReply()` hands back a plain-JSON body as a **string**, so a `Response::json()` answer makes the page show nothing. Another server, a mobile app or a script → `Response::json()` with real HTTP codes.
+
+### Redirect styles
+
+Preferred:
+
+```php
+return Response::redirect('/shop/', 302);
+```
+
+Legacy (still seen in examples): `header('Location: ...'); exit();` — works but bypasses Response object.
+
+---
+
+## API dispatch pattern
+
+```php
+// Route via apiPoint or any('/api/v1/shop/{resource}(?:/{id})?', 'Shop:Api@apiDispatch!')
+public static function getItems($request) { ... }
+public static function postItems($request) { ... }
+```
+
+Method name = lowercase HTTP verb + resource name (`get` + `Items` → `getItems`).
+
+---
+
+## Static module name helpers
+
+```php
+static::modulename(); // derived from FQCN
+Controller::moduleName();
+```
+
+---
+
+## Minimal complete controller (with correct error handling)
+
+```php
+<?php
+namespace Dotsystems\App\Modules\Shop\Controllers;
+
+use Dotsystems\App\DotApp;
+use Dotsystems\App\Parts\DB;
+use Dotsystems\App\Parts\Logger;
+use Dotsystems\App\Parts\Renderer;
+use Dotsystems\App\Parts\Response;
+
+class Home extends \Dotsystems\App\Parts\Controller
+{
+    public static function index($request)
+    {
+        $rows = DB::module('RAW')->q(function ($qb) {
+            $qb->select('*')->from('shop_items')->orderBy('id', 'DESC')->limit(50);
+        })->all();                                  // [] when empty — safe
+
+        $html = Renderer::new()
+            ->module('Shop')
+            ->setView('home', 'fallback/empty')     // fallback: missing view returns ""
+            ->setViewVar('title', 'Shop')
+            ->setViewVar('items', $rows)
+            ->renderView();
+
+        if ($html === '') {
+            Logger::use()->error('Shop home view rendered empty');
+            return new Response(500, 'Template error');
+        }
+        return $html;
+    }
+
+    /**
+     * CRCchecking — #DACore:AuthTest@LoginAndCRC! (prefix /api/v1/auth/Shop/*). No crcCheck() here.
+     *
+     * Saves one item from the edit form and answers with the sentence the operator reads in the toast.
+     *
+     * @param  mixed $request POST from <fo-rm id="shopItemForm">.
+     * @return mixed Reply::ok() or Reply::fail() — always HTTP 200.
+     */
+    public static function save($request)
+    {
+        try {
+            $answer = $request->form(
+                ['POST'],
+                'saveItem',
+                function ($request) {
+                    // Why: form() posts { data: {...}, crc } — the fields are one level down.
+                    $payload = $request->data(true)['data'] ?? [];
+
+                    // 1. Input — each stop has its own sentence.
+                    $title = trim((string) ($payload['title'] ?? ''));
+                    if ($title === '') {
+                        return Reply::fail('Enter the item title.', ['title' => 'Enter the item title.']);
+                    }
+
+                    // 2. Write
+                    $newId = null;
+                    DB::module('RAW')->q(function ($qb) use ($title) {
+                        $qb->insert('shop_items', [
+                            'title' => $title,
+                            'created_at' => date('Y-m-d H:i:s'),
+                        ]);
+                    })->execute(
+                        function ($result, $db, $exec) use (&$newId) {
+                            $newId = $exec['insert_id'] ?? $db->inserted_id();
+                        },
+                        function ($error) {
+                            self::reportCatch('Shop:Items@save', 'shop.item.create', null, 'error',
+                                ['errno' => $error['errno'] ?? 0], $error['error'] ?? 'db error');
+                        }
+                    );
+                    if ($newId === null) {
+                        return Reply::fail('The item was not saved: the database refused the change (shop.item.create). The fault was logged.');
+                    }
+
+                    // 3. Answer
+                    return Reply::ok('Item saved.', ['html' => self::rowsHtml()]);
+                },
+                function ($request, $name) {
+                    // Why: without this callback a bad form signature throws.
+                    return Reply::fail('This form has expired. Reload the page and try again.');
+                }
+            );
+
+            if ($answer === false || $answer === null) {
+                // Why: form() gives false on a wrong HTTP method and null when formName / action do not match.
+                return Reply::fail('This form does not match its handler (saveItem). Reload the page and try again.');
+            }
+            return $answer;
+        } catch (\Throwable $e) {
+            self::reportCatch('Shop:Items@save', 'shop.item.create', $e, 'error');
+            return Reply::fail('The item was not saved because of a server fault (shop.item.create). The fault was logged.');
+        }
+    }
+}
+```
+
+`Reply::ok()` / `Reply::fail()` are the module reply helper from [26](26-CONTROL-SLICE.md) §7 — `ajaxReply([...], 200)`. Every branch answers HTTP **200**: HTTP 4xx/5xx skips `.after()` and the `load()` success callback, so the message would never reach the toast. An isolated POST with **no** CRC prefix starts with `if (!$request->crcCheck()) { return Reply::fail('This page is out of date. Reload it and try again.'); }` — `crcCheck()` returns `1` / `0` / `false`, never `true`.
+
+
+Why each guard exists: `form()` **throws** without an error callback, returns `false` on method mismatch and `null` on handler mismatch; `execute()` **throws** without an error callback; a missing view yields `""`. See [18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md).

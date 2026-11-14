@@ -1,0 +1,47 @@
+---
+description: LAW — buttons live in an action row with real CSS; DACore is not Bootstrap (card-footer / pb-4 do nothing)
+alwaysApply: true
+---
+
+# Layout and UX/UI (law)
+
+Canonical + copy-paste markup: `AIRULES/26-CONTROL-SLICE.md` §2. Also `AIRULES/00-AGENT-CONTRACT.md` §2f, `AIRULES/33-DACORE-PAGES-AND-UI.md` §6–§6b.
+
+## Write it this way (every button, the first time)
+
+```html
+<div class="card mb-6" id="shopItemCard">
+  <h5 class="card-header">{{_ "Item" }}</h5>
+  <fo-rm method="post" action="/api/v1/auth/Shop/items/save" id="shopItemForm">
+    <div class="card-body">
+      <!-- fields -->
+      {{ formName(saveItem) }}
+    </div>
+    <div class="dacore-card-actions">
+      <a href="/dacore/Shop/items" class="btn btn-outline-secondary">{{_ "Cancel" }}</a>
+      <button type="submit" class="btn btn-primary">{{_ "Save" }}</button>
+    </div>
+  </fo-rm>
+</div>
+```
+
+1. Buttons are in their **own row** after `.card-body`: `.dacore-card-actions` (flex, wrap, gap, padding on all four sides). Row / toolbar buttons: `<div class="d-flex flex-wrap gap-2">` or `.dacore-toolbar`.
+2. Never a bare `<button>` as the last line of `.card-body`, never straight after an input, never two buttons with no `gap`.
+3. Consecutive cards / sections / alerts / tables: `mb-4` or `mb-6` between them.
+4. Primary action last (right). Same row class on every card of the page.
+
+## Classes that do nothing in the DACore shell
+
+DACore is **not** Bootstrap. These have **no CSS rule** in `core.css`: `card-footer`, `pb-3`, `pb-4`, `pt-0`, `pt-3`, `px-4`, `py-3`, `border-0`, `bg-transparent`. Writing them leaves the button glued to the edge.
+
+Exist: `d-flex`, `flex-wrap`, `align-items-center`, `justify-content-between|end|center`, `gap-1`…`gap-6`, `mb-0`…`mb-6`, `mt-1`…`mt-6`, `p-0|2|4|6`, `pb-0|2`, `pt-2|4`.
+
+Unsure about a class: `grep -c "\.the-class" app/modules/DACore/assets/css/core.css`. Zero = write the rule in **this** module CSS (`{lowercase_modulename}_*`). Public page or older DACore: define `.shop_actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:.75rem; padding:1rem 1.25rem 1.5rem; }`.
+
+## Admin forms
+
+Numbered section + one-sentence lede + tinted Why-this-matters when the cluster is not obvious. Not one wall of inputs. Chrome stays in **this** module. Compact: `23-admin-page-sections.mdc`.
+
+## Check
+
+`php AIRULES/tools/control-check.php <Module>` — rows `CSS-UNDEFINED` and `GLUED-SUBMIT` must be empty. No browser unless the user asked (`AIRULES/00` §2r).

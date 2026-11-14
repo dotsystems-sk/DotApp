@@ -1,0 +1,132 @@
+# EX-D08 — DACore list pager (copy-paste)
+
+Open with [40-DACORE-LIST-PAGER.md](../40-DACORE-LIST-PAGER.md). This is the **legal** admin list: HTML classes, encrypted page buttons, `$dotapp().live("click", …, function (el, e)`, COUNT + LIMIT, POST `/api/v1/auth/{Module}/…`.
+
+Replace `Shop` / `shop` / `shop_items` / `Shop.items.page` with **your** module.
+
+---
+
+## 1. Routes (`module.init.php`)
+
+```php
+$admin = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
+$authApi = '/api/v1/auth/Shop';
+Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!');
+Router::before(['POST'], [$authApi, $authApi . '/*'], '#DACore:AuthTest@LoginAndCRC!');
+if (Auth::isLogged() === true) {
+    Router::get($admin . '/items', 'Shop:Admin@items!')
+        ->before(function ($request) {
+            return DotApp::call('#Shop:Rights@check!', $request, ['dotapp.root', 'Shop.items.view']);
+        });
+    Router::post($authApi . '/items/list', 'Shop:Admin@itemsList!')
+        ->before(function ($request) {
+            return DotApp::call('#Shop:Rights@check!', $request, ['dotapp.root', 'Shop.items.view']);
+        });
+}
+```
+
+`itemsList` **MUST NOT** call `crcCheck()`.
+
+---
+
+## 2. COUNT + page (library or controller)
+
+```php
+$result = DB::module('RAW')->q(function ($qb) use ($q) {
+    $qb->select(['id', 'title', 'sku', 'price'])->from('shop_items');
+    if ($q !== '') {
+        $qb->where('title', 'LIKE', '%' . $q . '%');
+    }
+    $qb->orderBy('id', 'DESC');
+})->paginate($perPage, $page);
+
+$rows = $result['data'];
+$total = (int) $result['total'];
+$last = (int) $result['last_page'];
+```
+
+`paginate()` runs the `COUNT(*)` and the page query and returns the real `total` and `last_page`. On a core older than 2026-11-14 `total` was always 0 — update the framework, do not work around it. **MUST NOT** set `total` from `count($rows)`.
+
+Decrypt pager clicks:
+
+```php
+$raw = $body['page'] ?? 1;
+if (is_int($raw) || (is_string($raw) && ctype_digit($raw))) {
+    $page = max(1, (int) $raw); // search reset only
+} else {
+    $plain = Crypto::decrypt((string) $raw, 'Shop.items.page');
+    if ($plain === false || !ctype_digit((string) $plain)) {
+        return ['status' => 0, 'message' => Translator::trans('This page link has expired. Reload the list and try again.')];
+    }
+    $page = max(1, (int) $plain);
+}
+```
+
+---
+
+## 3. Pager HTML
+
+On `Page@withMenu!` `$css` include `/assets/modules/DACore/css/pages/dotapp-ui/users.css`.
+
+```php
+$links = (string) DotApp::call(
+    'DACore:Page@paginate!',
+    $current,
+    $last,
+    null,
+    function ($type, $pageNo, $label, $state, $href) {
+        unset($href);
+        if ($type === 'ellipsis') {
+            return '<li class="page-item disabled"><span class="page-link">…</span></li>';
+        }
+        $off = ($state === 'active' || $state === 'disabled') ? ' disabled' : '';
+        $token = Crypto::encrypt((string) (int) $pageNo, 'Shop.items.page');
+        if (!is_string($token) || $token === '') {
+            return '<li class="page-item disabled"><span class="page-link">'
+                . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                . '</span></li>';
+        }
+        return '<li class="page-item ' . $state . '"><button type="button" class="page-link shop-page" data-page="'
+            . htmlspecialchars($token, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' . $off . '>'
+            . htmlspecialchars((string) $label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            . '</button></li>';
+    }
+);
+```
+
+Footer (no `--split`):
+
+```html
+<div class="card-footer dacore-list-pager">
+  <div class="dacore-list-pager-summary text-body-secondary small">{{ var: $pagerSummary }}</div>
+  <nav class="dacore-list-pager-nav" aria-label="{{_ "Pagination" }}">
+    <ul class="pagination mb-0">{{ var: $links }}</ul>
+  </nav>
+</div>
+```
+
+Outer card `#shopListWrap`, inner `#shopListInner` contains **table + footer**. Overlay the wrap. Patch the inner.
+
+---
+
+## 4. JS (`function (el, e)` — not `e.currentTarget`)
+
+```javascript
+// About: pager. live() hands the element first. shopSend() = module helper (AIRULES/26 §5).
+$dotapp().live("click", ".shop-page", function (el, e) {
+  e.preventDefault();
+  // Why: the current page and the disabled arrows are not actions.
+  if (el.disabled || $dotapp(el).closest(".page-item.disabled, .page-item.active").length) {
+    return;
+  }
+  var page = $dotapp(el).attr("data-page");
+  if (!page) {
+    return;
+  }
+  shopSend("/api/v1/auth/Shop/items/list", { page: page, q: currentQuery }, "#shopListWrap", function (reply) {
+    $dotapp("#shopListInner").html(reply.html);
+  });
+});
+```
+
+**MUST NOT** `history.replaceState` / `?page=` — that burns CRC on the next POST.

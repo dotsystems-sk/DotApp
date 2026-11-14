@@ -1,0 +1,15 @@
+---
+description: LAW — DotApp load/form nested data, handled HTTP 200 outcomes, and same-class module hunts
+alwaysApply: true
+---
+
+# DotApp AJAX + same class of bug (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2q, `AIRULES/08-FORMS-AND-SECURITY.md`, `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §3.
+
+- `$dotapp().load()` and secure forms post `{ data: { fields… }, crc }`, not a flat object.
+- Use `$request->data(true)['data']` or the validated `form()` result. **MUST NOT** read `$request->data()['id']` as a flat field.
+- Handled product outcomes use HTTP **200** + `status` 1|0 + `message`; CRC 400 and login/rights 403 remain transport failures.
+- `load()` onError receives `(httpStatus, bodyText)`, not the success reply shape.
+- One broken handler means grep **this module** and fix every sibling with the same nesting, HTTP, toast, CRC, or escaping bug in the same chunk.
+- **MUST NOT** ship “Disable works, Delete/Test/Clear still use the old pattern.”

@@ -1,0 +1,27 @@
+{
+  "name": "DotApp",
+  "logo": "https://avatars.githubusercontent.com/u/198362549?v=4",
+  "navigation": [
+    {
+      "group": "Úvod",
+      "pages": [
+        "README.md"
+      ]
+    },
+    {
+      "group": "Automaticky generovaná dokumentácia",
+      "pages": [
+        "mintlify://auto"
+      ]
+    }
+  ],
+  "colors": {
+    "primary": "#1E88E5",
+    "light": "#FFFFFF",
+    "dark": "#212121"
+  },
+  "favicon": "https://avatars.githubusercontent.com/u/198362549?v=4",
+  "footerSocials": {
+    "github": "https://github.com/dotsystems-sk/DotApp"
+  }
+}

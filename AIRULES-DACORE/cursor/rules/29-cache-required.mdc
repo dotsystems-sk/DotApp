@@ -1,0 +1,27 @@
+# Public cache is required, with a switch (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2t, `AIRULES/20-CACHE-LOGGER-SESSION.md` §1a. CMS packs: `app/modules/CMS/AIRULES/14-PUBLIC-CACHE.md`.
+
+Not only CMS. Any module with a **public, anonymous, read-mostly** surface (site, catalogue, price list, public detail page, public API answer, embedded widget) is held to this.
+
+## MUST
+
+- Cache what makes sense **outside** the administration, in the same work as the surface. The agent judges where: a form with a one-time CSRF token, a cart, a logged-in page, or a per-visitor block is **not** response-cached — cache the expensive fragments behind it.
+- `Cache::use('<Module>')->save() / load() / exists() / delete() / gc()` — the **built-in** class, so a project driver change (`Config::cacheDriver()`: file → Redis → Memcached) reaches this module for free.
+- An **on/off switch in this module's admin settings** (normally + TTL). If the agent decided cache makes sense, the operator must be able to turn it off — that is how DAUCache, a CDN, or a proxy takes over, and how support kills a stale page.
+- Off means **stores nothing and serves nothing**.
+- **Invalidate on write:** delete the affected keys or bump a generation inside the key. TTL alone is not invalidation.
+- Write the decision into `app/modules/<This>/PLAN/`: cached surfaces, TTL, what invalidates, which settings key switches it.
+- Admin-side caching is allowed for expensive aggregates, reports, external API answers — never a write path, never a per-operator value on a shared key.
+
+## MUST NOT
+
+- Ship a public surface with no cache and no PLAN note
+- Cache with no operator switch, or a switch that only stops storing
+- Hand-rolled storage: `file_put_contents()` cache folder, APCu, own `cache_*` table, static array as persistence, `$_SESSION` as cache
+- Cache a CSRF-carrying page, a logged-in view, a cart, or personalised markup on a shared key; personal data / tokens / OTP inside an entry
+- Cache a `WHERE id = ?`, a `COUNT(*)`, or anything an index answers (`AIRULES/25` §2)
+- `Cache::use(...)->clear()` as invalidation (folder-wide on file, whole-server flush on Memcached), `Renderer::useCache(true)`, `Config::db('cache')`
+- Treat DAUCache as a reason to skip module caching — they are **layers**; the outer one can be off or uninstalled
+
+Finish gate: public surface with no cache/PLAN note, or cache with no admin switch = fail.

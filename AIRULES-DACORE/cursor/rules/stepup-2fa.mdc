@@ -1,0 +1,24 @@
+---
+description: Step-up 2FA after login — ASK, then DACore installer modal only
+alwaysApply: true
+---
+
+# Step-up 2FA (LAW)
+
+Canonical: `AIRULES/32-DACORE-RIGHTS.md` §6. Sample: `AIRULES/examples/EX-D10-stepup-2fa-modal.md`.
+
+- Login 2FA is already on. A **second** code is extra friction.
+- **MUST ASK** in the plan: which actions (if any) need a fresh code after login.
+- **No answer / user says no** → **MUST NOT** add step-up. Ordinary settings Save does not get a 2FA modal.
+- **User names actions** (install package, wipe, grant `dotapp.root`, change a jail) → those only.
+- **MUST NOT** invent it on every settings card “to be safe.”
+
+When the user asked for it, chrome is **one** look (DACore plugin installer):
+
+- Centered `$dotapp().modal()`, title + why, method hint, optional Send code
+- Six `dacore-otp two-fa-inputs` boxes (`type="password"`, `maxlength="1"`)
+- `$dotapp(...).twoFactor(submitFn, { length: 6, autoSubmit: true })` — paste **immediately** POSTs
+- Load DACore `users.css` for OTP sizing; **MUST NOT** fork it
+- PHP verifies before persist — FE is UX only. **MUST NOT** `Auth::confirmTwoFactor`
+
+**MUST NOT:** one `<input maxlength="6">` on the card; OTP inline under Save; custom OTP widget; `autoSubmit: false` on unlock.

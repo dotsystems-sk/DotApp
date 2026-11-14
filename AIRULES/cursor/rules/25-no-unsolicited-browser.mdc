@@ -1,0 +1,23 @@
+---
+description: LAW — no live browser click-through unless the user asked or said yes
+alwaysApply: true
+---
+
+# No unsolicited browser (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2r.
+
+## MUST NOT by default
+
+- Open MCP browser, CDP, screenshot-and-click, or a browser subagent to prove Save, Delete, CRC, routing, or a public template.
+- Treat a generic “verify in browser” convention as permission for this project.
+- Ask “may I click?” and proceed without an answer. No answer means no browser.
+
+## MUST
+
+- Verify with source inspection, tests, and the finish gate.
+- Check UX from source: responsive behavior, action padding, field outcomes, loading/error paths.
+- Give the operator a short click list when manual verification is useful.
+- Use a live browser only when the user commands it in this turn or explicitly answers yes.
+
+Reported failure → `AIRULES/23-DEBUG-PLAYBOOK.md`; grep first.

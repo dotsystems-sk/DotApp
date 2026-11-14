@@ -1,0 +1,61 @@
+---
+description: LAW (write-time) — one control = six parts in one chunk; action row, canonical boot, $dotapp not raw DOM, one request helper, HTTP 200 + specific message
+alwaysApply: true
+---
+
+# Control slice (LAW — read before writing any button)
+
+Canonical + copy-paste code: `AIRULES/26-CONTROL-SLICE.md`. Open it before the first button of a task. This rule is for **writing**, not for a check afterwards.
+
+## One control = six parts, same chunk, this order
+
+1. **Markup** in an action row — 2. **Listener** — 3. **Route** — 4. **Action** — 5. **Reply** (HTTP 200, `status` 0|1, specific `message`) — 6. **Toast** on success, on `status` 0 **and** on HTTP/network failure.
+
+Finish all six before the next control. Then add a row to the reply, every cell `file:line`:
+
+`| Control | View | Listener | URL + method | Route | Controller@method | Success toast | Failure toast |`
+
+Then run `php AIRULES/tools/control-check.php <Module>` and fix what it prints.
+
+## Markup
+
+- Buttons live in `<div class="dacore-card-actions">` placed **after** `.card-body` (inside `<fo-rm>`). Row buttons: `<div class="d-flex flex-wrap gap-2">`. Never a bare button at the end of `.card-body`.
+- DACore is **not** Bootstrap. `card-footer`, `pb-3`, `pb-4`, `pt-0`, `pt-3`, `px-4`, `border-0`, `bg-transparent` have **no CSS rule** — they add no space. Unsure: `grep -c "\.class" app/modules/DACore/assets/css/core.css`; zero = define it in this module CSS.
+
+## JS file — exact shape
+
+```javascript
+(function () {
+  function runMe($dotapp) {
+    // helpers, then // Section: + // About: + one handler per control
+  }
+
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
+})();
+```
+
+Copy the `if / else` block character for character (`"dotapp-register"` only in a `$dotapp().fn` library). No one-line `if … else`, no `DOMContentLoaded`, no `document.addEventListener("dotapp")` (the event is on `window`).
+
+## Inside `runMe`
+
+- `$dotapp(selector)` / `$dotapp(el)` with `.attr() .val() .html(x) .text(x) .addClass() .closest() .parent() .each(function (index, el))`. **Not** `document.getElementById`, `querySelector`, `getAttribute`, `innerHTML`, `classList`, `el.addEventListener`.
+- Every event: `$dotapp().live("click", ".shop_x", function (el, e) {})` — `el` first.
+- Traverse with `$dotapp`, too: `.find()` `.children()` `.siblings()` `.closest()` `.parent()` `.first()` `.last()` `.nth(i)`; count with `.length`. (`$dotapp("body").length` is `undefined` only on a `dotapp.js` older than 2026-11-14 — update the framework, do not fall back to raw DOM.)
+- Every request goes through the module helper `xxxSend(url, payload, region, onOk)` / `xxxForm(selector, region, onOk)` from `AIRULES/26` §5. **MUST NOT** call `$dotapp().load()` / `.form()` directly in a handler.
+- `.form()` needs `.before()` + `.after()` + **`.onError()`**. `.after()` does not run on HTTP 4xx/5xx; without `.onError()` the form stays blocked and nothing shows.
+
+## PHP action
+
+- Every branch ends in `Reply::ok($message, $extra)` or `Reply::fail($message, $errors)` (module `Libraries/Reply.php`, `ajaxReply(..., 200)`). **MUST NOT** `ajaxReply(..., 400|403|500)`, `'code' => 4xx|5xx`, or `Response::json()` for a `load()` / `form()` caller.
+- Each stop (input, record, rule, DB `$err`, `catch`) has **its own sentence** naming the object and the step. Server faults carry the operation slug: `…a server fault (shop.item.update). The fault was logged.` — the same slug as in `reportCatch()`.
+- **MUST NOT** `Server error`, `Bad request`, `Rejected`, `Error`, `Save failed`, `Something went wrong`.

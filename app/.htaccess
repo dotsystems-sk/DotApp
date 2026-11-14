@@ -1,0 +1,35 @@
+# Zakladna ochrana - nikto nema pristu k nicomu
+<IfModule mod_authz_core.c>
+    Require all denied
+
+    # Povolit pristu k Assets.php suboru
+    <FilesMatch "^Assets\.php$">
+        Require all granted
+    </FilesMatch>
+
+    # Povolit subory v modules/*/assets/ prieckach
+    <FilesMatch ".*">
+        <If "%{REQUEST_URI} =~ m#^/app/modules/[^/]+/assets/.*#">
+            Require all granted
+        </If>
+    </FilesMatch>
+</IfModule>
+
+# Stare apache verzie - ak neni mod_authz_core
+<IfModule !mod_authz_core.c>
+    Order Deny,Allow
+    Deny from all
+
+    # Povolit pristu k Assets.php
+    <FilesMatch "^Assets\.php$">
+        Allow from all
+    </FilesMatch>
+
+    # Povolit subory v modules/*/assets/ - starsia verzia
+    <Files *.*>
+        SetEnvIf Request_URI "^/app/modules/[^/]+/assets/.*" allow_access=1
+        Order Deny,Allow
+        Deny from all
+        Allow from env=allow_access
+    </Files>
+</IfModule>

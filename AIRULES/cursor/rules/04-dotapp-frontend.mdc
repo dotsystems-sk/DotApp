@@ -1,0 +1,63 @@
+---
+description: DotApp frontend — $dotapp is not jQuery; secure forms and bridge
+globs: app/modules/**/assets/**/*.js
+alwaysApply: false
+---
+
+# DotApp Frontend JS
+
+Full reference: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md`, forms in `08-FORMS-AND-SECURITY.md`.
+
+## Load order
+
+1. `/assets/dotapp/dotapp.js` (router-generated keys)
+2. Optional template/reactive
+3. Module scripts
+
+Bootstrap on the `dotapp` event on **`window`**, with the exact `if (window.$dotapp)` block from `AIRULES/26-CONTROL-SLICE.md` §3. A `$dotapp().fn` library waits for `dotapp-register`. `$dotapp().live` passes the element first: `function (el, e)`. `.form()` needs `.onError()` — `.after()` does not run on HTTP 4xx/5xx. `.find()` / `.last()` / `.nth()` / `.length` work since `dotapp.js` 2026-11-14; an `undefined` `.length` means the framework copy is old.
+
+Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (playbook §4.C) and `AIRULES/examples/EX-15-dotapp-js-library.md`. Never edit `app/parts/js/`. Porting = rewrite vanilla + `$dotapp().fn` — do not wrap `$.fn.plugin`.
+
+## Never
+
+- `$`, `jQuery`, `$.ajax`, `$.post`
+- Assume getters always chain
+- Skip CRC/CSRF by using raw `fetch` to secure endpoints
+- `location.reload()` after `fo-rm` / `load` while staying on the page — patch `reply.html` + toast ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- One `<fo-rm>` per row action — use `$dotapp().load()` + encrypted `data-*` ([08](AIRULES/08-FORMS-AND-SECURITY.md))
+- Leave a list/form clickable during `load()` — overlay with **module preloaders** until success **and** error (desktop **and** mobile) ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- Dump users/logs/items with `->all()`, skip the pager because “few rows now”, or change pages by reloading `<a href="?page=">` / `location.reload()` — interactive AJAX pager + `$dotapp().load()` ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- Ship a catalog/articles list with no search, or filter `->all()` in JS — **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars) ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- Invent a 2FA/OTP digit widget — use `$dotapp().twoFactor` ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- Delete with `alert()` / `window.confirm()` — graphical dialog first ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- Public site: desktop-only header / hover menu / hide nav on mobile with no overlay drawer — L/R drawer, lock page scroll, scrollable drawer list, contacts+compact search in the drawer ([09](AIRULES/09-DOTAPP-JS-AND-BRIDGE.md) §3)
+- Silent save / empty `.after()` / only “could not save” when a field is the cause / a red mark that stays after the person starts typing in that field — red input, sentence under it, clear that field on the next `input` (`AIRULES/00` §2d, `29-ux-save-feedback.mdc`)
+
+## Forms (preferred security — always for user POSTs)
+
+HTML: `<fo-rm>` + `{{ formName(handler) }}` (not `f-form`). **MUST** put `formName` **between** `<fo-rm>` and `</fo-rm>` — never after `</fo-rm>`. **MUST** write `method` and `action` as literal attributes on the opening tag. **MUST NOT** put `{{ }}` inside `<fo-rm …>` — compiled `?>` hides `method` (`{{ formName }}` shows as text) or cuts `action` (posts to the current page).  
+Must load `/assets/dotapp/dotapp.js` first (injects random keys).  
+Full sample: `AIRULES/examples/EX-01-secure-form-complete.md`.
+
+```javascript
+$dotapp().form('#saveForm')
+  .before(function (data, form) {
+    if ($dotapp(form).attr('blocked') == 1) return $dotapp().halt();
+    $dotapp(form).attr('blocked', '1');
+    $dotapp('#btn').attr('loading', 'true').attr('loader', 'dots');
+  })
+  .after(function (data, response, form) {
+    var reply = $dotapp().parseReply(response);
+    if (reply && reply.status == 1 && reply.html) $dotapp('#listInner').html(reply.html);
+    $dotapp(form).attr('blocked', '0');
+    $dotapp('#btn').removeAttr('loading').removeAttr('loader');
+  });
+```
+
+## AJAX
+
+`$dotapp().load(url, method, data, ok, err)` — not raw fetch for DotApp secure APIs.
+
+## Bridge
+
+Template `{{ dotbridge:on(click)="fn(args)" }}` + `$dotApp->bridge->fn('fn', ...)`.

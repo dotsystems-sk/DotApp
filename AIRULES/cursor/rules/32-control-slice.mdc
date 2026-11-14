@@ -1,0 +1,61 @@
+---
+description: LAW (write-time) — one control = six parts in one chunk; action row, canonical boot, $dotapp not raw DOM, one request helper, HTTP 200 + specific message
+alwaysApply: true
+---
+
+# Control slice (LAW — read before writing any button)
+
+Canonical + copy-paste code: `AIRULES/26-CONTROL-SLICE.md`. Open it before the first button of a task. This rule is for **writing**, not for a check afterwards. There is no DACore shell and no Notiflix here: the overlay and the notice are the module’s own.
+
+## One control = six parts, same chunk, this order
+
+1. **Markup** in an action row — 2. **Listener** — 3. **Route** — 4. **Action** — 5. **Reply** (HTTP 200, `status` 0|1, specific `message`) — 6. **Notice** on success, on `status` 0 **and** on HTTP/network failure.
+
+Finish all six before the next control. Then add a row to the reply, every cell `file:line`:
+
+`| Control | View | Listener | URL + method | Route | Controller@method | Success notice | Failure notice |`
+
+Then run `php AIRULES/tools/control-check.php <Module>` and fix what it prints.
+
+## Markup
+
+- Buttons live in `<div class="{module}_actions">` placed **after** the fields (inside `<fo-rm>`). The class is defined in this module’s CSS: flex, wrap, gap, padding on all four sides. Never a bare button at the end of the field block.
+
+## JS file — exact shape
+
+```javascript
+(function () {
+  function runMe($dotapp) {
+    // helpers, then // Section: + // About: + one handler per control
+  }
+
+  if (window.$dotapp) {
+    runMe(window.$dotapp);
+  } else {
+    window.addEventListener(
+      "dotapp",
+      function () {
+        runMe(window.$dotapp);
+      },
+      { once: true }
+    );
+  }
+})();
+```
+
+Copy the `if / else` block character for character (`"dotapp-register"` only in a `$dotapp().fn` library). No one-line `if … else`, no `DOMContentLoaded`, no `document.addEventListener("dotapp")` (the event is on `window`).
+
+## Inside `runMe`
+
+- `$dotapp(selector)` / `$dotapp(el)` with `.attr() .val() .html(x) .text(x) .addClass() .closest() .parent() .find() .children() .first() .last() .nth(i) .each(function (index, el))`. Count with `.length`. **Not** `document.getElementById`, `querySelector`, `getAttribute`, `innerHTML`, `classList`, `el.addEventListener`.
+- Every event: `$dotapp().live("click", ".shop_x", function (el, e) {})` — `el` first. `e.currentTarget` is the wrong argument and the click does nothing.
+- (`$dotapp("body").length` is `undefined` only on a `dotapp.js` older than 2026-11-14 — update the framework, do not fall back to raw DOM.)
+- Every request goes through the module helper `xxxSend(url, payload, region, onOk)` / `xxxForm(selector, region, onOk)` from `AIRULES/26` §5. **MUST NOT** call `$dotapp().load()` / `.form()` directly in a handler.
+- `.form()` needs `.before()` + `.after()` + **`.onError()`**. `.after()` does not run on HTTP 4xx/5xx; without `.onError()` the form stays blocked and nothing shows.
+- A `<fo-rm>` that arrives later inside `reply.html` is not taken over. Keep the form outside the replaced fragment.
+
+## PHP action
+
+- Every branch ends in `Reply::ok($message, $extra)` or `Reply::fail($message, $errors)` (module `Libraries/Reply.php`, `ajaxReply(..., 200)`). **MUST NOT** `ajaxReply(..., 400|403|500)` or `Response::json()` for a `load()` / `form()` caller.
+- Each stop has **its own sentence** naming the object and the step. Server faults carry the operation slug: `…a server fault (shop.item.update). The fault was logged.`
+- **MUST NOT** `Server error`, `Bad request`, `Rejected`, `Error`, `Save failed`, `Something went wrong`.
