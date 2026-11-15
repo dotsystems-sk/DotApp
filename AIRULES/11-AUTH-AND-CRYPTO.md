@@ -284,7 +284,7 @@ Logout **MUST** use the project’s signed logout URL (session token). A token-l
 
 ### State-changing POST still needs a gate
 
-**MUST NOT** skip `crcCheck` because a widget cannot sign. Use the module CRC prefix **or** action ([08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md)). Upload already uses `$request->upload()` instead. A public POST with no CRC and no other documented gate is a bug.
+**MUST NOT** skip `crcCheck` because a widget cannot sign. Use the module CRC prefix **or** action ([08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md)). Upload already uses `Uploader` instead. A public POST with no CRC and no other documented gate is a bug.
 
 ### Public endpoints vs bots (**warn** — not MUST captcha)
 

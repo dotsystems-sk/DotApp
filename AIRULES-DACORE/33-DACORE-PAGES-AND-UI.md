@@ -265,7 +265,7 @@ Plugin registration (own libraries): see [09](09-DOTAPP-JS-AND-BRIDGE.md) §4 an
 })();
 ```
 
-Duplicate `fn()` names **throw**. Pass the script via `Page@withMenu!` `$js`.
+`fn()` returns `true` when it registered the name; a taken name (a `dotapp.js` method or one registered earlier) is **not** overwritten — `fn()` returns `false` and warns in the console. Prefix names with the module. Pass the script via `Page@withMenu!` `$js`.
 
 This is how ports work: keep familiar controls, restyle them to DACore colors, keep the DACore menu/shell. Do **not** smash a ported UI into only DACore cards because “the template has no chart”.
 

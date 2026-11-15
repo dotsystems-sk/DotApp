@@ -532,7 +532,7 @@ Also: `first()` is unsafe on an empty result, a missing view renders `""`, and `
 | `f-form` attribute | **Does not exist** — use `<fo-rm>` |
 | `$_SESSION` / `session_start()` | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
 | JS overlay / modal as the only save or 2FA gate | **MUST** re-check in PHP; FE is UX only ([08](08-FORMS-AND-SECURITY.md)) |
-| File/ZIP in `FormData` + `load()` / `<fo-rm>` | **MUST** `$dotapp().uploadFile` + `$request->upload()`; PHP rejects `.php` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| File/ZIP in `FormData` + `load()` / `<fo-rm>` | **MUST** `$dotapp().uploadFile` + PHP `Uploader::use('<Module>')->…->receive()` ([48](48-UPLOADER.md), [09](09-DOTAPP-JS-AND-BRIDGE.md)) |
 | `crcCheck()` in middleware **and** in the action | **MUST** once — first call **burns** the token ([08](08-FORMS-AND-SECURITY.md)) |
 | Shipping a chunk / claiming done without the finish gate | **MUST** [§2c](#2c-finish-gate-must--law) after every chunk — grep, do not imagine |
 | Silent save / empty `.after()` / no field error on a named field | **MUST** [§2d](#2d-visible-outcome-must--law) — user sees success and fail |
@@ -573,7 +573,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 8. **MUST paginate accumulating lists** (users, logs, items, …) with an **interactive** pager (`$dotapp().load()`). Shipping the list with no pager, or changing pages by reloading the document, is incomplete. Lookup lists **MUST** ship **interactive AJAX search** unless the user declined; other lists: **ASK** in the plan. [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 9. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()` ([20](20-CACHE-LOGGER-SESSION.md)).
 10. **MUST** re-check every persist in **PHP** (`Auth::can`, 2FA code, ownership, validation). `crcCheck()` is transport — **once** per request, not again. Frontend modal/overlay/disabled control is **UX only**. Removing the overlay **MUST** still fail on the server ([08](08-FORMS-AND-SECURITY.md)).
-11. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP: `$request->upload()` — not `crcCheck()` on that endpoint. **MUST** reject `.php` and other executables (extension + `finfo` MIME + headers); FE `accept=` is UX only ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
+11. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP: **MUST** receive with the core class **`Uploader`** (`Uploader::use('<Module>')->images()->receive()`) — not `crcCheck()` on that endpoint, no `$_FILES` / `move_uploaded_file` / hand-written extension or MIME checks in a module. FE `accept=` is UX only ([48](48-UPLOADER.md), [09](09-DOTAPP-JS-AND-BRIDGE.md)).
 12. **MUST** take every value that is stored, hashed, decrypted, or compared as typed from `$request->data(true)` / `$request->query(true)` (passwords, HTML, URLs, settings, tokens, signatures, ids, titles, notes). `$request->data()` is the **protected** copy (`protect()`); it rewrites `=` and other characters and **MUST NOT** be persisted. Bind original strings in SQL and escape on output. **MUST** show every login failure. Canonical: [19](19-VALIDATION-AND-INPUT.md).
 13. **Login-required / admin routes (MUST):** prefix `/{ModuleName}/…` (or a subtree). Cover HTML with `Router::before([$area, $area . '/*'], '#Shop:Gate@login!')` returning `Response` 403. **POST API:** `/api/v1/auth|noauth/{Module}/…` + `Gate@loginAndCrc` / `Gate@crc` at the **start** of `initialize()`; handlers **MUST NOT** `crcCheck()` again. Register login-only handlers **only** inside `if (Auth::isLogged() === true)`. Those pages **MUST NEVER** render for anonymous users. Canonical: [03](03-MODULES-AND-ROUTING.md).
 14. **Documentation (MUST):** English. Every file/class gets a docblock. Every public/static method in **`Controllers/`** and **`Middleware/`** starts PHPDoc with **`CRCchecking —`** naming **where** CRC runs (exact prefix/middleware, or `this action`, or `none` for GET/upload/helper) — then a **purpose sentence** — tags alone (`@return array<string, mixed>`) are a **bug**. Then `@param` / `@return` / `@throws` with **meaning**, not only types. Inline comments **MUST** use the labels **`// Why:`** (every logical step), **`// About:`** (what the chunk is / what the record represents), **`// Section:`** (menu or route). **MUST NOT** restate the code (`// increment i`), prompt-echo, omit the labels, or leave dead code / bare `TODO`. **MUST NOT** write `CRCchecking — prefix … MUST NOT crcCheck()` and then call `crcCheck()` in that method. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7, [08](08-FORMS-AND-SECURITY.md), [03](03-MODULES-AND-ROUTING.md).
@@ -635,7 +635,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
  * - UI copy: product language — never prompt-echo / “this user can…”
  * - Session: DSM::use('Shop') — NEVER $_SESSION / session_start()
  * - Save checks: PHP MUST re-verify — FE modal/overlay is UX only
- * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST reject .php (ext+MIME+headers)
+ * - Files: $dotapp().uploadFile — NEVER FormData + load()/fo-rm; PHP MUST receive with Uploader::use()->receive() (AIRULES/48)
  * - Request: data() = protected; data(true) = original — MUST true for passwords/HTML/hashes
  * - Login-required routes: prefix /{Module}/… + Gate@login 403 Response; MUST register handlers inside Auth::isLogged()
  * - Comments: English; labels Why: / About: / Section: — not every line, not unlabeled
@@ -712,6 +712,8 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | Validation / error responses | 19 | [EX-09](examples/EX-09-validation-and-errors.md) — **`data(true)`** = original; `data()` = protected |
 | Config / keys | 10 | [EX-08](examples/EX-08-config-secrets.md) |
 | Bridge click | 09 | [EX-07](examples/EX-07-bridge.md) |
+| **Storing a file a visitor uploads (photo, avatar, attachment)** | **48** Uploader — the only allowed way; then **09** "File uploads" for the browser side | — |
+| **Node editor, flow / rule builder, blocks joined by wires** | **49** Connector — `dotapp.connector.js` + PHP `Connector` | — |
 | Auth / 2FA / permissions | **11** (incl. §11 privilege / secrets / SQL owner / bot **warn**), **09** (`twoFactor`), **19** (`data(true)`) | [EX-14](examples/EX-14-auth-and-2fa.md) |
 | **Any attack surface (input, auth, output, upload, public endpoint)** | **24** attack vectors — open the matching section, then §11 threat pass | [EX-01](examples/EX-01-secure-form-complete.md), [EX-14](examples/EX-14-auth-and-2fa.md) |
 | **New table / migration / any loop or query you care about** | **25** performance — §1 memory, §2 I/O, **§3 indexes**, §4 column types, §5 big lists, §6 frontend | [EX-13](examples/EX-13-schema-migrations.md), [EX-04](examples/EX-04-database-crud.md) |

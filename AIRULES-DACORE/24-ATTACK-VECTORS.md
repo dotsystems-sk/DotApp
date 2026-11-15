@@ -114,13 +114,13 @@ There is **no `Response::headers()`**. Set headers with PHP `header()` **before*
 
 | Attack | Law (**MUST**) | Where |
 |--------|----------------|-------|
-| Upload → RCE | Reject `.php` and every executable/script — **extension** (incl. `.jpg.php`, `.php.jpg`), **`finfo` MIME from the bytes**, magic/headers. `$file['type']` and FE `accept=` are not checks | [09](09-DOTAPP-JS-AND-BRIDGE.md) |
-| Executable upload dir | Store outside the webroot or in a non-executing directory; serve through PHP with a fixed content type | [09](09-DOTAPP-JS-AND-BRIDGE.md) |
+| Upload → RCE / polyglot image | Receive only through **`Uploader`** — it refuses script extensions in every dot-part, reads MIME from the bytes and **re-encodes images** so hidden code does not survive. `$file['type']` and FE `accept=` are not checks | [48](48-UPLOADER.md) |
+| Executable upload dir | `Uploader` default folder `app/runtime/uploads/{name}` (deny + PHP off); serve through an action with `->path()` and `Response::contentType()` | [48](48-UPLOADER.md) §5 |
 | Path traversal / LFI | Never concatenate input into a path. `basename()` + extension whitelist + your own generated name; verify `realpath()` still starts with your base dir | — |
 | Zip slip | Validate every archive entry path before extracting; reject `..` and absolute paths | — |
 | Filename XSS | Escape the stored filename on output like any other user string | [05](05-VIEWS-TEMPLATES-ASSETS.md) |
 | Upload flooding / bombs | Cap file size, file count, and image dimensions; reject early | [09](09-DOTAPP-JS-AND-BRIDGE.md) |
-| Wrong gate on upload | Upload endpoints use `$request->upload()` — **MUST NOT** `crcCheck()` there, but the route still needs its login gate | [09](09-DOTAPP-JS-AND-BRIDGE.md) |
+| Wrong gate on upload | Upload endpoints use `Uploader` — **MUST NOT** `crcCheck()` there, but the route still needs its login gate (and the `dotapp: load` header check) | [48](48-UPLOADER.md) |
 
 ---
 

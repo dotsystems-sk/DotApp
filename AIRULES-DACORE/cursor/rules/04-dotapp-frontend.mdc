@@ -36,7 +36,7 @@ Custom FE libraries and jQuery ports: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4 (
 - Silent save / empty `.after()` / invent a second toast instead of grepping DACore — admin **toast**; public mark the field (`AIRULES/00` §2d)
 - `$request->data()['id']` after `load()` without unwrap, or product-fail HTTP 400/500 — unwrap nested `data`, HTTP **200** + `status` 0|1. One hit → fix every sibling in this module (`AIRULES/00` §2q, `AIRULES/09` §3)
 
-jQuery `$` may coexist **for UI widgets** (ported datepickers, etc.). It must **not** send app requests. Prefer `$dotapp` for new DOM code. Register plugins with `$dotapp().fn(...)` on `dotapp-register`. When porting jQuery libraries, **ask**, then rewrite as `$dotapp().fn` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C.
+jQuery `$` may coexist **for UI widgets** (ported datepickers, etc.). It must **not** send app requests. Prefer `$dotapp` for new DOM code. Register plugins with `$dotapp().fn(...)` on `dotapp-register`; names **MUST** carry the module prefix (`shopStars`). `fn()` returns `false` and changes nothing when the name is taken (a built-in or another library) — check it. Load order: `dotapp.js` → library → page script. When porting jQuery libraries, **ask**, then rewrite as `$dotapp().fn` (do not wrap `$.fn`). Playbook: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §4.C.
 
 ## Forms (preferred security — always for user POSTs)
 
@@ -62,3 +62,11 @@ shopForm("#shopItemForm", "#shopItemCard", function (reply) {
 ## Bridge
 
 Template `{{ dotbridge:on(click)="fn(args)" }}` + inputs `{{ dotbridge:input="name" }}` + `Router::bridge($pageUrl, 'fn', $handler, Router::STATIC_ROUTE)` (page URL also in `initializeRoutes()`).
+
+## Node graphs
+
+Blocks joined by wires, flow / rule builders, graphical configurators: **MUST** use `dotapp.connector.js` — `$dotapp("#canvas").connector()`, `graph.node("x").input("a", { required: true }).output("r").fn(function (inputs, node) { … })`. Everything a node does is its executor (`node.find`, `node.on`, `node.run`, `node.load`, `node.upload`, `node.halt`, `node.store`). Own look: CSS variables, `layout` + `connector-input` / `connector-output`, or `unstyled`. Server-run rules: PHP `Connector` with `designOnly()` + `execute()`, state from the browser via `Connector::unpack()`. Never hand-made SVG wires or another library. Full contract: `AIRULES/49-CONNECTOR.md`.
+
+## Reactivity
+
+`$dotapp().variable(name, value)` returns `$dotapp()` — take the variable with `getVariable(name)`. `dotbind="name"` binds fields two-way (live) and other elements as **text**; `dotbind-html` only for trusted HTML; elements added later need `$dotapp('#box').dotbind()`. `computed(fn, name)` reads dependencies through `.value` and never writes. Arrays/objects changed in place: `update()` / `notify()`. `autosave` posts via `load()` (PHP `crcCheck()` once). Server data: `dotapp.reactive.js` — `$dotapp().reactive(url, { interval, variable | element })`; GET endpoints only read. Reactivity is live state of one page, the server stays the source of truth. Full text: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §7.

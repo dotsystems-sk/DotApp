@@ -200,7 +200,7 @@ Write the **real** middleware / prefix / route — not the word “middleware”
 | `CRCchecking — this action (`$request->crcCheck()` once). No CRC prefix on this route.` | Isolated POST with no API CRC prefix ([EX-01](examples/EX-01-secure-form-complete.md)) |
 | `CRCchecking — this middleware (`$request->crcCheck()`). Actions under this prefix MUST NOT crcCheck().` | The Gate / CRC middleware method itself |
 | `CRCchecking — none (GET HTML). CRC is forbidden on GET.` | Page render |
-| `CRCchecking — none (`$request->upload()`). CRC is forbidden on upload.` | File endpoint |
+| `CRCchecking — none (file upload through Uploader). CRC is forbidden on upload.` | File endpoint |
 | `CRCchecking — none (not a route).` | Public helper on the controller that is not an HTTP entry |
 
 **MUST NOT:** omit the line on a controller/middleware public method; name a prefix/middleware **and** call `crcCheck()` in the same method (double CRC); write `this action` when a CRC `before` already covers the route; put CRC on GET or upload; invent a middleware name that is not in `module.init.php`.

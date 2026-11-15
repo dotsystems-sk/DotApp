@@ -176,10 +176,11 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Articles/catalog list with no search / JS-filter of `->all()` | **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Known bounded choices hidden behind a text input / empty `datalist` / typeahead | Native `<select>`; longer bounded set = existing `$dotapp(el).dotSelect2()` with choices visible on open; large remote set = AJAX `dotSelect2` with initial results + server paging/search ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Naked empty table / unvalidated `ORDER BY` / JS-only sort / toast-undo after delete | Empty state **MUST**; sort whitelist; confirm is enough ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
-| File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + `$request->upload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + PHP `Uploader` ([48](48-UPLOADER.md)) |
 | Desktop-only public header / hover-only nav / no drawer | Overlay drawer L/R; lock page scroll; drawer list scrolls; contacts+compact search in the drawer ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Save / primary button flush to the card or page edge; last-in-block buttons with no space below | Padding on all sides; when buttons are last in the block **almost always** pad **bottom**; center or match sibling footers ([00](00-AGENT-CONTRACT.md) §2f, [05](05-VIEWS-TEMPLATES-ASSETS.md) §8c, [33](33-DACORE-PAGES-AND-UI.md) §6) |
-| Accept `.php` / trust browser MIME on upload | Reject scripts in PHP: extension + `finfo` + headers ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| Accept `.php` / trust browser MIME on upload | `Uploader::use('<Module>')->images()->receive()` — never `$_FILES` / `move_uploaded_file` / own checks ([48](48-UPLOADER.md)) |
+| Hand-made node editor (own SVG wires / drag code), a third-party flow library, or node behaviour "bound" by attributes | `dotapp.connector.js`: `graph.node(name).input().output().fn(function (inputs, node) {})` — everything a node does is its executor ([49](49-CONNECTOR.md)) |
 
 ## Config / security
 

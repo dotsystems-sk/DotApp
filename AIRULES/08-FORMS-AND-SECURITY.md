@@ -247,14 +247,14 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 
 1. `<fo-rm>` + `{{ formName(...) }}` **only** for real HTML forms (several fields + submit). **MUST** place `formName` **between** `<fo-rm>` and `</fo-rm>`. **MUST** write `method` and `action` as literal attributes on the opening tag — **MUST NOT** put `{{ }}` there. One-shot row actions (toggle, delete, reorder, drag-and-drop, paginate): `$dotapp().load()` — **MUST NOT** wrap them in `<fo-rm>`.
 2. `/assets/dotapp/dotapp.js` on every page that uses secure forms/bridge/load.
-3. `crcCheck()` **once** — API prefix **or** action, never both. File uploads: `$request->upload()` — **MUST NOT** `crcCheck()` on that endpoint ([09](09-DOTAPP-JS-AND-BRIDGE.md) file uploads).
+3. `crcCheck()` **once** — API prefix **or** action, never both. File uploads: `Uploader` — **MUST NOT** `crcCheck()` on that endpoint ([48](48-UPLOADER.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) file uploads).
 4. Encrypt every FE identifier with a **unique `$key2` per field**; decrypt with the same key; reject `false`. **MUST still** `Auth::can()` / ownership.
 5. `ajaxReply` + client `parseReply`. On success **MUST** patch the DOM (e.g. `reply.html`) and a short toast — `<fo-rm>` does **not** reload the page. `redirectTo` only when leaving the page. **MUST** show every outcome ([00](00-AGENT-CONTRACT.md) §2d). A named field error is a red input plus the exact sentence under it; the first edit of that field clears only that mark. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 6. **MUST** block while in flight (desktop **and** mobile): form `blocked` + halt; button `loading`/`loader`; **your module preloaders** covering the list/form until `load()` ends (success **and** error). Notiflix is DACore-only — not available here. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 7. **MUST** confirm deletes in a graphical dialog (module modal) — never `alert()` / `window.confirm()`.
 8. **MUST** paginate accumulating lists on **first ship** (`paginate()` + interactive AJAX buttons + `$dotapp().load()`). **MUST NOT** dump `->all()`, skip because “few rows now”, or reload with `<a href="?page=">` / `location.reload()`. Lookup lists **MUST** ship AJAX search unless declined; **ASK** on other lists. See [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 9. **MUST** re-check in PHP on every persist. FE overlay/modal is UX only.
-10. **MUST** upload files with `$dotapp().uploadFile` — never `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers).
+10. **MUST** upload files with `$dotapp().uploadFile` — never `FormData` + `load()` / `<fo-rm>`. PHP **MUST** receive with `Uploader::use('<Module>')->receive()` ([48](48-UPLOADER.md)).
 
 ## Must-nots
 
@@ -273,6 +273,6 @@ Applies to every save, toggle, delete, and settings write — not only 2FA.
 13. Use `data-dotapp-nojs` unless rebuilding the whole chain.
 14. Load raw `app/parts/js/dotapp.js` instead of `/assets/dotapp/dotapp.js` on pages.
 15. Use a JS overlay/modal as the only 2FA or save gate — PHP **MUST** refuse without valid proof.
-16. Put a file/ZIP in `FormData` on `load()` / `<fo-rm>` — **MUST** `$dotapp().uploadFile` ([09](09-DOTAPP-JS-AND-BRIDGE.md)).
+16. Put a file/ZIP in `FormData` on `load()` / `<fo-rm>` — **MUST** `$dotapp().uploadFile` + `Uploader` ([48](48-UPLOADER.md), [09](09-DOTAPP-JS-AND-BRIDGE.md)).
 17. Accept `.php` / trust client MIME / skip `finfo` on upload — **MUST** reject scripts in PHP.
 18. Put `{{ }}` inside the opening `<fo-rm …>` tag (`action="{{ var: $apiAuth }}/save"`, or `method` first and `action="{{ var: $postAction }}"`).

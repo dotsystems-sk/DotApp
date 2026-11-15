@@ -25,7 +25,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 7. **MUST paginate accumulating lists** (users, logs, items, orders, …) in the **first** version: `paginate()` + **interactive AJAX** pager. Lookup lists **MUST** ship **AJAX search** unless declined; **ASK** on other lists. **Cheap I/O (MUST):** `exists()` / `COUNT(*)` / `limit(1)` / only used columns / one `join` — not `all()` then filter, not N+1. Canonical: [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
 9. **MUST** re-check every persist in **PHP**. Frontend modal/overlay is UX only — skipping it **MUST** still fail on the server. Canonical: [08](08-FORMS-AND-SECURITY.md).
-10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
+10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** receive with **`Uploader`**. Canonical: [48](48-UPLOADER.md), [09](09-DOTAPP-JS-AND-BRIDGE.md).
 11. **Public website (MUST):** mobile nav is an overlay drawer from the left or right; the page behind **MUST NOT** scroll while it is open (including iOS); the drawer list **MUST** scroll; contacts + compact search live in the drawer unless large search is its own mobile section. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
 12. **Cursor credits (MUST):** when **planning** programming, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. Composer 2.5 is **only** for hunting a pile of files — **not** the programmer. Canonical: [00](00-AGENT-CONTRACT.md) §2b.
 13. **PHP version (MUST):** default **PHP 7.4+**. When **planning**, **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** ship PHP 8+ syntax unless they named a higher version. Canonical: [00](00-AGENT-CONTRACT.md) §2i.
@@ -181,6 +181,8 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [17-CHECKLISTS.md](17-CHECKLISTS.md) | Pre-flight / **finish gate** (00 §2c) |
 | **[18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md)** | **Return values + error handling (mandatory)** — incl. §9 `dotapp.catch` bus |
 | [19-VALIDATION-AND-INPUT.md](19-VALIDATION-AND-INPUT.md) | Validator, Input, Request, Response, HttpHelper, Limiter |
+| **[48-UPLOADER.md](48-UPLOADER.md)** | **Core class `Uploader`** — the only way to receive and store a visitor's file; API, result, serving, deleting — **open whenever a task stores an upload** |
+| **[49-CONNECTOR.md](49-CONNECTOR.md)** | **Connector** (`dotapp.connector.js` + core class `Connector`) — node graphs: universal nodes with inputs, outputs and an executor, own design of nodes, palette, saved state, graphs the server runs without a browser — **open whenever a task asks for a node editor, a flow / rule builder or a graphical configurator** |
 | [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, **DSM** (never `$_SESSION`) |
 | [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md) | Email/IMAP/POP3, SMS, QR |
 | [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |

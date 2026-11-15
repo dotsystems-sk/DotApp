@@ -1536,11 +1536,15 @@ class Renderer
         // Deterministic compile of known control/output directives. Unknown
         // {{ ... }} tags are left intact for CSRF, formName, Bridge, and custom renderers.
         if (isset($layoutdata)) {
+            // <connector> tags first, so {{ }} inside of the nodes is compiled together with the rest
+            $layoutdata = Connector::compile($layoutdata);
             $layoutdata = $this->compileDirectives($layoutdata);
             $layoutdata = $this->dotApp->bridge->dotBridge($layoutdata);
             return $layoutdata;
         }
 
+        // <connector> tags first, so {{ }} inside of the nodes is compiled together with the rest
+        $this->renderedCode = Connector::compile($this->renderedCode);
         $this->renderedCode = $this->compileDirectives($this->renderedCode);
 
         /*

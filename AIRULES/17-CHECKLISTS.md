@@ -110,7 +110,8 @@
 - [ ] Accumulating lists have an **interactive AJAX** pager (`type="button"` + `$dotapp().load()`, overlay while in flight, patch rows **and** pager) — not missing, not `<a href="?page=">` / `location.reload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] Lookup lists (articles, products, catalog, …) have **interactive AJAX search** (debounce, 3+ chars, SQL + `paginate()`) unless the user declined; other lists were **asked** in the plan — not JS-filter of `->all()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] List plan **asked** filters / sort / bulk / page size / DSM remember / CSV-if-it-fits; empty state + sticky header + match highlight shipped when required ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
-- [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
+- [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + PHP **`Uploader`** — not `FormData` on `load()` / `<fo-rm>`, no `$_FILES` / `move_uploaded_file` / hand-written checks ([48](48-UPLOADER.md) §8)
+- [ ] Node graph / flow builder uses **`dotapp.connector.js`**: behaviour in `fn` / `init`, waiting executors return a Promise, API through `node.load` / `node.upload`, node settings in `node.data`, state read in PHP with `Connector::unpack()` ([49](49-CONNECTOR.md) §8)
 - [ ] **Public website:** mobile nav is a L/R overlay drawer; page behind does not scroll while open; the drawer list scrolls; contacts + compact search live in the drawer unless large search is its own mobile section ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 
 ## Config / secrets checklist
@@ -232,7 +233,7 @@ Canonical: [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md).
 - `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
 - JS overlay/modal as the only 2FA or save check — PHP must refuse without valid proof
 - File/ZIP in `FormData` + `load()` / `<fo-rm>` — use `$dotapp().uploadFile`
-- Upload accepts `.php` or trusts client MIME — reject in PHP (`finfo` + extension)
+- Upload handled by hand (`$_FILES`, `move_uploaded_file`, own MIME check) — use `Uploader` ([48](48-UPLOADER.md))
 - `execute()` called with a single callback
 - A `catch` (or `execute()` `$err`) that does not report `dotapp.catch` — the failure is invisible to any future debugger
 - A secret, token, or whole request body inside a `dotapp.catch` payload

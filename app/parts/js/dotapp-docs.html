@@ -367,8 +367,9 @@
             console.log('Button clicked');
         });
         
-        // Create variables
-        const myVar = $dotapp().variable('myVar', 'initial value');
+        // Create a variable ( variable() returns $dotapp() for chaining, the variable comes from getVariable() )
+        $dotapp().variable('myVar', 'initial value');
+        const myVar = $dotapp().getVariable('myVar');
         
         // Use any DotApp functionality
         $dotapp('#content').template('user/profile', {
@@ -418,8 +419,9 @@
         });
         
         // Create reactive variables
-        const searchVar = $dotapp().variable('searchQuery', '');
-        searchVar.bindToElement($dotapp('#searchInput'), { live: true });
+        $dotapp().variable('searchQuery', '');
+        const searchVar = $dotapp().getVariable('searchQuery');
+        searchVar.bindToElement($dotapp('#searchInput'));
         
         // Set up routing
         $dotapp().hashRouter('#home', () => {
@@ -453,7 +455,11 @@
             </div>
 
             <h4>Registering Custom Functions</h4>
-            <p>To add custom methods to DotApp that can be chained, use the <code>fn()</code> method:</p>
+            <p>To add custom methods to DotApp that can be chained, use the <code>fn()</code> method.
+                It returns <code>true</code> when the function was registered. A name that is taken - a function of
+                <code>dotapp.js</code> or one registered earlier - is <strong>not</strong> overwritten: <code>fn()</code>
+                changes nothing, returns <code>false</code> and writes a warning to the console (no exception, the page
+                keeps working). Give your functions the prefix of your module (<code>shopHighlight</code>).</p>
             <div class="example-box">
                 <h4>Example: Registering Custom Function</h4>
                 <pre><code>(function() {
@@ -1236,214 +1242,158 @@ $dotapp().on('myEvent', function(arg1, arg2, arg3) {
         <section id="variables">
             <h2>Variables (DotAppVariable)</h2>
             <p>
-                DotAppVariable provides reactive data binding with automatic DOM updates and change tracking.
+                A variable holds one value. When the value changes, every bound element, every computed value that read it,
+                every <code>onChange</code> callback and the autosave learn about it. Variables live in the main instance
+                <code>$dotapp()</code>; <code>$dotapp('.x').variable(...)</code> stores them there too.
             </p>
 
             <h3>Creating Variables</h3>
 
             <h4>variable(name, initialValue)</h4>
-            <p>Create or get a variable.</p>
-            <pre><code>// Create variable
-$dotapp().variable('userName', 'John Doe');
+            <p>
+                Creates a variable. <strong><code>variable()</code> returns <code>$dotapp()</code> (for chaining), not the variable</strong> -
+                take the variable with <code>getVariable(name)</code>. A second call with the same name does not change the value,
+                with one exception: a variable created earlier by a <code>dotbind</code> attribute gets the value of the first
+                <code>variable(name, value)</code>. A name starts with a letter, <code>_</code> or <code>$</code>; letters, digits,
+                <code>_</code>, <code>$</code> and <code>-</code> follow. An invalid name is ignored.
+            </p>
+            <pre><code>$dotapp().variable('userName', 'John Doe');
+const userName = $dotapp().getVariable('userName');
 
-// Get variable
-const userNameVar = $dotapp().variable('userName');
-
-// Get variable by name
-const var = $dotapp().getVariable('userName');</code></pre>
+userName.value;              // 'John Doe'
+userName.value = 'Jane';     // bound elements, computed values and callbacks follow</code></pre>
 
             <h3>Variable Properties and Methods</h3>
 
             <h4>value</h4>
-            <p>Get or set variable value. Setting triggers callbacks and updates bound elements.</p>
-            <pre><code>const myVar = $dotapp().variable('myVar', 'initial');
-
-// Get value
-console.log(myVar.value);  // 'initial'
-
-// Set value (triggers callbacks and updates DOM)
-myVar.value = 'new value';</code></pre>
+            <p>
+                Reads or writes the value. Writing does something only when the new value is different (<code>!==</code>):
+                <code>6</code> and <code>'6'</code> are different values.
+            </p>
 
             <h4>onChange(callback)</h4>
-            <p>Listen for value changes.</p>
-            <pre><code>const listener = myVar.onChange((oldValue, newValue) => {
+            <p>Calls <code>callback(oldValue, newValue)</code> after every change. Returns a listener.</p>
+            <pre><code>const listener = userName.onChange((oldValue, newValue) => {
     console.log('Changed from', oldValue, 'to', newValue);
 });
 
-// Remove listener
-listener.off();
-
-// Pause listener
-listener.pause();
-
-// Resume listener
-listener.resume();</code></pre>
+listener.pause();    // stop for a while
+listener.resume();   // continue
+listener.off();      // remove</code></pre>
 
             <h4>watch(callback, now)</h4>
-            <p>Watch for changes, optionally call immediately.</p>
-            <pre><code>// Watch with immediate call
-myVar.watch((oldValue, newValue) => {
-    console.log('Value:', newValue);
-}, true);  // true = call immediately with current value</code></pre>
+            <p>Like <code>onChange</code>; with <code>now = true</code> the callback runs at once with <code>(undefined, currentValue)</code>.</p>
 
-            <h4>reset(initialValue)</h4>
-            <p>Reset variable to initial value.</p>
-            <pre><code>myVar.reset();  // Reset to original initial value
-myVar.reset('new initial');  // Reset to new initial value</code></pre>
+            <h4>update(fn) / notify()</h4>
+            <p>
+                An array or an object changed in place (<code>push</code>, a property) keeps the same reference, so the setter
+                can not see the change. <code>update(fn)</code> gives <code>fn</code> the current value: return a new value,
+                or change it in place and return nothing - both notify. <code>notify()</code> only notifies.
+            </p>
+            <pre><code>cart.update(items => { items.push(newItem); });      // in place
+cart.update(items => items.filter(i => i.id !== id)); // a new array</code></pre>
 
-            <h4>hasChange() / isDirty()</h4>
-            <p>Check if variable has changed from initial value.</p>
-            <pre><code>if (myVar.hasChange()) {
-    console.log('Variable has been modified');
-}</code></pre>
+            <h4>reset(initialValue) / hasChange() / isDirty()</h4>
+            <p><code>reset()</code> returns the initial value; <code>isDirty()</code> is <code>true</code> while the value differs from it.</p>
 
             <h3>Element Binding</h3>
 
             <h4>bindToElement(element, options)</h4>
-            <p>Bind variable to DOM element(s) for two-way data binding.</p>
+            <p>
+                Binds the variable to elements. Fields are two-way: <code>input</code>, <code>textarea</code> change the
+                variable while the user types, <code>select</code>, checkbox and radio on change. A checkbox holds
+                <code>true</code>/<code>false</code>, a group of radios the value of the checked one. Other elements only show
+                the value - as <strong>text</strong> (<code>textContent</code>), objects as JSON. The variable keeps its value;
+                only a variable without a value (<code>undefined</code>/<code>null</code>) takes it from the element.
+            </p>
             <div class="method-signature">
-                bindToElement(element: HTMLElement | DotApp, options?: object): void
+                bindToElement(element: HTMLElement | DotApp | NodeList | Array, options?: object): DotAppVariable
             </div>
-            <pre><code>// Bind to input
-const nameVar = $dotapp().variable('name', '');
-nameVar.bindToElement(document.getElementById('nameInput'), {
-    live: true  // Update on every keystroke (input event)
-});
-
-// Bind to multiple elements
-nameVar.bindToElement($dotapp('.name-inputs'), {
-    live: false  // Update only on change/blur
-});
+            <pre><code>userName.bindToElement($dotapp('#nameInput'));                 // two-way, live
+userName.bindToElement($dotapp('#nameInput'), { live: false }); // the variable changes after the field is left
+note.bindToElement($dotapp('#preview'), { html: true });        // the element gets HTML - only for trusted HTML
 
 // Options:
-// - live: boolean - If true, updates on 'input' event (realtime)
-// - events: array - Custom events to listen to (default: ['change'] for inputs, ['bodychange'] for others)</code></pre>
+// - live: boolean (default true) - fields update the variable while typing
+// - html: boolean (default false) - a plain element gets innerHTML instead of text
+// - events: array - your own list of events
 
-            <h3>Autosave</h3>
-
-            <h4>autosave(config)</h4>
-            <p>Automatically save variable value to server when it changes.</p>
-            <pre><code>const noteVar = $dotapp().variable('note', '');
-noteVar.autosave({
-    url: '/api/save-note',
-    debounce: 1000,  // Wait 1 second after change before saving
-    onSuccess: (response) => {
-        console.log('Saved successfully');
-    },
-    onError: (error) => {
-        console.error('Save failed:', error);
-    }
-});</code></pre>
+userName.unbind($dotapp('#preview'));   // the element stops following the variable</code></pre>
 
             <h3>Data Binding Attribute</h3>
-            <p>You can use the <code>dotbind</code> attribute for automatic binding:</p>
             <pre><code>&lt;input type="text" dotbind="userName"&gt;
+&lt;strong dotbind="userName"&gt;&lt;/strong&gt;
+&lt;div dotbind="notePreview" dotbind-html&gt;&lt;/div&gt;      &lt;!-- HTML, only for trusted content --&gt;
+&lt;input dotbind="search" dotbind-live="false"&gt;         &lt;!-- change instead of typing --&gt;
 
 &lt;script&gt;
-    // Variable is automatically created and bound
-    $dotapp().variable('userName', '');
+    // The attribute already created the variable; the first variable(name, value) gives it the value
+    $dotapp().variable('userName', 'John');
 &lt;/script&gt;</code></pre>
+            <p>
+                The attributes are read once, when <code>dotapp.js</code> starts. For elements added later
+                (<code>html()</code>, <code>append()</code>) call <code>$dotapp('#box').dotbind()</code> - it binds the new
+                <code>dotbind</code> elements inside <code>#box</code> (<code>$dotapp().dotbind()</code> = the whole page).
+            </p>
 
             <h3>databind() Method</h3>
-            <p>Programmatically bind elements to a variable:</p>
             <pre><code>$dotapp('.name-inputs').databind('userName', {
-    initialValue: ''
+    initialValue: 'John'   // optional; without it the first element gives the value
+});</code></pre>
+
+            <h3>Autosave</h3>
+            <h4>autosave(config)</h4>
+            <p>
+                Saves the value on the server after every change, after <code>debounce</code> ms of quiet. It is sent with
+                <code>$dotapp().load()</code>, so the request carries CSRF and CRC: the action calls <code>crcCheck()</code>
+                and reads <code>$request-&gt;data(true)['data']['value']</code> (and <code>['name']</code>, the name of the
+                variable). Objects and arrays are sent as JSON text. A reply with <code>status</code> 0 goes to
+                <code>onError</code>.
+            </p>
+            <pre><code>note.autosave({
+    url: '/shop/note/save',
+    debounce: 800,
+    data: () => ({ item: itemToken }),          // more values for the request
+    onSuccess: (reply) => { /* reply = parsed ajaxReply */ },
+    onError: (error, reply) => { /* reply.message when the server sent one */ }
 });</code></pre>
         </section>
 
         <section id="computed">
             <h2>Computed Variables</h2>
             <p>
-                Computed variables automatically track dependencies and recompute only when needed. 
-                They provide memoization and automatic invalidation.
+                A computed value is calculated from variables (and other computed values). It remembers which of them it read
+                and is recalculated after any of them changes - lazily, when somebody reads it, or at once when it has
+                <code>onChange</code> callbacks or bound elements.
             </p>
 
-            <h3>Creating Computed Variables</h3>
-
-            <h4>computed(fn)</h4>
-            <p>Create a computed variable that automatically tracks dependencies.</p>
+            <h4>computed(fn, name)</h4>
             <div class="method-signature">
-                computed(fn: function): ComputedVariable
+                computed(fn: function, name?: string): ComputedVariable
             </div>
-            <pre><code>// Create reactive variables
-const firstName = $dotapp().variable('firstName', 'John');
-const lastName = $dotapp().variable('lastName', 'Doe');
-
-// Create computed variable
-const fullName = $dotapp().computed(() => {
-    return `${firstName.value} ${lastName.value}`;
-});
-
-// Access computed value
-console.log(fullName.value);  // 'John Doe'
-
-// When dependencies change, computed automatically updates
-firstName.value = 'Jane';
-console.log(fullName.value);  // 'Jane Doe' (automatically recomputed)</code></pre>
-
-            <h3>Computed Features</h3>
-
-            <h4>Automatic Dependency Tracking</h4>
-            <p>Computed variables automatically track which variables they depend on:</p>
-            <pre><code>const a = $dotapp().variable('a', 1);
-const b = $dotapp().variable('b', 2);
-
-const sum = $dotapp().computed(() => {
-    return a.value + b.value;  // Automatically tracks a and b
-});
-
-// Changing a or b will invalidate sum
-a.value = 3;
-console.log(sum.value);  // Automatically recomputed: 5</code></pre>
-
-            <h4>Nested Computed Variables</h4>
-            <p>Computed variables can depend on other computed variables:</p>
-            <pre><code>const price = $dotapp().variable('price', 100);
-const quantity = $dotapp().variable('quantity', 2);
+            <pre><code>$dotapp().variable('price', 100).variable('quantity', 2);
+const price = $dotapp().getVariable('price');
+const quantity = $dotapp().getVariable('quantity');
 
 const subtotal = $dotapp().computed(() => price.value * quantity.value);
-const tax = $dotapp().computed(() => subtotal.value * 0.1);
-const total = $dotapp().computed(() => subtotal.value + tax.value);
+const total = $dotapp().computed(() => subtotal.value * 1.2, 'total');   // name: dotbind="total" shows it
 
-// Changing price or quantity will cascade through all computed variables
-price.value = 150;
-// subtotal, tax, and total all automatically update</code></pre>
+quantity.value = 3;
+total.value;   // 360
 
-            <h4>Memoization</h4>
-            <p>Computed values are memoized - they only recompute when dependencies change:</p>
-            <pre><code>let computeCount = 0;
-const expensive = $dotapp().computed(() => {
-    computeCount++;
-    // Expensive computation
-    return someExpensiveOperation();
-});
+total.onChange((oldValue, newValue) => { /* same order as a variable */ });
+total.watch((oldValue, newValue) => { }, true);
+total.bindToElement($dotapp('#total'));          // one-way: computed values can not be written</code></pre>
 
-console.log(expensive.value);  // Computes once
-console.log(expensive.value);  // Uses cached value (no recomputation)
-console.log(computeCount);     // 1</code></pre>
-
-            <h4>onChange Support</h4>
-            <p>Computed variables support onChange callbacks:</p>
-            <pre><code>const fullName = $dotapp().computed(() => {
-    return `${firstName.value} ${lastName.value}`;
-});
-
-fullName.onChange((newValue) => {
-    console.log('Full name changed to:', newValue);
-});</code></pre>
-
-            <h4>Manual Invalidation</h4>
-            <p>You can manually invalidate a computed variable:</p>
-            <pre><code>const computed = $dotapp().computed(() => {
-    return someValue.value;
-});
-
-// Force recomputation
-computed.invalidate();</code></pre>
+            <ul>
+                <li>Read every variable through <code>.value</code> inside <code>fn</code> - that is how the dependency is found.
+                    A branch that was not taken is not a dependency until it is taken.</li>
+                <li>Something outside the reactivity (a global, the DOM) changed? Call <code>invalidate()</code>.</li>
+                <li><code>fn</code> must not write variables - a computed value only reads.</li>
+            </ul>
 
             <div class="warning">
-                <strong>Circular Dependencies:</strong> The framework detects circular dependencies and will warn 
-                if a computed variable depends on itself (directly or indirectly).
+                <strong>Circular Dependencies:</strong> a computed value that reads itself is detected and warned about.
             </div>
         </section>
 
@@ -2187,8 +2137,8 @@ if (code) {
                     </tr>
                     <tr>
                         <td><code>fn(key, fn)</code></td>
-                        <td>Register custom function</td>
-                        <td>void</td>
+                        <td>Register custom function; a taken name is not overwritten</td>
+                        <td>boolean</td>
                     </tr>
                     <tr>
                         <td><code>domain()</code></td>
@@ -2216,7 +2166,7 @@ if (code) {
             <h3>Special Features</h3>
 
             <h4>autosave(config)</h4>
-            <p>Enable autosave for element content changes.</p>
+            <p>Enable autosave for element content changes (<code>bodychange</code>). Sent with <code>$dotapp().load()</code>: the action calls <code>crcCheck()</code> and reads <code>$request-&gt;data(true)['data']['value']</code>; <code>data</code> adds more values; a reply with <code>status</code> 0 goes to <code>onError(error, reply)</code>, otherwise <code>onSuccess(reply)</code>.</p>
             <pre><code>$dotapp('#editor').autosave({
     url: '/api/save',
     debounce: 1000,

@@ -161,9 +161,10 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Growing list with no pager / `<a href="?page=">` | AJAX buttons + `$dotapp().load()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Articles/catalog list with no search / JS-filter of `->all()` | **ASK** in the plan; lookup lists **MUST** AJAX search (SQL + `paginate()`, 3+ chars) ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
 | Naked empty table / unvalidated `ORDER BY` / JS-only sort / toast-undo after delete | Empty state **MUST**; sort whitelist; confirm is enough ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
-| File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + `$request->upload()` ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| File/ZIP in `FormData` + `load()` / `<fo-rm>` | `$dotapp().uploadFile` + PHP `Uploader` ([48](48-UPLOADER.md)) |
 | Desktop-only public header / hover-only nav / no drawer | Overlay drawer L/R; lock page scroll; drawer list scrolls; contacts+compact search in the drawer ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3) |
-| Accept `.php` / trust browser MIME on upload | Reject scripts in PHP: extension + `finfo` + headers ([09](09-DOTAPP-JS-AND-BRIDGE.md)) |
+| Accept `.php` / trust browser MIME on upload | `Uploader::use('<Module>')->images()->receive()` — never `$_FILES` / `move_uploaded_file` / own checks ([48](48-UPLOADER.md)) |
+| Hand-made node editor (own SVG wires / drag code), a third-party flow library, or node behaviour "bound" by attributes | `dotapp.connector.js`: `graph.node(name).input().output().fn(function (inputs, node) {})` — everything a node does is its executor ([49](49-CONNECTOR.md)) |
 
 ## Config / security
 

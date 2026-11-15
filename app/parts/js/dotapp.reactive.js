@@ -94,6 +94,12 @@
             
             /** @type {boolean} @private */
             #isLoading = false;
+
+            /** @type {boolean} @private - a poll was skipped while the tab was hidden */
+            #missed = false;
+
+            /** @type {Function|null} @private */
+            #visibilityHandler = null;
             
             /** @type {any} @private */
             #lastData = null;
@@ -167,10 +173,11 @@
                 }
 
                 // Setup event triggers
+                // Oprava: endpoint s intervalom prvy raz nacital az po uplynuti intervalu ( prazdne miesto na stranke ).
+                // Bez spustaca sa teraz nacita hned, interval potom obnovuje.
                 if (this.#trigger) {
                     this.#setupEventTriggers();
-                } else if (!this.#interval) {
-                    // If no trigger and no interval, fetch immediately
+                } else {
                     this.#fetch();
                 }
             }
@@ -184,9 +191,25 @@
                     clearInterval(this.#intervalId);
                 }
 
+                // Oprava: skryta karta sa pytala servera stale dokola. Kym je skryta, nepytame sa;
+                // ked sa vrati a nejaka obnova vypadla, opytame sa hned.
                 this.#intervalId = setInterval(() => {
+                    if (document.hidden) {
+                        this.#missed = true;
+                        return;
+                    }
                     this.#fetch();
                 }, this.#interval);
+
+                if (!this.#visibilityHandler) {
+                    this.#visibilityHandler = () => {
+                        if (!document.hidden && this.#missed) {
+                            this.#missed = false;
+                            this.#fetch();
+                        }
+                    };
+                    document.addEventListener('visibilitychange', this.#visibilityHandler);
+                }
             }
 
             /**
@@ -533,6 +556,10 @@
                 if (this.#intervalId) {
                     clearInterval(this.#intervalId);
                     this.#intervalId = null;
+                }
+                if (this.#visibilityHandler) {
+                    document.removeEventListener('visibilitychange', this.#visibilityHandler);
+                    this.#visibilityHandler = null;
                 }
                 // Note: Event listeners will be cleaned up when element is removed
             }

@@ -158,17 +158,17 @@ New: `$dotapp('#city').shopPicker({ search: true })`. Keep the CSS class so exis
     function runMe($dotapp) {
         if (isRegistered) return;
         isRegistered = true;
-        try {
-            $dotapp().fn("shopPicker", function (options) {
-                var out = [];
-                this.getElements().forEach(function (el) {
-                    var api = mount(el, options);
-                    if (api) out.push(api);
-                });
-                return out.length === 1 ? out[0] : this;
+        // fn() returns false when the name is taken ( it never overwrites an existing function )
+        var registered = $dotapp().fn("shopPicker", function (options) {
+            var out = [];
+            this.getElements().forEach(function (el) {
+                var api = mount(el, options);
+                if (api) out.push(api);
             });
-        } catch (err) {
-            if (!err || !err.message || err.message.indexOf("already registered") === -1) throw err;
+            return out.length === 1 ? out[0] : this;
+        });
+        if (registered !== true) {
+            console.warn("shopPicker: the name is taken, the existing function stays.");
         }
         bindOutsideClick();
         domReady(function () {
@@ -250,6 +250,6 @@ On DACore admin, pass `[libUrl, pageUrl]` as `$js` to `Page@withMenu!` (shell al
 - Edit `app/parts/js/` or `app/modules/DACore/`
 - Wrap `$(el).oldPlugin()` inside `fn()` and call it a port
 - Register on the `dotapp` event (too late / wrong job)
-- Skip `isRegistered` **and** the `already registered` catch (`fn()` throws on a second call)
+- Skip `isRegistered`, or ignore `fn()` returning `false` (a taken name is not registered — your calls would run the other function)
 - `$.ajax` / `fetch` to DotApp endpoints from the library — use `this.load` / `this.form`
 - Re-implement a widget DACore already exposes; call `$dotapp('#x').dotSelect2()` (etc.) instead

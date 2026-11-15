@@ -85,7 +85,7 @@ Growing result lists (logs, users, items) **MUST** follow `AIRULES/40-DACORE-LIS
 
 **Path tokens:** `Crypto::encrypt` in `/{Module}/…/{token}` is Apache **404** (`%2F`). Seal to `[A-Za-z0-9_-]+` in **this** module (`AIRULES/33` §13).
 
-**Files:** `$dotapp().uploadFile` + `$request->upload()`. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers); FE `accept=` is UX only.
+**Files:** `$dotapp().uploadFile` + PHP core class `Uploader` (`Uploader::use('<Module>')->images()->receive()`, `AIRULES/48-UPLOADER.md`). **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST NOT** read `$_FILES` / `move_uploaded_file` / hand-write extension or MIME checks; FE `accept=` is UX only.
 
 ## UI
 

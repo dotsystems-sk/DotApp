@@ -70,7 +70,7 @@ $method = $request->getMethod();
 
 **MUST:** `data()` / `query()` run `protect()` (old injection/XSS guard). **MUST** pass `true` for passwords, HTML, anything stored or compared as-is. `data()` on a password with `)`, `=`, `%` hashes the **wrong** string. Canonical: [19](19-VALIDATION-AND-INPUT.md). There is **no `headers()` method**.
 
-Uploads: `$request->upload(function ($files) { ... });` — each entry has `field, name, type, size, tmp_name, error, extension`. Always check `$f['error'] !== UPLOAD_ERR_OK`.
+Uploads: **MUST** receive and store with `Uploader::use('<Module>')->images()->receive()` ([48](48-UPLOADER.md)). `$request->upload(function ($files) { ... })` only lists the incoming files (`field, name, type, size, tmp_name, error, extension`). It validates nothing and stores nothing.
 
 Validation: `Validator::validate(...)` (returns `true` or an error array), `Input::group(...)` + `$request->validateInputs('group')`.
 

@@ -121,7 +121,8 @@
 - [ ] Lookup lists (articles, products, catalog, …) have **interactive AJAX search** (debounce, 3+ chars, SQL + `paginate()`) unless the user declined; other lists were **asked** in the plan — not JS-filter of `->all()` ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] Single-value choices are not mistaken for list search: bounded known choices use `<select>`; longer bounded choices use existing `dotSelect2`; large remote choices use AJAX `dotSelect2` with initial results + server paging/search. No bare text input/empty `datalist` that makes the operator remember an exact name ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 - [ ] List plan **asked** filters / sort / bulk / page size / DSM remember / CSV-if-it-fits; empty state + sticky header + match highlight shipped when required ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
-- [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + `$request->upload()` — not `FormData` on `load()` / `<fo-rm>`. PHP rejects `.php` / executables (extension + `finfo` MIME + headers) ([09](09-DOTAPP-JS-AND-BRIDGE.md))
+- [ ] File/ZIP uploads use **`$dotapp().uploadFile`** + PHP **`Uploader`** — not `FormData` on `load()` / `<fo-rm>`, no `$_FILES` / `move_uploaded_file` / hand-written checks ([48](48-UPLOADER.md) §8)
+- [ ] Node graph / flow builder uses **`dotapp.connector.js`**: behaviour in `fn` / `init`, waiting executors return a Promise, API through `node.load` / `node.upload`, node settings in `node.data`, state read in PHP with `Connector::unpack()` ([49](49-CONNECTOR.md) §8)
 - [ ] **Public website:** mobile nav is a L/R overlay drawer; page behind does not scroll while open; the drawer list scrolls; contacts + compact search live in the drawer unless large search is its own mobile section ([09](09-DOTAPP-JS-AND-BRIDGE.md) §3)
 
 ## Config / secrets checklist
@@ -333,7 +334,7 @@ Tick only the rows for the surface you touched.
 - `$_SESSION` / `session_start()` in module code — use `DSM::use('Shop')`
 - JS overlay/modal as the only 2FA or save check — PHP must refuse without valid proof
 - File/ZIP in `FormData` + `load()` / `<fo-rm>` — use `$dotapp().uploadFile`
-- Upload accepts `.php` or trusts client MIME — reject in PHP (`finfo` + extension)
+- Upload handled by hand (`$_FILES`, `move_uploaded_file`, own MIME check) — use `Uploader` ([48](48-UPLOADER.md))
 - Write AI tool with no `ui_events` / `location.reload()` after AI chat write; wrong page refreshing another domain’s tool
 - UI that turns off an operator’s 2FA
 - New admin library/widget without grepping DACore (read-only) and the current module first

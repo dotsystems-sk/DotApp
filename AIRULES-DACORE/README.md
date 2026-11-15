@@ -34,6 +34,8 @@ Never copy both into the same project — the agent would have two conflicting s
 | [38-DACORE-EMAIL.md](38-DACORE-EMAIL.md) | Outgoing mail API — **open only when the module sends email** |
 | [39-DACORE-SMS.md](39-DACORE-SMS.md) | SMS driver registry — **open only when the module sends SMS** |
 | [40-DACORE-LIST-PAGER.md](40-DACORE-LIST-PAGER.md) | **List pager law** — HTML classes, `live(el, e)`, encrypted `data-page`, COUNT |
+| [48-UPLOADER.md](48-UPLOADER.md) | **Core class `Uploader`** (framework, not DACore) — the only way to receive and store a visitor's file; API, result, serving, deleting — **open whenever a task stores an upload** |
+| [49-CONNECTOR.md](49-CONNECTOR.md) | **Connector** (`dotapp.connector.js` + core class `Connector`) — node graphs: universal nodes with inputs, outputs and an executor, own design of nodes, palette, saved state, graphs the server runs without a browser — **open whenever a task asks for a node editor, a flow / rule builder or a graphical configurator** |
 
 Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D08](examples/EX-D08-list-pager.md), plus **[EX-D09](examples/EX-D09-dacore-pack-zip.md)** (canonical install zip packer). Module-to-module hooks (every module, not DACore-only): [41](41-MODULE-HOOKS.md), [EX-16](examples/EX-16-module-hooks.md). User origin / custom login / shop accounts: [42](42-DACORE-USER-ORIGIN.md). Reserved pack extras / peer APIs: [46](46-DACORE-EXTRA-CONTRACTS.md).
 

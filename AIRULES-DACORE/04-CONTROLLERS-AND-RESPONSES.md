@@ -70,7 +70,7 @@ $method = $request->getMethod();
 
 **MUST:** `data()` / `query()` run `protect()` (old programmer-guard). SQL injection protection is **named / `?` bindings** ([06](06-DATABASE.md)). **MUST** persist `$request->data(true)` — passwords, HTML, URLs, settings. `data()` on a password or `?q=` URL with `)`, `=`, `%` stores the **wrong** string (`&#61;`). Canonical: [19](19-VALIDATION-AND-INPUT.md). There is **no `headers()` method**.
 
-Uploads: `$request->upload(function ($files) { ... });` — each entry has `field, name, type, size, tmp_name, error, extension`. Always check `$f['error'] !== UPLOAD_ERR_OK`.
+Uploads: **MUST** receive and store with `Uploader::use('<Module>')->images()->receive()` ([48](48-UPLOADER.md)). `$request->upload(function ($files) { ... })` only lists the incoming files (`field, name, type, size, tmp_name, error, extension`) — it checks and stores nothing; do not build new upload code on it.
 
 Validation: `Validator::validate(...)` (returns `true` or an error array), `Input::group(...)` + `$request->validateInputs('group')`.
 

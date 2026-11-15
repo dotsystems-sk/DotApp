@@ -204,6 +204,8 @@ $request->upload(function ($files) {
 
 Returns `$this`. Non-callable argument → `\InvalidArgumentException`; exception inside your callback is rethrown as `\RuntimeException`.
 
+**This method only lists the files — it validates nothing and stores nothing.** To receive and store a visitor's file **MUST** use the core class `Uploader` ([48](48-UPLOADER.md)); do not hand-write checks inside this callback.
+
 ### Security methods
 
 | Call | Returns | Notes |

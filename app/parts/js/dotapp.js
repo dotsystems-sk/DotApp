@@ -22,13 +22,20 @@
         }
     }
 
+    // Oprava 11/2026: reaktivita. Spolocny stav pre premenne a computed: ktory computed sa prave pocita
+    // ( premenna, ktoru pri tom precita, si ho zapamata a pri zmene ho zneplatni ) a hlavna instancia DotApp.
+    const reactiveTracking = { current: null };
+    let reactiveMain = null;
+
     class DotAppVariable {
         #name;
         #variable;
         #initialValue;
         #callbacks = [];
-        #boundElements = [];
+        #bindings = [];          // [{ element, html }]
         #autosaveConfig = null;
+        #trackers = new Set();   // computed hodnoty, ktore tuto premennu citaju
+        placeholder = false;     // premennu vyrobil atribut dotbind skor, nez ju skript zadefinoval
 
         constructor(variable, initialValue) {
             this.#name = variable;
@@ -37,6 +44,11 @@
         }
 
         get value() {
+            // Oprava: computed sa o zmene premennej nikdy nedozvedel a ukazoval staru hodnotu. Premenna si ho teraz zapamata.
+            const tracking = reactiveTracking.current;
+            if (tracking && !this.#trackers.has(tracking)) {
+                this.#trackers.add(tracking);
+            }
             return this.#variable;
         }
 
@@ -48,23 +60,45 @@
             if (newValue !== this.#variable) {
                 const oldValue = this.#variable;
                 this.#variable = newValue;
-                // Update bound elements
-                this.#boundElements.forEach(element => {
-                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
-                        element.value = newValue;
-                    } else {
-                        element.innerHTML = newValue;
-                    }
-                });
-                // Trigger callbacks
-                if (this.#callbacks.length > 0) {
-                    this.#callbacks.forEach(fn => fn(oldValue, newValue));
-                }
-                // Auto-save
-                if (this.#autosaveConfig) {
-                    this.#handleAutosave(newValue);
-                }
+                this.#changed(oldValue, newValue);
             }
+        }
+
+        // Vsetko, co od hodnoty zavisi: naviazane prvky, computed hodnoty, callbacky, autosave
+        #changed(oldValue, newValue) {
+            this.#bindings.forEach(binding => DotAppVariable.write(binding, newValue));
+            Array.from(this.#trackers).forEach(computed => computed.invalidate());
+            if (this.#callbacks.length > 0) {
+                this.#callbacks.slice().forEach(fn => fn(oldValue, newValue));
+            }
+            if (this.#autosaveConfig) {
+                this.#handleAutosave(newValue);
+            }
+        }
+
+        // Pole alebo objekt zmeneny na mieste ( push, zmena vlastnosti ) ma stale ten isty odkaz, setter zmenu nevidi.
+        // notify() oznami zmenu rucne.
+        notify() {
+            this.#changed(this.#variable, this.#variable);
+            return this;
+        }
+
+        // update(fn): fn dostane aktualnu hodnotu. Vrati novu hodnotu, alebo zmeni tu istu na mieste a nevrati nic.
+        update(fn) {
+            const result = fn(this.#variable);
+            if (result !== undefined && result !== this.#variable) {
+                this.value = result;
+            } else {
+                this.notify();
+            }
+            return this;
+        }
+
+        // Prva hodnota premennej, ktoru vyrobil atribut dotbind. Pouziva variable(nazov, hodnota).
+        define(initialValue) {
+            this.#initialValue = initialValue;
+            this.value = initialValue;
+            return this;
         }
 
         onChange(callback) {
@@ -106,6 +140,47 @@
             return this.hasChange();
         }
 
+        static isField(element) {
+            return element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT';
+        }
+
+        // Hodnota z prvku: zaskrtavacie pole = true/false, prepinac = hodnota zvoleneho, pole = value, ostatne = text
+        static read(element, html) {
+            if (element.tagName === 'INPUT' && element.type === 'checkbox') return element.checked;
+            if (element.tagName === 'INPUT' && element.type === 'radio') return element.checked ? element.value : undefined;
+            if (DotAppVariable.isField(element)) return element.value;
+            return html ? element.innerHTML : element.textContent;
+        }
+
+        // Hodnota do prvku. Oprava: obycajny prvok dostaval innerHTML, takze text od pouzivatela sa spustil ako HTML.
+        // Teraz textContent; HTML len na vyziadanie ( atribut dotbind-html, volba html: true ).
+        static write(binding, value) {
+            const element = binding.element;
+            if (element.tagName === 'INPUT' && element.type === 'checkbox') {
+                element.checked = !!value && value !== 'false' && value !== '0';
+                return;
+            }
+            if (element.tagName === 'INPUT' && element.type === 'radio') {
+                element.checked = String(element.value) === String(value);
+                return;
+            }
+            const text = value === undefined || value === null ? '' : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+            if (DotAppVariable.isField(element)) {
+                if (element.value !== text) element.value = text;     // pri pisani neposuvame kurzor
+                return;
+            }
+            if (binding.html) {
+                element.innerHTML = text;
+            } else {
+                element.textContent = text;
+            }
+        }
+
+        /*
+            Naviaze premennu na prvky. Polia su obojsmerne, ostatne prvky hodnotu ukazuju.
+            Volby: live ( true = pole meni premennu uz pocas pisania, false = az po zmene ), html ( true = prvok dostane HTML ),
+            events ( vlastny zoznam udalosti ). Prvu hodnotu ma premenna; prvok ju da len premennej bez hodnoty.
+        */
         bindToElement(element, options = {}) {
             let elements = [];
 
@@ -113,63 +188,76 @@
                 elements = element.all();
             } else if (element instanceof HTMLElement) {
                 elements = [element];
+            } else if (Array.isArray(element) || element instanceof NodeList) {
+                elements = Array.from(element).filter(item => item instanceof HTMLElement);
             } else {
                 throw new Error('bindToElement requires HTMLElement or DotApp selector');
             }
 
-            if (elements.length === 0) return;
+            if (elements.length === 0) return this;
 
-            elements.forEach(el => this.#boundElements.push(el));
+            const config = { live: true, html: false, ...options };
 
-            const firstElement = elements[0];
-            const isInput = firstElement.tagName === 'INPUT' ||
-                firstElement.tagName === 'TEXTAREA' ||
-                firstElement.tagName === 'SELECT';
-
-            // Initialize value
-            this.#variable = isInput ? firstElement.value : firstElement.innerHTML;
-            this.#initialValue = this.#variable;
-
-            // Default options
-            const config = {
-                live: false,           // false = only change/blur, true = realtime (input/keyup)
-                events: isInput ? ['change'] : ['bodychange'],
-                ...options
-            };
-
-            // If you want live update
-            if (config.live && isInput) {
-                config.events.push('input'); // realtime while typing
-                // Optionally also keyup for better control
-                // config.events.push('keyup');
-            }
-
-            // Register listeners
             elements.forEach(el => {
-                config.events.forEach(event => {
-                    if (event === 'bodychange') {
-                        // Use existing setup for non-input
-                        el.addEventListener('bodychange', () => {
-                            const newValue = isInput ? el.value : el.innerHTML;
-                            this.value = newValue;
-                        });
-                    } else {
-                        // Direct DOM events (input, change, keyup...)
-                        el.addEventListener(event, () => {
-                            this.value = el.value;
-                        });
+                if (this.#bindings.some(binding => binding.element === el)) return;
+                const binding = { element: el, html: config.html === true };
+                this.#bindings.push(binding);
+
+                if (this.#variable === undefined || this.#variable === null) {
+                    const fromElement = DotAppVariable.read(el, binding.html);
+                    if (fromElement !== undefined) {
+                        this.#variable = fromElement;
+                        this.#initialValue = fromElement;
                     }
+                }
+                // Oprava: druhy prvok s tou istou premennou ju prepisal svojim (prazdnym) obsahom. Teraz dostane hodnotu premennej.
+                DotAppVariable.write(binding, this.#variable);
+
+                const isField = DotAppVariable.isField(el);
+                let events = config.events;
+                if (!Array.isArray(events)) {
+                    // Oprava: pole menilo premennu az po opusteni ( change ). Predvolene teraz aj pocas pisania.
+                    if (isField) {
+                        const typing = el.tagName !== 'SELECT' && el.type !== 'checkbox' && el.type !== 'radio';
+                        events = config.live && typing ? ['input', 'change'] : ['change'];
+                    } else if (el.isContentEditable) {
+                        events = config.live ? ['input', 'blur'] : ['blur'];
+                    } else {
+                        events = ['bodychange'];
+                    }
+                }
+                events.forEach(event => {
+                    el.addEventListener(event, () => {
+                        const newValue = DotAppVariable.read(el, binding.html);
+                        if (newValue !== undefined) this.value = newValue;
+                    });
                 });
             });
+            return this;
         }
 
+        // Prvok uz hodnotu nedostava ( pri odstraneni z DOM, pri vymene obsahu )
+        unbind(element) {
+            const el = element instanceof DotApp ? element.get(0) : element;
+            this.#bindings = this.#bindings.filter(binding => binding.element !== el);
+            return this;
+        }
+
+        /*
+            Ulozi hodnotu na server pri kazdej zmene ( po chvili ticha ).
+            Oprava: posielalo sa obycajnym fetch() bez CRC a CSRF, takze crcCheck() na serveri vzdy zlyhal.
+            Teraz $dotapp().load() - na serveri: crcCheck() a $request->data(true)['data']['value'] ( a ['name'] ).
+            Volby: url, debounce ( ms, predvolene 1000 ), data ( objekt alebo funkcia s dalsimi udajmi ),
+            onSuccess(reply), onError(error, reply). Odpoved so status 0 ide do onError.
+        */
         autosave(config) {
-            if (!config.url) {
+            if (!config || !config.url) {
                 throw new Error('Autosave vyžaduje URL');
             }
             this.#autosaveConfig = {
                 url: config.url,
-                debounce: config.debounce || 1000,
+                debounce: config.debounce === undefined ? 1000 : config.debounce,
+                data: config.data || null,
                 onSuccess: config.onSuccess || (() => { }),
                 onError: config.onError || (() => { }),
                 timer: null
@@ -178,24 +266,30 @@
         }
 
         #handleAutosave(value) {
-            if (this.#autosaveConfig.timer) {
-                clearTimeout(this.#autosaveConfig.timer);
+            const save = this.#autosaveConfig;
+            if (save.timer) {
+                clearTimeout(save.timer);
             }
-            this.#autosaveConfig.timer = setTimeout(() => {
-                fetch(this.#autosaveConfig.url, {
-                    method: 'POST',
-                    body: new URLSearchParams({ value }),
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                })
-                    .then(response => {
-                        if (response.ok) {
-                            this.#autosaveConfig.onSuccess(response);
-                        } else {
-                            throw new Error('Autosave zlyhal');
-                        }
-                    })
-                    .catch(err => this.#autosaveConfig.onError(err));
-            }, this.#autosaveConfig.debounce);
+            save.timer = setTimeout(() => {
+                const dotapp = reactiveMain;
+                if (!dotapp) return;
+                const extra = typeof save.data === 'function' ? save.data() : save.data;
+                const payload = Object.assign({}, extra || {}, {
+                    name: this.#name,
+                    value: value !== null && typeof value === 'object' ? JSON.stringify(value) : value
+                });
+                const request = dotapp.load(save.url, 'POST', payload, raw => {
+                    const reply = dotapp.parseReply(raw);
+                    if (reply && typeof reply === 'object' && reply.status == 0) {
+                        save.onError(new Error(reply.message || 'Autosave zlyhal'), reply);
+                    } else {
+                        save.onSuccess(reply, raw);
+                    }
+                }, (status, body) => {
+                    save.onError(new Error('Autosave zlyhal ( ' + status + ' )'), dotapp.parseReply(body), status);
+                });
+                if (request && typeof request.catch === 'function') request.catch(() => { });
+            }, save.debounce);
         }
 
         toString() {
@@ -406,10 +500,15 @@
         #liveObserver = null;
         #documentHandlers = new Map();
         #computedTracking = null; // Currently running computed (for dependency tracking)
+        static #main = null;      // Hlavna instancia $dotapp(). Premenne su len v nej, nech ich vidi kazda instancia.
 
         #forms = new Map(); // New private property to store forms and their hooks
 
         constructor(selector) {
+            if (selector === undefined && DotApp.#main === null) {
+                DotApp.#main = this;
+                reactiveMain = this;
+            }
             const now = new Date();
             const time = now.toLocaleTimeString('sk-SK', {
                 hour: '2-digit',
@@ -457,18 +556,30 @@
             return new DotAppHalt();
         }
 
+        /*
+            Oprava 11/2026: fn() prepisal aj vstavanu funkciu ( fn('addClass', ...) pokazil addClass na celej stranke )
+            a pri obsadenom mene vyhodil chybu, ktora zastavila skript. Teraz obsadene meno ( vstavana funkcia aj uz
+            zaregistrovana ) ostane nedotknute: registracia ticho zlyha, vrati false a do konzoly ide upozornenie.
+            Uspesna registracia vrati true.
+        */
         static registerFunction(key, fn) {
-            if (Object.prototype.hasOwnProperty.call(this.#functions, key)) {
-                throw new Error(`Function '${key}' already registered!`);
+            if (typeof key !== 'string' || key === '' || typeof fn !== 'function') {
+                console.warn('dotapp.js: fn(name, function) needs a name and a function. Nothing was registered.');
+                return false;
+            }
+            if (Object.prototype.hasOwnProperty.call(this.#functions, key) || key in DotApp.prototype) {
+                console.warn(`dotapp.js: '${key}' already exists. The function was not registered, the existing one stays.`);
+                return false;
             }
             this.#functions[key] = fn;
             DotApp.prototype[key] = function (...args) {
                 return DotApp.#functions[key].apply(this, args);
             };
+            return true;
         }
 
         fn(key, fn) {
-            this.constructor.registerFunction(key, fn);
+            return this.constructor.registerFunction(key, fn);
         }
 
         #_dotlink() {
@@ -539,51 +650,35 @@
             });
         }
 
-        #initializeDataBindings() {
-            const boundElements = document.querySelectorAll('[dotbind]');
-            boundElements.forEach(element => {
-                const varName = element.getAttribute('dotbind');
-                if (varName) {
-                    let variable = this.getVariable(varName);
+        // Naviaze prvky s atributom dotbind. root = kde hladat ( predvolene cela stranka ).
+        #initializeDataBindings(root = document) {
+            if (root !== document && root.hasAttribute && root.hasAttribute('dotbind')) {
+                this.#bindOne(root);
+            }
+            root.querySelectorAll('[dotbind]').forEach(element => this.#bindOne(element));
+        }
 
-                    // If it doesn't exist as a variable, try as computed (if you have a global register)
-                    // Or better – allow direct binding of computed object
-                    if (!variable && window.computedVars && window.computedVars[varName]) {
-                        variable = window.computedVars[varName];
-                    }
+        #bindOne(element) {
+            if (element._dotbound) return;
+            const varName = element.getAttribute('dotbind');
+            if (!varName) return;
 
-                    if (variable) {
-                        // Support for objects with .value (computed)
-                        if (typeof variable.value !== 'undefined') {
-                            // Initialize
-                            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
-                                element.value = variable.value;
-                            } else {
-                                element.innerHTML = variable.value;
-                            }
-                            // Change listener
-                            if (typeof variable.onChange === 'function') {
-                                variable.onChange(() => {
-                                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
-                                        element.value = variable.value;
-                                    } else {
-                                        element.innerHTML = variable.value;
-                                    }
-                                });
-                            }
-                        } else {
-                            // Normal DotAppVariable
-                            variable.bindToElement(element);
-                        }
-                    } else {
-                        // Create new variable if it doesn't exist
-                        this.variable(varName, '');
-                        variable = this.getVariable(varName);
-                        if (variable) {
-                            variable.bindToElement(element);
-                        }
-                    }
-                }
+            let variable = this.getVariable(varName);
+            if (!variable && window.computedVars && window.computedVars[varName]) {
+                variable = window.computedVars[varName];
+            }
+            if (!variable) {
+                // Skript premennu este nezadefinoval. Vyrobime ju; variable(nazov, hodnota) jej neskor da hodnotu.
+                this.variable(varName);
+                variable = this.getVariable(varName);
+                if (variable) variable.placeholder = true;
+            }
+            if (!variable || typeof variable.bindToElement !== 'function') return;
+
+            element._dotbound = true;
+            variable.bindToElement(element, {
+                html: element.hasAttribute('dotbind-html'),
+                live: element.getAttribute('dotbind-live') !== 'false'
             });
         }
 
@@ -1362,17 +1457,24 @@
         }
 
         variable(variable, initialValue = undefined) {
+            // Oprava: $dotapp('.x').variable() ulozilo premennu do docasnej instancie a $dotapp().getVariable() ju nenasiel.
+            // Premenne su teraz vzdy v hlavnej instancii.
+            const registry = (DotApp.#main || this).#variables;
             if (typeof variable === 'string' && /^[a-zA-Z_$][a-zA-Z0-9_$-]*$/.test(variable)) {
-                if (!this.isSet(this.#variables[variable])) {
-                    this.#variables[variable] = new DotAppVariable(variable, initialValue);
+                if (!this.isSet(registry[variable])) {
+                    registry[variable] = new DotAppVariable(variable, initialValue);
+                } else if (registry[variable].placeholder === true && initialValue !== undefined) {
+                    // Oprava: premennu uz vyrobil atribut dotbind a pociatocna hodnota zo skriptu sa zahodila.
+                    registry[variable].placeholder = false;
+                    registry[variable].define(initialValue);
                 }
-                this.#lastVariable = this.#variables[variable];
+                this.#lastVariable = registry[variable];
             }
             return this;
         }
 
         getVariable(name) {
-            return this.#variables[name];
+            return (DotApp.#main || this).#variables[name];
         }
 
         /**
@@ -1403,70 +1505,123 @@
          * @param {Function} fn - computation function
          * @returns {Object} computed object with .value and .onChange
          */
-        computed(fn) {
+        computed(fn, name) {
             if (typeof fn !== 'function') {
                 throw new Error('computed requires a function as parameter');
             }
 
+            /*
+                Oprava 11/2026: computed sa nikdy neprepocital po zmene premennej ( premenne mu nic neoznamili ) a retaz
+                computed -> computed sa zneplatnovala opacnym smerom. Teraz:
+                - premenna aj computed, ktore sa pri vypocte precitaju, si computed zapamataju a pri zmene ho zneplatnia,
+                - onChange(callback) dostane ( staraHodnota, novaHodnota ) rovnako ako premenna,
+                - name: computed sa da naviazat atributom dotbind="name".
+            */
             const computedVar = {
-                // Private variables (closure)
                 _value: undefined,
                 _dirty: true,
-                _deps: new Set(),        // Dependent computed (for invalidation propagation)
+                _dependents: new Set(),  // computed hodnoty, ktore citaju tuto
                 _callbacks: [],
+                _bindings: [],
+                _busy: false,
                 _fn: fn,
-                _dotAppInstance: this,   // Reference to DotApp instance
+                name: (typeof name === 'string' && name !== '') ? name : null,
 
                 get value() {
-                    // Protection against recursion - detect circular dependency
-                    if (this._dotAppInstance.#computedTracking === this && this._dirty) {
+                    const tracking = reactiveTracking.current;
+                    if (tracking === this) {
                         console.warn('Circular dependency in computed detected');
                         return this._value;
                     }
-
-                    // Track dependencies – if we're in another computed, add ourselves as a dependency
-                    if (this._dotAppInstance.#computedTracking) {
-                        this._dotAppInstance.#computedTracking._deps.add(this);
+                    if (tracking) {
+                        this._dependents.add(tracking);
                     }
-
-                    // Lazy computation with memoization
                     if (this._dirty) {
-                        const prevTracking = this._dotAppInstance.#computedTracking;
-                        this._dotAppInstance.#computedTracking = this;
-
+                        const previous = reactiveTracking.current;
+                        reactiveTracking.current = this;
                         try {
                             this._value = this._fn();
                         } catch (e) {
                             console.error('Error in computed computation:', e);
                             this._value = undefined;
+                        } finally {
+                            reactiveTracking.current = previous;
                         }
-
-                        this._dotAppInstance.#computedTracking = prevTracking;
                         this._dirty = false;
                     }
-
                     return this._value;
                 },
 
-                // Manual invalidation (optional – usually not needed)
+                // Volaju ho premenne a computed, z ktorych sa pocita. Rucne len ked sa zmenilo nieco mimo reaktivity.
                 invalidate() {
-                    this._dirty = true;
-                    this._callbacks.forEach(cb => cb(this._value));
-                    // Propagate invalidation to dependent computed
-                    this._deps.forEach(dep => dep.invalidate());
+                    if (this._busy) return;
+                    this._busy = true;
+                    try {
+                        const oldValue = this._value;
+                        this._dirty = true;
+                        if (this._callbacks.length > 0 || this._bindings.length > 0) {
+                            const newValue = this.value;
+                            if (newValue !== oldValue) {
+                                this._bindings.forEach(binding => DotAppVariable.write(binding, newValue));
+                                this._callbacks.slice().forEach(cb => cb(oldValue, newValue));
+                            }
+                        }
+                        Array.from(this._dependents).forEach(dep => dep.invalidate());
+                    } finally {
+                        this._busy = false;
+                    }
                 },
 
-                // onChange support (like a normal variable)
                 onChange(callback) {
                     if (typeof callback !== 'function') return { off: () => { } };
                     this._callbacks.push(callback);
+                    if (this._dirty) this.value;     // prvy vypocet, nech sa zapamataju zavislosti
                     return {
                         off: () => {
                             this._callbacks = this._callbacks.filter(cb => cb !== callback);
                         }
                     };
+                },
+
+                watch(callback, now = false) {
+                    if (now && typeof callback === 'function') callback(undefined, this.value);
+                    return this.onChange(callback);
+                },
+
+                // Prvky hodnotu len ukazuju ( computed sa neda zapisat ). Volba html: true = prvok dostane HTML.
+                bindToElement(element, options = {}) {
+                    let elements = [];
+                    if (element instanceof DotApp) {
+                        elements = element.all();
+                    } else if (element instanceof HTMLElement) {
+                        elements = [element];
+                    } else if (Array.isArray(element) || element instanceof NodeList) {
+                        elements = Array.from(element).filter(item => item instanceof HTMLElement);
+                    }
+                    elements.forEach(el => {
+                        if (this._bindings.some(binding => binding.element === el)) return;
+                        const binding = { element: el, html: options.html === true };
+                        this._bindings.push(binding);
+                        DotAppVariable.write(binding, this.value);
+                    });
+                    return this;
                 }
             };
+
+            if (computedVar.name !== null) {
+                const main = DotApp.#main || this;
+                const existing = main.#variables[computedVar.name];
+                if (existing && existing.placeholder === true) {
+                    // Atribut dotbind uz premennu vyrobil: computed jej posiela svoju hodnotu
+                    existing.placeholder = false;
+                    computedVar.watch((oldValue, newValue) => { existing.value = newValue; }, true);
+                } else if (existing) {
+                    throw new Error(`computed: the name '${computedVar.name}' is already used by a variable.`);
+                } else {
+                    main.#variables[computedVar.name] = computedVar;
+                    if (document.readyState !== 'loading') main.#initializeDataBindings(document);
+                }
+            }
 
             return computedVar;
         }
@@ -2572,21 +2727,20 @@
                     element.addEventListener('bodychange', (e) => {
                         if (timer) clearTimeout(timer);
                         timer = setTimeout(() => {
-                            fetch(config.url, {
-                                method: 'POST',
-                                body: new URLSearchParams({ value: e.detail.newContent }),
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                            })
-                                .then(response => {
-                                    if (response.ok) {
-                                        if (config.onSuccess) config.onSuccess(response);
-                                    } else {
-                                        throw new Error('Autosave zlyhal');
-                                    }
-                                })
-                                .catch(err => {
-                                    if (config.onError) config.onError(err);
-                                });
+                            // Oprava: obycajny fetch() bez CRC a CSRF neprešiel cez crcCheck(). Posielame cez load().
+                            const dotapp = DotApp.#main || this;
+                            const extra = typeof config.data === 'function' ? config.data() : config.data;
+                            const request = dotapp.load(config.url, 'POST', Object.assign({}, extra || {}, { value: e.detail.newContent }), raw => {
+                                const reply = dotapp.parseReply(raw);
+                                if (reply && typeof reply === 'object' && reply.status == 0) {
+                                    if (config.onError) config.onError(new Error(reply.message || 'Autosave zlyhal'), reply);
+                                } else if (config.onSuccess) {
+                                    config.onSuccess(reply, raw);
+                                }
+                            }, (status, body) => {
+                                if (config.onError) config.onError(new Error('Autosave zlyhal ( ' + status + ' )'), dotapp.parseReply(body), status);
+                            });
+                            if (request && typeof request.catch === 'function') request.catch(() => { });
                         }, debounce);
                     });
                 }
@@ -2594,15 +2748,27 @@
             return this;
         }
 
+        // Volby: initialValue, live, html ( rovnake ako bindToElement ). Premenna je v hlavnej instancii.
         databind(variableName, options = {}) {
-            this.variable(variableName, options.initialValue || '');
-            const variable = this.getVariable(variableName);
+            const main = DotApp.#main || this;
+            main.variable(variableName, options.initialValue);
+            const variable = main.getVariable(variableName);
             if (variable) {
                 this.#elements.forEach(element => {
                     element.setAttribute('dotbind', variableName);
-                    variable.bindToElement(element);
+                    element._dotbound = true;
+                    variable.bindToElement(element, options);
                 });
             }
+            return this;
+        }
+
+        // Naviaze prvky s atributom dotbind, ktore pribudli po nacitani stranky ( html(), append() ... ).
+        // $dotapp('#zoznam').dotbind() hlada vnutri vybranych prvkov, $dotapp().dotbind() na celej stranke.
+        dotbind() {
+            const main = DotApp.#main || this;
+            const roots = this.#elements.length ? this.#elements : [document];
+            roots.forEach(root => main.#initializeDataBindings(root));
             return this;
         }
 
@@ -3422,13 +3588,7 @@
     // Assign to the global object
     global.$dotapp = $dotAppDispatcher;
 
-    // Register computed function
-    // Oprava: fn() nahradi metodu na prototype obalom. Obal volal this.computed(), co je znova ten isty obal,
-    // takze $dotapp('.x').computed(...) skoncilo nekonecnou rekurziou. Volame povodnu metodu.
-    const dotAppComputedOriginal = DotApp.prototype.computed;
-    mainDotApp.fn('computed', function (fn) {
-        return dotAppComputedOriginal.call(this, fn);
-    });
+    // computed() je metoda triedy, netreba ju registrovat cez fn() ( fn() vstavane mena teraz odmietne ).
 
     // Register functions
     window.dispatchEvent(new Event('dotapp-register'));

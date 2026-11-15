@@ -146,48 +146,28 @@ Helpers: `$dotapp().sendInput(groupName, url)` for `Input::group` forms. **Files
 
 **MUST NOT:** `new FormData()` + `load()` / `form()` / `fetch` / `$.ajax`. **MUST NOT** put `<input type="file">` inside `<fo-rm>` and expect CRC to work.
 
-`uploadFile` sends the file as multipart field `user_files`. PHP:
+`uploadFile` sends the file as multipart field `user_files` with the header `dotapp: load`. PHP — **MUST** receive it with the core class `Uploader` ([48](48-UPLOADER.md)):
 
 ```php
-$request->upload(function (array $files) use (&$out) {
-    $file = $files[0] ?? null;
-    if ($file === null || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-        $out = ['status' => 0, 'message' => 'Upload failed'];
-        return;
-    }
+use DotsystemsAppPartsUploader;
 
-    $name = strtolower((string) ($file['name'] ?? ''));
-    $ext = strtolower((string) ($file['extension'] ?? pathinfo($name, PATHINFO_EXTENSION)));
-    $blocked = ['php', 'phtml', 'php3', 'php4', 'php5', 'phar', 'pht', 'phps', 'cgi', 'exe', 'htaccess'];
-    if ($ext === '' || in_array($ext, $blocked, true) || preg_match('/\.(php|phtml|phar)(\.|$)/i', $name)) {
-        $out = ['status' => 0, 'message' => 'This file type is not allowed'];
-        return;
-    }
-
-    $finfo = new \finfo(FILEINFO_MIME_TYPE);
-    $mime = (string) $finfo->file($file['tmp_name']);
-    if ($mime === '' || strpos($mime, 'php') !== false) {   // PHP 7.4: no str_contains()
-        $out = ['status' => 0, 'message' => 'This file type is not allowed'];
-        return;
-    }
-
-    // allow-list for this feature (example: images only)
-    $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
-    $allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!in_array($ext, $allowedExt, true) || !in_array($mime, $allowedMime, true)) {
-        $out = ['status' => 0, 'message' => 'This file type is not allowed'];
-        return;
-    }
-
-    // move from $file['tmp_name'] — never trust $file['type'] (client MIME)
-    $out = ['status' => 1, 'message' => 'Uploaded', 'name' => $file['name']];
-});
-return \Dotsystems\App\DotApp::DotApp()->ajaxReply($out, 200);
+if (($_SERVER['HTTP_DOTAPP'] ?? '') !== 'load') {
+    return DotsystemsAppDotApp::DotApp()->ajaxReply(['status' => 0, 'message' => 'Bad request'], 200);
+}
+$result = Uploader::use('Shop')->images()->maxSize(5 * 1024 * 1024)->maxFiles(1)->receive();
+if ($result['status'] !== 1) {
+    $message = $result['errors'][0]['message'] ?? 'No file arrived. Choose a file and try again.';
+    return DotsystemsAppDotApp::DotApp()->ajaxReply(['status' => 0, 'message' => $message], 200);
+}
+$file = $result['files'][0];       // store $file['name'] (random stored name); $file['original'] is display text only
+return DotsystemsAppDotApp::DotApp()->ajaxReply(['status' => 1, 'message' => 'Uploaded.'], 200);
 ```
 
-`$out` is declared before the call (`$out = ['status' => 0, 'message' => 'No file arrived. Choose a file and try again.'];`). Replace the three sample messages with sentences that name the reason: `'The file is larger than 5 MB.'`, `'Only JPG, PNG and WebP images can be uploaded.'`.
+`Uploader` checks the upload state, the size on disk, **every** dot-part of the name (`.php.jpg`, `.jpg.php`), the allow-list, the MIME **from the bytes**, decodes and **re-encodes images** (hidden code / polyglots do not survive), and stores the file under a random name in `app/runtime/uploads/{name}` (not reachable by URL). Full API, result shape, error codes, serving and deleting: [48](48-UPLOADER.md).
 
-**MUST (every upload, PHP):** reject executable / script files. **`.php` and PHP variants are always forbidden** — no product exception. Check **extension** (including `.jpg.php` / `.php.jpg`), **MIME from the bytes** (`finfo` on `tmp_name`), and **magic / headers**. Frontend `accept=` is UX only. **MUST NOT** trust `$file['type']`. **MUST NOT** store an unchecked file where the web server can execute it.
+**MUST NOT** read `$_FILES`, call `move_uploaded_file()`, or hand-write extension / MIME checks in a module. The older pattern — `$request->upload(function (array $files) { … })` with a hand-written checklist — is **legacy**: do not write it in new code. `$request->upload()` only lists the incoming files; it checks nothing and stores nothing.
+
+**MUST NOT** serve a stored file from a URL that ends with an image extension (the web server answers it as a static file, the module never runs) and **MUST NOT** set its headers with plain `header()` — use `Response::contentType()` / `Response::header()` / `Response::cache()` ([48](48-UPLOADER.md) §5).
 
 **MUST NOT** `crcCheck()` on this endpoint — there is no `{ data, crc }`. Guard with `#Shop:Rights@check!` / `Auth::can()`. Return HTTP **200** + `status` 0|1 so the Promise resolves and you toast `reply.message`. HTTP 400/403/500 hits `fetch`’s error path (generic failure). Overlay the drop zone until the Promise settles.
 
@@ -534,7 +514,10 @@ Page logic listens to `dotapp`. Libraries listen to **`dotapp-register`**. Mixin
 `$dotapp().fn('shopHighlight', function (...) { ... })` hangs the function on every DotApp instance as `$dotapp('#el').shopHighlight()`.
 
 - `this` is the DotApp instance. Selected nodes: `this.getElements()`.
-- Duplicate `fn('sameName')` **throws** — use an `isRegistered` flag **and** `try/catch` on `"already registered"` (official / DACore-style libs do this).
+- `fn()` returns `true` when it registered the function. A taken name (a method of `dotapp.js`, or a function registered earlier) is **never overwritten**: `fn()` changes nothing, returns `false` and warns in the console — no exception. Keep the `isRegistered` flag (a file loaded twice must not set up its state twice). A `try/catch` around `fn()` in older libraries is harmless.
+- **MUST** prefix every name with the module (`shopFlash`, `shopStars`) and write it in camelCase. A taken name is silently **not** registered — the call then runs the existing function and does something else than you expect. **MUST** check that `fn()` returned `true` (warn otherwise) and **MUST NOT** pick a name `dotapp.js` or another library already has. Call the function through `$dotapp(...)`, not through the result of `fn()`.
+- Load order **MUST** be `dotapp.js` → library → page script. A page script before the library fails with `TypeError: $dotapp(...).shopStars is not a function`.
+- A widget whose elements are replaced by `html()` **MUST** be applied again to the new elements. Text a library writes into the page **MUST** go through `textContent`, not `innerHTML`.
 - Always wrap in an IIFE. If `window.$dotapp` already exists, call `runMe` immediately; else wait for `dotapp-register` (`{ once: true }`).
 - HTTP from a library **MUST** use `this.load` / `this.form` / `this.uploadFile` / bridge — never `$.ajax` / raw `fetch` to DotApp endpoints. Files **MUST NOT** go through `load()` as `FormData`.
 - Per-element widgets: one node → return the instance API; many → return `this`. Chainable helpers always `return this`.
@@ -656,8 +639,11 @@ On DACore admin pages the shell already loads `dotapp.js`. Pass your library URL
 |-------------|-----------|-------------|
 | `dotapp.template.js` | `template` | `dotapp-template-ready` |
 | `dotapp.reactive.js` | `reactive` | `dotapp-reactive-ready` |
+| `dotapp.connector.js` | `connector` | `dotapp-connector-ready` |
 
 Copy their **IIFE + `fn` + ready event** shape. Put the new file in your module assets.
+
+**Node graphs** (blocks joined by wires, flow / rule builders, graphical configurators): **MUST** use `dotapp.connector.js` — `$dotapp("#canvas").connector()` — never hand-made SVG wires or another library. Full contract: [49](49-CONNECTOR.md).
 
 ### C. Porting a jQuery plugin = writing a new `$dotapp` library
 
@@ -673,7 +659,7 @@ If DACore is installed and already ships the widget, **use it** (`$dotapp('#x').
 1. Keep the **public API shape**: `$('#el').select2(opts)` → `$dotapp('#el').dotSelect2(opts)` (or `{modulename}Picker`).
 2. Keep **CSS class / markup** when you want drop-in HTML (`select.select2`, `.toast`, `.modal`, `data-bs-*`). Extra DACore styling uses `{lowercase_modulename}_*` in **your** CSS.
 3. Vanilla constructors. Cache instances in a `WeakMap` or `el._key`. No `$` inside the library.
-4. Register on **`dotapp-register`**. Dual guard: `isRegistered` **and** `try/catch` if the error message contains `"already registered"`.
+4. Register on **`dotapp-register`**. Guard with `isRegistered`; check that `fn()` returned `true` (a taken name returns `false` and is not overwritten).
 5. Loop `this.getElements()`. **One** node → return the widget API. **Many** → return `this`. Empty `$dotapp().fn` call → factory (dynamic modal / notify manager).
 6. Optional `autoInit()` on `DOMContentLoaded` for markup hooks. Skip nodes with `data-{name}-skip` or an existing instance.
 7. Dispatch `dotapp-<name>-ready`. Optional `window.DotXxx = { mount, get }` for callers that are not on the chain.
@@ -826,24 +812,58 @@ Supports `{{ var: $x }}`, `{{ if }}`, `{{ foreach }}`, `{{ block: }}` and **`{{ 
 
 ---
 
-## 7. Reactive (`dotapp.reactive.js`)
+## 7. Reactivity: variables, binding, computed (`dotapp.js`)
+
+```javascript
+$dotapp().variable('qty', 1).variable('price', 120);          // variable() returns $dotapp() (chaining)
+var qty = $dotapp().getVariable('qty');                         // the variable itself
+var price = $dotapp().getVariable('price');
+var total = $dotapp().computed(function () { return qty.value * price.value; }, 'total');
+
+qty.value = 3;                                                  // bound elements, computed, callbacks follow
+qty.onChange(function (oldValue, newValue) { });                // listener: .off() .pause() .resume()
+cart.update(function (items) { items.push(item); });           // arrays/objects changed in place
+```
 
 ```html
-<div reactive-api="/shop/live" reactive-method="GET" reactive-trigger="click"
-     reactive-variable="stock" reactive-interval="5000" reactive-template="tpl1"></div>
+<input type="number" dotbind="qty">                      <!-- two-way, live while typing -->
+<strong dotbind="total"></strong>                         <!-- text (textContent), computed with a name -->
+<div dotbind="preview" dotbind-html></div>               <!-- HTML: only trusted content -->
+```
+
+| Rule | |
+|---|---|
+| **MUST** take the variable with `getVariable(name)` | `variable()` returns `$dotapp()`, `.value` on it is `undefined` |
+| **MUST** assign a new value or use `update()` / `notify()` for arrays and objects | `push()` alone notifies nobody |
+| **MUST** read dependencies through `.value` inside `computed` | that is how they are tracked; a computed **MUST NOT** write variables |
+| **MUST NOT** put user text into `dotbind-html` / `{ html: true }` | plain binding is text and safe; HTML binding executes markup |
+| Elements added later (`html()`, `append()`) | **MUST** call `$dotapp('#box').dotbind()` to bind their `dotbind` attributes |
+| Saving a value | `variable.autosave({ url, debounce, data, onSuccess(reply), onError(error, reply) })` posts with `load()`: PHP `crcCheck()` once, value in `$request->data(true)['data']['value']`, name in `['name']`; answer `ajaxReply` HTTP 200 + `status` |
+| Values are strings from fields | convert (`Number(qty.value)`) before arithmetic |
+
+Use reactivity for **one page's live state** (totals, counters, filters, "unsaved changes", previews). The server stays the source of truth: save through `load()` / autosave and re-render from the reply. **MUST NOT** build a client-side copy of a whole list or a SPA store with variables.
+
+
+## 7a. Data from the server (`dotapp.reactive.js`)
+
+```html
+<script src="/assets/dotapp/dotapp.reactive.js"></script>
+<span reactive-api="/shop/api/unread" reactive-interval="30000"></span>
 ```
 
 ```javascript
-$dotapp().reactive('/shop/live', { element: el, method: 'GET', interval: 5000 });
+var unread = $dotapp().reactive('/shop/api/unread', { interval: 30000, variable: 'unread' })
+    .after(function (reply) { /* reply = parsed ajaxReply */ })
+    .onError(function (error) { });
+unread.refresh();   // ask now
+unread.destroy();   // stop
 ```
 
-Attributes: `reactive-api` (required), `reactive-id`, `reactive-method` (default `GET`), `reactive-trigger`, `reactive-variable`, `reactive-interval`, `reactive-template`.
-
-PHP side (`Reactive`): `reactive($url, $config = [])`, `getEndpoints()`, `getEndpoint($id)`, `destroy($id)`, `destroyAll()`, `before/after/onError/onResponseCode($endpointId, ...)`, `fn($name, $callback)`, `isReactive()`.
-
-Endpoint chain: `before`, `after`, `onError`, `onResponseCode($code, $fn)`, `destroy`.
-
-Error codes mirror the bridge: 400/1 invalid, 403/2 key, 404/3 endpoint, 429/4 rate limit. It uses the same secure `load()` transport.
+- Config: `method` (`GET`), `interval` (ms), `trigger` (DOM event, or `'variable'`), `variable` (name — gets the **whole parsed reply**), `element`, `template`. Attributes: `reactive-api`, `reactive-method`, `reactive-interval`, `reactive-trigger`, `reactive-variable`, `reactive-template`, `reactive-id` (read once at start, then removed).
+- Without a trigger the first request goes out **at once**, then every `interval`. While the tab is hidden no request is sent; when it becomes visible again a missed refresh runs at once.
+- Without `variable` and `template` the element gets the reply as **HTML** (`innerHTML`) — only for HTML your server built. With `variable` the element is not touched: render in `after()` or bind the variable.
+- `GET` goes through `load(url)` without data and **without CRC** — read-only endpoints only; rights still apply. Anything that changes data is a `POST` through `load()` + `crcCheck()`.
+- The PHP class `Dotsystems\App\Parts\Reactive` is **not started by the framework**; endpoints are ordinary routes answering `ajaxReply`.
 
 ---
 
