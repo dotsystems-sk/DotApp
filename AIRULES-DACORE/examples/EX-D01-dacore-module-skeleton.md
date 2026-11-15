@@ -1,6 +1,6 @@
 # EX-D01 — Complete DACore admin module skeleton
 
-End-to-end: scaffold, routes, rights middleware, installer wiring. Rules: [30](../30-DACORE-OVERVIEW.md), [31](../31-DACORE-MENU.md), [32](../32-DACORE-RIGHTS.md), [35](../35-DACORE-INSTALL.md). **List pager:** [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md).
+End-to-end: scaffold, routes, the DACore route guard, installer wiring. Rules: [30](../30-DACORE-OVERVIEW.md), [31](../31-DACORE-MENU.md), [32](../32-DACORE-RIGHTS.md), [35](../35-DACORE-INSTALL.md). **List pager:** [40](../40-DACORE-LIST-PAGER.md), [EX-D08](EX-D08-list-pager.md).
 
 **ASK in chat before scaffolding the menu:** shared nested sidebar (`0` → `2` → `1`, `Page@withMenu` `$menuId` `''`) vs **module-own**. **No answer → shared nested** (this sample). Module-own **only** if the user explicitly chose it. Do not register “Return back”. See [31](../31-DACORE-MENU.md).
 
@@ -13,8 +13,6 @@ Set-Location "path\to\project-root"
 php dotapper.php --create-module=Shop
 php dotapper.php --module=Shop --create-controller=Admin
 php dotapper.php --module=Shop --create-controller=AITools
-php dotapper.php --module=Shop --create-middleware=Gate
-php dotapper.php --module=Shop --create-middleware=Rights
 ```
 
 ## 2. `module.init.php`
@@ -24,6 +22,7 @@ php dotapper.php --module=Shop --create-middleware=Rights
 namespace Dotsystems\App\Modules\Shop;
 
 use Dotsystems\App\DotApp;
+use Dotsystems\App\Modules\DACore\Middleware\Guard;
 use Dotsystems\App\Parts\Auth;
 use Dotsystems\App\Parts\Config;
 use Dotsystems\App\Parts\Response;
@@ -40,38 +39,28 @@ class Module extends \Dotsystems\App\Parts\Module
 
         Translator::loadLocaleFile('Shop:sk_sk.json', 'sk_sk');
 
-        $admin = rtrim((string) Config::module('DACore', 'prefixUrl'), '/') . '/Shop';
-        $authApi = '/api/v1/auth/Shop';
-        $openApi = '/api/v1/noauth/Shop';
-
-        Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!');
-        Router::before(['POST'], [$authApi, $authApi . '/*'], '#DACore:AuthTest@LoginAndCRC!');
-        Router::before(['POST'], [$openApi, $openApi . '/*'], '#DACore:AuthTest@CRC!');
+        // One DACore guard: HTML tree = signed in + live session; POST auth API = that + CRC; POST noauth API = CRC.
+        $urls = Guard::protect('Shop');
+        $admin = $urls['admin'];
+        $authApi = $urls['api'];
 
         // Admin URLs MUST NOT stay registered for anonymous users — the page must never render
         if (Auth::isLogged() === true) {
-            $viewRights = ['dotapp.root', 'Shop.administrator', 'Shop.items.view'];
-            $editRights = ['dotapp.root', 'Shop.administrator', 'Shop.items.edit'];
+            // dotapp.root always passes in Guard::rights — it is not listed.
+            $viewRights = ['Shop.administrator', 'Shop.items.view'];
+            $editRights = ['Shop.administrator', 'Shop.items.edit'];
 
             Router::get($admin . '/items', 'Shop:Admin@items!')
-                ->before(function ($request) use ($viewRights) {
-                    return DotApp::call('#Shop:Rights@check!', $request, $viewRights);
-                });
+                ->before(Guard::rights($viewRights));
 
             Router::get($admin . '/items/{id:i}', 'Shop:Admin@itemEdit!')
-                ->before(function ($request) use ($editRights) {
-                    return DotApp::call('#Shop:Rights@check!', $request, $editRights);
-                });
+                ->before(Guard::rights($editRights));
 
             Router::post($authApi . '/items/save', 'Shop:Admin@itemSave!', Router::STATIC_ROUTE)
-                ->before(function ($request) use ($editRights) {
-                    return DotApp::call('#Shop:Rights@check!', $request, $editRights);
-                });
+                ->before(Guard::rights($editRights));
 
             Router::post($authApi . '/items/list', 'Shop:Admin@itemsList!', Router::STATIC_ROUTE)
-                ->before(function ($request) use ($viewRights) {
-                    return DotApp::call('#Shop:Rights@check!', $request, $viewRights);
-                });
+                ->before(Guard::rights($viewRights));
         }
     }
 
@@ -118,11 +107,11 @@ new Listeners($dotApp);
 
 **MUST** also keep identical copies at `init/module.init.php` and `init/module.listeners.php` ([35](../35-DACORE-INSTALL.md) §5). Update those copies whenever you change the live files.
 
-## 4. `Middleware/Gate.php` + `Middleware/Rights.php`
+## 4. Route guard — no middleware of your own
 
-`Gate@login` is **login only** (403 `Response`). Copy it from [32](../32-DACORE-RIGHTS.md) §3. **MUST NOT** `crcCheck()` there.
+A new module has **no** `Middleware/Gate.php` and **no** `Middleware/Rights.php`. `Guard::protect('Shop')` and `Guard::rights([...])` from DACore do login, live session, CRC, and rights ([32](../32-DACORE-RIGHTS.md) §3). In a handler that branches on rights use `Guard::allows([...])`.
 
-`Rights@check` is permissions. Copy that class from the same section — it adds wildcard support that `Auth::can()` lacks and returns the DACore 403 page.
+Record security-relevant operator actions with `DACore:Audit@record!` after the persist ([47](../47-DACORE-AUDIT-LOG.md)).
 
 ## 5. `Controllers/Admin.php` (page + save)
 
@@ -352,8 +341,6 @@ app/modules/Shop/
   AI_RULES.md                      (generated by dotapper)
   Controllers/Admin.php
   Controllers/AITools.php
-  Middleware/Gate.php
-  Middleware/Rights.php
   views/layouts/admin/items.layout.php
   views/layouts/admin/items-inner.layout.php
   views/layouts/admin/empty.layout.php

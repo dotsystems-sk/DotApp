@@ -29,6 +29,7 @@ Master anti-hallucination table. When unsure, open `app/parts/` (read-only) and 
 | Instance methods + `$this->` | `public static function` |
 | `Route::prefix('x')->group(...)` | `Router::before([$prefix, $prefix.'/*'], login 403)` + `onPath` / config prefix ([03](03-MODULES-AND-ROUTING.md)) |
 | Named `route('home')` | Hardcode paths or config prefixes |
+| `Router::get('/shop/item/{token}', …, Router::STATIC_ROUTE)` — a parameter or wildcard on a static route | Static compares the literal text, so the route never matches. `STATIC_ROUTE` only for a path with no `{` `*` `?`; a path with a parameter is dynamic — leave the third argument out ([03](03-MODULES-AND-ROUTING.md)) |
 | DI params with trailing `!` | No DI params when using `!` |
 | Middleware string without `#` for Middleware class | `#Shop:Gate@login!` |
 | Register all admin/member routes, then login middleware only | Prefix login `before` **and** `if (Auth::isLogged() === true)` — page **MUST NEVER** show ([03](03-MODULES-AND-ROUTING.md)) |

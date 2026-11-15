@@ -3,7 +3,7 @@
 ## Template
 
 ```html
-<input type="text" dotbridge="email" />
+<input type="text" {{ dotbridge:input="email" }} />
 <button type="button"
   {{ dotbridge:on(click)="ping(email)" regenerateId oneTimeUse rateLimit(60,10) }}>
   Ping
@@ -11,13 +11,13 @@
 <script src="/assets/dotapp/dotapp.js"></script>
 ```
 
-## PHP (in module initialize or early controller load)
+## PHP (in module `initialize()`; `$pageUrl` = URL of the page with the button, also listed in `initializeRoutes()`)
 
 ```php
-$dotApp->bridge->fn('ping', function ($request) {
+Router::bridge($pageUrl, 'ping', function ($request) {
     $email = $request->data(true)['data']['email'] ?? '';
     return ['ok' => true, 'email' => $email];
-});
+}, Router::STATIC_ROUTE);
 ```
 
 ## JS hooks (optional)

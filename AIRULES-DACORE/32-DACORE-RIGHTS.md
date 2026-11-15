@@ -160,7 +160,51 @@ Auth::permissions();                                        // array of strings
 
 ---
 
-## 3. Your own route-guard middleware (required)
+## 3. Route guard — `DACore Guard` (**MUST** for new modules, DACore 1.0.62+)
+
+A new DACore-bound module **MUST NOT** write its own `Gate` or `Rights` middleware. DACore ships one guard: `Dotsystems\App\Modules\DACore\Middleware\Guard`. Modules created before 1.0.62 keep their own middleware (§3b) — do not rewrite them unless asked.
+
+Where another AIRULES file still says `#Shop:Gate@login!` or `#Shop:Rights@check!`, a **new** module reads that as `Guard::protect('Shop')` and `Guard::rights([...])`.
+
+```php
+use Dotsystems\App\Modules\DACore\Middleware\Guard;
+
+// module.init.php → initialize()
+$urls = Guard::protect('Shop');   // ['admin' => '/admin/Shop', 'api' => '/api/v1/auth/Shop', 'open' => '/api/v1/noauth/Shop']
+
+if (Auth::isLogged() === true) {
+    Router::get($urls['admin'] . '/items', 'Shop:Admin@items!')
+        ->before(Guard::rights(['Shop.administrator', 'Shop.items.view']));
+
+    Router::post($urls['api'] . '/items/save', 'Shop:Admin@save!', Router::STATIC_ROUTE)
+        ->before(Guard::rights(['Shop.administrator', 'Shop.items.edit']));
+}
+```
+
+| Call | What it does |
+|------|--------------|
+| `Guard::protect('Shop', 1)` | Binds three prefix gates and returns the URL prefixes. Call once at the start of `initialize()`. Second argument is the API version (`/api/v2/...`); keep v1 bound when you add v2. |
+| HTML `{prefixUrl}/Shop` + `/*` | Fully signed in **and** live session, else the DACore 403 page. No CRC (GET has none). |
+| POST `/api/v1/auth/Shop` + `/*` | Signed in + live session + CRC, token **burned once**. JSON 403 / 400. |
+| POST `/api/v1/noauth/Shop` + `/*` | CRC only. Not a login or rights check — throttle and validate in the action. |
+| `->before(Guard::rights([...]))` | Per-route rights. Holding **any one** is enough. Answers the 403 page for a page load and JSON 403 for a POST / `/api/` URL. |
+| `Guard::allows([...])` | The same decision as a `bool`, for handlers and views. |
+
+**Contract (MUST):**
+
+- "Live session" = the account is still active **and** this device was not signed out. A deactivated operator or a device signed out after a password change is refused on pages **and** on the API.
+- `dotapp.root` always passes. **Do not list it.** An empty list allows root only.
+- `'*'` = any signed-in operator. `'Shop.*'` = any right that starts with `Shop.`.
+- The action **MUST NOT** `crcCheck()` — the `api` / `open` gate already burned the token. `formName` → only `form()`.
+- Register handlers only inside `if (Auth::isLogged() === true)` for the admin tree and the `auth` API.
+- Rights are still checked per route: signed in ≠ allowed. Re-check with `Guard::allows()` in a handler that branches on rights.
+- `initializeRoutes()` still lists the three prefixes ([03](03-MODULES-AND-ROUTING.md)).
+- **MUST NOT** hang `uploadFile` under these prefixes.
+- A module name that is not a plain identifier makes `protect()` throw at boot. That is intended.
+
+---
+
+## 3b. Legacy: your own route-guard middleware (modules created before 1.0.62)
 
 **Do not use `#DACore:AuthTest@check!` for permission checks** — it ignores the rights you pass (see [36](36-DACORE-KNOWN-ISSUES.md)). **Do not** copy `#DACore:AuthTest@loginRouter!` into your module (`header` + `exit()`). Your login gate **MUST** return a `Response`.
 
@@ -357,7 +401,8 @@ DACore already registers globally in its own `module.init.php`:
 | `#DACore:AuthTest@permissionRefresh!` | Re-reads permissions every `permissionsAutorefreshTime` seconds and triggers `DACore.permissions.refresh` |
 | `#DACore:AuthTest@check!` | CRC on `POST /dacore/*` (token burned) — **not** a permission guard |
 | `#DACore:AuthTest@CRC!` | CRC only — attach on **your** `POST /api/v1/noauth/{Module}/*` |
-| `#DACore:AuthTest@LoginAndCRC!` | CRC + logged in — attach on **your** `POST /api/v1/auth/{Module}/*` |
+| `#DACore:AuthTest@LoginAndCRC!` | CRC + logged in + live session (active account, device not signed out) — attach on **your** `POST /api/v1/auth/{Module}/*` |
+| `Guard::protect()` / `Guard::rights()` | One guard for **new** modules: login, live session, CRC, and rights (§3) |
 
 You normally do **not** re-register `check` / `sessionGuard` / `loginRouter`. **Your** module **MUST** still: HTML `Gate@login` on `{prefixUrl}/Shop`, POST `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` on `/api/v1/auth|noauth/Shop`, handlers only when `Auth::isLogged()` (auth API + HTML). Admin pages **MUST NEVER** render for an anonymous user.
 
@@ -516,7 +561,8 @@ Do **not** patch DACore’s own login or user screens to enforce this. Put the p
 | `INSERT INTO dotapp_users_rights_list ...` | `DACore:Rights@createRight!` |
 | Wrong parameter order in `createRight` | `($groupId, $name, $description, $module, $rightname, $creator)` |
 | Ignoring `null` returns | Check and log |
-| `#DACore:AuthTest@check!` with a rights array | Your own `#Shop:Rights@check!` |
+| `#DACore:AuthTest@check!` with a rights array | `Guard::rights([...])` (new modules) or your own `#Shop:Rights@check!` (legacy) |
+| A new module that scaffolds `Middleware/Gate.php` + `Middleware/Rights.php` | `Guard::protect('Shop')` + `Guard::rights([...])` (§3) |
 | Non-root edits another operator’s password / 2FA / groups | [11](11-AUTH-AND-CRYPTO.md) §11 + this file §5 — only `dotapp.root` mutates elevated targets |
 | Omitting `dotapp.root` | Superuser loses access |
 | `Auth::can('Shop.*')` | Wildcards need your middleware helper |

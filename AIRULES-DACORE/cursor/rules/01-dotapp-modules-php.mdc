@@ -19,6 +19,7 @@ Router::before(['POST'], ['/api/v1/noauth/Shop', '/api/v1/noauth/Shop/*'], '#DAC
 
 - Prefixes: `#` Middleware, `*` Models, trailing `!` skips DI
 - Params: `{id:i}`, `{x?}`, `{p*}` → `$request->matchData()`. `{not:/admin*|/api/v1*}` excludes those prefixes **before** the positive match (`strpos` / `substr`; `/admin*` not `/admin/*` for exact `/admin`)
+- **`STATIC_ROUTE` (MUST):** only for a literal path with no `{`, `*`, `?`. Static compares the text (`$path == getPath()`), so `'/Shop/item/{token}'` + `Router::STATIC_ROUTE` **never matches** and `matchData()` stays empty — no error, just 404. A path with a parameter or wildcard is dynamic: leave the third argument out, and do not pass it to a helper that adds `STATIC_ROUTE`. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`
 - No named routes, no Laravel `Route::prefix()->group()` — cover an area with `Router::before([$admin, $admin . '/*'], '#Shop:Gate@login!')` (403 `Response`)
 - **MUST:** HTML `{prefixUrl}/{ModuleName}/…` + `Gate@login` (no CRC). **POST API** `/api/v1/auth|noauth/{Module}/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — action **MUST NOT** `crcCheck()` again. Wrap login-only handlers in `if (Auth::isLogged() === true)`. `AIRULES/03`, `AIRULES/32`
 - **MUST:** `initializeRoutes()` = this module’s prefixes only. **MUST NOT** `['*']` unless the user asked for a global hook. **MUST NOT** `include` another module to list or show its about/changelog (`AIRULES/03`)

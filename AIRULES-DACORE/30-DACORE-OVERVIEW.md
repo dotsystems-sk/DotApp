@@ -21,7 +21,8 @@ Treat `app/modules/DACore/` like `app/parts/` **by default**. DACore is shipped 
 | **Never write into `{prefix}users_rights*` directly** | Use `DACore:Rights@*` |
 | **Never duplicate the admin HTML shell** | Use `DACore:Page@withMenu!` |
 | **Never use `$_SESSION` / `session_start()`** | **MUST** `DSM::use('Shop')` ([20](20-CACHE-LOGGER-SESSION.md)) |
-| **Never rely on `#DACore:AuthTest@check!` for permission checks** | It ignores the rights you pass — see [36](36-DACORE-KNOWN-ISSUES.md); create your own `Middleware/Rights.php` |
+| **Never rely on `#DACore:AuthTest@check!` for permission checks** | It ignores the rights you pass — see [36](36-DACORE-KNOWN-ISSUES.md). **New modules:** `Guard::protect()` + `Guard::rights()` ([32](32-DACORE-RIGHTS.md) §3). Modules from before 1.0.62 keep their own `Middleware/Rights.php` |
+| **Record security-relevant actions** in the audit log | `DACore:Audit@record!` after the persist — never your own activity table, never `dacore_audit_log` directly ([47](47-DACORE-AUDIT-LOG.md)) |
 | Register menu/rights/tools **from `Installation.php`**, not on every request | Otherwise you write to the DB on each page load |
 | Push inbox notifications **on the event** | `DACore:Notifications@push` — not installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)) |
 | Sending mail from a module | Open [38](38-DACORE-EMAIL.md) — do not invent SMTP |
@@ -62,6 +63,8 @@ Editable paths **by default:** `app/config.php` and `app/modules/<YourModule>/` 
 | Register / update AI tool | `DACore:AITools@register` | `bool` |
 | Delete AI tool | `DACore:AITools@delete` (alias `@unregister`) | `bool` |
 | Push inbox notification | `DACore:Notifications@push` | `bool` |
+| Write an audit-log row (1.0.62) | `DACore:Audit@record!` ([47](47-DACORE-AUDIT-LOG.md)) | `bool` (`false` when the operator filtered it out) |
+| Protect a module's routes (1.0.62) | `Guard::protect('Shop')` + `Guard::rights([...])` ([32](32-DACORE-RIGHTS.md) §3) | prefixes array / `before` closure |
 | Send mail via DACore senders | `DACore:Email@…!` ([38](38-DACORE-EMAIL.md)) | `true` / `string[]` / `{ok,…}` |
 | Send SMS via DACore drivers | `DACore:Sms@…!` ([39](39-DACORE-SMS.md)) | `{ok, message_id, message, errors}` |
 | Register IP geo driver | `DACore:IpGeoDriver@registerDriver!` (not HTTP) | `{ok, id, driver_key}` |
@@ -103,6 +106,8 @@ Prefix reminder: `#` = Middleware namespace, `*` = Models namespace, trailing `!
 | `dacore_email_templates` | Operator HTML templates (DACore-owned — **never write**) |
 | `dacore_sms_senders` | SMS driver registry (DACore-owned — **never write**; `Sms@registerSender` / `Sms@send` only) |
 | `dacore_ip_geo_drivers` | IP geolocation driver registry (DACore-owned — **never write**; `IpGeoDriver@registerDriver` only). Reserved built-in key `dacore.default` / creator `DACore`. |
+| `dacore_audit_log` | Administration trail (1.0.62): actor, action, target, IP, JSON details (DACore-owned — **never read or write**; `DACore:Audit@record!` only) |
+| `dacore_rate_limits` | Per-IP counters for public forms such as registration (1.0.62; DACore-owned — **never write**) |
 | `dacore_user_origins` | Origin catalog (1.0.10): autoincrement `id`, unique token, **`creator`** (install/uninstall identity), **`dacore_login`**. Plugins **MUST** `UserPolicy@registerOrigin` / `@removeOrigin` — never write this table. |
 | `dacore_users_profiles` | Per-user display name, locale, **origin** token, **`origin_id`**, **allow_tfa_*** / **allow_firewall_ip**, and **extra1…extra5** (1.0.9–1.0.10). Plugins **MUST** use `DACore:UserPolicy@*` — never `UPDATE` this table from another module. |
 
@@ -240,7 +245,7 @@ Config::module('DACore', 'AI', array_replace(
 
 | Event | Arguments |
 |-------|-----------|
-| `DACore.login.before` | `$email, $password, $rememberMe` |
+| `DACore.login.before` | `$email, $passwordHash, $rememberMe` — since 1.0.62 the second argument is a **bcrypt hash**, never the typed password. It equals `{prefix}users.password` only when the password is correct; otherwise it is a fresh hash that matches nothing |
 | `DACore.login.after` | `$login` (Auth result array) |
 | `DACore.permissions.refresh` | none |
 | `DACore.ai.chat.active` | none |
@@ -274,4 +279,5 @@ Reminder from [12](12-SERVICES.md): `trigger()` **ignores listener return values
 | List pager (HTML, classes, AJAX) | [40](40-DACORE-LIST-PAGER.md) | [EX-D08](examples/EX-D08-list-pager.md) |
 | Dashboard widgets + settings panels | [42](42-DACORE-UI-CONTRIBUTIONS.md) | — |
 | Outbound HTTPS/HMAC webhooks | [43](43-DACORE-WEBHOOKS.md) | — |
+| Audit log (record operator actions) | [47](47-DACORE-AUDIT-LOG.md) | — |
 | DACore quirks | [36](36-DACORE-KNOWN-ISSUES.md) | — |

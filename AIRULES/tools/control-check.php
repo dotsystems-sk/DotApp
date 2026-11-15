@@ -295,6 +295,25 @@ foreach ($urlHits as $hit) {
     }
 }
 
+// ----------------------------------------------------------- STATIC-PARAM
+// Why: STATIC_ROUTE compares the literal path text, so a path with a parameter or wildcard never matches.
+if ($init !== '' && preg_match_all('~Router::(?:get|post|put|delete|patch|match|any)\s*\((?:(?!Router::(?!STATIC_ROUTE)|;).)*?STATIC_ROUTE~s', $init, $m, PREG_OFFSET_CAPTURE)) {
+    foreach ($m[0] as $hit) {
+        // About: the path is everything before the handler; only quoted text can carry a parameter.
+        if (preg_match_all('~(["\'])((?:(?!\1).)*)\1~s', $hit[0], $q)) {
+            foreach ($q[2] as $text) {
+                if (strpos($text, '@') !== false) {
+                    break;
+                }
+                if (preg_match('~[{*]~', $text)) {
+                    $add('STATIC-PARAM route with a parameter is registered as STATIC_ROUTE and never matches', $dir . '/module.init.php', cc_line($init, $hit[1]), trim($text) . '  -> remove Router::STATIC_ROUTE (AIRULES/03)');
+                    break;
+                }
+            }
+        }
+    }
+}
+
 // ------------------------------------------------------------- PHP-STATUS
 // Why: HTTP 4xx/5xx skips .after()/the load success callback, so reply.message never reaches the toast.
 foreach ($phpFiles as $file) {

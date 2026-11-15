@@ -171,6 +171,7 @@ Theory lives in `00`–`25` (framework), `30`–`40` (DACore), and **[41](41-MOD
 | **[42-DACORE-USER-ORIGIN.md](42-DACORE-USER-ORIGIN.md)** | **User origin (LAW)** — global identity/session trust model; checked register/create/stamp/read; exact-origin login+2FA+every gate/list/write; generic failures; ASK before DACore-replacement admin; no RCE/IDOR/escalation |
 | **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth + PLAN folder (LAW)** — plan **in files, not in a planner** (§0b), dated log (§0c); write `app/modules/<This>/PLAN/` (split files) then implement from it. Packs read host `AIRULES/`, not host `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p, §2s) |
 | **[46-DACORE-EXTRA-CONTRACTS.md](46-DACORE-EXTRA-CONTRACTS.md)** | **Reserved `extra1`…`extra5` index (LAW)** — slot grammar, `listByContract!`; deep I/O in **[46-contracts/](46-contracts/README.md)** (template: [filemanager.md](46-contracts/filemanager.md)); hosts MUST NOT invent tokens |
+| **[47-DACORE-AUDIT-LOG.md](47-DACORE-AUDIT-LOG.md)** | **Audit log (DACore 1.0.62)** — record security-relevant operator actions with `DACore:Audit@record!` after the persist; never an own activity table, never `dacore_audit_log` directly. Route protection for new modules: `Guard::protect()` + `Guard::rights()` ([32](32-DACORE-RIGHTS.md) §3) |
 | [cursor/](cursor/) | Cursor IDE: **source** `AGENTS.md` + `.mdc` rules. Agent **MUST** copy them into `.cursor/rules/` ([00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md)) |
 
 ## Critical: return values

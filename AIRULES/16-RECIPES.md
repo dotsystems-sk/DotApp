@@ -97,12 +97,12 @@ Protect with an API key before-hook if public. Full return-value rules: [18](18-
 ## R6 — Bridge function
 
 Template button with `{{ dotbridge:on(click)="ping()" }}`.  
-In `initialize` or a loaded controller registrar:
+In `initialize()`; `$pageUrl` is the URL of the page with the button and is also listed in `initializeRoutes()`:
 
 ```php
-$dotApp->bridge->fn('ping', function ($request) {
+Router::bridge($pageUrl, 'ping', function ($request) {
     return ['pong' => true];
-});
+}, Router::STATIC_ROUTE);
 ```
 
 ---

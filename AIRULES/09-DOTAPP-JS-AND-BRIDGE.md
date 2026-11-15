@@ -698,7 +698,7 @@ Full copy-paste (new lib + port skeleton): [examples/EX-15-dotapp-js-library.md]
 ### Template syntax — all modifiers
 
 ```html
-<input type="text" dotbridge="email" />
+<input type="text" {{ dotbridge:input="email" }} />
 <button {{ dotbridge:on(click)="ping(email)" regenerateId oneTimeUse rateLimit(60,10) internalID(shop.ping) expireAt(1767225600) url(/shop/bridge) }}>
   Ping
 </button>
@@ -721,18 +721,25 @@ Built-in input filters for `dotbridge:input`: `email`, `url`, `phone`, `password
 ### PHP registration
 
 ```php
-$dotApp->bridge->fn('ping', function ($request) {
+// Bound to the URL of the page that shows the button (the call is POSTed to that same URL).
+// $pageUrl MUST also be in initializeRoutes(), or the module is asleep when the call arrives.
+Router::bridge($pageUrl, 'ping', function ($request) {
     $email = $request->data(true)['data']['email'] ?? '';
     if ($email === '') {
         return ['ok' => false, 'message' => 'Missing email'];
     }
     return ['ok' => true];
-})
-->before(function ($request) { /* optional */ })
-->after(function ($request) { /* optional */ });
+}, Router::STATIC_ROUTE);
+
+// Controller string form (preferred):
+Router::bridge($pageUrl, 'ping', 'Shop:Home@ping!', Router::STATIC_ROUTE);
 ```
 
 The return value becomes the `body` of the JSON response. Non-callable handler → **`\Exception`**.
+
+**MUST (verified 2026-11-15 on core 2.1.0):** register with `Router::bridge($url, $name, $handler, Router::STATIC_ROUTE)` (closure or controller string) or `Bridge::listen(...)` with the same arguments. `$dotApp->bridge->fn('name', …)` called from `initialize()` answered **404 / error_code 3** for the same button. The input **MUST** be declared with `{{ dotbridge:input="name" }}` (renders `dotbridge-input="name"`); a bare `dotbridge="name"` attribute is not collected and the value is missing from `$request->data(true)['data']`.
+
+**Port:** `dotapp.js` posts bridge and `fo-rm` requests to `protocol//hostname` (no port). An app served on a non-standard port sends them to the default port — serve the app on 80/443.
 
 ### JS hooks
 

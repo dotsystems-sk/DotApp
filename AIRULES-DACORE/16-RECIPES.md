@@ -104,7 +104,7 @@ Template button with `{{ dotbridge:on(click)="ping()" }}`.
 In `initialize` or a loaded controller registrar:
 
 ```php
-$dotApp->bridge->fn('ping', function ($request) {
+Router::bridge($pageUrl, 'ping', function ($request) {   // $pageUrl = URL of the page with the button; close with "}, Router::STATIC_ROUTE);"
     return ['pong' => true];
 });
 ```

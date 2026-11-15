@@ -17,7 +17,9 @@ DACore is an admin-UI **module**, not framework core — by default its files ar
 - `INSERT`/`UPDATE`/`DELETE` on `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders`, `{prefix}users_rights*`
 - Build your own admin HTML shell
 - Use `#DACore:AuthTest@check!` as a permission guard — **it ignores the rights you pass**
-- Register admin routes when `Auth::isLogged()` is false — those pages **MUST NEVER** render for anonymous users. **MUST** prefix `{prefixUrl}/{ModuleName}` + `Gate@login` 403 (`AIRULES/03`, `AIRULES/32`)
+- Register admin routes when `Auth::isLogged()` is false — those pages **MUST NEVER** render for anonymous users. **MUST** `Guard::protect('{ModuleName}')` (`AIRULES/32` §3)
+- Scaffold `Middleware/Gate.php` / `Middleware/Rights.php` in a **new** module — DACore `Guard` does login, live session, CRC, and rights. Modules from before DACore 1.0.62 keep theirs
+- Keep an own activity table for operator actions, or touch `dacore_audit_log` — record with `DACore:Audit@record!` after the persist (`AIRULES/47`)
 - Register menu / rights / AI tools on every request (do it in **your** `Installation.php`)
 - Push inbox notifications from the installer or every request — `DACore:Notifications@push` on the event only (`AIRULES/37`)
 - Invent SMTP in a DACore-bound module — **read** `AIRULES/38` first
@@ -49,22 +51,23 @@ Check every return value: `bool` helpers never throw and never log.
 
 ## Admin route pattern
 
-**MUST:** `{prefixUrl}/{ModuleName}/…` for HTML (e.g. `/dacore/Shop/items`) + `Gate@login`. **POST:** `/api/v1/auth|noauth/Shop/…` + `#DACore:AuthTest@LoginAndCRC!` / `@CRC!` at the start of `initialize()` — then **MUST NOT** `crcCheck()` in the action. Register handlers only when `Auth::isLogged() === true`. Still `#Shop:Rights@check!`. `AIRULES/03`, `AIRULES/32`.
+**MUST (new modules, DACore 1.0.62+):** `Guard::protect('Shop')` at the start of `initialize()`. It binds `{prefixUrl}/Shop/…` for HTML (signed in + live session) and POST `/api/v1/auth|noauth/Shop/…` (CRC, token burned once) — then **MUST NOT** `crcCheck()` in the action. Register handlers only when `Auth::isLogged() === true`. Per route: `->before(Guard::rights([...]))`. **MUST NOT** scaffold `Gate` / `Rights` middleware. `AIRULES/32` §3.
 
 ```php
-$admin = rtrim((string) Config::module("DACore", "prefixUrl"), "/") . "/Shop";
-$authApi = "/api/v1/auth/Shop";
-Router::before([$admin, $admin . "/*"], "#Shop:Gate@login!");
-Router::before(["POST"], [$authApi, $authApi . "/*"], "#DACore:AuthTest@LoginAndCRC!");
+use Dotsystems\App\Modules\DACore\Middleware\Guard;
+
+$urls = Guard::protect("Shop");   // admin, api, open
 if (Auth::isLogged() === true) {
-    Router::get($admin . "/items", "Shop:Admin@items!")
-        ->before(function ($request) {
-            return DotApp::call("#Shop:Rights@check!", $request, ['dotapp.root', 'Shop.items.view']);
-        });
+    Router::get($urls["admin"] . "/items", "Shop:Admin@items!")
+        ->before(Guard::rights(["Shop.administrator", "Shop.items.view"]));
+    Router::post($urls["api"] . "/items/save", "Shop:Admin@save!", Router::STATIC_ROUTE)
+        ->before(Guard::rights(["Shop.administrator", "Shop.items.edit"]));
 }
 ```
 
-Permissions are `"{module}.{rightname}"`. Always include `dotapp.root`.
+Permissions are `"{module}.{rightname}"`. `dotapp.root` always passes in `Guard::rights` — do not list it.
+
+**Existing modules (before 1.0.62)** keep `#Shop:Gate@login!` + `#DACore:AuthTest@LoginAndCRC!` + `#Shop:Rights@check!` with `dotapp.root` in every list (`AIRULES/32` §3b). Do not rewrite them unless asked. Where another rule says `Gate@login` / `Rights@check`, a new module reads it as `Guard`.
 
 ## Page rendering
 

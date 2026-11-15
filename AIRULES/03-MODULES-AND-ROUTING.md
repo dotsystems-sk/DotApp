@@ -276,6 +276,14 @@ Third argument:
 - `Router::STATIC_ROUTE` (`true`) — exact URL match (fast)
 - `Router::DYNAMIC_ROUTE` (`false`, default) — pattern matching
 
+**Static only for a literal path (MUST — law).** `STATIC_ROUTE` compares the path text with the request path (`$path == getPath()`); nothing is parsed.
+
+- **MUST** pass `Router::STATIC_ROUTE` only when the path has no `{`, `}`, `*`, `?` or `:` — a fixed URL such as `/shop/items` or `/api/v1/auth/Shop/items/save`.
+- **MUST** leave the third argument out (dynamic) for every path with a parameter or wildcard: `{id}`, `{id:i}`, `{token}`, `{x?}`, `{path*}`, `/files/*`, `{not:…}`.
+- **MUST NOT** write `Router::get('/shop/item/{token}', …, Router::STATIC_ROUTE)`. The literal text `{token}` never equals a real URL, so the route **never matches**, `$request->matchData()` stays empty and the request falls through to the next route or to 404 — with no error anywhere.
+- A helper that adds `STATIC_ROUTE` for you **MUST NOT** be given a path with a parameter. Register that route with a direct `Router::get()` / `Router::post()`.
+- Check: `grep -nE "Router::(get|post|match|any)\(.*[{*].*STATIC_ROUTE" app/modules/<Module>/module.init.php` prints nothing, and `php AIRULES/tools/control-check.php <Module>` has no `STATIC-PARAM` line.
+
 Returns a chain object: `->before()`, `->after()`, `->middleware()` (= alias of `before`), `->throttle()`, `->limitExceeded()`.
 
 ### Callback forms

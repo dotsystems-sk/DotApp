@@ -89,6 +89,14 @@ class Validator {
             $value = $input[$field] ?? null;
             $subRules = explode('|', $ruleString);
 
+            // Oprava: nepovinne pole. Prazdna hodnota (null, '' alebo []) sa bez pravidla required / present / set
+            // dalsimi pravidlami neoveruje. Predtym prazdny nepovinny e-mail neprešiel pravidlom email.
+            $ruleNames = array_map(function ($r) { return trim(explode(':', $r, 2)[0]); }, $subRules);
+            $isEmptyValue = ($value === null || (is_string($value) && trim($value) === '') || (is_array($value) && count($value) === 0));
+            if ($isEmptyValue && !array_intersect($ruleNames, ['required', 'present', 'set', 'not_empty_array'])) {
+                continue;
+            }
+
             foreach ($subRules as $subRule) {
                 $parts = explode(':', $subRule, 2);
                 $ruleName = trim($parts[0]);
@@ -442,15 +450,19 @@ class Validator {
      */
     public static function isDate($text): bool
     {
-        if (!is_string($text)) {
+        if (!is_string($text) || trim($text) === '') {
             return false;
         }
-        try {
-            new \DateTime($text);
-            return true;
-        } catch (\Exception $e) {
+        // Oprava: new \DateTime() prijalo aj relativne vyrazy ('tomorrow', '+1 day'). Datum musi mat den, mesiac aj rok
+        // a musi existovat v kalendari.
+        $parsed = date_parse($text);
+        if ($parsed['error_count'] > 0 || $parsed['warning_count'] > 0 || isset($parsed['relative'])) {
             return false;
         }
+        if ($parsed['year'] === false || $parsed['month'] === false || $parsed['day'] === false) {
+            return false;
+        }
+        return checkdate($parsed['month'], $parsed['day'], $parsed['year']);
     }
 
     /**

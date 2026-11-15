@@ -260,6 +260,8 @@ Prefer `php dotapper.php` generators. Run from project root. Put `--module=` **b
 | **Dashboard widgets + settings panels** | `AIRULES/42-DACORE-UI-CONTRIBUTIONS.md` |
 | **Outbound webhook drivers** | `AIRULES/43-DACORE-WEBHOOKS.md` |
 | **Framework / DB / module backups** | `AIRULES/44-DACORE-BACKUPS.md` |
+| **Audit log (record operator actions)** | `AIRULES/47-DACORE-AUDIT-LOG.md` — `DACore:Audit@record!` after the persist |
+| **Route guard for new DACore modules** | `AIRULES/32-DACORE-RIGHTS.md` §3 — `Guard::protect()` + `Guard::rights()`; no own `Gate` / `Rights` middleware |
 | **Outbound HTTPS/HMAC webhooks** | `AIRULES/43-DACORE-WEBHOOKS.md` |
 | **User origin / custom login / shop accounts** | `AIRULES/42-DACORE-USER-ORIGIN.md` |
 | **Extender (judge — not every method)** | `AIRULES/12-SERVICES.md` §10 (sample: `AIRULES/examples/EX-17-extender.md`) |

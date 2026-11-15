@@ -377,3 +377,11 @@ Also avoid `DB::migrate()` — **no driver implements it**.
 | `DB::transaction(fn)` | `transaction()/commit()/rollback()` or `transact()` |
 
 **MUST:** Every table owned by a module is named `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never create unprefixed tables (`items`) or put module data under `dotapp_*`. Core auth tables use `Config::db('prefix')` only. Never name your tables `dacore_*`. See [07](07-SCHEMA-AND-INSTALL.md) §3.
+
+---
+
+## 11. Verified traps (2026-11-15, core 2.1.0)
+
+- **`raw()` + `paginate()`:** `paginate()` on a query written with `$qb->raw()` returned `total => 1`, `last_page => 1` for a 3-row table. Paginate with the builder, or write `LIMIT :lim OFFSET :off` plus a separate `COUNT(*)` yourself.
+- **New entity:** attributes passed to `DB::module('ORM')->newEntity([...])` are not treated as changes — `save()` reported success and inserted nothing. Create with `newEntity([])`, call `table('…')`, assign properties, then `save($ok, $err)`.
+- **Named parameters in `raw()`:** `raw('… WHERE id = :id', ['id' => $id])` is the readable form for hand-written SQL. The same `:name` may appear several times with one binding. A missing binding, mixing `:name` with `?`, or a `?` inside an SQL comment **throws**.

@@ -64,7 +64,7 @@ Throws `\InvalidArgumentException` for: parameter type mismatch, unknown rule, m
 | `regex:pattern` | | one full pattern |
 | `unique` | | optional array-column key |
 
-**Traps:** `min`/`max` are lengths; `boolean` rejects `"true"`/`1`; every rule runs even on empty values (no auto-skip).
+**Traps:** `min`/`max` are lengths; `boolean` rejects `"true"`/`1`; an **empty** value (`null`, `''`, `[]`) is checked only when `required` / `present` / `set` / `not_empty_array` is among the rules — otherwise the field is optional and passes (core fix 2026-11-15; on older cores every rule ran on empty values, so an empty optional e-mail failed `email`); `date` requires a real calendar date with day, month and year (`'tomorrow'`, `'+1 day'`, `'2026-02-30'` fail since the same fix) — for one fixed shape add `regex:/^\d{4}-\d{2}-\d{2}$/|date`.
 
 ### Static helpers (all return `bool`)
 

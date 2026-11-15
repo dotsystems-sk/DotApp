@@ -60,4 +60,4 @@ $dotapp().form('#saveForm')
 
 ## Bridge
 
-Template `{{ dotbridge:on(click)="fn(args)" }}` + `$dotApp->bridge->fn('fn', ...)`.
+Template `{{ dotbridge:on(click)="fn(args)" }}` + inputs `{{ dotbridge:input="name" }}` + `Router::bridge($pageUrl, 'fn', $handler, Router::STATIC_ROUTE)` (page URL also in `initializeRoutes()`).
