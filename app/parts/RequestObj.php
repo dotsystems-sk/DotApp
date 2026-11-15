@@ -586,8 +586,9 @@ class RequestObj {
         $data = $dataArray['data'] ?? null;
         $crc = $dataArray['crc'] ?? null;
 
-        // Verify CRC using crc_check from DotApp
-        $privateKey = $_SESSION['module_users_ckey'] ?? $this->dotApp->encKey();
+        // CRC key = the app encryption key. encKey() returns the key already run through
+        // key2_upgrade() in the constructor, i.e. the derived key, not the raw config c_enc_key.
+        $privateKey = $this->dotApp->encKey();
         $result = $this->dotapp->crc_check($privateKey, $crc, $data);
     
         // If data or crc is missing, log warning and return false
