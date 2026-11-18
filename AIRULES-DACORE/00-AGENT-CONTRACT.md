@@ -261,6 +261,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 |-------|-----|-----------------------------|
 | **CRC once** | Count `crcCheck(` on **this POST’s** pipeline (middleware + `before` + `#DACore:AuthTest@CRC!` / `LoginAndCRC!` + action) **and** the action’s first PHPDoc line `CRCchecking —` | Two calls (first **burns** the token); CRC on GET/HTML login `before`; CRC on `$request->upload()`; action `crcCheck()` after a CRC API prefix; PHPDoc names a CRC prefix **and** the action still `crcCheck()`; controller/middleware public method with no `CRCchecking —` first line ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **IDs encrypted** | Views / JS / JSON: `value=`, `data-*`, hidden, payload, **path `href` / `{token}`** | Plain `7` / `{{ var: $id }}` as an id sent to the browser. **MUST** `{{ enc(Shop.item.id): $id }}` with a unique `$key2` for form/`data-*`. **Path / `redirectTo` / `{token}`:** **MUST** seal `Crypto::encrypt` to `[A-Za-z0-9_-]+` (base64url, no padding) — Apache treats path `%2F` as a slash and **404s**. Decrypt opens then `Crypto::decrypt`; **MUST** accept leftover standard base64. **MUST NOT** put `{{ enc }}` into a path (it is still `+/`). Decrypt `=== false` → reject. Still `Auth::can` / ownership. **Pager:** encrypted `data-page` ([40](40-DACORE-LIST-PAGER.md), [11](11-AUTH-AND-CRYPTO.md) §8, [33](33-DACORE-PAGES-AND-UI.md) §13) |
+| **DACore raw SQL (new code)** | Only the queries **added in this chunk** in DACore or a DACore-bound module — existing statements are not checked | A new QueryBuilder chain (`->select(` / `->from(` / `->where(` / `->insert(` / `->update(` / `->delete(`) or new ORM (`Entity`, `hasMany(`) that the user did not explicitly ask for; a one-line bindings array instead of one `'name' => $value` per line; `?` instead of `:name`; `SELECT *`; `UPDATE` / `DELETE` without `WHERE`; a one-row identity read that does not compare the returned id with the requested one; converting an existing chain nobody asked to convert ([06](06-DATABASE.md) §4, §2w) |
 | **Queries bound** | Every SQL in the chunk | User input concatenated into SQL; `$qb->raw()` `?` that is not a binding (comments / `COMMENT` count); mix `?` and `:named` |
 | **Inputs** | Request + persist | Persist / password / URL / HTML / hash from `$request->data()` not `data(true)` (`protect()` rewrites `=` so `?q=` becomes `?&#61;`); SQL write not bound (`:name` / QueryBuilder values); missing `form()` / `Validator` where required; persist with only an FE overlay — PHP **MUST** still refuse (if the plan named step-up, PHP still refuses without a valid code) |
 | **Middleware / route conflicts** | `module.init.php` + Middleware vs the action | Login `before` missing **or** handlers outside `Auth::isLogged()`; CRC layer **and** action `crcCheck()`; CRC on a GET gate; `#DACore:AuthTest@check!` used as a rights guard (it **ignores** passed rights — use `#YourModule:Rights@check!`) |
@@ -729,6 +730,25 @@ Compact: `AIRULES/cursor/rules/31-final-control.mdc`.
 - `card-footer` / `pb-3` / `pb-4` / `pt-0` / `px-4` / `border-0` for spacing — no CSS rule in the DACore shell
 
 Compact: `AIRULES/cursor/rules/32-control-slice.mdc`.
+
+### 2w. New DACore code: `$qb->raw()` is the default (MUST — law)
+
+DACore runs on MySQL / MariaDB only, so a database-neutral builder buys nothing there. A builder defect once dropped a `WHERE` and the autologin read the first row of the users table. Builder chains and ORM are **allowed**; this law fixes which one the agent writes when nothing was said. It applies to **new code** for DACore and for **every DACore-bound module**. The framework core (`app/parts/`, `app/DotApp.php`) can run on other database types and keeps the QueryBuilder.
+
+**MUST**
+
+1. Write a new query as `$qb->raw($sql, $bindings)` with `:named` parameters, one clause per line, with an explicit column list — unless the user **explicitly** asked for the QueryBuilder or for ORM for that work.
+2. Write the bindings as a multi-line array, one `'name' => $value` per line — never `['a' => $a, 'b' => $b]` on one line.
+3. Give every `UPDATE` / `DELETE` a `WHERE`.
+4. Make one-row identity reads fail closed with any of the three styles: unique key + `LIMIT 1`, then compare the returned id / key with the requested one in PHP.
+
+**MUST NOT**
+
+- Pick the builder or ORM by own judgement, ask which one to use, or read "make it shorter" / "like the rest of the file" as that request
+- Convert builder chains or ORM that already exist — they stay as they are and are not a finding
+- `?` placeholders or `SELECT *` in a new `raw()` statement
+
+Canonical: [06](06-DATABASE.md) §4 "DACore: `raw()` is the default for new code". Compact: `AIRULES/cursor/rules/33-dacore-raw-sql.mdc`.
 
 ---
 

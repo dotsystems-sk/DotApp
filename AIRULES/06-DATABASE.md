@@ -237,6 +237,51 @@ $qb->raw("CREATE TABLE `shop_x` ( `id` INT COMMENT 'SMS?' )", []);
 $qb->raw("CREATE TABLE `shop_x` ( `id` INT COMMENT 'SMS optional' )", []);
 ```
 
+### Query style and database type (**MUST** — ask when planning)
+
+QueryBuilder is the default. It stays valid when the app is not tied to one database. Hand-written SQL through `$qb->raw()` is the readable choice when the person says the app stays on one engine (usually MySQL or MariaDB) and they want that style. ORM is used when they ask for ORM.
+
+**When planning** work that reads or writes the database, **ASK** two things and record the answers in `PLAN/05-asks.md`:
+
+1. Which database this app uses: MySQL / MariaDB, SQLite, PostgreSQL, or the driver already set in Config.
+2. Whether **new** queries should be QueryBuilder chains or `$qb->raw()`.
+
+No answer → QueryBuilder. Do not treat silence, or another product's MySQL-only default, as a request for raw SQL.
+
+A small change keeps the style already in that file. Do not convert existing chains, raw statements, or ORM to the other style unless they asked. Ask again only when the module has no recorded answer (new module, first database surface, rewrite).
+
+When they chose raw on a named engine:
+
+```php
+$rows = DB::module('RAW')->q(function ($qb) use ($userId) {
+    $qb->raw(
+        'SELECT `id`, `email`, `status`
+           FROM `shop_customers`
+          WHERE `user_id` = :user_id
+            AND `status` = :status
+          ORDER BY `id` DESC
+          LIMIT 20',
+        [
+            'user_id' => $userId,
+            'status' => 1
+        ]
+    );
+})->all();
+$row = $rows[0] ?? null;
+```
+
+- One clause per line. Bindings are one `'name' => $value` per line. Parameters are `:named`.
+- Name tables and columns for the engine they named. With no engine named, stay on the builder — do not invent MySQL-only SQL.
+- Explicit columns. `UPDATE` and `DELETE` carry a `WHERE`, or a `// Why:` line when the statement really targets the whole table.
+- A one-row read that decides identity or ownership uses the unique key and `LIMIT 1`, then PHP compares the returned id with the requested one and refuses on a mismatch or an empty result. The same check applies to the builder and to ORM.
+- `IN (...)` uses `:id0, :id1, …` with one binding each. Table and column names come from constants or a whitelist ([24](24-ATTACK-VECTORS.md) §1).
+- Paging on raw SQL is your own `COUNT(*)` plus `LIMIT` / `OFFSET`. `paginate()` on `$qb->raw()` is the wrong tool (§11).
+- Writes keep `execute($ok, $err)` with both callbacks.
+
+`app/parts/` and `app/DotApp.php` keep the QueryBuilder. This section does not rewrite them.
+
+Law: [00](00-AGENT-CONTRACT.md) §2v. Compact: `AIRULES/cursor/rules/33-query-style.mdc`.
+
 ### Not implemented (do not use)
 
 `whereExists`, `whereColumn`, `selectRaw`, `count()` — and on `Databaser`: `whereHas`, `whereDoesntHave`, `withCount`, `with()` are **stubs that never reach SQL**.

@@ -237,6 +237,73 @@ $qb->raw("CREATE TABLE `shop_x` ( `id` INT COMMENT 'SMS?' )", []);
 $qb->raw("CREATE TABLE `shop_x` ( `id` INT COMMENT 'SMS optional' )", []);
 ```
 
+### DACore: `raw()` is the default for new code (**MUST** — law)
+
+DACore runs on MySQL / MariaDB only. A database-neutral builder buys nothing there, and it hides which rows a statement touches. A builder defect once dropped a `WHERE`, and the autologin read the **first row of the users table** instead of the account that owned the token. A statement written by hand cannot lose its `WHERE` silently, and a person reads it faster than a chain.
+
+The QueryBuilder is still the entry point — `DB::module('RAW')->q(function ($qb) { ... })` — and `$qb->raw()` is its method for hand-written SQL. Builder chains and ORM are **not forbidden**. This section says which one is the **default and correct choice** when nothing else was said.
+
+**Applies to new code** written for DACore or for a DACore-bound module. A module that does not plug into DACore follows the rest of this file.
+
+**The framework core is not covered.** Code under `app/parts/` and `app/DotApp.php` can run on other database types, so it keeps the QueryBuilder. **MUST NOT** rewrite core queries to `raw()` because of this section.
+
+| The user said | Write new queries with |
+|---------------|------------------------|
+| nothing about it | `$qb->raw()` |
+| explicitly "use the QueryBuilder" | builder chains |
+| explicitly "use ORM" | ORM |
+
+The agent **MUST NOT** pick the builder or ORM by its own judgement, **MUST NOT** ask which one to use, and **MUST NOT** read a vague wish ("make it shorter", "like the rest of the file") as that request.
+
+**Existing code stays.** Builder chains and ORM already in a file are left as they are — no conversion, no rewrite task, not a finding. A new statement added next to them still follows the default.
+
+```php
+$rows = DB::module('RAW')->q(function ($qb) use ($userId) {
+    $qb->raw(
+        'SELECT `id`, `email`, `status`
+           FROM `shop_customers`
+          WHERE `user_id` = :user_id
+            AND `status` = :status
+          ORDER BY `id` DESC
+          LIMIT 20',
+        [
+            'user_id' => $userId,
+            'status' => 1
+        ]
+    );
+})->all();
+$row = $rows[0] ?? null;
+
+DB::module('RAW')->q(function ($qb) use ($id, $title) {
+    $qb->raw(
+        'UPDATE `shop_items`
+            SET `title` = :title,
+                `updated_at` = :updated_at
+          WHERE `id` = :id',
+        [
+            'title' => $title,
+            'updated_at' => date('Y-m-d H:i:s'),
+            'id' => $id
+        ]
+    );
+})->execute(
+    function () use (&$ok) { $ok = true; },
+    function ($error) { ShopReport::db($error); }
+);
+```
+
+- One clause per line: `SELECT` / `FROM` / `JOIN` / `WHERE` / `AND` / `ORDER BY` / `LIMIT`, `SET` columns under each other.
+- **Bindings are a multi-line array: one `'name' => $value` per line**, indented one level inside `[` and `]`. **MUST NOT** write `['user_id' => $userId, 'status' => 1]` on one line — also when there is a single binding. A person finds a parameter by scanning down, not across.
+- `:named` parameters only, named after the column or its meaning. **MUST NOT** use `?` here.
+- Explicit column list. **MUST NOT** `SELECT *`.
+- `UPDATE` and `DELETE` **MUST** carry a `WHERE`. A statement that really targets the whole table says so in a `// Why:` line above it.
+- **One-row reads fail closed.** A read that decides identity or ownership (login, autologin, remember-me token, reset token, "this record") **MUST** filter on the unique key with `LIMIT 1`, and PHP **MUST** compare the id / key of the returned row with the one that was asked for. An empty result or a mismatch is a refusal — never "use whatever row came back". This holds with `raw()`, with the builder, and with ORM.
+- `IN (...)`: generate `:id0, :id1, …` and bind every value. Table and column names come from constants or a whitelist ([24](24-ATTACK-VECTORS.md) §1), never from the request.
+- Paging: own `COUNT(*)` plus `LIMIT :lim OFFSET :off` ([40](40-DACORE-LIST-PAGER.md)).
+- Writes keep `execute($ok, $err)` with both callbacks and the catch-bus report ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9).
+
+Compact: `AIRULES/cursor/rules/33-dacore-raw-sql.mdc`. Law: [00](00-AGENT-CONTRACT.md) §2w.
+
 ### Not implemented (do not use)
 
 `whereExists`, `whereColumn`, `selectRaw`, `count()` — and on `Databaser`: `whereHas`, `whereDoesntHave`, `withCount`, `with()` are **stubs that never reach SQL**.

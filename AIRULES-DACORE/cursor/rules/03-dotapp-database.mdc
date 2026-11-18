@@ -33,7 +33,8 @@ Persist the whole handler in `try/catch`. The `$err` callback is **not** a subst
 
 ## Bindings
 
-- Prefer QB `where` / `insert` / `set` (auto-bound)
+- **New code for DACore and DACore-bound modules (LAW):** default is hand-written `raw($sql, $bindings)` with `:named`, bindings one per line. QB chains / ORM only when the user explicitly asked; existing chains stay (`33-dacore-raw-sql.mdc`, `AIRULES/06-DATABASE.md` §4)
+- A module that does not plug into DACore: prefer QB `where` / `insert` / `set` (auto-bound)
 - `raw($sql, $bindings)`: use `?` **or** `:named` — never both
 - Never interpolate user input into SQL
 

@@ -22,6 +22,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 4. Never invent APIs — if missing from AIRULES, read `app/parts/<Class>.php` (read-only)
 5. **Cursor credits:** when planning programming, **ASK** before expensive models. Subagents **inherit**. Composer 2.5 = file hunt only, not the coder. (`AIRULES/00` §2b)
 6. **PHP version:** when planning programming, **ASK** 7.4+ (default) vs a higher PHP. No answer → 7.4+. (`AIRULES/00` §2i)
+6b. **Database and query style:** when planning database work, **ASK** the engine and QueryBuilder vs `$qb->raw()`. No answer → QueryBuilder. A small edit keeps the style already in the file. (`AIRULES/00` §2v, `33-query-style.mdc`)
 7. **Planning depth:** new module / first surface / rewrite — extremely detailed inventory (every nav item or `No menu`, every page, tab, control). Write it in `app/modules/<This>/PLAN/` then implement from that folder. A long plan is correct. (`AIRULES/00` §2k + §2o, `AIRULES/45`)
 8. **Debug:** if the user asks why a form/login/AJAX fails, read `AIRULES/23-DEBUG-PLAYBOOK.md` and grep `crcCheck` in middleware **before** guessing a core bug.
 9. **Finish gate (LAW):** after **every** code chunk, grep CRC / IDs / SQL / inputs / middleware (`AIRULES/00` §2c). Do not claim done without it.
@@ -74,6 +75,7 @@ This is **DotApp**, not Laravel/Symfony/Blade/Eloquent/jQuery.
 - Module hooks (LAW): useful side-effects MUST `Events::trigger('module.{mod}.{name}.hook')` + Hook/Why/About/Params/Use block + `app/modules/<M>/.hooks` — NOT every save; NOT secrets; NOT patch the other module; pre-action stop = `triggerWithVeto()` + `Veto` (`AIRULES/41`, EX-16)
 - Extender (judge — not every method): owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues; `extend()` in `Listeners::register()`; target listener routes; own Module routes or `[]`; controller string preferred — NOT `next()`, marker response, `.loaded` for initialize-time, global `['*']` just to attach, Events, `$request`/secrets, duplicate (`AIRULES/12` §10, EX-17)
 - PHP 7.4+ (ASK in the plan): default floor; no `match` / `?->` / union `mixed` / named args / promotion / attributes / `enum` / `readonly` / `str_contains` unless they named a higher version (`AIRULES/00` §2i)
+- Query style (ASK in the plan): database type + QueryBuilder (default) vs `$qb->raw()` on a named engine. Do not convert an existing file. (`AIRULES/00` §2v, `AIRULES/06`)
 - Installer DDL: probe `SHOW TABLES LIKE` / `information_schema` then `CREATE`/`ALTER` — NOT `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` / `ADD INDEX IF NOT EXISTS`. Probes and `ensureTable` run only inside an executing install/uninstall callback (`AIRULES/07` §0)
 - Installer order: append version keys in written dependency order; **MUST NOT** `ksort`/`krsort`/`usort` installer maps (`1.0.10` sorts before `1.0.9`). A callback `return false` is ignored — throw. `AIRULES/07`
 - Planning in files: plan lives in `app/modules/<This>/PLAN/` with ASK answers and a dated log (`AIRULES/00` §2s)

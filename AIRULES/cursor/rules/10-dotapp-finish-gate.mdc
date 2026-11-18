@@ -14,6 +14,7 @@ After **every** code chunk **and** before saying done: **MUST** grep this module
 | **CRC once** | `crcCheck()` in middleware/`before` **and** in the action; CRC on GET; CRC on `$request->upload()`; PHPDoc `CRCchecking —` names a prefix **and** the method still `crcCheck()`; a new public controller/middleware method with no `CRCchecking —` first line |
 | **IDs** | Plain browser id; path token uses raw standard base64 / `{{ enc }}` instead of sealed `[A-Za-z0-9_-]+`; decrypt not checked for `false` |
 | **Queries** | User input in SQL; `$qb->raw()` `?` that is not a binding (comments count) |
+| **Query style** | New database work with no ASK for engine and QueryBuilder vs `$qb->raw()`; new raw/ORM when the answer or the default is QueryBuilder; a file converted without that request (`AIRULES/00` §2v) |
 | **Inputs** | Password/HTML/URL/setting/token/hash from `$request->data()` not `data(true)`; protected copy persisted; persist only gated in JS |
 | **Middleware** | Login `before` missing or handlers outside `Auth::isLogged()`; two CRC layers |
 | **Visible outcome** | Silent `.after()`; success with no toast/status; a named field error with only “could not save”; red input with no sentence under it; the red mark still showing after the person starts typing in that field; typing in one field clears every other field’s error (`AIRULES/00` §2d) |

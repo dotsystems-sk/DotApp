@@ -31,6 +31,10 @@ Persist the whole handler in `try/catch`. The `$err` callback is **not** a subst
 `$exec` keys: `affected_rows, insert_id, num_rows, result, query, bindings` — **empty on cache hit**.
 `paginate()` keys: `data, current_page, per_page, total, last_page, from, to, has_more_pages, prev_page, next_page`.
 
+## Query style (ask when planning)
+
+Default is this builder. When planning database work, **ASK** the engine and whether new queries stay on the builder or move to `$qb->raw()`. No answer → builder. Raw is for a named engine after they asked for it (`AIRULES/00` §2v, `33-query-style.mdc`). A small edit keeps the style already in the file.
+
 ## Bindings
 
 - Prefer QB `where` / `insert` / `set` (auto-bound)

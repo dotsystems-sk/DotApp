@@ -1,0 +1,63 @@
+---
+description: LAW — new code for DACore and DACore-bound modules writes queries as hand-written SQL through $qb->raw() with :named bindings by default; QueryBuilder chains and ORM only when the user explicitly asks
+globs: app/modules/**/*.php
+alwaysApply: true
+---
+
+# New DACore code: `$qb->raw()` is the default (LAW)
+
+Canonical: `AIRULES/06-DATABASE.md` §4 "DACore: `raw()` is the default for new code", `AIRULES/00-AGENT-CONTRACT.md` §2w.
+
+DACore runs on MySQL / MariaDB only, so a database-neutral builder buys nothing there. A builder defect once dropped a `WHERE` and the autologin read the **first row of the users table**. Written SQL shows exactly which rows a statement touches, and a person reads it faster than a chain.
+
+The QueryBuilder is still the entry point — `DB::module('RAW')->q(function ($qb) { ... })` — and `$qb->raw()` is its method for hand-written SQL. Builder chains and ORM are **not forbidden**. This rule says which one is the **default**.
+
+## Applies to
+
+**New code** you write for DACore or for a DACore-bound module (admin pages, rights, menu, installer through DACore).
+
+**Not the framework core.** `app/parts/` and `app/DotApp.php` can run on other database types and keep the QueryBuilder. Do not rewrite core queries to `raw()` because of this rule.
+
+## Default
+
+- No instruction from the user → write `$qb->raw()`.
+- The user explicitly asks for the QueryBuilder → use builder chains for that work.
+- The user explicitly asks for ORM → use ORM for that work.
+- Do not pick the builder or ORM by your own judgement, do not ask which one to use, and do not read "make it shorter" or "like the rest of the file" as that request.
+
+## Existing code stays
+
+Builder chains and ORM that are already in a file **stay as they are**. Do not convert them, do not open a rewrite task, and do not treat them as a finding. New statements you add next to them still follow the default.
+
+## How to write it
+
+```php
+$rows = DB::module('RAW')->q(function ($qb) use ($userId) {
+    $qb->raw(
+        'SELECT `id`, `email`, `status`
+           FROM `shop_customers`
+          WHERE `user_id` = :user_id
+            AND `status` = :status
+          ORDER BY `id` DESC
+          LIMIT 20',
+        [
+            'user_id' => $userId,
+            'status' => 1
+        ]
+    );
+})->all();
+```
+
+- One clause per line: `SELECT` / `FROM` / `JOIN` / `WHERE` / `AND` / `ORDER BY` / `LIMIT`; `SET` columns under each other.
+- **Bindings as a multi-line array: one `'name' => $value` per line**, indented one level inside `[` `]`. Not `['user_id' => $userId, 'status' => 1]` on one line — also when there is only one binding.
+- `:named` parameters only, named after the column or its meaning. Never `?`.
+- Explicit column list. No `SELECT *`.
+- `UPDATE` and `DELETE` carry a `WHERE`. A statement meant for the whole table says so in a `// Why:` line.
+- One-row reads that decide identity or ownership (login, autologin, token, "this record"): `WHERE` on the unique key + `LIMIT 1`, then PHP compares the returned id / key with the one asked for and **fails closed** on a mismatch or an empty result. This applies with `raw()`, with the builder, and with ORM.
+- `IN (...)` lists: generate `:id0, :id1, …` and bind each value. Table and column names come from constants or a whitelist, never from the request.
+- Paging: own `COUNT(*)` + `LIMIT :lim OFFSET :off` (`40-DACORE-LIST-PAGER.md`).
+- Writes keep `execute($ok, $err)` with both callbacks.
+
+## Finish gate
+
+Look only at the queries **you added in this chunk**. A new builder chain (`->select(` / `->from(` / `->where(` / `->insert(` / `->update(` / `->delete(`), new ORM (`Entity`, `hasMany(`), or a one-line bindings array = fail, unless the user explicitly asked for the builder or ORM. Statements that were already in the file are not checked.

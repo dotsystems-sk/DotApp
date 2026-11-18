@@ -18,6 +18,10 @@ When **planning** programming, **ASK** whether more expensive models may be used
 
 When **planning** programming, **ASK** whether to stay on **PHP 7.4+** (the DotApp default) or write for a higher version. If they do not name a higher version: **PHP 7.4+**. **MUST NOT** ship PHP 8+ syntax (`match`, `?->`, union/`mixed`, named args, constructor promotion, attributes, `enum`, `readonly`, `str_contains` / `str_starts_with` / `str_ends_with`) unless they said yes. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2i.
 
+## Database and query style (**MUST**)
+
+When **planning** work that reads or writes the database, **ASK** which database the app uses and whether new queries should be QueryBuilder chains or hand-written `$qb->raw()`. If they do not answer: **QueryBuilder**, so the module stays valid on more than one database. Raw SQL is the readable choice after they name one engine (usually MySQL or MariaDB) and ask for it. A small edit keeps the style already in the file. Record the answer in `PLAN/`. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2v, `AIRULES/06-DATABASE.md`.
+
 ## defaultSettings before routes (**MUST** — law)
 
 **MUST** put Config defaults in `defaultSettings()` and call it at the start of `initializeRoutes()` (before `return`) **and** at the start of `initialize()`. **MUST NOT** compose wake lists or `Router` paths from Config that another module fills only later. **MUST NOT** hardcode that module’s fallback so their `defaultSettings()` never runs. Literal own path if they have not run yet. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2m, `AIRULES/03-MODULES-AND-ROUTING.md`.
@@ -75,6 +79,7 @@ After **every** code chunk (route, middleware, controller, query, form, view, JS
 27. **Shared public GET** — string passthrough + `Router::after` for a path another module may own. Canonical: `AIRULES/03-MODULES-AND-ROUTING.md`.
 28. **Installer-only schema probes** — no `SHOW TABLES` / `information_schema` / `ensureTable` / DDL outside an executing install/uninstall callback. A critical installer failure throws. Canonical: `AIRULES/07-SCHEMA-AND-INSTALL.md` §0a.
 29. **Opening `<fo-rm>`** — grep `<fo-rm` in this module’s views. Fail if any `{{ }}` sits between `<fo-rm` and that tag’s `>`. Rewrite `method` and `action` as literal attributes. Canonical: `AIRULES/08-FORMS-AND-SECURITY.md`.
+30. **Query style** — new database work asked for the engine and for QueryBuilder vs `$qb->raw()`; no answer means QueryBuilder; a file was not converted without that request. Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2v.
 
 Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2c. Tick `AIRULES/17-CHECKLISTS.md` Finish gate.
 

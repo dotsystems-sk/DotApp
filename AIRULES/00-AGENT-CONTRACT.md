@@ -73,6 +73,7 @@ If you believe a core bug exists: **stop and report it in chat**. **MUST NOT** p
 25. **Planning happens in files (LAW):** a plan in plan mode, chat, or a temp file is lost work. Write it into `app/modules/<This>/PLAN/`, record ASK answers, and tick a dated log in the same chunk as the code. See [§2s](#2s-planning-happens-in-files-not-in-a-planner-must--law).
 26. **Public cache with a switch (LAW):** a public anonymous read-mostly surface uses `Cache::use('<Module>')` and an on/off switch in this module’s settings. Off stores nothing and serves nothing. See [§2t](#2t-cache-the-public-surface-and-give-the-operator-a-switch-must--law).
 27. **Final control (LAW):** `/finalcontrol` walks every control of the module and fixes every finding. See [§2u](#2u-final-control-on-request--finalcontrol-must--law).
+28. **Database and query style:** when **planning** work that reads or writes the database, **ASK** which database the app uses and whether new queries should be QueryBuilder chains or hand-written `$qb->raw()`. No answer → QueryBuilder. See [§2v](#2v-database-type-and-query-style-must).
 
 ### Dotapper-first rule
 
@@ -128,6 +129,7 @@ This is a **law**, not a reminder. Skipping it is a **bug**.
 | **CRC once** | Count `crcCheck(` on **this POST’s** pipeline (middleware + `before` + action) **and** the action’s first PHPDoc line `CRCchecking —` | Two calls (first **burns** the token); CRC on GET/HTML login `before`; CRC on `$request->upload()`; PHPDoc names a CRC prefix **and** the action still `crcCheck()`; controller/middleware public method with no `CRCchecking —` first line ([25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7) |
 | **IDs encrypted** | Views / JS / JSON: `value=`, `data-*`, hidden, payload, URL paths | Plain `7` / `{{ var: $id }}` as an id. **MUST** encrypt with a unique `$key2`. A path `{token}` / `href` / `redirectTo` must additionally be sealed to `[A-Za-z0-9_-]+`; raw standard-base64 `%2F` becomes a path separator. Decrypt `=== false` → reject. Still `Auth::can` / ownership in PHP ([11](11-AUTH-AND-CRYPTO.md) §8) |
 | **Queries bound** | Every SQL in the chunk | User input concatenated into SQL; `$qb->raw()` `?` that is not a binding (comments / `COMMENT` count); mix `?` and `:named` |
+| **Query style** | New statements in this chunk vs the recorded plan answer | A new module / first database surface shipped with no ASK for database type and query style; new queries written as `$qb->raw()` or ORM when the answer (or the default) is QueryBuilder; a file converted from one style to the other without that request ([§2v](#2v-database-type-and-query-style-must), [06](06-DATABASE.md)) |
 | **Inputs** | Request + persist | Password / HTML / URL / setting / token / hash from `$request->data()` not `data(true)`; missing `form()` / `Validator` where required; persist with only an FE overlay — PHP **MUST** still refuse |
 | **Middleware / route conflicts** | `module.init.php` + Middleware vs the action | Login `before` missing **or** handlers outside `Auth::isLogged()`; CRC layer **and** action `crcCheck()`; CRC on a GET gate; two overlapping `before` hooks that both CRC |
 | **Visible outcome** | Save / toggle / delete / form JS + `ajaxReply` | Silent `.after()` / no `message`; success with no toast/status; a named field error with only “could not save”; red input with no sentence under it; the red mark still showing after the person starts typing in that field; typing in one field clears every other field’s error ([§2d](#2d-visible-outcome-must--law)) |
@@ -410,7 +412,7 @@ A plan that lives in plan mode, in chat history, in a scratch file, or only on t
 2. **Say why, in one or two sentences** — the plan is written as files in the module so it is versioned and portable. Do not paste this law into chat.
 3. **Write `app/modules/<This>/PLAN/`** as split files ([45](45-MODULE-PLANNING.md) §0): index, laws, rules, navigation, screens, positions, schema, ASK answers.
 4. **Keep a dated log** (`11-LOG.md` or `LOG.md`): what was asked, what was decided, what shipped, the `Installation.php` version if one landed, and what is still open. Tick it **in the same chunk** as the code.
-5. **Record every ASK answer** (model budget, PHP version, navigation, identity, and any extra the plan asked) so nobody re-asks on the next machine.
+5. **Record every ASK answer** (model budget, PHP version, database type, query style, navigation, identity, and any extra the plan asked) so nobody re-asks on the next machine.
 6. **Chat gets the summary; PLAN gets the plan.**
 
 **MUST NOT**
@@ -473,6 +475,37 @@ The finish gate ([§2c](#2c-finish-gate-must--law)) runs after every chunk. **Fi
 - Skip the comment pass because the code looks clear
 
 Compact: `AIRULES/cursor/rules/31-final-control.mdc`.
+
+### 2v. Database type and query style (**MUST**)
+
+The framework runs on more than one database. QueryBuilder chains stay valid on those drivers. Hand-written SQL through `$qb->raw()` is easier to read when the app stays on one engine, usually MySQL or MariaDB, and the person asked for that style. ORM stays available when they ask for it.
+
+**When planning** programming that will read or write the database, **ASK in chat** (do not guess, do not skip):
+
+> Which database will this app use (MySQL / MariaDB, SQLite, PostgreSQL, or the driver already in Config), and should new queries be QueryBuilder chains or hand-written SQL through `$qb->raw()`?
+
+If they do not answer: **QueryBuilder**. A missing answer is not a request for raw SQL. A MySQL-only admin product choosing raw for itself does not change this default.
+
+| They said | Write new queries with |
+|-----------|------------------------|
+| nothing | QueryBuilder chains |
+| QueryBuilder, or a database with no single engine | QueryBuilder chains |
+| `$qb->raw()` / hand-written SQL, and they named the engine | `$qb->raw()` in that engine's SQL |
+| ORM | ORM |
+
+**A small change** in a file that already uses one style keeps that style. Do not re-ask on every chunk, and do not convert the file. **ASK** when the work is a new module, a first database surface, or a rewrite, and when this module has no recorded answer yet. Record the answer in `PLAN/05-asks.md` ([§2s](#2s-planning-happens-in-files-not-in-a-planner-must--law)).
+
+**When they chose raw** on a named engine, write it so a person can see which rows it touches:
+
+- One clause per line (`SELECT`, `FROM`, `JOIN`, `WHERE`, `AND`, `ORDER BY`, `LIMIT`). `SET` columns sit under each other.
+- Bindings are a multi-line array: one `'name' => $value` per line, including a single binding. Parameters are `:named`. **MUST NOT** mix `?` and `:name` in that statement.
+- Explicit column list. `UPDATE` and `DELETE` carry a `WHERE`. A statement that really targets the whole table says so in a `// Why:` line.
+- A read that decides identity or ownership filters on the unique key with `LIMIT 1`, and PHP compares the returned id with the one that was asked for. An empty result or a mismatch is a refusal. This holds for raw, the builder, and ORM.
+- Writes keep `execute($ok, $err)` with both callbacks.
+
+**The framework core is not covered.** `app/parts/` and `app/DotApp.php` keep the QueryBuilder. **MUST NOT** rewrite them to `raw()` because a module chose raw.
+
+Canonical: [06](06-DATABASE.md) “Query style and database type”, compact `AIRULES/cursor/rules/33-query-style.mdc`.
 
 ---
 
@@ -600,6 +633,7 @@ Full table: [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md).
 35. **Public cache with a switch (MUST):** a public anonymous read-mostly surface uses `Cache::use('<Module>')` plus an on/off switch in this module’s settings. Off stores nothing and serves nothing. Invalidate on write. Canonical: [§2t](#2t-cache-the-public-surface-and-give-the-operator-a-switch-must--law), [20](20-CACHE-LOGGER-SESSION.md) §1a.
 36. **Shared public GET (MUST):** a well-known path another module may already own (`/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt`) is claimed with a string passthrough GET **and** `Router::after`. A second `Router::get` alone is a silent miss. Canonical: [03](03-MODULES-AND-ROUTING.md).
 37. **Final control (MUST on request):** `/finalcontrol` inventories every control and fixes every finding in the same run. Canonical: [§2u](#2u-final-control-on-request--finalcontrol-must--law).
+38. **Database type and query style (MUST):** when planning database work, **ASK** the engine and whether new queries are QueryBuilder chains or `$qb->raw()`. No answer → QueryBuilder. A small edit keeps the style already in the file. Canonical: [§2v](#2v-database-type-and-query-style-must), [06](06-DATABASE.md).
 
 ---
 
@@ -686,6 +720,7 @@ Operator 2FA lock and step-up on dangerous admin actions are **DACore-only** (Pa
 | **Anything (always)** | **18** error handling / return values — incl. **§9 catch bus** (`dotapp.catch`) | — |
 | Plan / Cursor credits | **00 §2b** — ASK before expensive subagents; inherit parent; Composer 2.5 = file hunt only | — |
 | Plan / PHP version | **00 §2i** — ASK 7.4+ (default) vs a higher PHP; no answer → 7.4+ | — |
+| Plan / database and query style | **00 §2v** / **06** — ASK the engine and QueryBuilder vs `$qb->raw()`; no answer → QueryBuilder | [EX-04](examples/EX-04-database-crud.md) |
 | Plan / new module, first major surface, or rewrite | **00 §2k** + **§2o** + **§2p** / **[45](45-MODULE-PLANNING.md)** — `PLAN/` in **this** module (split files); packs read host `AIRULES/`, not host `PLAN/` | — |
 | Cursor `.mdc` / copied AIRULES folder | **00 §2l** — source is `AIRULES/cursor/rules/`; agent **MUST** copy into `.cursor/rules/` | [INSTALL.md](INSTALL.md) |
 | `defaultSettings` / Config-built routes | **00 §2m** / **03** — call defaults before wake `return` and before `Router` | [EX-03](examples/EX-03-module-scaffold.md) |

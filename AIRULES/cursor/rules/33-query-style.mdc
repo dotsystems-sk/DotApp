@@ -1,0 +1,37 @@
+---
+description: LAW — when planning database work, ASK the database type and whether new queries use QueryBuilder or $qb->raw(); no answer means QueryBuilder
+alwaysApply: true
+---
+
+# Database type and query style (LAW)
+
+Canonical: `AIRULES/00-AGENT-CONTRACT.md` §2v, `AIRULES/06-DATABASE.md` "Query style and database type".
+
+The framework runs on more than one database. QueryBuilder is the portable default. Hand-written SQL through `$qb->raw()` is the readable choice when the user says the app stays on one engine (usually MySQL or MariaDB) and they want that style.
+
+## Ask when planning
+
+When the work will read or write the database, **ASK** (do not guess, do not skip):
+
+1. Which database: MySQL / MariaDB, SQLite, PostgreSQL, or the driver already in Config.
+2. New queries: QueryBuilder chains, or hand-written `$qb->raw()`.
+
+No answer → QueryBuilder. Silence is not a request for raw SQL. Another product's MySQL-only default does not change this.
+
+| They said | Write new queries with |
+|-----------|------------------------|
+| nothing | QueryBuilder |
+| QueryBuilder, or no single engine | QueryBuilder |
+| raw / hand-written SQL, and they named the engine | `$qb->raw()` in that engine's SQL |
+| ORM | ORM |
+
+Record the answer in `PLAN/05-asks.md`. A small change keeps the style already in the file. Do not convert existing queries unless they asked. Ask when this module has no recorded answer (new module, first database surface, rewrite).
+
+## When they chose raw
+
+- One clause per line. Bindings are one `'name' => $value` per line. Parameters are `:named`. Do not mix `?` and `:name`.
+- Explicit columns. `UPDATE` and `DELETE` carry a `WHERE`, or a `// Why:` line when the statement really targets the whole table.
+- A one-row read that decides identity or ownership uses the unique key and `LIMIT 1`, then PHP compares the returned id with the requested one and refuses on a mismatch or an empty result. The same check applies to the builder and to ORM.
+- With no engine named, stay on the builder.
+
+`app/parts/` and `app/DotApp.php` keep the QueryBuilder. Do not rewrite them to `raw()`.

@@ -1,683 +1,200 @@
-# DotApp 2
+# DotApp AIRULES-DACORE — AI Agent Rulebook (Framework + DACore)
+
+A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weaker models) so they can work **correctly** with the DotApp PHP framework **and the DACore module** — without Laravel/Blade/Eloquent/jQuery hallucinations.
+
+## What this is
+
+`AIRULES-DACORE/` is the DACore overlay. Use it in a project where **the DACore admin module is installed**.
+
+- **Language:** English
+- **Contents:** docs `00`–`25` = framework · `30`–`40` = DACore layer · **`41` = module hooks** · **`42` = user origin** · **`45` = module planning depth** · **`46` = reserved extra1–extra5 / peer contracts**
+
+### Which variant to use
+
+| Project | Folder |
+|---------|--------|
+| Bare framework, no admin UI | `AIRULES/` |
+| DACore admin module installed | **`AIRULES-DACORE/`** (this one) |
+
+Never copy both into the same project — the agent would have two conflicting sources. Copy this folder into the project **as `AIRULES/`**.
+
+## DACore layer (`30`–`40`)
+
+| File | Contents |
+|------|----------|
+| [30-DACORE-OVERVIEW.md](30-DACORE-OVERVIEW.md) | What DACore is, tables, config keys, call map |
+| [31-DACORE-MENU.md](31-DACORE-MENU.md) | Menu item registration |
+| [32-DACORE-RIGHTS.md](32-DACORE-RIGHTS.md) | Permissions + `{prefixUrl}/{Module}/…` + `Gate@login` 403 |
+| [33-DACORE-PAGES-AND-UI.md](33-DACORE-PAGES-AND-UI.md) | `Page@withMenu`, dotgrid, UI contract |
+| [33-DACORE-COMPONENT-USAGE.md](33-DACORE-COMPONENT-USAGE.md) | `core.css` vs feature bundles; `.dacore-tabs` / pager / file manager |
+| [34-DACORE-AI-TOOLS.md](34-DACORE-AI-TOOLS.md) | AI tools for the DACore chat |
+| [35-DACORE-INSTALL.md](35-DACORE-INSTALL.md) | Develop with `install.php`; zip **MUST** use [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`dainstall.php` + `init/`); `installer()` keys **MUST** be quoted `'1.0.0' =>` text; **§3c** extras → [46](46-DACORE-EXTRA-CONTRACTS.md) |
+| [36-DACORE-KNOWN-ISSUES.md](36-DACORE-KNOWN-ISSUES.md) | DACore bugs and traps |
+| [37-DACORE-NOTIFICATIONS.md](37-DACORE-NOTIFICATIONS.md) | Inbox `Notifications@push` |
+| [38-DACORE-EMAIL.md](38-DACORE-EMAIL.md) | Outgoing mail API — **open only when the module sends email** |
+| [39-DACORE-SMS.md](39-DACORE-SMS.md) | SMS driver registry — **open only when the module sends SMS** |
+| [40-DACORE-LIST-PAGER.md](40-DACORE-LIST-PAGER.md) | **List pager law** — HTML classes, `live(el, e)`, encrypted `data-page`, COUNT |
+| [48-UPLOADER.md](48-UPLOADER.md) | **Core class `Uploader`** (framework, not DACore) — the only way to receive and store a visitor's file; API, result, serving, deleting — **open whenever a task stores an upload** |
+| [49-CONNECTOR.md](49-CONNECTOR.md) | **Connector** (`dotapp.connector.js` + core class `Connector`) — node graphs: universal nodes with inputs, outputs and an executor, own design of nodes, palette, saved state, graphs the server runs without a browser — **open whenever a task asks for a node editor, a flow / rule builder or a graphical configurator** |
 
-**A fast, modular PHP framework with a built-in PHP ↔ JavaScript bridge, a secure-by-default request pipeline, and a rulebook that lets AI agents write production code for it.**
+Samples: [examples/EX-D01](examples/EX-D01-dacore-module-skeleton.md) through [EX-D08](examples/EX-D08-list-pager.md), plus **[EX-D09](examples/EX-D09-dacore-pack-zip.md)** (canonical install zip packer). Module-to-module hooks (every module, not DACore-only): [41](41-MODULE-HOOKS.md), [EX-16](examples/EX-16-module-hooks.md). User origin / custom login / shop accounts: [42](42-DACORE-USER-ORIGIN.md). Reserved pack extras / peer APIs: [46](46-DACORE-EXTRA-CONTRACTS.md).
 
-Current release: **2.1.0** · License: **MIT** · Documentation: [dotapp.dev](https://dotapp.dev/) · Made in Slovakia 🇸🇰
+### Most important DACore rules
 
----
+1. **Never edit, patch, or add files in `app/modules/DACore/` by default** (including DACore assets). **MUST NOT propose** a DACore edit. Put all new work in **the current module**. Touch DACore **only** if the user **themselves** asks **and** confirms the next update wipes it ([00](00-AGENT-CONTRACT.md) §1). Otherwise **strict ban**. Use `DotApp::call("DACore:…")`.
+2. **Never write directly** to `dacore_menu`, `dacore_ai_tools`, `dacore_installations`, `dacore_modules`, `dacore_plugin_logs`, `dacore_settings`, `dacore_notifications`, `dacore_notifications_inbox`, `dacore_email_senders`, `dacore_email_templates`, `dacore_sms_senders`, or `users_rights*`. **Read** `extra1`…`extra5` via `DACore:Plugins@listByContract!` / `@listByExtra!` when a host picks packs ([35](35-DACORE-INSTALL.md) §3c, [46](46-DACORE-EXTRA-CONTRACTS.md)).
+3. **`#DACore:AuthTest@check!` ignores the rights** you pass it — create your own `Middleware/Rights.php`.
+4. Register menu, rights, and AI tools **in your `Installation.php`**, not on every request. Push inbox notifications with **`DACore:Notifications@push` on the event** — not from the installer, not every request ([37](37-DACORE-NOTIFICATIONS.md)). **Outgoing mail:** open [38](38-DACORE-EMAIL.md) (do not invent SMTP). **Outgoing SMS:** open [39](39-DACORE-SMS.md) (do not invent a gateway). **While coding:** **`install.php`** + live root init files; after a new version rename `installed_*` → `install.php`. A **DACore** install zip **MUST** be built with [EX-D09](examples/EX-D09-dacore-pack-zip.md) (`copy .txt` → `dacore-pack-zip.php` → run → delete), **MUST** contain **`dainstall.php`** + **`init/`**, and every `installer()` / `uninstaller()` key **MUST** be quoted text (`'1.0.0' =>` — **not** `self::` / `static::` / constants; the scanner greps text and does not run PHP) — a zip that still has `install.php` **or** no quoted version keys is **rejected** ([00](00-AGENT-CONTRACT.md) §2e / §5 item 27, [35](35-DACORE-INSTALL.md) §2 / §4–§5). A non-DACore module: no zip — `install.php` and copy.
+5. Render pages with **`DACore:Page@withMenu!`** — never build your own HTML shell. **ASK** shared nested (`0` → `2` → `1`, `$menuId` `''`) vs module-own before a new DACore module. **No answer → shared nested.** Module-own only if the user explicitly chose it. Edit/detail: 7th `$currentFile` = registered list URL when the path is not under that leaf ([31](31-DACORE-MENU.md)).
+6. An AI tool with empty `rights` is **invisible to everyone**; wildcards do not work here.
+7. **MUST search DACore first** before a new library or widget (grep `app/modules/DACore/` read-only + your module). The base already has many subpages and libraries — reuse them. **MUST** add your own CSS/JS in the **current** module only when that search finds no equivalent (charts, ported controls). Keep the shell and admin colors. Prefix classes `{lowercase_modulename}_*`. Never edit DACore to “add” UI (unless the informed exception in [00](00-AGENT-CONTRACT.md) §1). **MUST NOT** grep a sibling module for chrome or an example ([00](00-AGENT-CONTRACT.md) §1b).
+8. DACore admin runs on **`$dotapp`**. jQuery may sit beside it for UI widgets, but **every request** uses `$dotapp` (`form` / `load` / bridge) — never `$.ajax`. Porting jQuery **is** writing a new `$dotapp().fn` library: **ask**, then rewrite (do not wrap `$.fn`). Playbook: [09](09-DOTAPP-JS-AND-BRIDGE.md) §4.C and [EX-15](examples/EX-15-dotapp-js-library.md).
 
-## Contents
-
-- [Why DotApp](#why-dotapp)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Core concepts](#core-concepts)
-- [Frontend: `dotapp.js`](#frontend-dotappjs)
-- [Uploader — safe file uploads](#uploader--safe-file-uploads)
-- [Connector — visual node graphs](#connector--visual-node-graphs)
-- [AI READY](#ai-ready)
-- [DACore — the admin module](#dacore--the-admin-module)
-- [Configuration](#configuration)
-- [DotApper CLI](#dotapper-cli)
-- [What's new](#whats-new)
-- [Documentation, contact, license](#documentation)
-
----
-
-## Why DotApp
-
-DotApp stays small and still carries very large applications. Its structure is easy to read for people and for AI assistants, and the parts that usually get bolted on later — secure forms, encrypted identifiers, a frontend library, uploads — ship in the core.
-
-| | |
-| --- | --- |
-| **Fast routing** | Static and dynamic routes, typed parameters, `{not:}` exclusions, middleware chains |
-| **Modular architecture** | Modules wake only on their own URLs; listeners can load without the module |
-| **Callable strings** | One notation for controllers, middleware and models: `Shop:Home@index!` |
-| **Secure by default** | `<fo-rm>` with CRC and CSRF, encrypted IDs in the browser, session through `DSM` |
-| **PHP ↔ JS bridge** | Call PHP functions from DOM events with rate limits and one-time keys |
-| **`dotapp.js`** | A light frontend library: selectors, secure `load()`, uploads, reactive add-ons |
-| **Uploader** | One safe entry point for visitor files — checked by content, images re-encoded |
-| **Connector** | Visual node graphs: universal nodes with any inputs and outputs, your own design, built in JS or described in PHP |
-| **AI READY** | A shipped rulebook (`AIRULES/`) that agents follow to produce shippable modules |
-| **DACore** | The official admin module — login, 2FA, rights, menus — available free |
-| **PSR-4** | Works with Composer packages out of the box |
-
-**Support DotApp's development.** The first 100 sponsors get permanent recognition on [dotapp.dev](https://dotapp.dev). [Become a sponsor](https://github.com/sponsors/dotsystems-sk)
-
----
-
-## Installation
-
-**Composer**
-
-```bash
-composer create-project dotsystems/dotapp ./
-```
-
-**DotApper CLI** (recommended)
-
-```bash
-wget https://install.dotapp.dev/dotapper.php
-php dotapper.php --install
-```
-
-`dotapper.php` can also be downloaded by hand from [install.dotapp.dev/dotapper.php](https://install.dotapp.dev/dotapper.php).
-
-**Git**
-
-```bash
-git clone https://github.com/dotsystems-sk/dotapp.git ./
-```
-
-After installation, `composer require` works as usual for additional libraries.
-
----
-
-## Quick start
-
-```php
-// index.php
-define('__ROOTDIR__', "/path/to/your/dotapp");
-require_once __ROOTDIR__ . '/app/config.php';
-
-Router::get('/', fn($request) => 'Hello World');
-
-DotApp::DotApp()->run();
-```
-
-A route callback receives a **locked Request object**. Return a string and it becomes the response body, or work with `$request->response` for full control.
-
----
-
-## Core concepts
-
-### Callable strings
-
-The same string form is used on routes, in `->before()` and in `DotApp::call()`.
-
-| Form | Target |
-| --- | --- |
-| `Shop:Home@index` | Controller method, parameters injected by the DI container |
-| `Shop:Home@index!` | Controller method, **DI off** — the preferred form on hot routes |
-| `#Shop:AuthGate@check!` | Middleware |
-| `*Shop:Item@find!` | Model |
-
-### Routing
-
-```php
-// Static route (exact URL, no pattern matching) + controller, no DI
-Router::get('/', 'Shop:Home@index!', Router::STATIC_ROUTE);
-
-// Dynamic parameter with an integer constraint
-Router::get('/item/{id:i}', 'Shop:Home@item!');
-
-// POST behind a middleware gate
-Router::post('/save', 'Shop:Home@save!')
-    ->before('#Shop:AuthGate@check!');
-
-// Catch-all that stays out of /admin, /api/v1 and /assets
-Router::get('/{path*}{not:/admin*|/api/v1*|/assets*}', 'Shop:Public@page!');
-
-// Closures work too
-Router::get(['/', '/home'], fn($request) => 'Welcome!');
-
-// Call a model or another controller from PHP
-$item = DotApp::call('*Shop:Item@find!', $id);
-$html = DotApp::call('Shop:Home@helper!', $request);
-```
-
-### Controllers
-
-Controllers are `public static` methods. The DotApp instance is globally accessible and the framework is used through facades.
-
-```php
-public static function index($request)
-{
-    $renderer = \Dotsystems\App\Parts\Renderer::new();
-    return $renderer->module('Shop')
-        ->setView('home')
-        ->setViewVar('title', 'Hello')
-        ->renderView();
-}
-```
-
-Route: `'Shop:Home@index!'`. Leave the `!` out only when the method should receive injected parameters.
-
-### Security defaults
-
-- **Forms:** `<fo-rm>` + `{{ formName(handler) }}` + CRC. `method` and `action` on the opening tag are plain text.
-- **Identifiers:** never a raw `data-id="7"`. `{{ enc(Shop.item.id): $id }}` on the way out, decrypt and a rights check on the way in.
-- **Session:** `DSM::use('Shop')->set/get/delete` instead of `$_SESSION`.
-- **Database:** `DB::module('RAW')->q(function ($qb) { ... })->all()|first()|execute()`. Lists that can grow use `paginate()`.
-
----
-
-## Frontend: `dotapp.js`
-
-```html
-<script src="/assets/dotapp/dotapp.js"></script>
-```
-
-The file is generated by the framework for each session — it carries the key material that powers CRC, CSRF, secure forms and the bridge.
-
-```javascript
-// Secure request: CSRF + CRC are added for you
-$dotapp().load("/shop/items/toggle", "POST", { item: token }, function (raw) {
-    var reply = $dotapp().parseReply(raw);
-    $dotapp("#items").html(reply.html);
-}, function (status, body) {
-    // HTTP error or network fault
-});
-```
-
-```html
-<!-- Bridge: call a PHP function from a DOM event -->
-<input type="text" {{ dotbridge:input="email" }}>
-<button {{ dotbridge:on(click)="subscribe(email)" rateLimit(60,10) }}>Subscribe</button>
-```
-
-Optional add-ons live next to it: `dotapp.template.js` (templates in the browser), `dotapp.reactive.js` (reactive endpoints) and `dotapp.connector.js` (node graphs, below). Rules for agents: `AIRULES/49-CONNECTOR.md`. Your own libraries register with `$dotapp().fn(name, callback)`.
-
----
-
-## Uploader — safe file uploads
-
-`Dotsystems\App\Parts\Uploader` is the single entry point for files that come from a visitor. A module never touches `$_FILES`.
-
-```php
-use Dotsystems\App\Parts\Uploader;
-
-$result = Uploader::use('Shop')
-    ->images()                      // jpg, jpeg, png, gif, webp
-    ->maxSize(5 * 1024 * 1024)
-    ->maxFiles(6)
-    ->receive();
-
-if ($result['status'] === 1) {
-    foreach ($result['files'] as $file) {
-        // $file['name'] (random stored name), $file['original'], $file['mime'], $file['size'], $file['width'], $file['height']
-    }
-} else {
-    // $result['errors'][0]['message']
-}
-```
-
-What it does for every file:
-
-- **Allow-list only.** Nothing is accepted until `images()` or `allow($extension, $mimes)` says so. Script and executable extensions are refused in every part of the name (`photo.php.jpg`, `photo.jpg.php`) and cannot be allowed.
-- **Content, not claims.** The MIME type is read from the bytes. The type sent by the browser is never used.
-- **Images are re-encoded.** Only the pixels survive, so code hidden in comments, EXIF or appended after the image is gone.
-- **Random stored names** in a folder outside the public web, protected by `.htaccess`. The original name is returned as display text only.
-
-The browser side is `$dotapp().uploadFile(file, url, progressCallback)`. Rules for agents: `AIRULES/48-UPLOADER.md`.
-
----
-
-## Connector — visual node graphs
-
-`dotapp.connector.js` draws a canvas of **nodes** joined by **wires**.
-
-A node is universal. It has any number of inputs and outputs and one **executor** — a function. The executor receives the values of the inputs and returns the value of the output. That value travels along the wires to the inputs of other nodes, and their executors run. This is all the library knows about a node; what a node shows, reads or calls is written in its executor.
-
-| Kind | Ports | Examples |
-| --- | --- | --- |
-| **source** | outputs only | a number, a text field, an upload |
-| **processor** | inputs and outputs | add, crop, translate, ask an API |
-| **sink** | inputs only | show the result, save it |
-
-The kind is never chosen — it follows from the ports the node was given.
-
-Typical uses: calculators, image and data pipelines, rule and flow builders — anything where the user should see and rewire how a result is produced. The graph can run in the browser, or be only *designed* there and [run by the server](#a-graph-the-server-runs).
-
-### In JavaScript
-
-```html
-<script src="/assets/dotapp/dotapp.js"></script>
-<script src="/assets/dotapp/dotapp.connector.js"></script>
-```
-
-```javascript
-var graph = $dotapp("#canvas").connector();
-
-graph.node("six").title("Number").at(40, 40)
-    .output("value")
-    .fn(function () { return 6; });
-
-graph.node("typed").title("Your number").at(40, 180)
-    .output("value")
-    .content('<input type="number">')
-    .init(function (node) {
-        node.on("input", "input", function () { node.run(); });
-    })
-    .fn(function (inputs, node) {
-        var text = node.find("input").val();
-        return text === null ? node.halt("Type a number") : Number(text);
-    });
-
-graph.node("sum").title("Add").at(320, 100)
-    .input("a", { required: true })
-    .input("b", { required: true })
-    .output("result")
-    .fn(function (inputs) { return inputs.a + inputs.b; });
-
-graph.node("show").title("Result").at(600, 100)
-    .input("value")
-    .content("<b>?</b>")
-    .fn(function (inputs, node) {
-        node.find("b").text(inputs.value === undefined ? "?" : inputs.value);
-    });
-
-graph.connect("six.value", "sum.a")
-     .connect("typed.value", "sum.b")
-     .connect("sum.result", "show.value");
-```
-
-Type `4` and the result node shows `10`. Pull a wire off and it shows `?` again.
-
-**The executor** — `function (inputs, node)`:
-
-| It returns | What happens |
-| --- | --- |
-| a value | it becomes the value of the output (with more outputs: an object keyed by their names) |
-| a `Promise` | the node shows that it works; the resolved value is used; an older answer never overwrites a newer one |
-| `node.halt("reason")` | nothing leaves the node, the reason is shown on it |
-| nothing | the outputs stay as they are |
-
-An input marked `required` that is empty stops the node before the executor is called.
-
-**Inside the executor**, `node` gives it everything it needs:
-
-| | |
-| --- | --- |
-| `node.find(selector)` | `$dotapp` object with the elements inside the node |
-| `node.on(event, selector, fn)` | listener inside the node |
-| `node.run()` | run the executor again (the user typed, pressed a button) |
-| `node.set(output, value)` | set an output at any time (timers, events) |
-| `node.load(url, data)` | call your API through `$dotapp().load` — returns a Promise of the reply |
-| `node.upload(file, url)` | send a file through `$dotapp().uploadFile`, progress shown on the node |
-| `node.store(key, value)` / `node.data` | values kept with the node and saved with the graph |
-| `node.status(text, kind)` | message on the node |
-
-A node that asks the server is just an executor that returns a Promise:
-
-```javascript
-graph.node("vat").title("VAT").input("amount", { required: true }).output("total")
-    .fn(function (inputs, node) {
-        return node.load("/shop/api/vat", { amount: inputs.amount }).then(function (reply) {
-            return reply.status == 1 ? reply.total : node.halt(reply.message);
-        });
-    });
-```
-
-**The graph**: `graph.node(name)`, `addNode(config)`, `removeNode(name)`, `connect(from, to)`, `disconnect(port)`, `connections()`, `run()`, `arrange()`, `readonly(true)`, `save()` / `load(state)` / `reset()`, and events `connect`, `disconnect`, `move`, `park`, `unpark`, `run`, `output`, `error`, `change`.
-
-Ports with a `type` only accept wires from a port of the same type. A wire that would close a loop is refused.
-
-### Your own design
-
-The built-in look is tuned with CSS variables — one rule of your module is enough:
-
-```css
-.shop_canvas { --dc-accent: #0f9d74; --dc-bg: #fff; --dc-wire: #b9c2cf; --dc-wire-width: 3; }
-```
-
-Or bring the whole node yourself. With `layout` the node **is** your HTML; you only mark what is what:
-
-```javascript
-graph.node("crop").layout(
-    '<div class="shop_card">' +
-        '<header connector-drag>Crop</header>' +
-        '<span class="shop_port" connector-input="image" connector-required>image</span>' +
-        '<span class="shop_port" connector-output="image">image</span>' +
-        '<p connector-status></p>' +
-    '</div>'
-);
-```
-
-| Attribute | Meaning |
-| --- | --- |
-| `connector-input="name"` / `connector-output="name"` | this element is a port; wires are drawn to it |
-| `connector-type`, `connector-required`, `connector-value` | options of the port |
-| `connector-anchor="left\|right\|top\|bottom\|center"` | where the wire touches the port |
-| `connector-drag` | the node is moved by this element |
-| `connector-park` | pressing it sends the node to the palette |
-| `connector-status` | messages of the node appear here |
-
-`unstyled` switches the built-in look off completely, so canvas, nodes, ports and wires are styled only by your CSS. State classes are there for it: `.is-busy`, `.is-error`, `.is-dragging`, `.is-parked` on a node, `.is-wired`, `.can-drop` on a port, `.has-value`, `.is-selected` on a wire.
-
-**Palette.** Put an element with `connector-palette="name"` anywhere on the page. Nodes marked `parked` wait in it; the user drags them onto the canvas and sends them back with the cross.
-
-**Templates.** A node marked `template` is a stamp: it stays in the palette and every drag makes a new copy with its own wires and its own settings — three "Subject contains" nodes for three different words.
-
-**Big graphs.** Two buttons in the corner spread the canvas over the whole page or the whole screen (`graph.maximize()`, `graph.fullscreen()`); the palette stays at hand as a side panel.
-
-### From PHP — the short way
-
-For simple graphs nothing has to be written in a JavaScript file. `Dotsystems\App\Parts\Connector` is a small facade: it describes the graph, renders it into the page, and the frontend picks it up on its own — the same way it picks up `<fo-rm>`.
-
-```php
-use Dotsystems\App\Parts\Connector;
-
-Connector::use('calc')->height(380)
-
-    ->node('six')->title('Number')->at(40, 40)
-        ->output('value', ['value' => 6])
-
-    ->node('sum')->title('Add')->at(320, 100)
-        ->input('a', ['required' => true])
-        ->input('b', ['required' => true])
-        ->output('result')
-        ->js('return inputs.a + inputs.b;')
-
-    ->connect('six.value', 'sum.a');
-```
-
-```html
-<connector use="calc">
-```
-
-The same graph can be written directly in a template:
-
-```html
-<connector name="calc" height="380">
-    <node name="six" title="Number" x="40" y="40">
-        <output name="value" value="6">
-    </node>
-    <node name="sum" title="Add" x="320" y="100">
-        <input name="a" required>
-        <input name="b" required>
-        <output name="result">
-        <function>return inputs.a + inputs.b;</function>
-    </node>
-    <connect from="six.value" to="sum.a">
-</connector>
-```
-
-Tags of a node: `<input>`, `<output>`, `<content>` (HTML inside the built-in frame), `<layout>` (your own node), `<function>` (the executor), `<init>`, `<save>`, `<load>`. A graph rendered this way is a normal connector in the browser: `$dotapp().connector("calc")` returns it, and your script can add executors with `graph.node("sum").fn(...)`.
-
-A node can also be given a controller as its executor — a shortcut for the common "send the inputs, get the output" case:
-
-```php
-$graph->endpoint('/shop/pipeline');
-$graph->node('crop')->input('image', ['required' => true])->output('image')
-    ->controller('Shop:Images@crop!');
-```
-
-```php
-// Shop/Controllers/Images.php
-public static function crop($inputs, $node)
-{
-    $path = Uploader::use('Shop')->path($inputs['image']['name'] ?? '');
-    if ($path === false) {
-        return Connector::halt('The image was not found.');   // shown on the node, nothing flows on
-    }
-    // ... crop the file ...
-    return $croppedImage;                                      // the value of the output
-}
-```
-
-```php
-// Shop/module.init.php — one route runs every such node
-Connector::listen('/shop/pipeline')->before('#Shop:Rights@check!');
-```
-
-The controller name never travels in readable form. It is encrypted and signed for the session when the graph is rendered, so the browser cannot ask for a controller the graph did not declare.
-
-Anything beyond that — and that is most real graphs — belongs in JavaScript, where an executor is free to call whatever API it needs.
-
-### A graph the server runs
-
-A connector can also be a **configurator**: the user wires rules once, and the server follows them later with no browser open — rules for incoming e-mail, call routing, automation.
-
-```php
-// One description. The page draws it, the server runs it.
-public static function flow()
-{
-    return Connector::use('mailflow')->designOnly()
-
-        ->node('incoming')->title('Incoming e-mail')
-            ->output('email')
-
-        ->node('keyword')->title('Subject contains')
-            ->input('email', ['required' => true])
-            ->output('yes')
-            ->output('no')
-            ->controller('Shop:Mail@subjectContains!')
-
-        ->node('spam')->title('Move to spam')
-            ->input('email', ['required' => true, 'multiple' => true])
-            ->controller('Shop:Mail@toSpam!')
-
-        ->connect('incoming.email', 'keyword.email')
-        ->connect('keyword.yes', 'spam.email');
-}
-```
-
-```php
-// The page: the user moves, joins and sets up the nodes. Nothing runs in the browser.
-self::flow()->restore($saved);                       // then <connector use="mailflow"> in the view
-
-// Saving: JavaScript posts graph.save(true) after every change
-$saved = Connector::unpack($posted['state']);        // store it
-
-// Later — a cron job, a webhook, a listener:
-$run = self::flow()->restore($saved)->execute(['incoming' => $email]);
-
-$run->ran('spam');                 // did the e-mail reach this node?
-$run->output('keyword.yes');       // value of one output
-$run->halted();                    // nodes that stopped, with their reasons
-```
-
-A controller receives the inputs of its node and what the user set on the node, and returns the output. With two outputs it **branches** by returning only one of them:
-
-```php
-public static function subjectContains($inputs, $node)
-{
-    $found = stripos($inputs['email']['subject'], $node['data']['text']) !== false;
-    return $found ? ['yes' => $inputs['email']] : ['no' => $inputs['email']];
-}
-```
-
-`multiple` lets more wires end on one input — the node then receives a list of everything that arrived.
-
-Mark a node with `->template()` and the user can stamp as many copies of it as the rules need. The copies travel in the saved state, and `execute()` creates them on the server with the same controller and their own settings.
-
----
-
-## AI READY
-
-DotApp ships with a rulebook written for AI agents. It tells an agent exactly how to write a module — routing, forms, database, frontend, error handling — and where it must not go.
-
-- **Stress-tested.** The rulebook was driven in **Cursor** with **Grok 4.5** and **Grok 4.6** until generated admin and public UI stayed secure and fast. Inexpensive models follow it and still produce real DotApp code.
-- **Hard boundaries.** Agents may edit `app/config.php` and `app/modules/<YourModule>/` — not the kernel (`app/DotApp.php`, `app/parts/`, `dotapper.php`, `index.php`) and not DACore. That is why the output stays maintainable.
-
-### Which rulebook to use
-
-The repository ships **two** rulebooks. An application keeps **one** of them, and that folder must be named `AIRULES/`.
-
-| Folder | When |
-| --- | --- |
-| `AIRULES/` | Bare DotApp, no DACore admin. Start at `AIRULES/00-AGENT-CONTRACT.md` |
-| `AIRULES-DACORE/` | DACore is installed. Copy this folder **over** the project's `AIRULES/`. Do not keep both names side by side — the agent would follow two contracts |
-
-Cursor loads the compact laws from `.cursor/rules/*.mdc`, the root `AGENTS.md`, and `.cursor/skills/`. They mirror the rulebook; they are not a second source. After choosing a pack:
-
-```powershell
-New-Item -ItemType Directory -Force -Path ".cursor\rules", ".cursor\skills" | Out-Null
-Copy-Item -Force "AIRULES\cursor\rules\*.mdc" ".cursor\rules\"
-Copy-Item -Force "AIRULES\cursor\AGENTS.md" "AGENTS.md"
-Copy-Item -Recurse -Force "AIRULES\cursor\skills\*" ".cursor\skills\"
-```
-
-In this checkout, `.cursor/` already mirrors `AIRULES-DACORE/`. The framework-only compact rules stay in `AIRULES/cursor/` for a project without DACore.
-
-The `.mdc` files are the short laws present on every turn. The numbered pages (`AIRULES/00-AGENT-CONTRACT.md`, `08-FORMS-AND-SECURITY.md`, and `30`–`46` for DACore) are what the agent opens when a task needs the full text.
-
-### `/finalcontrol`
-
-In Cursor, type `/finalcontrol ModuleName` before handing a module over. The skill is `AIRULES/cursor/skills/finalcontrol/SKILL.md`, mirrored to `.cursor/skills/finalcontrol/`.
-
-It walks every button and form of the module: padding, the JS listener, the route, the rights check, and the opening `<fo-rm>` tag (`method` and `action` must be literal — a `{{ }}` inside the opening tag is treated as a bug and rewritten). It also deletes leftover agent scratch files, meaning any file or folder under the module whose name starts with `_`. The DACore packer refuses to build an install zip while any remain.
-
----
-
-## DACore — the admin module
-
-**DACore** is the official administration module, available **free**: login, 2FA, rights, a database-driven menu, a page shell, and an optional AI chat with tools. Your own modules plug in through `DotApp::call('DACore:…')`. Details are on [dotapp.dev](https://dotapp.dev/).
-
----
-
-## Configuration
-
-Main settings are in `app/config.php`:
-
-```php
-use \Dotsystems\App\DotApp;
-use \Dotsystems\App\SessionDriverRedis;
-use \Dotsystems\App\Config;
-
-$dotApp = new \Dotsystems\App\DotApp();
-
-// Encryption key
-Config::set("app", "c_enc_key", md5('SECURE_KEY'));
-
-// Databases
-Config::addDatabase("main", "127.0.0.1", "dotsystems", "dotsystems", "dotsystems", "UTF8", "MYSQL", "mysqli");
-
-// Session driver
-Config::session("lifetime", 30 * 24 * 3600);
-Config::session("redis_host", "127.0.0.1");
-Config::session("redis_port", 6379);
-Config::session("redis_prefix", "session:");
-Config::sessionDriver("redis", SessionDriverRedis::driver());
-
-$dotApp->load_modules();
-```
-
----
-
-## DotApper CLI
-
-```bash
-php dotapper.php --install                 # install DotApp
-php dotapper.php --update                  # update the core
-php dotapper.php --create-module=Blog      # create a module
-php dotapper.php --list-routes             # list all routes
-php dotapper.php --optimize-modules        # regenerate the optimized module loader
-php dotapper.php --test                    # run the core tests
-```
-
-All options:
-
-```
-Usage: php dotapper.php [options]
-
-Options:
-  --install                         Install a fresh copy of the dotApp PHP framework
-  --update                          Update dotApp core to the latest version
-  --create-module=<name>            Create a new module
-  --modules                         List all modules
-  --install-module=<url|name[:ver]> Install a module (Git URL or name, optional version)
-  --prepare-database[=<prefix>]     Prepare database structure (optional table prefix)
-  --module=<module_name> --create-controller=<ControllerName>  Create a new controller
-  --module=<module_name> --create-middleware=<MiddlewareName>  Create a new middleware
-  --module=<module_name> --create-model=<ModelName>            Create a new model
-  --list-routes                     List all defined routes
-  --list-route=<route>              List callbacks for a specific route (e.g., /)
-  --create-htaccess                 Create or recreate a new .htaccess file
-  --optimize-modules                Optimize module loading
-  --test                            Run all core tests
-  --test-modules                    Run all module tests (no core tests)
-  --module=<module_name> --test     Run tests for a specific module
-```
-
----
-
-## What's new
-
-The exact version of a build is the latest key in `changelog.txt`.
-
-### Reactivity in `dotapp.js` — fixed (NEW)
-
-Variables, `dotbind`, `computed` and `autosave` now behave as documented: a computed value is recalculated when a variable it read changes (also through other computed values), fields update their variable while the user types, plain elements show values as **text** (HTML only with `dotbind-html`), `$dotapp('.x').databind()` and `variable()` always use the main instance, the first `variable(name, value)` gives a value to a variable created by a `dotbind` attribute, and `autosave` sends through `load()` so `crcCheck()` passes. New: `computed(fn, name)`, `update()` / `notify()` for arrays changed in place, `unbind()`, and `$dotapp('#box').dotbind()` for elements added later. `dotapp.reactive.js` asks at once instead of waiting a whole interval and stays quiet while the tab is hidden. `fn(name, function)` no longer overwrites a function that already exists (a built-in one or one registered earlier): it returns `false` and warns in the console instead of throwing. Rules: `AIRULES/09-DOTAPP-JS-AND-BRIDGE.md` §7.
-
-### Connector — visual node graphs (NEW)
-
-New frontend library `dotapp.connector.js` with a small PHP facade, `Dotsystems\App\Parts\Connector`. Universal nodes with any number of inputs and outputs and one executor each, wires drawn by the user, a palette, saved state, and full control over the design of every node. Build a graph in JavaScript, describe a simple one with the fluent PHP API or `<connector>` tags, or use it as a configurator whose saved graph the server runs on its own (`execute()`). See [Connector](#connector--visual-node-graphs).
-
-### Uploader — safe file uploads (NEW)
-
-New core class `Dotsystems\App\Parts\Uploader`: allow-list of extensions, MIME read from the bytes, images re-encoded, random stored names outside the public web. See [Uploader](#uploader--safe-file-uploads) and `AIRULES/48-UPLOADER.md`.
-
-### 2.1.0 — major fix release
-
-Fixes across authentication, the query builder, sessions, the validator, templates and the `dotapp.js` library. Among them: `.find()`, `.children()`, `.siblings()`, `.clone()`, `.last()`, `.nth()`, `.length` and `uploadFile` in `dotapp.js` now behave as documented, and `data(true)` returns the original on every call (2.0.5).
-
-### URL `{not:}` — exclude prefixes before the match (2026-08-26)
-
-The router has a **`{not:mask|mask}`** operator. Exclusions run **before** the positive pattern, so a public catch-all can stay one string and still stay out of `/admin`, `/api/v1` and `/assets`.
-
-```php
-Router::get('/{path*}{not:/admin*|/api/v1*|/assets*}', 'Shop:Public@page!');
-```
-
-- **Order matters:** `/admin/login` against `/{path*}{not:/admin*}` fails on the exclusion, not on `{path*}`.
-- **`/admin*` vs `/admin/*`:** `/admin/*` does **not** match exact `/admin`. Use `{not:/admin*}` when the admin index must stay out too.
-- The same syntax works in `Module::initializeRoutes()` / `Listeners::initializeRoutes()`. A public `/{path*}` that only skips `/admin` in `initializeCondition` still **wakes** the module — put `{not:}` on the wake string.
-
-Docs: `AIRULES/03-MODULES-AND-ROUTING.md`.
-
-### Extender — opt-in method replacement (2026-08-22)
-
-New core class **`Dotsystems\App\Parts\Extender`**. A module can **replace** another module's method for the current request — one handler either owns the result or explicitly defers to the owner's original logic. This is **not** Events, `module.{mod}.{name}.hook`, or `triggerWithVeto()`.
-
-- Offer Extender on highly replaceable **outputs** (page or block HTML, cart, export) — not on every method.
-- The owner opts in: `Extender::exists()` then `Extender::call(...)`. Return an ordinary result, or continue only when `isOriginal()` recognizes the unique `original()` marker. There is no `next()` chain.
-- The extending module registers `Extender::extend()` in **`Listeners::register()`** (`module.listeners.php`), before any matching module initializes. Target URLs belong in `Listeners::initializeRoutes()`.
-- One replacement per class and method (a duplicate throws). Recursion into the same target throws. Handler exceptions propagate.
-- Pass only explicit safe arguments (ids, flags, scalars) — never `$request`, tokens, CRC, or request bodies.
-
-Rules: `AIRULES/12-SERVICES.md` §10. Sample: `AIRULES/examples/EX-17-extender.md`.
-
-### Module loader v2, listener routes, and `Veto` (2026-08-22)
-
-- **Faster module boot.** `php dotapper.php --optimize-modules` writes `app/modules/modulesAutoLoader.php` **v2** with two independent lists: `$modules` (full `module.init.php` / `initialize()`) and `$listeners` (only `module.listeners.php`). An older file that has only `$modules` still loads.
-- **Listeners can have their own URLs.** `Listeners::initializeRoutes()` may return a different prefix list than `Module::initializeRoutes()`. Return `null` (or omit the method) to inherit the module map.
-- **Listeners register first.** Matching `module.listeners.php` files run before matching modules initialize, so a subscriber can hear an event without booting its whole admin UI.
-- **`triggerWithVeto()` + `Dotsystems\App\Parts\Veto`.** Ordinary `Events::trigger()` still ignores listener returns. The opt-in API stops only when a listener returns `new Veto($code, $message, $details)`. Name: `module.{mod}.{action}.veto`. Never send `message` or `details` to the browser.
-
-Rules: `AIRULES/03-MODULES-AND-ROUTING.md`, `AIRULES/12-SERVICES.md` §2, `AIRULES/41-MODULE-HOOKS.md`. Sample: `AIRULES/examples/EX-16-module-hooks.md`.
-
-### 2.0 (2026-08-18)
-
-2.0 is the result of heavy production use plus a rewrite of how agents are allowed to touch the stack.
-
-- **Fully AI READY** — `AIRULES/` (framework) and `AIRULES-DACORE/` (with DACore).
-- **`!` skips DI** and **callable prefixes** `#` (middleware) and `*` (model).
-- **Secure forms by default** — `<fo-rm>` + `{{ formName(handler) }}` + CRC. Row actions (toggle, delete, paginate) use `$dotapp().load()`, not a `<fo-rm>` per button.
-- **Encrypted IDs in the browser**, **`DSM`** instead of `$_SESSION`, lists that paginate with an AJAX pager.
-- **`$dotapp()` frontend** — live DOM patch, overlay and toast after save; no `location.reload()`.
-- **DACore admin — free.**
-- **Production hardening** — ORM, QueryBuilder, routing and the JS stack were cleaned up because they had to survive daily use.
-
----
-
-## Version note
-
-Older versions may contain duplicate function names (lowercase and PascalCase). They remain from the transition to **PascalCase** and keep **backward compatibility**; the impact on performance is minimal.
-
-## Documentation
-
-Full documentation: [https://dotapp.dev/](https://dotapp.dev/)
-
-## Contact
-
-- Email: [dotapp@dotapp.dev](mailto:dotapp@dotapp.dev)
-- Web: [https://dotapp.dev](https://dotapp.dev)
-- Company: [https://dotsystems.sk](https://dotsystems.sk)
-
-## License
-
-DotApp 2 is licensed under the **MIT License**. You must **retain the author's name** in all library headers.
-
-Additional permission: the Software may be used for training AI models, provided the copyright notice is retained.
+## Hard rules
+
+1. **AIRULES is the single source of truth** for AI. The old `.cursorrules`, `database_guide.md`, and module `*_AI_guide.md` files are gone.
+2. **You may edit only:**
+   - `app/config.php`
+   - files inside **the module you are programming** at `app/modules/<YourModule>/` (including **its** assets)
+3. **Never touch** the core (`app/parts/`, `app/DotApp.php`, `app/vendor/`, `dotapper.php`, `index.php`, …). **DACore:** default same ban (`app/modules/DACore/` — files and assets). **MUST NOT propose** a DACore edit. **Exception:** user themselves asks and confirms the update wipe ([00](00-AGENT-CONTRACT.md) §1).
+3b. **Read scope (LAW):** when programming a DACore-bound `<Target>`, **MAY read** only `<Target>` + `app/modules/DACore/` (read-only) + framework core (read-only) + `AIRULES/`. **MUST NOT** browse `app/modules/<Sibling>/` for a look or an example. A sibling joins the allow-list **only** when the user **named** it as the module this work extends / listens to / Extender-targets. Then read that host’s `AIRULES/` — **MUST NOT** open the host’s `PLAN/` unless the user asked to continue developing the host. Examples come from `AIRULES/examples/`, not a live sibling ([00](00-AGENT-CONTRACT.md) §1b, §2p).
+4. Create controllers, models, and middleware with **`dotapper.php`**, not by hand.
+5. Secure forms = **`<fo-rm>`** + `{{ formName(...) }}` **MUST between** `<fo-rm>` and `</fo-rm>` — **only** real multi-field submit. Opening-tag `method` and `action` are **literal** — **MUST NOT** put `{{ }}` on `<fo-rm …>` (compiled `?>` hides `method` and the tag prints as text). Row actions (toggle, delete, reorder, drag-and-drop) = `$dotapp().load()` + encrypted `data-*`, never one `<fo-rm>` per button. After save/toggle on the same page **MUST** patch the DOM from JSON + a short toast — no `location.reload()`. **MUST** cover the form/list until the request ends. **DACore admin:** Notiflix (preferred) **or** your module preloaders. **Public website:** you **MUST** build preloaders yourself (Notiflix is DACore-only). Deletes **MUST** open a graphical confirm first (`Notiflix.Confirm` on admin) — never `alert()` / `window.confirm()`. UX **MUST** be excellent on desktop **and** mobile. User-visible strings **MUST** read as shipped product copy — never prompt-echo.
+6. **MUST:** Module tables are `{lowercase_modulename}_*` (module `Shop` → `shop_items`). Never `items`, `dotapp_*`, or `dacore_*` for your module data.
+6b. **MySQL-safe installer DDL (LAW):** probe first (`SHOW TABLES LIKE` / `information_schema`), then `CREATE TABLE` / `ALTER TABLE`. **MUST NOT** `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `ADD INDEX IF NOT EXISTS` — older MySQL errors; column `IF NOT EXISTS` is MariaDB-only. Helpers in **your** module. Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0, [00](00-AGENT-CONTRACT.md) §5 item 30.
+7. **Growing result lists:** users, logs, items, orders, … **MUST** use [40](40-DACORE-LIST-PAGER.md) on first ship (`live(el, e)`, encrypted `data-page`, COUNT + LIMIT), with list search where appropriate. **Single-value pickers are different:** bounded known choices use `<select>`; longer bounded choices use existing `dotSelect2`; only large remote choices use AJAX `dotSelect2`. Never hide known choices behind a bare text input/empty datalist that requires an exact remembered name. Canonical: [40](40-DACORE-LIST-PAGER.md), [06](06-DATABASE.md), [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+8. **MUST** store app session state with **`DSM::use('Shop')`**. **MUST NOT** `$_SESSION` or `session_start()`. Canonical: [20](20-CACHE-LOGGER-SESSION.md), [EX-10](examples/EX-10-cache-logger-session.md).
+9. **MUST** re-check every persist in **PHP**. Frontend modal/overlay is UX only — skipping it **MUST** still fail on the server. Canonical: [08](08-FORMS-AND-SECURITY.md).
+10. **MUST** upload files with **`$dotapp().uploadFile`**. **MUST NOT** `FormData` + `load()` / `<fo-rm>`. PHP **MUST** reject `.php` / executables (extension + `finfo` MIME + headers). Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md).
+11. **Public website (MUST):** mobile nav is an overlay drawer from the left or right; the page behind **MUST NOT** scroll while it is open (including iOS); the drawer list **MUST** scroll; contacts + compact search live in the drawer unless large search is its own mobile section. **Not** the DACore admin shell. Canonical: [09](09-DOTAPP-JS-AND-BRIDGE.md) §3.
+12. **Cursor credits (MUST):** when **planning** programming, **ASK** whether more expensive models may be used. Subagents **MUST inherit** the chat model. **MUST NOT** silently spawn Opus / GPT-5 / thinking / xhigh / cloud / best-of-N. Composer 2.5 is **only** for hunting a pile of files — **not** the programmer. Canonical: [00](00-AGENT-CONTRACT.md) §2b.
+13. **PHP version (MUST):** default **PHP 7.4+**. When **planning**, **ASK** whether to stay on 7.4+ or write for a higher version. No answer → 7.4+. **MUST NOT** ship PHP 8+ syntax unless they named a higher version. Canonical: [00](00-AGENT-CONTRACT.md) §2i.
+14. **Finish gate (LAW):** after **every** code chunk **and** before claiming done, **MUST** grep this module — double `crcCheck`, plain IDs, unbound SQL, wrong `data()`, middleware / AuthTest conflicts, `Events::trigger` vs `.hooks`. **MUST NOT** skip. Canonical: [00](00-AGENT-CONTRACT.md) §2c, [17](17-CHECKLISTS.md), [41](41-MODULE-HOOKS.md).
+15. **Visible outcome (LAW):** the user **MUST** see success, product failure (`status` 0) **and** HTTP/network failure. **DACore admin:** `Notiflix.Notify` through the one module request helper; `.form()` carries `.onError()` (`.after()` does not run on HTTP 4xx/5xx). PHP answers HTTP 200 with a sentence naming the step that stopped. Write-time recipe: [26](26-CONTROL-SLICE.md). Canonical: [00](00-AGENT-CONTRACT.md) §2d, §2v.
+16. **Attack vectors (LAW):** the known vectors in [24](24-ATTACK-VECTORS.md) **MUST NOT** be shippable — injection (SQL, XSS, command, template, deserialization), headers / redirect / SSRF, mass assignment, CSRF / brute force / enumeration, IDOR and escalation, files and paths, missing rate limit, leaks, weak crypto, prompt injection. Open the section for the surface you touch, then run the **threat pass** ([24](24-ATTACK-VECTORS.md) §11) on the diff. Fix it in **your** module — never by patching DACore. A vector not listed is still forbidden — apply the nearest rule and **say it in chat**.
+17. **Catch bus (LAW):** every `catch` **and** every `execute()` `$err` **MUST** report through one helper in **your** module: `Events::trigger('dotapp.catch', $payload)` then `dotapp.catch.error` (aborted) or `dotapp.catch.info` (recovered), with the fixed payload (`severity, module, source, operation, message, exception, code, file, line, time`, plus `context` ids/counts and `user_id`). No secrets, tokens, rights blobs or request bodies in it. That is what makes a debugger possible later — reporting is **in addition to** the toast, never instead of it. Nothing for this goes under `app/modules/DACore/`. Canonical: [18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9.
+18. **Performance + readability (LAW):** smallest possible I/O, memory bounded by pages (never “load all and filter”), **indexes designed for the queries you wrote** (FK + every `WHERE`/`JOIN`/`ORDER BY` column, composite order equality → range → sort, leftmost prefix, no duplicate prefixes), sane column types, DACore assets reused instead of a second library, and code a human can read: controller/middleware PHPDoc **MUST** start with **`CRCchecking —`** (where CRC runs — prefix XOR action), then a **purpose sentence** then tags (not `@return array<string, mixed>` alone), labeled **`// Why:`** / **`// About:`** / **`// Section:`**. Canonical: [25](25-PERFORMANCE-AND-CODE-QUALITY.md) §7.
+19. **Layout / UX-UI (LAW):** buttons live in an action row — `.dacore-card-actions` after `.card-body`, row buttons `d-flex flex-wrap gap-2`. **DACore is not Bootstrap:** `card-footer` / `pb-3` / `pb-4` / `pt-0` / `px-4` have no CSS rule and add no space. Admin forms are numbered sections + lede + Why-this-matters. Canonical: [26](26-CONTROL-SLICE.md) §2, [00](00-AGENT-CONTRACT.md) §2f.
+20. **Module hooks (LAW):** fire **`module.{lowercase_modulename}.{hook_name}.hook`** only when another module could log, show history, or sync (SMS/mail sent, payment, lockout) — **MUST NOT** on every save. Document in **`.hooks`**. Above `trigger()`: `Hook:` / `Why:` / `About:` / `Params:` / `Use:`. Connect by listening, never by patching the owner. A DACore-bound module **MUST** read **`app/modules/DACore/.hooks` first**. Canonical: [41](41-MODULE-HOOKS.md) §6, [00](00-AGENT-CONTRACT.md) §2g.
+21. **Extender (judge — not every method):** owner `exists()` + `call()`; ordinary result returns, only `isOriginal()` continues owner logic. Extender registers in `Listeners::register()` before Module initialization. Target URLs in listener map; own Module routes or `[]`; controller string preferred. **MUST NOT** invent `next()`, return the marker, use `.loaded` for initialize-time, Events, `$request`/secrets, or patch owner/DACore. Canonical: [12](12-SERVICES.md) §10, [00](00-AGENT-CONTRACT.md) §2h.
+22. **Module AIRULES (LAW):** a host others extend **MUST** ship `app/modules/<This>/AIRULES/`. Packs read that handbook first. **MUST NOT** open the host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2p.
+23. **PLAN folder (LAW):** a new module / first major surface / rewrite **MUST** write `app/modules/<This>/PLAN/` as a **split folder** and implement **from that folder**. Chat-only / one-file plans fail. **MUST NOT** open a host’s `PLAN/` when writing a pack. Canonical: [00](00-AGENT-CONTRACT.md) §2o, §2p, [45](45-MODULE-PLANNING.md).
+24. **Rule stack (LAW):** 1 project `AIRULES/` (always) → 2 named-host `AIRULES/` → 3 **this** module’s `PLAN/`. Priority 1 wins. Canonical: [00](00-AGENT-CONTRACT.md) §2p.
+25. **No unsolicited browser (LAW):** **MUST NOT** live-click admin/public pages (MCP browser / CDP) to prove Save/Delete. Finish-gate grep + source UX + a short click list for the operator. Browser only if they asked or said yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r.
+26. **Planning happens in files (LAW):** the user asks to plan → **MUST** leave the read-only planner, say once that the plan is written as files so it is portable and complete for the client, then write `app/modules/<This>/PLAN/` and keep its dated **log** ticked in the same chunk as the code. A plan parked in chat, plan mode, a temp folder, or `.cursor/` is lost work. Canonical: [00](00-AGENT-CONTRACT.md) §2s, [45](45-MODULE-PLANNING.md) §0b–§0c.
+
+## What's New (2026-08-30)
+
+### No unsolicited browser
+
+Agents **MUST NOT** drive a live browser to prove admin/public Save/Delete. Finish-gate grep + source UX. Give the operator a click list. Browser only if they asked or said yes. Canonical: [00](00-AGENT-CONTRACT.md) §2r, [33](33-DACORE-PAGES-AND-UI.md) §12, compact `25-no-unsolicited-browser.mdc`.
+
+## What's New (2026-08-26)
+
+### Rule stack — where to look
+
+Agents look in **folders**, not in one Cursor chat file. Priority (1 wins):
+
+1. Project `AIRULES/` — always. Hard laws. A host handbook cannot skip CRC / PHP 7.4+ / DACore ban / finish gate.
+2. `app/modules/<Host>/AIRULES/` — only when this work **extends** that host (for example, template or payment packs). How to write a pack. **MUST NOT** weaken 1.
+3. `app/modules/<This>/PLAN/` — portable plan of **the module you are building**. Split files. **MUST NOT** weaken 1 or 2.
+
+Pack-specific workflows belong in the named host’s own `AIRULES/` and travel with that host. A pack **MUST NOT** open the host’s `PLAN/`. Building a host itself writes both `app/modules/<Host>/AIRULES/` (for future pack authors) and `app/modules/<Host>/PLAN/` (for host development).
+
+Canonical: [00](00-AGENT-CONTRACT.md) §2n, §2o, §2p, [45](45-MODULE-PLANNING.md).
+
+## What's New (2026-08-22)
+
+### Extender — opt-in method replacement
+
+New core class: **`Dotsystems\App\Parts\Extender`**. A module can replace another module’s method for the current request — one handler either owns the result or explicitly defers to the owner’s original logic. This is **not** Events, hooks, or `triggerWithVeto()`. **MUST NOT** patch DACore to insert `Extender::call`.
+
+- **Judge first:** offer Extender on highly replaceable **outputs** (page/block HTML, cart, export) — **not** on every method.
+- When the owner opts in: `exists()` then `call(...)`; return an ordinary result, or continue only when `isOriginal()` recognizes the unique `original()` marker. There is no `next()` chain.
+- Register `extend()` in **`Listeners::register()`**. Target URLs belong in `Listeners::initializeRoutes()`; Module keeps own routes or `[]`.
+- Prefer a controller string. Direct registration is before every Module `initialize()`; `.loaded` is too late for initialize-time points.
+- One replacement per class+method. Recursion throws. Pass only explicit safe arguments.
+
+Canonical: [12](12-SERVICES.md) §10. Sample: [EX-17](examples/EX-17-extender.md). Framework README: project-root `README.md`.
+
+## Quick install
+
+See [INSTALL.md](INSTALL.md).
+
+In short:
+
+1. Install DotApp (`git clone` or `php dotapper.php --install`).
+2. Copy `AIRULES-DACORE/` into the project **as `AIRULES/`** (replacing the framework-only variant).
+3. Copy the Cursor rules as described in [INSTALL.md](INSTALL.md).
+4. Tell the agent: *“Read AIRULES/00-AGENT-CONTRACT.md first. Follow AIRULES for all DotApp work.”*
+
+## Code samples (save context)
+
+Theory lives in `00`–`25` (framework), `30`–`40` (DACore), and **[41](41-MODULE-HOOKS.md)** (module hooks). **Ready copy-paste patterns** are in [examples/](examples/) — the agent should open **one** EX file per task:
+
+- [examples/EX-01-secure-form-complete.md](examples/EX-01-secure-form-complete.md) — **preferred** security: `fo-rm` + `formName` + `dotapp.js`
+- More: module, DB, renderer, JS boot, bridge, secrets — see [examples/README.md](examples/README.md)
+
+**Security priority:** for user-facing forms always use `fo-rm` + `formName` + required `/assets/dotapp/dotapp.js` (injects random keys). This is stronger than plain CSRF.
+
+## Document map
+
+| File | Contents |
+|------|----------|
+| [00-AGENT-CONTRACT.md](00-AGENT-CONTRACT.md) | Hard laws — edit boundaries, workflow, **§2c finish gate** |
+| [examples/](examples/) | Short code samples by situation |
+| [01-ARCHITECTURE.md](01-ARCHITECTURE.md) | Lifecycle, module structure — incl. core `dotapp.catchall` debug funnel |
+| [02-DOTAPPER-CLI.md](02-DOTAPPER-CLI.md) | Full CLI reference |
+| [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — prefix `Gate@login` 403 + handlers inside `Auth::isLogged()`; English why-comments |
+| [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md) | Controllers, response |
+| [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets |
+| [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder — `$qb->raw()`: every `?` is a placeholder, including comments |
+| [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, Installation.php |
+| [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md) | fo-rm, CRC, CSRF |
+| [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
+| [10-CONFIG-AND-SECRETS.md](10-CONFIG-AND-SECRETS.md) | Config, keys, fallbacks |
+| [11-AUTH-AND-CRYPTO.md](11-AUTH-AND-CRYPTO.md) | Auth, 2FA, Crypto |
+| [12-SERVICES.md](12-SERVICES.md) | Cache, Logger, Email, Events, **`triggerWithVeto` / `Veto`**, **`Extender`**, Module API |
+| [13-TESTING.md](13-TESTING.md) | Tester + dotapper --test |
+| [14-ANTIPATTERNS.md](14-ANTIPATTERNS.md) | Wrong vs right (Laravel/…) |
+| [15-KNOWN-ISSUES.md](15-KNOWN-ISSUES.md) | Quirks + leftover-doc corrections |
+| [16-RECIPES.md](16-RECIPES.md) | End-to-end recipes |
+| [17-CHECKLISTS.md](17-CHECKLISTS.md) | Pre-flight / **finish gate** (00 §2c) |
+| **[18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md)** | **Return values + error handling (mandatory)** — incl. §9 `dotapp.catch` bus |
+| [19-VALIDATION-AND-INPUT.md](19-VALIDATION-AND-INPUT.md) | Validator, Input, Request, Response, HttpHelper, Limiter |
+| [20-CACHE-LOGGER-SESSION.md](20-CACHE-LOGGER-SESSION.md) | Cache, Logger, **DSM** (never `$_SESSION`) |
+| [21-EMAIL-SMS-QR.md](21-EMAIL-SMS-QR.md) | Email/IMAP/POP3, SMS, QR |
+| [22-AI-SEARCH-MCP.md](22-AI-SEARCH-MCP.md) | AI drivers, FastSearch, MCP |
+| [23-DEBUG-PLAYBOOK.md](23-DEBUG-PLAYBOOK.md) | Hunt order when the user asks **why** it fails — grep middleware + `crcCheck` first; §1c = `dotapp.catchall` event tracer; DACore = §7 |
+| **[24-ATTACK-VECTORS.md](24-ATTACK-VECTORS.md)** | **Known attack vectors as law** — injection, identity, access control, headers, files, abuse, leaks, crypto, AI + the §11 threat pass |
+| **[25-PERFORMANCE-AND-CODE-QUALITY.md](25-PERFORMANCE-AND-CODE-QUALITY.md)** | **Performance + schema + readable code as law** — memory/algorithms, I/O budget, **index & column design**, big lists, frontend cost (reuse DACore assets), **PHPDoc purpose sentence** + Why/About/Section, §8 perf pass |
+| **[26-CONTROL-SLICE.md](26-CONTROL-SLICE.md)** | **Control slice (LAW, write-time)** — one button = six parts in one chunk; action-row markup that really has CSS; exact boot block; `$dotapp` instead of raw DOM; one request helper; `Reply::ok/fail` HTTP 200 + specific messages; `php AIRULES/tools/control-check.php <Module>` |
+| **[41-MODULE-HOOKS.md](41-MODULE-HOOKS.md)** | **Module hooks (LAW)** — `module.{mod}.{name}.hook` when useful (not every save); `.hooks` file; listen, do not patch; DACore-bound modules **MUST** read `app/modules/DACore/.hooks` first |
+| **[42-DACORE-USER-ORIGIN.md](42-DACORE-USER-ORIGIN.md)** | **User origin (LAW)** — global identity/session trust model; checked register/create/stamp/read; exact-origin login+2FA+every gate/list/write; generic failures; ASK before DACore-replacement admin; no RCE/IDOR/escalation |
+| **[45-MODULE-PLANNING.md](45-MODULE-PLANNING.md)** | **Planning depth + PLAN folder (LAW)** — plan **in files, not in a planner** (§0b), dated log (§0c); write `app/modules/<This>/PLAN/` (split files) then implement from it. Packs read host `AIRULES/`, not host `PLAN/` ([00](00-AGENT-CONTRACT.md) §2p, §2s) |
+| **[46-DACORE-EXTRA-CONTRACTS.md](46-DACORE-EXTRA-CONTRACTS.md)** | **Reserved `extra1`…`extra5` index (LAW)** — slot grammar, `listByContract!`; deep I/O in **[46-contracts/](46-contracts/README.md)** (template: [filemanager.md](46-contracts/filemanager.md)); hosts MUST NOT invent tokens |
+| **[47-DACORE-AUDIT-LOG.md](47-DACORE-AUDIT-LOG.md)** | **Audit log (DACore 1.0.62)** — record security-relevant operator actions with `DACore:Audit@record!` after the persist; never an own activity table, never `dacore_audit_log` directly. Route protection for new modules: `Guard::protect()` + `Guard::rights()` ([32](32-DACORE-RIGHTS.md) §3) |
+| [cursor/](cursor/) | Cursor IDE: **source** `AGENTS.md` + `.mdc` rules. Agent **MUST** copy them into `.cursor/rules/` ([00](00-AGENT-CONTRACT.md) §2l, [INSTALL.md](INSTALL.md)) |
+
+## Critical: return values
+
+The framework uses **four different failure styles**. That is why [18-ERROR-HANDLING-AND-RETURN-VALUES.md](18-ERROR-HANDLING-AND-RETURN-VALUES.md) is mandatory reading:
+
+- `execute()` **throws** if you omit the error callback
+- `first()` is unsafe on an empty result (RAW warning, ORM fatal)
+- `Crypto::decrypt()` returns **`false`**, `Cache::load()` returns **`null`**
+- `Email::send()` returns an **array of error strings**, not `false`
+- a missing template renders **`""`** with no exception
+- `Auth::login()` returns **`false`** on bad input
+- `$request->data()` is **protected**; persist / passwords / HTML / URLs **MUST** use `$request->data(true)` — SQL write is named / `?` bindings, not `protect()` ([19](19-VALIDATION-AND-INPUT.md), [06](06-DATABASE.md))
+
+## What AIRULES is not
+
+- It is not a copy of the old `.cursorrules` — that file taught **incorrect** template syntax.
+
+## Version
+
+- **Part:** 1 (Framework) + 2 (DACore)
+- **Target models:** GROK 4.6 and weaker. Subagents **MUST inherit** that chat model unless the user said yes in the plan ([00](00-AGENT-CONTRACT.md) §2b).
+- **IDE:** Cursor (primary), portable to other agents via markdown
+- **Verified against:** DotApp clean install source (`app/parts/*`, `dotapper.php`) and the DACore module

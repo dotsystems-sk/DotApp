@@ -26,7 +26,7 @@ app/modules/<ThisModule>/PLAN/
   02-menu.md         — every nav item or No menu
   03-screens.md      — every page / tab / control (what it does, default, persist)
   04-positions.md    — desktop + mobile regions, padding, where each control sits
-  05-asks.md         — every ASK answer (model budget, PHP version, navigation, identity)
+  05-asks.md         — every ASK answer (model budget, PHP version, database type, query style, navigation, identity)
   11-LOG.md          — dated log: asked, decided, shipped, installer version, still open
   assets/            — optional rasters / mockups
 ```

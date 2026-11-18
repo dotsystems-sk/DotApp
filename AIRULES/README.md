@@ -49,6 +49,7 @@ A complete set of rules and guides for AI agents (Cursor IDE, GROK 4.6, and weak
 31. **Public cache with a switch:** a public anonymous surface uses `Cache::use('<Module>')` and an on/off switch in this module’s settings. Canonical: [00](00-AGENT-CONTRACT.md) §2t, [20](20-CACHE-LOGGER-SESSION.md) §1a.
 32. **Shared public GET:** `/sitemap.xml`, `/robots.txt`, `/rss.xml`, `/llms.txt` use a string passthrough plus `Router::after`. Canonical: [03](03-MODULES-AND-ROUTING.md).
 33. **Schema probes stay in the installer.** A request must not `SHOW TABLES` / `ensureTable` / `ALTER`. An installer callback that only `return false` does not fail the install — throw. Canonical: [07](07-SCHEMA-AND-INSTALL.md) §0.
+34. **Database and query style (MUST):** when **planning** database work, **ASK** the engine and whether new queries are QueryBuilder chains or `$qb->raw()`. No answer → QueryBuilder. Raw SQL is for a named engine after they ask for it. A small edit keeps the style already in the file. Canonical: [00](00-AGENT-CONTRACT.md) §2v, [06](06-DATABASE.md).
 
 ## What's New (2026-11-14) — framework 2.1.0
 
@@ -167,7 +168,7 @@ Theory lives in `00`–`25`. **Ready copy-paste patterns** are in [examples/](ex
 | [03-MODULES-AND-ROUTING.md](03-MODULES-AND-ROUTING.md) | Modules, routes, middleware — `defaultSettings()`, `{not:}` on public catch-alls, prefix `Gate@login` 403 + handlers inside `Auth::isLogged()` |
 | [04-CONTROLLERS-AND-RESPONSES.md](04-CONTROLLERS-AND-RESPONSES.md) | Controllers, response |
 | [05-VIEWS-TEMPLATES-ASSETS.md](05-VIEWS-TEMPLATES-ASSETS.md) | Template syntax, assets; **§1c** HTML via Renderer; §5 sandbox + Renderer lifecycle events |
-| [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder — `$qb->raw()`: every `?` is a placeholder, including comments |
+| [06-DATABASE.md](06-DATABASE.md) | DB / QueryBuilder — ask engine + query style when planning; `$qb->raw()`: every `?` is a placeholder, including comments |
 | [07-SCHEMA-AND-INSTALL.md](07-SCHEMA-AND-INSTALL.md) | Migrations, written-order installer keys (no sorting); **§0** probe-then-CREATE |
 | [08-FORMS-AND-SECURITY.md](08-FORMS-AND-SECURITY.md) | fo-rm, CRC, CSRF |
 | [09-DOTAPP-JS-AND-BRIDGE.md](09-DOTAPP-JS-AND-BRIDGE.md) | Frontend + Bridge + **custom `$dotapp().fn` libraries** (jQuery ports = §4.C) |
