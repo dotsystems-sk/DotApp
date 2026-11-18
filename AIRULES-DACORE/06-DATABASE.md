@@ -150,19 +150,31 @@ There is **no `getBindings()`** — read `getQuery()['bindings']`.
 `whereBetween($column, array $values, $boolean = 'AND')`, `orWhereBetween`,
 `whereNull($column, $boolean = 'AND')`, `whereNotNull`, `orWhereNull`, `orWhereNotNull`
 
-`whereIn` accepts an array, a `QueryBuilder`, or a `Closure` subquery.
+`whereIn` accepts an array, a `QueryBuilder`, or a `Closure` subquery. Anything else (a string, `null`) **throws** `InvalidArgumentException`.
 
-`where()` with `null` and empty lists:
+**The number of arguments decides what `where()` means:**
 
-| Call | SQL |
-|------|-----|
-| `where('owner', '=', null)` / `where('owner', '!=', null)` | `owner IS NULL` / `owner IS NOT NULL` |
-| `where('age', '>', null)` | `age > NULL` — matches nothing |
-| `where('active', 1)` | `active = ?` |
-| `where('a > b')` | raw condition, unchanged |
-| `whereIn('id', [])` | `1 = 0` — matches nothing |
+| Call | Meaning | SQL |
+|------|---------|-----|
+| `where('a > b')` | 1 argument: hand-written condition, unchanged | `a > b` |
+| `where('active', 1)` | 2 arguments: column = value. The second argument is **always a bound value** | `active = ?` |
+| `where('token', '')` / `where('note', 'like')` | still a value — never a raw condition or an operator | `token = ?` / `note = ?` |
+| `where('owner', null)` | 2 arguments with `null` | `owner IS NULL` |
+| `where('id', [1, 2])` / `where('id', 'IN', [1, 2])` | list of values | `id IN (?, ?)` |
+| `where('owner', '=', null)` / `where('owner', '!=', null)` | 3 arguments with `null` | `owner IS NULL` / `owner IS NOT NULL` |
+| `where('age', '>', null)` | | `age > NULL` — matches nothing |
+| `whereIn('id', [])` | empty list | `1 = 0` — matches nothing |
 
-Decide in PHP what a missing value means before the query (`=== false` after `Crypto::decrypt`, an empty id list) and answer with `Reply::fail()` instead of running it.
+**`null` widens the match.** `where('reset_token', $token)` with `$token === null` asks for every row whose token is `NULL` — usually most of the table. Decide in PHP what a missing value means **before** the query (`=== false` after `Crypto::decrypt`, an empty string from the request, an empty id list) and answer with `Reply::fail()` instead of running it.
+
+**Checked arguments (they throw `InvalidArgumentException`):**
+
+- The **operator** of `where()` / `having()` / `join()` must be one of `=`, `!=`, `<>`, `<`, `>`, `<=`, `>=`, `<=>`, `LIKE`, `NOT LIKE`, `ILIKE`, `NOT ILIKE`, `LIKE BINARY`, `RLIKE`, `REGEXP` (and their `NOT` forms), `SIMILAR TO`, `IN`, `NOT IN`, `IS`, `IS NOT`, `~`, `~*`, `!~`, `!~*`, `&`, `|`, `^`, `<<`, `>>`.
+- The **boolean** is `AND` or `OR`; the `orderBy()` **direction** is `ASC` or `DESC`.
+- `whereBetween()` needs exactly two values; `insert()` and `set()` need at least one column.
+- A quote character inside a column name is doubled, so a name cannot close its quoting. A function call (`DATE(created)`) or `x AS y` is still passed through as an expression — **never** build those from request data ([24](24-ATTACK-VECTORS.md) §1).
+
+**Call order does not matter.** Bindings are stored per clause and emitted in the order of the placeholders in the final SQL. `limit(1)->where('id', '=', 7)`, `update('t')->where(...)->set(...)` and `offset(20)->limit(10)` produce the same statement and the same bindings as the usual order. `limit()` / `offset()` called twice keep the last value.
 
 ### Join
 
@@ -171,19 +183,20 @@ $qb->join('users u', 'p.user_id', '=', 'u.id');   // INNER
 $qb->leftJoin('users u', 'p.user_id', '=', 'u.id');
 $qb->rightJoin(...);
 $qb->fullJoin(...);   // throws on mysql/sqlite
+$qb->join('users u', 'p.user_id', 'u.id');        // operator omitted = equality
 ```
 
-Signature: `join($table, $first, $operator = null, $second = null, $type = 'INNER')`.
+Signature: `join($table, $first, $operator = null, $second = null, $type = 'INNER')`. A table alias may be written `users u` or `users AS u`. In an `UPDATE` on MySQL the join is placed before `SET`.
 
 ### Grouping / ordering / paging
 
 | Method | Note |
 |--------|------|
 | `groupBy($columns)` | |
-| `having($column, $operator = null, $value = null, $aggregate = null)` | **only one HAVING stored** (later calls overwrite) |
+| `having($column, $operator = null, $value = null, $aggregate = null)` | a second call is joined with `AND` |
 | `orderBy($column, $direction = 'ASC')` | multiple allowed |
-| `limit($limit)` / `offset($offset)` | bound as `?` |
-| `resetLimitOffset()` | strips last two bindings (heuristic) |
+| `limit($limit)` / `offset($offset)` | cast to int and bound as `?`; the last call wins. `offset()` without `limit()` works on MySQL and SQLite too |
+| `resetLimitOffset()` | removes LIMIT and OFFSET; other bindings are untouched |
 
 ### Writes
 

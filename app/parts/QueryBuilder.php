@@ -8,18 +8,29 @@ use \Dotsystems\App\Parts\DB;
 
 class QueryBuilder {
     private $queryParts;
-    private $bindings;
-    private $types;
     private $databaser;
     private $dbType;
-    private $limitOffsetBindings = 0; // Kolko bindingov pridal limit() a offset()
+
+    // Bindingy su ulozene po castiach dotazu (with, insert, set, join, where, having, union, raw).
+    // getQuery() ich poskladava v rovnakom poradi, v akom idu jednotlive casti do SQL, takze nezalezi
+    // na tom, v akom poradi boli volane metody (napr. limit() pred where() alebo where() pred set()).
+    private $bindingParts;
+
+    // Operatory, ktore mozu ist do where(), having() a join(). Operator sa vklada priamo do SQL,
+    // preto musi byt z tohto zoznamu.
+    private static $allowedOperators = [
+        '=', '!=', '<>', '<', '>', '<=', '>=', '<=>',
+        'LIKE', 'NOT LIKE', 'ILIKE', 'NOT ILIKE', 'LIKE BINARY', 'NOT LIKE BINARY',
+        'RLIKE', 'NOT RLIKE', 'REGEXP', 'NOT REGEXP', 'SIMILAR TO', 'NOT SIMILAR TO',
+        'IN', 'NOT IN', 'IS', 'IS NOT',
+        '~', '~*', '!~', '!~*', '&', '|', '^', '<<', '>>',
+    ];
 
     public function __construct($databaser = null) {
         $this->databaser = $databaser;
         $this->queryParts = [];
-        $this->bindings = [];
-        $this->types = '';
-        
+        $this->bindingParts = [];
+
         if ($databaser instanceof Databaser) {
             // If $databaser is a Databaser instance, use existing logic
             if (isset($databaser->database_drivers['driver'])) {
@@ -52,7 +63,10 @@ class QueryBuilder {
 
     public function distinct() {
         if (isset($this->queryParts['select'])) {
-            $this->queryParts['select'] = preg_replace('/^SELECT/', 'SELECT DISTINCT', $this->queryParts['select'], 1);
+            // DISTINCT pridavame iba raz, aj ked uz bol zadany cez select(..., true).
+            if (!preg_match('/^SELECT DISTINCT\b/', $this->queryParts['select'])) {
+                $this->queryParts['select'] = preg_replace('/^SELECT/', 'SELECT DISTINCT', $this->queryParts['select'], 1);
+            }
         } else {
             $this->queryParts['select'] = "SELECT DISTINCT *";
         }
@@ -94,8 +108,7 @@ class QueryBuilder {
         }
 
         $this->queryParts['with'][] = $this->sanitizeTable($name) . " AS (" . $subQuery['query'] . ")";
-        $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-        $this->types .= $subQuery['types'];
+        $this->mergeBindings($subQuery, 'with');
         return $this;
     }
 
@@ -104,8 +117,7 @@ class QueryBuilder {
         $subQuery = $query->getQuery();
         $unionType = $all ? "UNION ALL" : "UNION";
         $this->queryParts['union'][] = "$unionType (" . $subQuery['query'] . ")";
-        $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-        $this->types .= $subQuery['types'];
+        $this->mergeBindings($subQuery, 'union');
         return $this;
     }
 
@@ -115,8 +127,7 @@ class QueryBuilder {
         }
         $subQuery = $query->getQuery();
         $this->queryParts['union'][] = "INTERSECT (" . $subQuery['query'] . ")";
-        $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-        $this->types .= $subQuery['types'];
+        $this->mergeBindings($subQuery, 'union');
         return $this;
     }
 
@@ -126,18 +137,23 @@ class QueryBuilder {
         }
         $subQuery = $query->getQuery();
         $this->queryParts['union'][] = "EXCEPT (" . $subQuery['query'] . ")";
-        $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-        $this->types .= $subQuery['types'];
+        $this->mergeBindings($subQuery, 'union');
         return $this;
     }
 
     // INSERT
     public function insert($table, array $data) {
+        // Prazdne pole by vytvorilo "INSERT INTO t () VALUES ()", co vlozi riadok iba s predvolenymi hodnotami.
+        if (count($data) === 0) {
+            throw new \InvalidArgumentException("insert() needs at least one column.");
+        }
         $this->queryParts['type'] = 'INSERT';
         $columns = implode(', ', array_map([$this, 'sanitizeColumn'], array_keys($data)));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
         $this->queryParts['insert'] = "INSERT INTO " . $this->sanitizeTable($table) . " ($columns) VALUES ($placeholders)";
-        $this->addBindings(array_values($data));
+        // Novy insert() nahradza predchadzajuci aj s jeho bindingmi.
+        $this->bindingParts['insert'] = [];
+        $this->addBindings(array_values($data), 'insert');
         return $this;
     }
 
@@ -157,11 +173,14 @@ class QueryBuilder {
 
     // ON DUPLICATE KEY UPDATE / ON CONFLICT
     public function onDuplicateKeyUpdate(array $data, $conflictTarget = null) {
+        if (!isset($this->queryParts['insert'])) {
+            throw new \LogicException("onDuplicateKeyUpdate() must be called after insert().");
+        }
         if ($this->dbType === 'mysql') {
             $updates = [];
             foreach ($data as $column => $value) {
                 $updates[] = $this->sanitizeColumn($column) . " = ?";
-                $this->addBindings([$value]);
+                $this->addBindings([$value], 'insert');
             }
             $this->queryParts['insert'] .= " ON DUPLICATE KEY UPDATE " . implode(', ', $updates);
         } elseif ($this->dbType === 'pgsql') {
@@ -175,7 +194,7 @@ class QueryBuilder {
             $updates = [];
             foreach ($data as $column => $value) {
                 $updates[] = $this->sanitizeColumn($column) . " = ?";
-                $this->addBindings([$value]);
+                $this->addBindings([$value], 'insert');
             }
             $this->queryParts['insert'] .= " ON CONFLICT DO UPDATE SET " . implode(', ', $updates);
         }
@@ -190,10 +209,16 @@ class QueryBuilder {
     }
 
     public function set(array $data) {
+        // Prazdne pole by vytvorilo "SET " bez stlpcov.
+        if (count($data) === 0) {
+            throw new \InvalidArgumentException("set() needs at least one column.");
+        }
         $setParts = [];
+        // Nove set() nahradza predchadzajuce aj s jeho bindingmi.
+        $this->bindingParts['set'] = [];
         foreach ($data as $column => $value) {
             $setParts[] = $this->sanitizeColumn($column) . " = ?";
-            $this->addBindings([$value]);
+            $this->addBindings([$value], 'set');
         }
         $this->queryParts['set'] = "SET " . implode(', ', $setParts);
         return $this;
@@ -214,6 +239,31 @@ class QueryBuilder {
 
     // WHERE
     public function where($column, $operator = null, $value = null, $boolean = 'AND') {
+        return $this->addWhere(func_num_args(), $column, $operator, $value, $boolean);
+    }
+
+    public function andWhere($column, $operator = null, $value = null) {
+        return $this->addWhere(func_num_args(), $column, $operator, $value, 'AND');
+    }
+
+    public function orWhere($column, $operator = null, $value = null) {
+        return $this->addWhere(func_num_args(), $column, $operator, $value, 'OR');
+    }
+
+    /*
+        Spolocna logika pre where(), andWhere() a orWhere().
+
+        $argc je pocet parametrov, s ktorymi bola metoda zavolana. Podla neho rozlisujeme:
+            where('a > b')                  - 1 parameter: surova podmienka
+            where('stlpec', $hodnota)       - 2 parametre: skrateny zapis pre stlpec = hodnota
+            where('stlpec', '=', $hodnota)  - 3 a viac parametrov: stlpec, operator, hodnota
+
+        Pri skratenom zapise je druhy parameter VZDY hodnota. Prazdny retazec, null ani text, ktory vyzera
+        ako operator ('like', '='), sa preto nikdy nevlozia do SQL ako surova podmienka alebo operator.
+    */
+    private function addWhere($argc, $column, $operator, $value, $boolean) {
+        $boolean = $this->normalizeBoolean($boolean);
+
         if ($column instanceof \Closure) {
             $groupBuilder = new QueryBuilder($this->databaser);
             $groupBuilder->queryParts['type'] = 'SELECT'; // Set default type for sub-query
@@ -229,73 +279,138 @@ class QueryBuilder {
             if ($whereClause) {
                 $whereClause = trim(preg_replace('/^(AND|OR)\s+/', '', $whereClause));
                 $this->queryParts['where'][] = "$boolean ($whereClause)";
-                $this->bindings = array_merge($this->bindings, $groupQuery['bindings']);
-                $this->types .= $groupQuery['types'];
+                // Zo skupiny berieme iba bindingy jej podmienok, v poradi v akom su v zatvorke.
+                $this->mergeBindingList($groupBuilder->bindingParts['where'] ?? [], 'where');
             }
-        } elseif ($value instanceof \Closure) {
+            return $this;
+        }
+
+        if ($value instanceof \Closure) {
+            $operator = $this->normalizeOperator($operator);
             $subQueryBuilder = new QueryBuilder($this->databaser);
             $subQueryBuilder->queryParts['type'] = 'SELECT'; // Set default type for sub-query
             $value($subQueryBuilder);
             $subQuery = $subQueryBuilder->getQuery();
             $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operator (" . $subQuery['query'] . ")";
-            $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-            $this->types .= $subQuery['types'];
-        } elseif ($value === null) {
-            // Oprava 11/2026: upravene spracovanie podmienky s hodnotou null.
-            // = a != s null generuju IS NULL / IS NOT NULL, ine porovnania s null nevyhovuju ziadnemu riadku.
-            $operatorText = is_string($operator) ? strtoupper(trim($operator)) : $operator;
+            $this->mergeBindings($subQuery, 'where');
+            return $this;
+        }
+
+        if ($argc <= 1) {
+            // Surova podmienka zapisana v prvom parametri, napriklad where('a > b').
+            if (!is_string($column) || trim($column) === '') {
+                throw new \InvalidArgumentException("where() needs a column or a condition.");
+            }
+            $this->queryParts['where'][] = "$boolean $column";
+            return $this;
+        }
+
+        if ($argc === 2) {
+            // Skrateny zapis where('stlpec', $hodnota).
+            return $this->addWhereValue($column, '=', $operator, $boolean);
+        }
+
+        if ($value === null) {
+            $operatorText = is_string($operator) ? strtoupper(trim(preg_replace('/\s+/', ' ', $operator))) : $operator;
             if ($operator === null || $operatorText === '') {
-                // Surova podmienka zapisana v prvom parametri, napriklad where('a > b'). Ostava ako bola.
+                // where('a > b', null, null, 'OR') - surova podmienka s urcenou spojkou.
+                if (!is_string($column) || trim($column) === '') {
+                    throw new \InvalidArgumentException("where() needs a column or a condition.");
+                }
                 $this->queryParts['where'][] = "$boolean $column";
             } elseif ($operatorText === '=' || $operatorText === 'IS') {
                 $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NULL";
             } elseif ($operatorText === '!=' || $operatorText === '<>' || $operatorText === 'IS NOT') {
                 $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NOT NULL";
-            } elseif (is_string($operator) && in_array($operatorText, ['>', '<', '>=', '<=', '<=>', 'LIKE', 'NOT LIKE', 'REGEXP', 'NOT REGEXP', 'ILIKE'], true)) {
+            } elseif (is_string($operator) && in_array($operatorText, self::$allowedOperators, true)) {
                 // Porovnanie s NULL nevrati v SQL ziadny riadok.
                 $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operatorText NULL";
             } else {
-                // Skrateny zapis where('stlpec', $hodnota) - druhy parameter je hodnota, nie operator.
-                $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " = ?";
-                $this->addBindings([$operator]);
+                // where('stlpec', $hodnota, null, 'OR') - druhy parameter je hodnota, nie operator.
+                $this->addWhereValue($column, '=', $operator, $boolean);
             }
-        } else {
-            $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operator ?";
-            $this->addBindings([$value]);
+            return $this;
         }
+
+        return $this->addWhereValue($column, $operator, $value, $boolean);
+    }
+
+    // Jedna podmienka stlpec OPERATOR hodnota. Hodnota ide vzdy cez binding.
+    private function addWhereValue($column, $operator, $value, $boolean) {
+        $operator = $this->normalizeOperator($operator);
+
+        if ($value === null) {
+            // stlpec = NULL nevyhovuje v SQL ziadnemu riadku, preto pouzijeme IS NULL / IS NOT NULL.
+            if ($operator === '=' || $operator === 'IS') {
+                $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NULL";
+            } elseif ($operator === '!=' || $operator === '<>' || $operator === 'IS NOT') {
+                $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NOT NULL";
+            } else {
+                $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operator NULL";
+            }
+            return $this;
+        }
+
+        if (is_array($value)) {
+            // Pole hodnot dava zmysel iba so zoznamom: where('id', 'IN', [1, 2]) alebo where('id', [1, 2]).
+            if ($operator === '=' || $operator === 'IN') {
+                return $this->whereIn($column, $value, $boolean);
+            }
+            if ($operator === '!=' || $operator === '<>' || $operator === 'NOT IN') {
+                return $this->addWhereList($column, $value, $boolean, true);
+            }
+            throw new \InvalidArgumentException("where() got an array for operator $operator. Use whereIn() for a list of values.");
+        }
+
+        if ($value instanceof QueryBuilder) {
+            $subQuery = $value->getQuery();
+            $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operator (" . $subQuery['query'] . ")";
+            $this->mergeBindings($subQuery, 'where');
+            return $this;
+        }
+
+        if (is_object($value) && !method_exists($value, '__toString')) {
+            throw new \InvalidArgumentException("where() got a value that cannot be bound.");
+        }
+
+        $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " $operator ?";
+        $this->addBindings([$value], 'where');
         return $this;
     }
 
-    public function andWhere($column, $operator = null, $value = null) {
-        return $this->where($column, $operator, $value, 'AND');
-    }
-
-    public function orWhere($column, $operator = null, $value = null) {
-        return $this->where($column, $operator, $value, 'OR');
-    }
-
     public function whereIn($column, $values, $boolean = 'AND') {
+        $boolean = $this->normalizeBoolean($boolean);
         if ($values instanceof \Closure) {
             $subQueryBuilder = new QueryBuilder($this->databaser);
             $subQueryBuilder->queryParts['type'] = 'SELECT';
             $values($subQueryBuilder);
             $subQuery = $subQueryBuilder->getQuery();
             $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IN (" . $subQuery['query'] . ")";
-            $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-            $this->types .= $subQuery['types'];
+            $this->mergeBindings($subQuery, 'where');
         } elseif ($values instanceof QueryBuilder) {
             $subQuery = $values->getQuery();
             $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IN (" . $subQuery['query'] . ")";
-            $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-            $this->types .= $subQuery['types'];
-        } elseif (is_array($values) && count($values) === 0) {
-            // Oprava: prazdne pole generovalo "IN ()" co je syntakticka chyba. Prazdny zoznam nema vyhovovat ziadnemu riadku.
-            $this->queryParts['where'][] = "$boolean 1 = 0";
+            $this->mergeBindings($subQuery, 'where');
         } else {
-            $placeholders = implode(', ', array_fill(0, count($values), '?'));
-            $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IN ($placeholders)";
-            $this->addBindings($values);
+            $this->addWhereList($column, $values, $boolean, false);
         }
+        return $this;
+    }
+
+    // IN (...) / NOT IN (...) so zoznamom hodnot.
+    private function addWhereList($column, $values, $boolean, $not) {
+        if (!is_array($values)) {
+            throw new \InvalidArgumentException("whereIn() needs an array of values, a Closure or a QueryBuilder.");
+        }
+        $values = array_values($values);
+        if (count($values) === 0) {
+            // Prazdny zoznam: IN nevyhovuje ziadnemu riadku, NOT IN vyhovuje kazdemu. "IN ()" je syntakticka chyba.
+            $this->queryParts['where'][] = $not ? "$boolean 1 = 1" : "$boolean 1 = 0";
+            return $this;
+        }
+        $placeholders = implode(', ', array_fill(0, count($values), '?'));
+        $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . ($not ? " NOT IN" : " IN") . " ($placeholders)";
+        $this->addBindings($values, 'where');
         return $this;
     }
 
@@ -304,8 +419,14 @@ class QueryBuilder {
     }
 
     public function whereBetween($column, array $values, $boolean = 'AND') {
+        $boolean = $this->normalizeBoolean($boolean);
+        $values = array_values($values);
+        // BETWEEN potrebuje presne dve hranice. S jednou by sa druha bindovala ako NULL a podmienka by ticho nevratila nic.
+        if (count($values) !== 2) {
+            throw new \InvalidArgumentException("whereBetween() needs exactly two values.");
+        }
         $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " BETWEEN ? AND ?";
-        $this->addBindings([$values[0], $values[1]]);
+        $this->addBindings([$values[0], $values[1]], 'where');
         return $this;
     }
 
@@ -314,11 +435,13 @@ class QueryBuilder {
     }
 
     public function whereNull($column, $boolean = 'AND') {
+        $boolean = $this->normalizeBoolean($boolean);
         $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NULL";
         return $this;
     }
 
     public function whereNotNull($column, $boolean = 'AND') {
+        $boolean = $this->normalizeBoolean($boolean);
         $this->queryParts['where'][] = "$boolean " . $this->sanitizeColumn($column) . " IS NOT NULL";
         return $this;
     }
@@ -333,11 +456,20 @@ class QueryBuilder {
 
     // JOIN
     public function join($table, $first, $operator = null, $second = null, $type = 'INNER') {
+        // join('t', 'a.id', 'b.id') - operator vynechany, plati rovnost.
+        if ($second === null && $operator !== null) {
+            $second = $operator;
+            $operator = '=';
+        }
+        $operator = $this->normalizeOperator($operator);
+        $type = strtoupper(trim(preg_replace('/\s+/', ' ', (string) $type)));
+        if (!in_array($type, ['INNER', 'LEFT', 'RIGHT', 'LEFT OUTER', 'RIGHT OUTER', 'FULL OUTER', 'CROSS'], true)) {
+            throw new \InvalidArgumentException("Unsupported join type: $type.");
+        }
         if ($table instanceof QueryBuilder) {
             $subQuery = $table->getQuery();
             $this->queryParts['join'][] = "$type JOIN (" . $subQuery['query'] . ") AS subquery ON " . $this->sanitizeColumn($first) . " $operator " . $this->sanitizeColumn($second);
-            $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-            $this->types .= $subQuery['types'];
+            $this->mergeBindings($subQuery, 'join');
         } else {
             $this->queryParts['join'][] = "$type JOIN " . $this->sanitizeTable($table) . " ON " . $this->sanitizeColumn($first) . " $operator " . $this->sanitizeColumn($second);
         }
@@ -367,6 +499,7 @@ class QueryBuilder {
 
     // HAVING s agregátmi
     public function having($column, $operator = null, $value = null, $aggregate = null) {
+        $operator = $this->normalizeOperator($operator);
         if ($aggregate) {
             $aggregate = strtoupper($aggregate);
             if (!in_array($aggregate, ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX'])) {
@@ -376,78 +509,49 @@ class QueryBuilder {
         } else {
             $havingCondition = $this->sanitizeColumn($column) . " $operator ?";
         }
-        // Oprava: druhe volanie having() prepisalo SQL, ale binding z prveho volania ostal a pocet otaznikov nesedel.
-        // Dalsiu podmienku preto pripajame cez AND.
+        // Dalsiu podmienku pripajame cez AND, aby pocet otaznikov sedel s poctom bindingov.
         if (!empty($this->queryParts['having'])) {
             $this->queryParts['having'] .= " AND " . $havingCondition;
         } else {
             $this->queryParts['having'] = "HAVING " . $havingCondition;
         }
-        $this->addBindings([$value]);
+        $this->addBindings([$value], 'having');
         return $this;
     }
 
     // ORDER BY
     public function orderBy($column, $direction = 'ASC') {
-        $this->queryParts['orderBy'][] = $this->sanitizeColumns($column) . " " . strtoupper($direction);
+        // Smer sa vklada priamo do SQL, preto povolujeme iba ASC a DESC.
+        $direction = strtoupper(trim((string) $direction));
+        if ($direction === '') {
+            $direction = 'ASC';
+        }
+        if ($direction !== 'ASC' && $direction !== 'DESC') {
+            throw new \InvalidArgumentException("orderBy() direction must be ASC or DESC.");
+        }
+        $this->queryParts['orderBy'][] = $this->sanitizeColumns($column) . " " . $direction;
         return $this;
     }
 
     // LIMIT a OFFSET
+    // Ukladame iba cisla. SQL aj bindingy pre LIMIT a OFFSET vznikaju az v getQuery(), takze opakovane
+    // volanie limit() alebo offset() iba prepise hodnotu a poradie volani nema vplyv na dotaz.
     public function limit($limit) {
-        // Oprava: do bindingu isla povodna hodnota. limit('10') z requestu sa potom bindoval ako text a vzniklo LIMIT '10'.
+        // limit('10') z requestu sa musi bindovat ako cislo, inak vznikne LIMIT '10'.
         $limit = (int) $limit;
-        $this->queryParts['limit_value'] = $limit;
-
-        switch ($this->dbType) {
-            case 'sqlsrv':
-                if (!isset($this->queryParts['select'])) {
-                    throw new \Exception("LIMIT (TOP) can only be used with SELECT in SQL Server.");
-                }
-                $this->queryParts['select'] = preg_replace('/^SELECT/', "SELECT TOP ? ", $this->queryParts['select'], 1);
-                $this->addBindings([$limit]);
-                break;
-            case 'oci':
-                $this->queryParts['limit'] = "FETCH FIRST ? ROWS ONLY";
-                $this->addBindings([$limit]);
-                break;
-            default:
-                $this->queryParts['limit'] = "LIMIT ?";
-                $this->addBindings([$limit]);
+        if ($limit < 0) {
+            $limit = 0;
         }
-        // Pocitame si bindingy ktore pridal limit a offset, aby ich resetLimitOffset vedel odobrat presne.
-        $this->limitOffsetBindings++;
+        $this->queryParts['limit_value'] = $limit;
         return $this;
     }
 
     public function offset($offset) {
-        // Oprava: rovnako ako pri limit() bindujeme cislo, nie povodny text.
         $offset = (int) $offset;
-        $this->queryParts['offset_value'] = $offset;
-
-        switch ($this->dbType) {
-            case 'sqlsrv':
-                $this->queryParts['offset'] = "OFFSET ? ROWS";
-                $this->addBindings([$offset]);
-                $this->limitOffsetBindings++;
-                if (!isset($this->queryParts['limit_value'])) {
-                    $this->queryParts['fetch'] = "FETCH NEXT 18446744073709551615 ROWS ONLY";
-                } else {
-                    $this->queryParts['fetch'] = "FETCH NEXT ? ROWS ONLY";
-                    $this->addBindings([$this->queryParts['limit_value']]);
-                    $this->limitOffsetBindings++;
-                }
-                break;
-            case 'oci':
-                $this->queryParts['offset'] = "OFFSET ? ROWS";
-                $this->addBindings([$offset]);
-                $this->limitOffsetBindings++;
-                break;
-            default:
-                $this->queryParts['offset'] = "OFFSET ?";
-                $this->addBindings([$offset]);
-                $this->limitOffsetBindings++;
+        if ($offset < 0) {
+            $offset = 0;
         }
+        $this->queryParts['offset_value'] = $offset;
         return $this;
     }
 
@@ -457,15 +561,6 @@ class QueryBuilder {
         unset($this->queryParts['offset']);
         unset($this->queryParts['offset_value']);
         unset($this->queryParts['fetch']);
-        // Oprava: predtym sa vzdy odrezali posledne 2 bindingy, aj ked limit ani offset neboli nastavene.
-        // paginate() tak pri COUNT dotaze prisiel o bindingy z where() a pocet otaznikov nesedel.
-        // Odoberame iba tolko bindingov, kolko limit() a offset() naozaj pridali.
-        $remove = min($this->limitOffsetBindings, count($this->bindings));
-        if ($remove > 0) {
-            $this->bindings = array_slice($this->bindings, 0, -$remove);
-            $this->types = substr($this->types, 0, -$remove);
-        }
-        $this->limitOffsetBindings = 0;
         return $this;
     }
 
@@ -476,111 +571,200 @@ class QueryBuilder {
 
     // Zostavenie dotazu
     public function getQuery() {
+        $parts = $this->queryParts;
+        $type = $parts['type'] ?? '';
         $query = '';
+        // Poradie casti bindingov musi presne kopirovat poradie, v akom sa casti pridavaju do $query.
+        $order = [];
+        $extra = []; // bindingy pre LIMIT / OFFSET / TOP, ktore vznikaju az tu
 
-        if (!empty($this->queryParts['with'])) {
-            $query .= "WITH " . implode(', ', $this->queryParts['with']) . " ";
+        $hasLimit = isset($parts['limit_value']);
+        $hasOffset = isset($parts['offset_value']);
+        unset($parts['limit'], $parts['offset'], $parts['fetch']);
+
+        if (!empty($parts['with'])) {
+            $query .= "WITH " . implode(', ', $parts['with']) . " ";
+            $order[] = 'with';
         }
 
-        if ($this->queryParts['type'] === 'TRUNCATE') {
-            $query .= $this->queryParts['truncate'];
-        } elseif ($this->queryParts['type'] === 'CREATE_TABLE') {
-            $query .= $this->queryParts['create'];
-        } elseif ($this->queryParts['type'] === 'ALTER_TABLE') {
-            $query .= $this->queryParts['alter'];
-        } elseif ($this->queryParts['type'] === 'DROP_TABLE') {
-            $query .= $this->queryParts['drop'];
-        } elseif ($this->queryParts['type'] === 'SELECT') {
-            $select = $this->queryParts['select'] ?? '';
-            $from = $this->queryParts['from'] ?? '';
+        $joinDone = false;
+        if ($type === 'TRUNCATE') {
+            $query .= $parts['truncate'] ?? '';
+        } elseif ($type === 'CREATE_TABLE') {
+            $query .= $parts['create'] ?? '';
+        } elseif ($type === 'ALTER_TABLE') {
+            $query .= $parts['alter'] ?? '';
+        } elseif ($type === 'DROP_TABLE') {
+            $query .= $parts['drop'] ?? '';
+        } elseif ($type === 'SELECT') {
+            $select = $parts['select'] ?? '';
+            // SQL Server: bez OFFSET sa pocet riadkov obmedzuje cez TOP hned za SELECT.
+            if ($this->dbType === 'sqlsrv' && $hasLimit && !$hasOffset) {
+                if ($select === '') {
+                    throw new \Exception("LIMIT (TOP) can only be used with SELECT in SQL Server.");
+                }
+                $select = preg_replace('/^SELECT( DISTINCT)?/', 'SELECT$1 TOP (?)', $select, 1);
+                $extra['top'] = [$parts['limit_value']];
+                $order[] = 'top';
+            }
+            $from = $parts['from'] ?? '';
             $query .= $select . ($select && $from ? " " : "") . $from;
-        } elseif ($this->queryParts['type'] === 'INSERT') {
-            $query .= $this->queryParts['insert'];
-        } elseif ($this->queryParts['type'] === 'UPDATE') {
-            $query .= $this->queryParts['update'] . " " . $this->queryParts['set'];
-        } elseif ($this->queryParts['type'] === 'DELETE') {
-            $query .= $this->queryParts['delete'];
-        } elseif ($this->queryParts['type'] === 'RAW') {
-            $query .= $this->queryParts['raw'];
+        } elseif ($type === 'INSERT') {
+            $query .= $parts['insert'] ?? '';
+            $order[] = 'insert';
+        } elseif ($type === 'UPDATE') {
+            $query .= $parts['update'] ?? '';
+            // MySQL chce JOIN medzi nazvom tabulky a SET.
+            if ($this->dbType === 'mysql' && !empty($parts['join'])) {
+                $query .= " " . implode(" ", $parts['join']);
+                $order[] = 'join';
+                $joinDone = true;
+            }
+            $query .= " " . ($parts['set'] ?? '');
+            $order[] = 'set';
+        } elseif ($type === 'DELETE') {
+            if (isset($parts['delete'])) {
+                $query .= $parts['delete'];
+            } elseif (isset($parts['from'])) {
+                // delete()->from('tabulka')
+                $query .= "DELETE " . $parts['from'];
+            }
+        } elseif ($type === 'RAW') {
+            $query .= $parts['raw'] ?? '';
+            $order[] = 'raw';
         }
 
-        if (!empty($this->queryParts['join'])) {
-            $query .= " " . implode(" ", $this->queryParts['join']);
+        if (!$joinDone && !empty($parts['join'])) {
+            $query .= " " . implode(" ", $parts['join']);
+            $order[] = 'join';
         }
 
-        if (!empty($this->queryParts['where'])) {
-            $whereParts = $this->queryParts['where'];
+        if (!empty($parts['where'])) {
+            $whereParts = $parts['where'];
             $firstWhere = array_shift($whereParts);
-            // Oprava: ltrim s druhym parametrom neodstranuje slovo AND/OR ale vsetky znaky A,N,D,O,R a medzeru zlava.
-            // where('DATE(created)', ...) potom skoncilo ako "WHERE TE(created)". Odstranime iba uvodnu spojku.
+            // ltrim s druhym parametrom neodstranuje slovo AND/OR ale vsetky znaky A,N,D,O,R a medzeru zlava.
+            // where('DATE(created)', ...) by potom skoncilo ako "WHERE TE(created)". Odstranujeme iba uvodnu spojku.
             $query .= " WHERE " . preg_replace('/^(AND|OR)\s+/', '', ltrim($firstWhere));
-            $query .= " " . implode(" ", $whereParts);
+            if (!empty($whereParts)) {
+                $query .= " " . implode(" ", $whereParts);
+            }
+            $order[] = 'where';
         }
 
-        if (!empty($this->queryParts['groupBy'])) {
-            $query .= " " . $this->queryParts['groupBy'];
+        if (!empty($parts['groupBy'])) {
+            $query .= " " . $parts['groupBy'];
         }
 
-        if (!empty($this->queryParts['having'])) {
-            $query .= " " . $this->queryParts['having'];
+        if (!empty($parts['having'])) {
+            $query .= " " . $parts['having'];
+            $order[] = 'having';
         }
 
-        if (!empty($this->queryParts['orderBy'])) {
-            $query .= " ORDER BY " . implode(", ", $this->queryParts['orderBy']);
+        if (!empty($parts['orderBy'])) {
+            $query .= " ORDER BY " . implode(", ", $parts['orderBy']);
         }
 
         if ($this->dbType === 'sqlsrv') {
-            if (!empty($this->queryParts['offset'])) {
-                $query .= " " . $this->queryParts['offset'];
-                if (!empty($this->queryParts['fetch'])) {
-                    $query .= " " . $this->queryParts['fetch'];
-                    if (isset($this->queryParts['limit'])) {
-                        $limitIndex = array_search($this->queryParts['limit'], array_map('strval', $this->bindings));
-                        $this->bindings[] = (int) $this->bindings[$limitIndex];
-                    }
+            if ($hasOffset) {
+                $parts['offset'] = "OFFSET ? ROWS";
+                $query .= " " . $parts['offset'];
+                $extra['offset'] = [$parts['offset_value']];
+                $order[] = 'offset';
+                if ($hasLimit) {
+                    $parts['fetch'] = "FETCH NEXT ? ROWS ONLY";
+                    $query .= " " . $parts['fetch'];
+                    $extra['limit'] = [$parts['limit_value']];
+                    $order[] = 'limit';
                 }
             }
         } elseif ($this->dbType === 'oci') {
-            if (!empty($this->queryParts['offset'])) {
-                $query .= " " . $this->queryParts['offset'];
+            if ($hasOffset) {
+                $parts['offset'] = "OFFSET ? ROWS";
+                $query .= " " . $parts['offset'];
+                $extra['offset'] = [$parts['offset_value']];
+                $order[] = 'offset';
             }
-            if (!empty($this->queryParts['limit'])) {
-                $query .= " " . $this->queryParts['limit'];
+            if ($hasLimit) {
+                $parts['limit'] = "FETCH FIRST ? ROWS ONLY";
+                $query .= " " . $parts['limit'];
+                $extra['limit'] = [$parts['limit_value']];
+                $order[] = 'limit';
             }
         } else {
-            if (!empty($this->queryParts['limit'])) {
-                $query .= " " . $this->queryParts['limit'];
+            if ($hasLimit) {
+                $parts['limit'] = "LIMIT ?";
+                $query .= " " . $parts['limit'];
+                $extra['limit'] = [$parts['limit_value']];
+                $order[] = 'limit';
+            } elseif ($hasOffset && $this->dbType !== 'pgsql') {
+                // MySQL a SQLite nepoznaju OFFSET bez LIMIT. Pouzijeme "bez obmedzenia".
+                $parts['limit'] = $this->dbType === 'sqlite' ? "LIMIT -1" : "LIMIT 18446744073709551615";
+                $query .= " " . $parts['limit'];
             }
-            if (!empty($this->queryParts['offset'])) {
-                $query .= " " . $this->queryParts['offset'];
+            if ($hasOffset) {
+                $parts['offset'] = "OFFSET ?";
+                $query .= " " . $parts['offset'];
+                $extra['offset'] = [$parts['offset_value']];
+                $order[] = 'offset';
             }
         }
 
-        if (!empty($this->queryParts['union'])) {
-            $query .= " " . implode(" ", $this->queryParts['union']);
+        if (!empty($parts['union'])) {
+            $query .= " " . implode(" ", $parts['union']);
+            $order[] = 'union';
+        }
+
+        $bindings = [];
+        $types = '';
+        foreach ($order as $bucket) {
+            if (isset($extra[$bucket])) {
+                foreach ($extra[$bucket] as $number) {
+                    $bindings[] = (int) $number;
+                    $types .= 'i';
+                }
+                continue;
+            }
+            foreach ($this->bindingParts[$bucket] ?? [] as $item) {
+                $bindings[] = $item[0];
+                $types .= $item[1];
+            }
         }
 
         return [
             'query' => $query,
-            'bindings' => $this->bindings,
-            'types' => $this->types,
-            'queryParts' => $this->queryParts
+            'bindings' => $bindings,
+            'types' => $types,
+            'queryParts' => $parts
         ];
     }
 
     // Pomocné metódy
-    private function addBindings(array $values) {
+    private function addBindings(array $values, $bucket) {
         foreach ($values as $value) {
             if ($value instanceof \Closure) {
                 $subQueryBuilder = new QueryBuilder($this->databaser);
                 $value($subQueryBuilder);
                 $subQuery = $subQueryBuilder->getQuery();
-                $this->bindings = array_merge($this->bindings, $subQuery['bindings']);
-                $this->types .= $subQuery['types'];
+                $this->mergeBindings($subQuery, $bucket);
             } else {
-                $this->bindings[] = $this->sanitizeValue($value);
-                $this->types .= $this->getBindingType($value);
+                $this->bindingParts[$bucket][] = [$this->sanitizeValue($value), $this->getBindingType($value)];
             }
+        }
+    }
+
+    // Pripoji bindingy hotoveho poddotazu (vysledok getQuery()) do danej casti.
+    private function mergeBindings(array $subQuery, $bucket) {
+        $values = array_values($subQuery['bindings'] ?? []);
+        $types = (string) ($subQuery['types'] ?? '');
+        foreach ($values as $index => $value) {
+            $this->bindingParts[$bucket][] = [$value, isset($types[$index]) ? $types[$index] : $this->getBindingType($value)];
+        }
+    }
+
+    // Pripoji uz pripravene polozky [hodnota, typ] do danej casti.
+    private function mergeBindingList(array $items, $bucket) {
+        foreach ($items as $item) {
+            $this->bindingParts[$bucket][] = $item;
         }
     }
 
@@ -589,6 +773,27 @@ class QueryBuilder {
         if (is_float($value)) return 'd';
         if (is_string($value)) return 's';
         return 's'; // Default pre null alebo iné
+    }
+
+    // Spojka medzi podmienkami sa vklada priamo do SQL, preto povolujeme iba AND a OR.
+    private function normalizeBoolean($boolean) {
+        $boolean = strtoupper(trim((string) $boolean));
+        if ($boolean !== 'AND' && $boolean !== 'OR') {
+            throw new \InvalidArgumentException("Condition must be joined with AND or OR.");
+        }
+        return $boolean;
+    }
+
+    // Operator sa vklada priamo do SQL, preto musi byt zo zoznamu povolenych.
+    private function normalizeOperator($operator) {
+        if (!is_string($operator)) {
+            throw new \InvalidArgumentException("Operator must be a string.");
+        }
+        $normalized = strtoupper(trim(preg_replace('/\s+/', ' ', $operator)));
+        if (!in_array($normalized, self::$allowedOperators, true)) {
+            throw new \InvalidArgumentException("Unsupported operator: $operator");
+        }
+        return $normalized;
     }
 
     private function sanitizeColumns($columns) {
@@ -608,39 +813,54 @@ class QueryBuilder {
     }
 
     private function sanitizeColumn($column) {
+        if (!is_string($column) && !is_int($column) && !is_float($column)) {
+            throw new \InvalidArgumentException("Column name must be a string.");
+        }
+        $column = (string) $column;
+
         // Keep SQL expressions and asterisk unchanged
         if ($this->isSqlExpression($column)) {
             return $column;
         }
 
+        // Znak, ktorym sa nazov uzatvara do uvodzoviek, v nazve zdvojime. Nazov tak nemoze uvodzovky ukoncit
+        // a pokracovat vlastnym SQL.
+        if ($this->dbType === 'sqlsrv') {
+            $open = '[';
+            $close = ']';
+            $escapedClose = ']]';
+        } elseif ($this->dbType === 'pgsql' || $this->dbType === 'oci') {
+            $open = '"';
+            $close = '"';
+            $escapedClose = '""';
+        } else {
+            $open = '`';
+            $close = '`';
+            $escapedClose = '``';
+        }
+
         // Split qualified name (e.g. table.column)
         $parts = explode('.', $column);
         $sanitizedParts = array_map(function ($part) {
-            // Sanitize name (allowed: a-z, A-Z, 0-9, _, spaces, special characters)
             $part = trim($part);
-            if (empty($part)) {
+            if ($part === '') {
                 throw new \InvalidArgumentException("Empty column or table name part");
             }
-            return $part; // Preserve original characters, quoting will handle security
+            return $part;
         }, $parts);
 
-        // Oprava: 't.*' sa dalo do uvodzoviek ako `t`.`*` a MySQL to odmietol. Hviezdicku na konci nechame bez uvodzoviek.
+        // 't.*' - hviezdicku na konci nechavame bez uvodzoviek, inak by vzniklo `t`.`*`.
         $trailingStar = '';
         if (count($sanitizedParts) > 1 && end($sanitizedParts) === '*') {
             array_pop($sanitizedParts);
             $trailingStar = '.*';
         }
 
-        // Reassemble name
-        $sanitizedColumn = implode('.', $sanitizedParts);
+        $quoted = array_map(function ($part) use ($open, $close, $escapedClose) {
+            return $open . str_replace($close, $escapedClose, $part) . $close;
+        }, $sanitizedParts);
 
-        // Quoting based on database type
-        if ($this->dbType === 'sqlsrv') {
-            return str_replace('.', '].[', "[$sanitizedColumn]") . $trailingStar;
-        } elseif ($this->dbType === 'pgsql' || $this->dbType === 'oci') {
-            return str_replace('.', '"."', "\"$sanitizedColumn\"") . $trailingStar;
-        }
-        return str_replace('.', '`.`', "`$sanitizedColumn`") . $trailingStar;
+        return implode('.', $quoted) . $trailingStar;
     }
 
     private function isSqlExpression($column) {
@@ -678,6 +898,11 @@ class QueryBuilder {
         $tableName = $parts[0];
         $alias = $parts[1] ?? null;
 
+        // "users AS u" - slovo AS nie je sucastou aliasu.
+        if ($alias !== null) {
+            $alias = preg_replace('/^AS\s+/i', '', trim($alias));
+        }
+
         // Process table name (can contain schema.table)
         $tableParts = explode('.', $tableName);
         $sanitizedParts = array_map(function ($part) {
@@ -701,7 +926,9 @@ class QueryBuilder {
         // Add alias if exists (without quoting)
         if ($alias) {
             $sanitizedAlias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias);
-            $sanitizedTable .= " {$sanitizedAlias}";
+            if ($sanitizedAlias !== '') {
+                $sanitizedTable .= " {$sanitizedAlias}";
+            }
         }
 
         return $sanitizedTable;
@@ -718,55 +945,124 @@ class QueryBuilder {
         if (is_float($value)) return (float) $value;
         if (is_bool($value)) return (int) $value;
         if (is_null($value)) return null;
+        // Pole sa neda bindovat ako jedna hodnota. (string) by z neho urobil text "Array".
+        if (is_array($value)) {
+            throw new \InvalidArgumentException("An array cannot be bound as a single value.");
+        }
         return (string) $value;
     }
 
     public function raw($sql, array $bindings = []) {
         $this->queryParts['type'] = 'RAW';
-        $hasNamedParams = preg_match('/:([a-zA-Z0-9_]+)/', $sql);
+        // Pomenovane parametre hladame iba mimo textovych literalov a komentarov.
+        // '10:30' alebo 'a:b' v SQL preto nie je parameter a :: (pretypovanie v PostgreSQL) tiez nie.
+        $named = $this->findNamedParams($sql);
+        $hasNamedParams = count($named) > 0;
         $hasQuestionMarks = strpos($sql, '?') !== false;
 
         if ($hasNamedParams && $hasQuestionMarks) {
             throw new \Exception("RAW SQL cannot combine named variables (:name) and question marks (?) at the same time.");
         }
 
+        $this->bindingParts['raw'] = [];
+
         if ($hasNamedParams) {
-            if (preg_match_all('/:([a-zA-Z0-9_]+)/', $sql, $matches)) {
-                $placeholders = $matches[0];
-                $paramNames = $matches[1];
-                $orderedBindings = [];
-                $types = '';
-                foreach ($paramNames as $name) {
-                    if (array_key_exists($name, $bindings)) {
-                        $orderedBindings[] = $bindings[$name];
-                        $types .= $this->getBindingType($bindings[$name]);
-                    } else {
-                        throw new \Exception("Chýba hodnota pre parameter :$name v bindings.");
-                    }
+            // Nahradzame od konca, aby sa pozicie predchadzajucich parametrov neposunuli.
+            $ordered = [];
+            foreach ($named as $param) {
+                $name = $param[1];
+                if (!array_key_exists($name, $bindings)) {
+                    throw new \Exception("Chýba hodnota pre parameter :$name v bindings.");
                 }
-                $sql = preg_replace('/:([a-zA-Z0-9_]+)/', '?', $sql);
-                $this->queryParts['raw'] = $sql;
-                $this->bindings = $orderedBindings;
-                $this->types = $types;
+                $ordered[] = [$bindings[$name], $this->getBindingType($bindings[$name])];
             }
+            for ($i = count($named) - 1; $i >= 0; $i--) {
+                $sql = substr($sql, 0, $named[$i][0]) . '?' . substr($sql, $named[$i][0] + strlen($named[$i][1]) + 1);
+            }
+            $this->queryParts['raw'] = $sql;
+            $this->bindingParts['raw'] = $ordered;
         } else {
             $questionMarkCount = substr_count($sql, '?');
             if ($questionMarkCount > 0 && count($bindings) !== $questionMarkCount) {
                 throw new \Exception("Number of question marks (?) in SQL ($questionMarkCount) doesn't match number of values in bindings (" . count($bindings) . ").");
             }
             $this->queryParts['raw'] = $sql;
-            $this->bindings = $bindings;
-            $this->types = $this->generateBindingTypes($bindings);
+            foreach ($bindings as $value) {
+                $this->bindingParts['raw'][] = [$value, $this->getBindingType($value)];
+            }
         }
         return $this;
     }
 
-    private function generateBindingTypes(array $bindings) {
-        $types = '';
-        foreach ($bindings as $value) {
-            $types .= $this->getBindingType($value);
+    /*
+        Najde pomenovane parametre (:nazov) v SQL a vrati ich ako zoznam [pozicia dvojbodky, nazov].
+        Preskakuje textove literaly ('...', "..."), nazvy v spatnych uvodzovkach (`...`) a komentare
+        (-- ..., # ..., a blokove komentare), pretoze dvojbodka v nich nie je parameter.
+    */
+    private function findNamedParams($sql) {
+        $found = [];
+        $length = strlen($sql);
+        $i = 0;
+        while ($i < $length) {
+            $char = $sql[$i];
+
+            if ($char === "'" || $char === '"' || $char === '`') {
+                $quote = $char;
+                $i++;
+                while ($i < $length) {
+                    if ($sql[$i] === '\\' && $quote !== '`') {
+                        $i += 2;
+                        continue;
+                    }
+                    if ($sql[$i] === $quote) {
+                        // Zdvojena uvodzovka je sucastou literalu.
+                        if ($i + 1 < $length && $sql[$i + 1] === $quote) {
+                            $i += 2;
+                            continue;
+                        }
+                        break;
+                    }
+                    $i++;
+                }
+                $i++;
+                continue;
+            }
+
+            if ($char === '-' && $i + 1 < $length && $sql[$i + 1] === '-') {
+                $end = strpos($sql, "\n", $i);
+                $i = $end === false ? $length : $end + 1;
+                continue;
+            }
+
+            if ($char === '#') {
+                $end = strpos($sql, "\n", $i);
+                $i = $end === false ? $length : $end + 1;
+                continue;
+            }
+
+            if ($char === '/' && $i + 1 < $length && $sql[$i + 1] === '*') {
+                $end = strpos($sql, '*/', $i + 2);
+                $i = $end === false ? $length : $end + 2;
+                continue;
+            }
+
+            if ($char === ':') {
+                // "::" je pretypovanie, nie parameter.
+                if ($i + 1 < $length && $sql[$i + 1] === ':') {
+                    $i += 2;
+                    continue;
+                }
+                $previous = $i > 0 ? $sql[$i - 1] : '';
+                if ($previous !== ':' && !preg_match('/[A-Za-z0-9_]/', $previous) && preg_match('/\G:([a-zA-Z0-9_]+)/', $sql, $match, 0, $i)) {
+                    $found[] = [$i, $match[1]];
+                    $i += strlen($match[0]);
+                    continue;
+                }
+            }
+
+            $i++;
         }
-        return $types;
+        return $found;
     }
 
     public function createTable($table, callable $callback) {
@@ -783,7 +1079,7 @@ class QueryBuilder {
         $this->queryParts['ifNotExistUsed'] = true;
         if (DB::schemaBuilder()->tableExists($table)) {
             return $this;
-        } else {            
+        } else {
             $this->queryParts['type'] = 'CREATE_TABLE';
             $this->queryParts['table'] = $this->sanitizeTable($table);
             $schema = new SchemaBuilder($this->databaser);

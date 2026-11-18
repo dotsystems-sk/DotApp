@@ -51,7 +51,7 @@ $qb->join('users u', 'p.user_id', '=', 'u.id');
 
 `DB::table`, `DB::getConnection`, `selectRaw`, `whereExists`, `whereColumn`, `count()`, chain `->find(123)`, Eloquent models, working `DB::migrate()`. `whereHas`/`withCount`/`with()` are stubs that never reach SQL.
 
-Counting: `paginate()['total']` on a list (real total since core 2026-11-14), `select('COUNT(*) as total')` + `all()`, or `exists()` for yes / no. **MUST** smallest I/O: needed columns, no N+1, no `all()` then filter. `where('col', '=', null)` is `IS NULL`; `whereIn` of an empty list matches nothing. `AIRULES/06`, `AIRULES/15` §4.
+Counting: `paginate()['total']` on a list (real total since core 2026-11-14), `select('COUNT(*) as total')` + `all()`, or `exists()` for yes / no. **MUST** smallest I/O: needed columns, no N+1, no `all()` then filter. Two-argument `where('col', $value)` binds `$value` (even `''` or `'like'`). `where('col', null)` and `where('col', '=', null)` are `IS NULL` and match every NULL in that column — refuse in PHP before the query. A list is `IN`. `whereIn` of an empty list matches nothing; a string or `null` passed to `whereIn` throws. A bad operator throws. Clause order does not change bindings; the last `limit` / `offset` wins. `AIRULES/06`, `AIRULES/15` §4.
 
 ## Transactions
 

@@ -1,271 +1,166 @@
 <?php
 /**
- * Standalone regression harness for the project-root Renderer.php candidate.
+ * Renderer directive regression checks for the framework Tester.
  *
- * Loads C:\wamp\tester\Renderer.php only. Does not include app/parts/Renderer.php
- * and does not write under app/.
- *
- * Run: php Renderer.test.php
+ * Uses the Renderer already loaded with the framework. Declaring DotApp or
+ * Input here collides with those classes and stops the whole suite.
  */
 
-namespace Dotsystems\App {
-    class DotApp
-    {
-        /** @var DotApp|null */
-        private static $instance = null;
+namespace Dotsystems\App\Parts\Tests;
 
-        public $CSRF = 'test-csrf';
-        public $logger;
-        public $bridge;
-        public $customRenderer;
-        public $router;
+use Dotsystems\App\DotApp;
+use Dotsystems\App\Parts\Renderer;
+use Dotsystems\App\Parts\RendererSyntaxException;
+use Dotsystems\App\Parts\RenderingIsolator;
+use Dotsystems\App\Parts\Tester;
 
-        public static function dotApp()
-        {
-            if (self::$instance === null) {
-                self::$instance = new self();
-            }
-            return self::$instance;
-        }
-
-        public static function resetHarness()
-        {
-            self::$instance = null;
-        }
-
-        public function __construct()
-        {
-            $this->logger = new HarnessLogger();
-            $this->bridge = new HarnessBridge();
-            $this->customRenderer = new HarnessCustomRenderer();
-            $this->router = new HarnessRouter();
-        }
-
-        public function encrypt($text, $key2 = '')
-        {
-            return 'ENC(' . (string) $key2 . ':' . (string) $text . ')';
-        }
+/**
+ * @param string $name
+ * @param bool   $ok
+ * @param string $detail
+ * @return void
+ */
+function ds_check($name, $ok, $detail = '')
+{
+    global $failures, $passes;
+    if ($ok) {
+        $passes++;
+        return;
     }
-
-    class HarnessLogger
-    {
-        public $warnings = array();
-
-        public function warning($message, $context = array())
-        {
-            $this->warnings[] = array('message' => $message, 'context' => $context);
-        }
-    }
-
-    class HarnessBridge
-    {
-        public $calls = 0;
-
-        public function dotBridge($code)
-        {
-            $this->calls++;
-            return $code;
-        }
-    }
-
-    class HarnessRouter
-    {
-        public $request;
-
-        public function __construct()
-        {
-            $this->request = new HarnessRequest();
-        }
-    }
-
-    class HarnessRequest
-    {
-        public function getPath()
-        {
-            return '/harness/path';
-        }
-    }
-
-    class HarnessCustomRenderer
-    {
-        public $renderers = array();
-        public $blockMap = array();
-
-        public function addRenderer($name, $renderer)
-        {
-            $this->renderers[$name] = $renderer;
-        }
-
-        public function getRenderer($name)
-        {
-            return isset($this->renderers[$name]) ? $this->renderers[$name] : false;
-        }
-
-        public function renderWith($name, $code)
-        {
-            if (!isset($this->renderers[$name]) || !is_callable($this->renderers[$name])) {
-                throw new \Exception('Renderer ' . $name . ' does not exist');
-            }
-            return call_user_func($this->renderers[$name], $code);
-        }
-
-        public function customRenderers()
-        {
-            return $this->renderers;
-        }
-
-        public function addBlock($name, $blockFn)
-        {
-            $this->blockMap[$name] = $blockFn;
-        }
-
-        public function blocks($name)
-        {
-            return isset($this->blockMap[$name]) ? $this->blockMap[$name] : null;
-        }
-    }
+    $failures[] = $name . ($detail !== '' ? (': ' . $detail) : '');
 }
 
-namespace Dotsystems\App\Parts {
-    class Input
-    {
-        public function formFunction($action, $method, $formName, $renderer)
-        {
-            return 'FORM[' . $formName . '|' . $method . '|' . $action . ']';
-        }
-    }
+/**
+ * @return Renderer
+ */
+function ds_renderer()
+{
+    return new Renderer();
 }
 
-namespace {
+/**
+ * @param string $tpl
+ * @param array  $vars
+ * @param bool   $eval
+ * @return string
+ */
+function ds_run($tpl, $vars = array(), $eval = true)
+{
+    return ds_renderer()->renderCode($tpl, $vars, $eval);
+}
+
+/**
+ * Custom renderers (including the built-in block processor) run on the
+ * view/layout path, not on renderCode(). This helper applies them first.
+ *
+ * @param Renderer $renderer
+ * @param string   $tpl
+ * @param array    $vars
+ * @return string
+ */
+function ds_run_with_renderers($renderer, $tpl, $vars = array())
+{
+    foreach ($renderer->customRenderers() as $fn) {
+        $tpl = call_user_func($fn, $tpl, $vars);
+    }
+    return $renderer->renderCode($tpl, $vars, true);
+}
+
+/**
+ * Point one renderer at the temp view tree so layout checks do not write into the project.
+ *
+ * @param Renderer $renderer
+ * @return array<string, string>
+ */
+function ds_point_temp($renderer)
+{
+    $root = $GLOBALS['dotapp_renderer_temp'];
+    $views = $root . DIRECTORY_SEPARATOR . 'views';
+    $layouts = $views . DIRECTORY_SEPARATOR . 'layouts';
+    if (!is_dir($layouts) && !mkdir($layouts, 0777, true) && !is_dir($layouts)) {
+        throw new \RuntimeException('Cannot create temp views');
+    }
+    $ref = new \ReflectionObject($renderer);
+    foreach (array('dirw' => $views . DIRECTORY_SEPARATOR, 'dirl' => $layouts . DIRECTORY_SEPARATOR) as $prop => $path) {
+        $property = $ref->getProperty($prop);
+        $property->setAccessible(true);
+        $property->setValue($renderer, $path);
+    }
+    return array('views' => $views, 'layouts' => $layouts);
+}
+
+/**
+ * Runs a layout string through renderLayout() so privateblock is processed.
+ *
+ * @param string $tpl
+ * @param array  $vars
+ * @return string
+ */
+function ds_run_layout($tpl, $vars = array())
+{
+    $renderer = ds_renderer();
+    $renderer->module('Harness');
+    $dirs = ds_point_temp($renderer);
+    $name = 't' . str_replace('.', '', uniqid('', true));
+    file_put_contents($dirs['layouts'] . DIRECTORY_SEPARATOR . $name . '.layout.php', $tpl);
+    $renderer->setLayout($name);
+    foreach ($vars as $key => $value) {
+        $renderer->setLayoutVar($key, $value);
+    }
+    return $renderer->renderLayout();
+}
+
+/**
+ * Recursively delete a directory created for this harness.
+ *
+ * @param string $dir
+ * @return void
+ */
+function ds_rrmdir($dir)
+{
+    if (!is_dir($dir)) {
+        return;
+    }
+    $items = scandir($dir);
+    if ($items === false) {
+        return;
+    }
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        $path = $dir . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($path)) {
+            ds_rrmdir($path);
+        } else {
+            @unlink($path);
+        }
+    }
+    @rmdir($dir);
+}
+
+Tester::addTest('renderer directive regression', function () {
+    global $failures, $passes, $translator;
+    $failures = array();
+    $passes = 0;
+    $previousTranslator = $translator;
+    // Why: compiled templates call the global $translator. The checks expect a stable marker.
     $translator = function ($text) {
         return 'T(' . (string) $text . ')';
     };
-
-    $rootDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'dotapp_renderer_candidate_' . getmypid();
+    $rootDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'dotapp_renderer_' . getmypid();
+    $GLOBALS['dotapp_renderer_temp'] = $rootDir;
     if (!is_dir($rootDir) && !mkdir($rootDir, 0777, true) && !is_dir($rootDir)) {
-        fwrite(STDERR, "Cannot create temp root\n");
-        exit(2);
-    }
-    if (!defined('__ROOTDIR__')) {
-        define('__ROOTDIR__', $rootDir);
-    }
-
-    require __DIR__ . DIRECTORY_SEPARATOR . 'Renderer.php';
-
-    use Dotsystems\App\DotApp;
-    use Dotsystems\App\Parts\Renderer;
-    use Dotsystems\App\Parts\RendererSyntaxException;
-    use Dotsystems\App\Parts\RenderingIsolator;
-
-    $failures = array();
-    $passes = 0;
-
-    /**
-     * @param string $name
-     * @param bool   $ok
-     * @param string $detail
-     * @return void
-     */
-    function ds_check($name, $ok, $detail = '')
-    {
-        global $failures, $passes;
-        if ($ok) {
-            $passes++;
-            echo "PASS  $name\n";
-            return;
-        }
-        $failures[] = $name . ($detail !== '' ? (': ' . $detail) : '');
-        echo "FAIL  $name" . ($detail !== '' ? (': ' . $detail) : '') . "\n";
+        $translator = $previousTranslator;
+        return array(
+            'status' => 0,
+            'info' => 'Cannot create temp root',
+            'test_name' => 'Renderer directive regression',
+            'context' => array('renderer' => true),
+        );
     }
 
-    /**
-     * @return Renderer
-     */
-    function ds_renderer()
-    {
-        return new Renderer();
-    }
-
-    /**
-     * @param string $tpl
-     * @param array  $vars
-     * @param bool   $eval
-     * @return string
-     */
-    function ds_run($tpl, $vars = array(), $eval = true)
-    {
-        return ds_renderer()->renderCode($tpl, $vars, $eval);
-    }
-
-    /**
-     * Custom renderers (including the built-in block processor) run on the
-     * view/layout path, not on renderCode(). This helper applies them first.
-     *
-     * @param Renderer $renderer
-     * @param string   $tpl
-     * @param array    $vars
-     * @return string
-     */
-    function ds_run_with_renderers($renderer, $tpl, $vars = array())
-    {
-        foreach ($renderer->customRenderers() as $fn) {
-            $tpl = call_user_func($fn, $tpl, $vars);
-        }
-        return $renderer->renderCode($tpl, $vars, true);
-    }
-
-    /**
-     * Runs a layout string through renderLayout() so privateblock is processed.
-     *
-     * @param string $tpl
-     * @param array  $vars
-     * @return string
-     */
-    function ds_run_layout($tpl, $vars = array())
-    {
-        $renderer = ds_renderer();
-        $renderer->module('Harness');
-        $dir = __ROOTDIR__ . '/app/modules/Harness/views/layouts';
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
-        }
-        $name = 't' . str_replace('.', '', uniqid('', true));
-        file_put_contents($dir . '/' . $name . '.layout.php', $tpl);
-        $renderer->setLayout($name);
-        foreach ($vars as $key => $value) {
-            $renderer->setLayoutVar($key, $value);
-        }
-        return $renderer->renderLayout();
-    }
-
-    /**
-     * Recursively delete a directory created for this harness.
-     *
-     * @param string $dir
-     * @return void
-     */
-    function ds_rrmdir($dir)
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-        $items = scandir($dir);
-        if ($items === false) {
-            return;
-        }
-        foreach ($items as $item) {
-            if ($item === '.' || $item === '..') {
-                continue;
-            }
-            $path = $dir . DIRECTORY_SEPARATOR . $item;
-            if (is_dir($path)) {
-                ds_rrmdir($path);
-            } else {
-                @unlink($path);
-            }
-        }
-        @rmdir($dir);
-    }
+    try {
 
     // --- Public API / named instances -------------------------------------------------
 
@@ -329,13 +224,15 @@ namespace {
         ds_run('{{_ var: $msg }}', array('msg' => 'Save')) === 'T(Save)'
     );
 
+    $encLiteral = ds_run('{{ enc: "secret" }}');
     ds_check(
-        'enc literal is compile-time',
-        ds_run('{{ enc: "secret" }}') === 'ENC(:secret)'
+        'enc literal decrypts',
+        DotApp::dotApp()->decrypt($encLiteral) === 'secret'
     );
+    $encKeyed = ds_run('{{ enc(DACore.role.id): $id }}', array('id' => '7'));
     ds_check(
         'enc dotted context key',
-        ds_run('{{ enc(DACore.role.id): $id }}', array('id' => '7')) === 'ENC(DACore.role.id:7)'
+        DotApp::dotApp()->decrypt($encKeyed, 'DACore.role.id') === '7'
     );
 
     $compiledIf = ds_run('{{ if $x }}Z{{ /if }}', array(), false);
@@ -824,30 +721,29 @@ namespace {
     $unknown = ds_run('{{ CSRF }}{{ mystery: 1 }}{{ formName(x) }}', array(), false);
     ds_check(
         'unknown tags remain for later pipeline stages',
-        strpos($unknown, 'test-csrf') !== false
+        strpos($unknown, (string) DotApp::dotApp()->CSRF) !== false
         && strpos($unknown, '{{ mystery: 1 }}') !== false
         && strpos($unknown, '{{ formName(x) }}') !== false
     );
 
     $form = ds_run('<form method="POST" action="/save">{{ formName(saveItem) }}</form>');
-    ds_check('formName inside form', strpos($form, 'FORM[saveItem|POST|/save]') !== false);
+    ds_check(
+        'formName inside form',
+        strpos($form, 'dotapp-secure-auto-fnname') !== false
+        && strpos($form, 'dotapp-secure-auto-fnname-action') !== false
+    );
 
     $formLeave = ds_run('{{ formName(saveItem) }}');
     ds_check('formName without form left unchanged', strpos($formLeave, '{{ formName(saveItem) }}') !== false);
 
     // --- layout / content + custom renderer exactly-once ------------------------------
 
-    $modRoot = __ROOTDIR__ . '/app/modules/Harness/views';
-    $layRoot = $modRoot . '/layouts';
-    if (!is_dir($layRoot)) {
-        mkdir($layRoot, 0777, true);
-    }
-    file_put_contents($modRoot . '/page.view.php', '<v>{{ MARK }}{{ content }}</v>');
-    file_put_contents($layRoot . '/shell.layout.php', '<l>{{ MARK }}{{ var: $name }}</l>');
-
     $hits = 0;
     $rv = ds_renderer();
     $rv->module('Harness');
+    $viewDirs = ds_point_temp($rv);
+    file_put_contents($viewDirs['views'] . '/page.view.php', '<v>{{ MARK }}{{ content }}</v>');
+    file_put_contents($viewDirs['layouts'] . '/shell.layout.php', '<l>{{ MARK }}{{ var: $name }}</l>');
     $rv->addRenderer('once.counter', function ($code, $vars = array()) use (&$hits) {
         $hits++;
         return str_replace('{{ MARK }}', 'HIT', $code);
@@ -866,6 +762,7 @@ namespace {
     $hitsView = 0;
     $rv2 = ds_renderer();
     $rv2->module('Harness');
+    ds_point_temp($rv2);
     $rv2->addRenderer('once.counter.view', function ($code, $vars = array()) use (&$hitsView) {
         $hitsView++;
         return $code;
@@ -917,12 +814,18 @@ namespace {
         $failPreview
     );
 
-    ds_rrmdir($rootDir);
-
-    echo "\n$passes passed, " . count($failures) . " failed\n";
-    if (!empty($failures)) {
-        echo "Failed tests:\n- " . implode("\n- ", $failures) . "\n";
-        exit(1);
+        $info = $passes . ' passed, ' . count($failures) . ' failed';
+        if (!empty($failures)) {
+            $info .= ': ' . implode('; ', array_slice($failures, 0, 8));
+        }
+        return array(
+            'status' => empty($failures) ? 1 : 0,
+            'info' => $info,
+            'test_name' => 'Renderer directive regression',
+            'context' => array('renderer' => true, 'passed' => $passes, 'failed' => count($failures)),
+        );
+    } finally {
+        $translator = $previousTranslator;
+        ds_rrmdir($rootDir);
     }
-    exit(0);
-}
+});

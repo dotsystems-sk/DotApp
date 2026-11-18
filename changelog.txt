@@ -8,5 +8,6 @@
   "2.1.0": "Major fix - authentication, query builder, sessions, validator, templates, and the dotapp.js library",
   "2.1.1": "Minor fix - validator fix",
   "2.2.0": "Uploader library - the one way to receive and store a visitor's file",
-  "2.2.1": "Minor rules fixes"
+  "2.2.1": "Minor rules fixes",
+  "2.2.2": "Tests fix"
 }

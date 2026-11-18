@@ -73,12 +73,15 @@ These were bugs. On this core they work as written below. On a project with an o
 | `q(...)->exists()` / `doesntExist()` | Run the query given to `q()` (before: the previous query's builder) |
 | `paginate($perPage, $page)` | Returns the real `total` and `last_page` (before: `total` was always 0) |
 | `where('col', '=', null)` / `'!='` | `col IS NULL` / `col IS NOT NULL` |
+| `where('col', null)` — two arguments | `col IS NULL`. That matches every row where the column is NULL. Check the PHP value first and refuse; do not run the query ([06](06-DATABASE.md) Where) |
 | `where('col', '>', null)` and other comparisons with `null` | `col > NULL` — matches nothing |
-| `where('col', $value)` — two arguments | `col = ?` (before: the value was dropped) |
+| `where('col', $value)` — two arguments, not `null` and not a list | `col = ?` (before: the value was dropped). `''` and `'like'` are values, not a raw condition or an operator |
+| `where('col', [1, 2])` / `where('col', 'IN', [1, 2])` | `col IN (?, ?)` |
 | First `where()` on an expression — `where('DATE(created)', …)` | Kept intact (before: leading `A` `N` `D` `O` `R` letters were stripped) |
 | `whereIn('col', [])` | `1 = 0` — matches nothing (before: `IN ()` syntax error) |
 | `select('t.*')` | `` `t`.* `` (before: `` `t`.`*` ``) |
-| `limit('10')` / `offset('20')` | Bound as integers |
+| `limit('10')` / `offset('20')` | Bound as integers. A second call keeps the last value. `offset()` without `limit()` is valid on MySQL and SQLite. `resetLimitOffset()` removes only LIMIT and OFFSET |
+| Clause order (`limit` before `where`, `set` after `where`) | Same SQL and the same bindings. Placeholders are emitted in clause order, not call order |
 | `having()` called twice | Joined with `AND` |
 | `$request->data(true)` | The original on every call, including the first read of the body |
 | `Cache::use('A')` and `Cache::use('B')` | Separate keys. `clear()` of the file driver still empties the whole cache **folder** by design — give a cache its own folder if it must be cleared alone |
