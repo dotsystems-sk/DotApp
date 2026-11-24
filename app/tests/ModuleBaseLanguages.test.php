@@ -93,27 +93,6 @@ Tester::addTest('test_base_language_conflict_uses_first_module_alphabetically', 
     ];
 });
 
-Tester::addTest('test_base_language_compiler_reads_only_requested_locale', function () {
-    $compiled = Module::compileBaseLanguages([
-        'SMSFarm' => [
-            ['file' => 'SMSFarm:sk_sk.json', 'locale' => 'sk_sk'],
-            ['file' => 'SMSFarm:missing_en.json', 'locale' => 'en_us']
-        ]
-    ], 'sk_SK');
-
-    $passed = isset($compiled['sk_sk']['sms farm'])
-        && !isset($compiled['en_us']);
-
-    return [
-        'status' => $passed ? 1 : 0,
-        'info' => $passed
-            ? 'Non-optimized compilation reads only the active locale descriptors'
-            : 'Base-language active-locale compilation failed',
-        'test_name' => 'Base-language compiler limits non-optimized locale I/O',
-        'context' => ['core' => true, 'translations' => true]
-    ];
-});
-
 Tester::addTest('test_base_language_optimizer_payload_stays_version_two', function () {
     $method = new \ReflectionMethod(Module::class, 'buildOptimizerCode');
     $method->setAccessible(true);

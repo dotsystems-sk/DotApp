@@ -1258,12 +1258,18 @@ class DotApp {
 	 * for the event.
 	 *
 	 * dotapp.catchall - triger sluzi na to aby sme vedeli na jednom mieste vidiet vsetky triggery - za ucelom DEBUGGovania
+	 *
+	 * Kazdy listener bezi vo vlastnom try/catch: listener, ktory vyhodi vynimku, nezastavi
+	 * listenerov zaregistrovanych po nom. Prva vynimka sa vyhodi volajucemu az ked dobehli
+	 * vsetci (volajuci sa o chybe dozvie tak ako doteraz); kazda dalsia sa zapise do PHP error logu.
+	 *
 	 * @param string $eventname The name of the event to be triggered.
-	 * @param array $data An array of data to be passed to the listener 
+	 * @param array $data An array of data to be passed to the listener
 	 *                    callbacks.
-	 * @param mixed ...$otherdata Additional data to be passed to the 
+	 * @param mixed ...$otherdata Additional data to be passed to the
 	 *                            listener callbacks.
 	 * @return $this The current instance for method chaining.
+	 * @throws \Throwable Prva vynimka, ktoru vyhodil niektory listener, po dobehnuti vsetkych listenerov.
 	 */
 	public function trigger($eventname, $result = null, ...$data) {
         $eventname = strtolower($eventname);
@@ -1271,17 +1277,47 @@ class DotApp {
 			// Za ucelom aby sme mali detailne moznsoti debuugovat dorobene pre DotApp 2.0
 			$this->trigger('dotapp.catchall', $result, $eventname, ...$data);
 		}
+		$failed = null;
         if (isset($this->listeners['listenersids']) && isset($this->listeners['listenersids'][$eventname])) {
 			foreach ($this->listeners['listenersids'][$eventname] as $key => $listenerid) {
 				if (isset($this->listeners['listeners'][$listenerid]) && is_callable($this->listeners['listeners'][$listenerid])) {
 					$callback = $this->listeners['listeners'][$listenerid];
-					call_user_func($callback, $result, ...$data);
+					try {
+						call_user_func($callback, $result, ...$data);
+					} catch (\Throwable $exception) {
+						// Why: jeden chybny listener nesmie zastavit listenerov zaregistrovanych po nom.
+						// Prvu vynimku dostane volajuci po dobehnuti vsetkych, dalsie ostanu aspon v error logu.
+						if ($failed === null) {
+							$failed = $exception;
+						} else {
+							$this->logListenerFailure('trigger', $eventname, $exception);
+						}
+					}
 				} else {
 					unset($this->listeners['listenersids'][$eventname][$key]);
 				}
 			}
 		}
+		if ($failed !== null) {
+			throw $failed;
+		}
 		return $result;
+	}
+
+	/**
+	 * Zapise do PHP error logu listenera, ktoreho vynimku jadro nevratilo volajucemu.
+	 *
+	 * Text vynimky sa nezapisuje, lebo moze niest citlive udaje; staci trieda a miesto, kde vznikla.
+	 *
+	 * @param string $method Metoda jadra, ktora listenera spustila (trigger alebo triggerWithVeto).
+	 * @param string $eventname Nazov udalosti.
+	 * @param \Throwable $exception Vynimka listenera.
+	 * @return void
+	 */
+	private function logListenerFailure($method, $eventname, \Throwable $exception) {
+		// Why: nazov udalosti pise kod modulu; do logu ide len v bezpecnych znakoch, aby nevedel vlozit novy riadok.
+		$name = preg_replace('/[^a-z0-9_.:\/{}*-]/', '?', (string) $eventname);
+		error_log('DotApp ' . $method . '(' . $name . '): listener failed with ' . get_class($exception) . ' in ' . $exception->getFile() . ':' . $exception->getLine());
 	}
 
     /**
@@ -1290,10 +1326,17 @@ class DotApp {
      * Oproti trigger() sleduje iba navratovu hodnotu typu Veto. Vsetky stare
      * navraty vratane false ostavaju ignorovane, aby sa nezmenilo spravanie modulov.
      *
+     * Kazdy listener bezi vo vlastnom try/catch: listener, ktory vyhodi vynimku, nezastavi
+     * listenerov po nom, takze o veto mozu rozhodnut aj oni. Ked niektory z nich vrati Veto,
+     * vrati sa veto (akcia sa zastavi so zrozumitelnym dovodom) a vynimka sa zapise do PHP
+     * error logu. Ked nikto nevetuje, prva vynimka sa vyhodi volajucemu po dobehnuti vsetkych:
+     * listener, ktory zlyhal, nerozhodol, a volajuci nesmie pokracovat ako keby vsetci povolili.
+     *
      * @param string $eventname Nazov udalosti, ktory sa normalizuje na lowercase.
      * @param mixed $result Prvy argument odovzdany listenerom.
      * @param mixed ...$data Dalsie argumenty odovzdane listenerom.
      * @return Veto|null Prve veto alebo null ked vsetci listeneri povolili pokracovat.
+     * @throws \Throwable Prva vynimka listenera, ked ziadny listener nevratil Veto.
      */
     public function triggerWithVeto($eventname, $result = null, ...$data): ?Veto {
         $eventname = strtolower($eventname);
@@ -1301,19 +1344,38 @@ class DotApp {
             // Why: debugger musi vidiet veto udalost rovnako ako kazdy povodny trigger.
             $this->trigger('dotapp.catchall', $result, $eventname, ...$data);
         }
+        $failed = null;
         if (isset($this->listeners['listenersids']) && isset($this->listeners['listenersids'][$eventname])) {
             foreach ($this->listeners['listenersids'][$eventname] as $key => $listenerid) {
                 if (isset($this->listeners['listeners'][$listenerid]) && is_callable($this->listeners['listeners'][$listenerid])) {
                     $callback = $this->listeners['listeners'][$listenerid];
-                    $listenerResult = call_user_func($callback, $result, ...$data);
+                    try {
+                        $listenerResult = call_user_func($callback, $result, ...$data);
+                    } catch (\Throwable $exception) {
+                        // Why: chybny listener nesmie zastavit ostatnych; o veto mozu rozhodnut aj listeneri po nom.
+                        if ($failed === null) {
+                            $failed = $exception;
+                        } else {
+                            $this->logListenerFailure('triggerWithVeto', $eventname, $exception);
+                        }
+                        continue;
+                    }
                     // Why: iba explicitny objekt Veto moze zastavit dispatch, false zo stareho listenera nie.
                     if ($listenerResult instanceof Veto) {
+                        if ($failed !== null) {
+                            // Why: veto akciu aj tak zastavi; vynimka, ktoru uz nikto nedostane, nesmie zmiznut bez stopy.
+                            $this->logListenerFailure('triggerWithVeto', $eventname, $failed);
+                        }
                         return $listenerResult;
                     }
                 } else {
                     unset($this->listeners['listenersids'][$eventname][$key]);
                 }
             }
+        }
+        if ($failed !== null) {
+            // Why: listener, ktory zlyhal, nerozhodol; bez veta sa chyba vrati volajucemu tak ako doteraz.
+            throw $failed;
         }
 
         return null;

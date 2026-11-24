@@ -46,7 +46,7 @@ Events::trigger('module.shop.sms_sent.hook', [
 | Fact | Law |
 |------|-----|
 | Return | `trigger()` returns `$result` **unchanged**. Listener **return values are ignored** — they are **not** a veto. |
-| Exceptions | A throw in a listener **aborts remaining listeners**. Listeners **MUST** be cheap and wrap risky work in their own `try/catch` (then the catch bus). |
+| Exceptions | A throw in a listener does **not** stop the remaining listeners (the core runs each in its own `try/catch`); the first exception reaches the caller of `trigger()` after the last listener, further ones go to the PHP error log ([12](12-SERVICES.md) §2). Listeners **MUST** be cheap and wrap risky work in their own `try/catch` (then the catch bus). |
 | Debug funnel | Core already fires `dotapp.catchall` on every `trigger()` except itself. **MUST NOT** fire `dotapp.catchall` yourself. |
 | Failures | Persist errors stay on **`dotapp.catch`** ([18](18-ERROR-HANDLING-AND-RETURN-VALUES.md) §9). Do **not** reuse catch-bus names for business hooks. |
 | `hasListener()` | **MUST NOT** skip a **decided** trigger because nobody is subscribed yet. Catchall + future modules need the name. |
@@ -70,7 +70,7 @@ Example: `module.shop.item_delete.veto`. This is **not** a normal post-success `
 
 - The owner fires it immediately before the reversible action and handles the returned `Veto|null`.
 - Only `new \Dotsystems\App\Parts\Veto($code, $message, $details)` stops dispatch. `false` and every other old return are ignored.
-- The first `Veto` wins and later listeners do not run. Listener exceptions still propagate.
+- The first `Veto` wins and later listeners do not run. A listener that throws does not stop the others: a `Veto` returned after it still wins (the exception goes to the PHP error log); when nobody vetoes, the first exception propagates after the last listener — a failed listener has not decided, so the owner **MUST NOT** continue.
 - The owner documents the exact name, timing, payload, and allowed veto codes in its root `.hooks` under a separate **Veto contracts** section.
 - Payload and `Veto::details()` follow the same no-secrets law as hooks. The core never sends `message` or `details` to a browser.
 - A subscriber MUST cover the producer request in `Listeners::initializeRoutes()` and regenerate `modulesAutoLoader.php`; an unloaded listener cannot veto.

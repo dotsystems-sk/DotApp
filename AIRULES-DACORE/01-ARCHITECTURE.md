@@ -159,6 +159,8 @@ Canonical singleton: `DotApp::dotApp()` / `DotApp::DotApp()`.
 
 Event names are lowercased on register/trigger.
 
+**Listener isolation (core):** `trigger()` and `triggerWithVeto()` run each listener in its own `try/catch`. One module's failing listener does not hide the listeners of other modules registered after it. The first exception reaches the caller after the last listener ran (for `triggerWithVeto()`: unless a listener returned a `Veto`, which wins); further exceptions of the same dispatch go to the PHP error log without their message. Details: [12](12-SERVICES.md) §2.
+
 ### `dotapp.catchall` — core debug funnel (DotApp 2.0)
 
 `DotApp::trigger()` **always** fires `dotapp.catchall` first (then the named event). The core **skips** that extra hop when the name is already `dotapp.catchall`, so it cannot recurse.

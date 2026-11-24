@@ -88,6 +88,10 @@ Tester::addTest('test_listener_routes_reject_invalid_shape', function () {
 Tester::addTest('test_module_route_matcher_handles_wildcard_and_bad_cache', function () {
     $dotApp = DotApp::dotApp();
     $method = new \ReflectionMethod($dotApp, 'moduleRoutesMatch');
+    // Why: pred PHP 8.1 sa sukromna metoda cez reflexiu neda zavolat bez setAccessible(); od 8.1 uz netreba (a 8.5 ho oznacuje ako zastarane).
+    if (PHP_VERSION_ID < 80100) {
+        $method->setAccessible(true);
+    }
     $wildcard = $method->invoke($dotApp, ['*']);
     $invalid = $method->invoke($dotApp, 'not-an-array');
     $passed = $wildcard === true && $invalid === false;
@@ -103,6 +107,10 @@ Tester::addTest('test_module_route_matcher_handles_wildcard_and_bad_cache', func
 Tester::addTest('test_listener_map_supports_old_and_new_optimizer_files', function () {
     $dotApp = DotApp::dotApp();
     $method = new \ReflectionMethod($dotApp, 'moduleListenerRoutes');
+    // Why: pred PHP 8.1 sa sukromna metoda cez reflexiu neda zavolat bez setAccessible().
+    if (PHP_VERSION_ID < 80100) {
+        $method->setAccessible(true);
+    }
     $modules = ['Shop' => ['/shop/*'], 'Legacy' => ['/legacy/*']];
     $listeners = ['Shop' => ['/hooks/*']];
 

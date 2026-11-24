@@ -9,5 +9,6 @@
   "2.1.1": "Minor fix - validator fix",
   "2.2.0": "Uploader library - the one way to receive and store a visitor's file",
   "2.2.1": "Minor rules fixes",
-  "2.2.2": "Tests fix"
+  "2.2.2": "Tests fix",
+  "2.2.3": "Minor fix - trigger() and triggerWithVeto() run each listener in its own try/catch; the first exception is rethrown after the rest finish, and a Veto returned by a later listener wins over an earlier exception"
 }

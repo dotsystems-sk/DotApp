@@ -267,7 +267,7 @@ $result = $dotApp->trigger('module.shop.sms_sent.hook', $initial);
 // $result === $initial ALWAYS — listener return values are IGNORED
 ```
 
-Listener exceptions **propagate** and abort remaining listeners. Wrap risky listener bodies in `try/catch` yourself.
+Each listener runs in its own `try/catch` in the core: a listener that throws does **not** stop the listeners registered after it, and the first exception **propagates** to the caller after the last listener ([12](12-SERVICES.md) §2). Wrap risky listener bodies in `try/catch` yourself.
 
 A pre-action stop is a **different** API: `triggerWithVeto()` returns the first `Dotsystems\App\Parts\Veto` or `null`. Ordinary `false`/scalar returns stay ignored. Canonical: [12](12-SERVICES.md) §2, [41](41-MODULE-HOOKS.md).
 
